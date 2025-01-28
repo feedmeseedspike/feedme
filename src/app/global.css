@@ -1,0 +1,130 @@
+
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&family=Young+Serif&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Young Serif", serif;
+}
+
+@layer base {
+  html {
+    font-family: "Poppins", sans-serif;
+  }
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+
+   
+          /* COLORS */
+      /* Gray */
+      --gray-25: #f9fafb;
+      --gray-50: #f2f4f7;
+      --gray-100: #f4f4f5;
+      --gray-200: #e4e4e7;
+      --gray-300: #d4d4d8;
+      --gray-400: #a1a1aa;
+      --gray-500: #71717a;
+      --gray-600: #4c4c52;
+      --gray-700: #27272a;
+      --gray-800: #18181b;
+      --gray-900: #09090b;
+    
+      /* Primary */
+      --primary-25: #fcfaff;
+      --primary-50: #f2f8f1;
+      --primary-100: #e4ebff;
+      --primary-200: #b6ddb4;
+      --primary-300: #84a781;
+      --primary-400: #638e5f;
+      --primary-500: #42753d;
+      --primary-600: #355e31;
+      --primary-700: #284625;
+      --primary-800: #1a2f18;
+      --primary-900: #0d170c;
+    
+      /* Secondary */
+      --secondary-25: #fcfaff;
+      --secondary-50: #f9f5ff;
+      --secondary-100: #f4ebff;
+      --secondary-200: #e9d7fe;
+      --secondary-300: #d6bbfb;
+      --secondary-400: #b692f6;
+      --secondary-500: #9e77ed;
+      --secondary-600: #7f56d9;
+      --secondary-700: #6941c6;
+      --secondary-800: #53389e;
+      --secondary-900: #42307d;
+    
+      /* Error */
+      --error-25: #fff8fa;
+      --error-50: #fef3f2;
+      --error-100: #fee4e2;
+      --error-200: #fecdca;
+      --error-300: #fda29b;
+      --error-400: #f97066;
+      --error-500: #f04438;
+      --error-600: #d92d20;
+      --error-700: #b42318;
+      --error-800: #912018;
+      --error-900: #7a271a;
+    }
+    
+  }
+

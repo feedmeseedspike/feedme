@@ -3,8 +3,11 @@ import { AntdRegistry } from '@ant-design/nextjs-registry';
 import { Inter } from "next/font/google";
 import { getServerSession } from "next-auth";
 import AuthSessionProvider from "@providers/AuthSessionProvider";
-import AntdConfigProvider from "@providers/AntdConfigProvider";
-import "@styles/globals.sass";
+// import AntdConfigProvider from "@providers/AntdConfigProvider";
+// import "@styles/globals.sass";
+import "../app/global.css";
+import Header from "@components/shared/header";
+// import Header from "@components/shared/header/Header";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,18 +22,19 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await getServerSession();
+  // const session = await getServerSession();
 
   return (
     <html lang="en">
       <AntdRegistry>
-        <AntdConfigProvider>
-          <AuthSessionProvider session={session}>
+        {/* <AntdConfigProvider> */}
+          {/* <AuthSessionProvider session={session}> */}
             <body className={inter.className}>
+              {/* <Header /> */}
               {children}
             </body>
-          </AuthSessionProvider>
-        </AntdConfigProvider>
+          {/* </AuthSessionProvider> */}
+        {/* </AntdConfigProvider> */}
       </AntdRegistry>
     </html>
   );
