@@ -61,7 +61,10 @@ module.exports = {
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
   			}
-  		}
+  		},
+			fontFamily: {
+				proxima: ["var(--font-proxima)"]
+			}
   	}
   },
   // plugins: [require("@tailwindcss/forms"), require("tailwind-scrollbar-hide")],

@@ -125,6 +125,25 @@ h6 {
       --error-800: #912018;
       --error-900: #7a271a;
     }
+
+  .font-custom {
+    font-family: var(--font-proxima), sans-serif;
+  }
+
+@layer utilities {
+  .highlight-link a,
+  a.highlight-link {
+    @apply text-[#F0800F]  hover:text-orange-700 hover:underline;
+  }
+  .h2-bold {
+    @apply font-proxima font-bold text-lg sm:text-2xl;
+    /* HK Grotesk */
+  }
+
+  .h4-bold {
+    @apply font-proxima font-semibold text-[14px] md:text-[18px] text-[#1D2939];
+  }
+}
     
   }
 

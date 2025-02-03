@@ -59,7 +59,7 @@ export const HomeCarousel = () => {
   if (!hasMounted) return null;
 
   return (
-    <div className="relative  overflow-hidden py-8">
+    <div className="relative bg-whit w-full overflow-hidden">
       <motion.div
         // drag="x"
         dragConstraints={{
@@ -74,13 +74,12 @@ export const HomeCarousel = () => {
         }}
         transition={SPRING_OPTIONS}
         // onDragEnd={onDragEnd}
-        className="flex !mx-0 items-center w-full h-[300px]"
+        className="flex "
       >
         <Images imgIndex={imgIndex} />
       </motion.div>
 
       <Dots imgIndex={imgIndex} setImgIndex={setImgIndex} />
-      {/* <GradientEdges /> */}
     </div>
   );
 };
@@ -96,7 +95,7 @@ const Images = ({ imgIndex }: { imgIndex: number }) => {
               scale: imgIndex === idx ? 0.95 : 0.85,
             }}
             transition={SPRING_OPTIONS}
-            className="relative rounded-xl w-full shrink-0"
+            className="relative w-full shrink-0 overflow-hidden"
           >
             <Image
               src={imgSrc}
@@ -104,9 +103,12 @@ const Images = ({ imgIndex }: { imgIndex: number }) => {
               width={900}
               height={260}
               priority
+              quality={100}
               // fill
               // sizes="100vw"
-              className="w-full object-cove"
+              className="w-full h-full object-cover"
+
+
             />
           </motion.div>
         );
@@ -129,7 +131,7 @@ const Dots = ({
           <button
             key={idx}
             onClick={() => setImgIndex(idx)}
-            className={`h-3 w-3 rounded-full transition-colors ${
+            className={`size-[6px] md:size-[10px] rounded-full transition-colors ${
               idx === imgIndex ? "bg-[#D8D8D8]" : "bg-[#4A4A4A]"
             }`}
           />

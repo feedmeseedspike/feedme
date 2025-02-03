@@ -1,8 +1,7 @@
 
-// import Header from '@/components/shared/header'
-// import Footer from '@/components/shared/footer'
 
 import Header from "@components/shared/header"
+import BreadCrumb from "@components/shared/breadcrumb";
 
 
 export default async function HomeLayout({
@@ -12,8 +11,10 @@ export default async function HomeLayout({
 }) {
   return (
     <div className='flex flex-col '>
-      <Header />
-      <main className='bg-[#F9FAFB] min-h-screen'>{children}</main>
+      {/* <Header /> */}
+      <BreadCrumb />
+
+      <main className=''>{children}</main>
       {/* <Footer /> */}
     </div>
   )

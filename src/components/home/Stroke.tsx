@@ -17,7 +17,7 @@ const Stroke = () => {
       <div className="">
           <h1
             ref={pRef}
-            className="text-xl md:text-2xl py-4 font-bold text-gray-300 w-fit"
+            className="text-xl md:text-2xl py-4 font-proxima font-bold text-gray-300 w-fit"
           >
             Shop From <span className="text-orange-500">Top Categories</span>
           </h1>

@@ -7,33 +7,33 @@ const imgs = ["/banners/banner3.png", "/banners/banner4.png"];
 
 const Banner = () => {
   return (
-    <Container>
-      <section className="flex items-center gap-4 py-6">
-        <div className="w-[75%]">
+    <section className="pt-4 pb-5 md:pt-10 md:pb-20">
+      <div className="flex items-stretch gap-2 md:gap-4 w-full">
+        {/* Carousel: Taller height on mobile */}
+        <div className="w-[70%] md:w-[75%]">
           <HomeCarousel />
         </div>
-        <div className="w-[25%]">
-          <div className="flex flex-col gap-4">
-            {imgs.map((imgSrc, idx) => {
-              return (
-                <div key={idx} className="">
-                  <Image
-                    src={imgSrc}
-                    alt={""}
-                    width={445}
-                    height={150}
-                    // fill
-                    // sizes="100vw"
-                    className="w-full object-cove"
-                  />
-                </div>
-              );
-            })}
-          </div>
+
+        {/* Side images: Combined height equals the carousel height */}
+        <div className="w-[30%] md:w-[25%] flex flex-col gap-2 md:gap-4">
+          {imgs.map((imgSrc, idx) => (
+            <div key={idx} className="h-1/2">
+              <Image
+                src={imgSrc}
+                alt=""
+                width={445}
+                height={150}
+                className="w-full h-full"
+              />
+            </div>
+          ))}
         </div>
-      </section>
-    </Container>
+      </div>
+    </section>
   );
 };
+
+
+
 
 export default Banner;

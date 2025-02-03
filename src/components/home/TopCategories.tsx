@@ -58,18 +58,18 @@ const TopCategories = ({ categories }: Props) => {
 
 
   return (
-    <section className="">
-      <Container>
+    <section className="w-full pb-[80px]">
+      {/* <Container> */}
         <Stroke />
-        <div className="flex gap-3 md:gap-6 pt-6 cursor-pointer overflow-x-scroll whitespace-nowrap scrollbar-hide">
+        <div className="flex gap-3 md:gap-6 pt-6 cursor-pointer overflow-x-scroll whitespace-nowrap scrollbar-hide w-full">
           {categories.map((category) => {
             return (
               <Link href={`/category/?category_id=${category?._id}`}
-                className="flex flex-col gap-2 justify-center items-center min-w-[150px] flex-shrink-0"
+                className="flex flex-col gap-2 justify-center items-center flex-shrink-0"
                 key={category._id}
               >
                 <div
-                  className="h-32 w-32 bg-[#F2F4F7] rounded-[100%]  p-3 flex justify-center items-center">
+                  className="size-[6rem] md:size-[8rem] bg-[#F2F4F7] rounded-[100%]  p-3 flex justify-center items-center">
                   <Image
                     src={category.thumbnail.url}
                     width={150}
@@ -78,14 +78,14 @@ const TopCategories = ({ categories }: Props) => {
                     className="hover:scale-110 hover:transition-transform hover:ease-in-out hover:duration-500 object-contain"
                   />
                 </div>
-                <p className="text-[22px] md:text-lg text-black hover:underline hover:underline-offset-2">
+                <p className="text-[14px] md:text-[22px] md:text-lg text-black hover:underline hover:underline-offset-2">
                   {category.title}
                 </p>
               </Link>
             );
           })}
         </div>
-      </Container>
+      {/* </Container> */}
     </section>
   );
 };
