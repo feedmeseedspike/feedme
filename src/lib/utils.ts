@@ -13,7 +13,11 @@ export const toSlug = (text: string): string =>
     .replace(/^-+|-+$/g, '')
     .replace(/-+/g, '-')
 
-const NUMBER_FORMATTER = new Intl.NumberFormat('en-US')
-export function formatNumber(number: number) {
-  return NUMBER_FORMATTER.format(number)
-}
+    export function formatNaira(amount: number): string {
+      return new Intl.NumberFormat("en-NG", {
+        style: "currency",
+        currency: "NGN",
+        minimumFractionDigits: 0,
+      }).format(amount);
+    }
+    

@@ -304,7 +304,33 @@ export const products = [
         countInStock: 15,
       },
     ],
-    reviews: [],
+    reviews: [
+      {
+        "product": "60c72b2f9e1d4b4c5c5c5c5c",
+        "user": "60c72b2f9e1d4b4c5c5c5c6d",
+        "isVerifiedPurchase": true,
+        "title": "Great Product!",
+        "comment": " Lorem ipsum dolor, sit amet consectetur adipisicing elit. Laudantium voluptatibus beatae error distinctio? Hic distinctio perspiciatis, nesciunt laudantium error rerum atque suscipit debitis illo, tenetur accusamus optio maxime molestias labore.",
+        "rating": 5
+      },
+      {
+        "product": "60c72b2f9e1d4b4c5c5c5c5c",
+        "user": "60c72b2f9e1d4b4c5c5c5c6e",
+        "isVerifiedPurchase": false,
+        "title": "Not what I expected",
+        "comment": "Lorem ipsum dolor, sit amet consectetur adipisicing elit. Laudantium voluptatibus beatae error distinctio? Hic distinctio perspiciatis, nesciunt laudantium error rerum atque suscipit debitis illo, tenetur accusamus optio maxime molestias labore.",
+        "rating": 3
+      },
+      {
+        "product": "60c72b2f9e1d4b4c5c5c5c5c",
+        "user": "60c72b2f9e1d4b4c5c5c5c6f",
+        "isVerifiedPurchase": true,
+        "title": "Good Value for Money",
+        "comment": "Lorem ipsum dolor, sit amet consectetur adipisicing elit. Laudantium voluptatibus beatae error distinctio? Hic distinctio perspiciatis, nesciunt laudantium error rerum atque suscipit debitis illo, tenetur accusamus optio maxime molestias labore.",
+        "rating": 4
+      }
+    ]
+    ,
   },
   {
     name: 'Garlic ',
@@ -421,7 +447,32 @@ export const products = [
         countInStock: 20,
       },
     ],
-    reviews: [],
+    reviews: [
+      {
+        "product": "60c72b2f9e1d4b4c5c5c5c5c",
+        "user": "60c72b2f9e1d4b4c5c5c5c6d",
+        "isVerifiedPurchase": true,
+        "title": "Great Product!",
+        "comment": "I absolutely love this product. The quality is amazing, and it does exactly what it promises.",
+        "rating": 5
+      },
+      {
+        "product": "60c72b2f9e1d4b4c5c5c5c5c",
+        "user": "60c72b2f9e1d4b4c5c5c5c6e",
+        "isVerifiedPurchase": false,
+        "title": "Not what I expected",
+        "comment": "The product was decent, but not as described. It didn’t match the images on the website.",
+        "rating": 3
+      },
+      {
+        "product": "60c72b2f9e1d4b4c5c5c5c5c",
+        "user": "60c72b2f9e1d4b4c5c5c5c6f",
+        "isVerifiedPurchase": true,
+        "title": "Good Value for Money",
+        "comment": "For the price, it's a great deal. It has some minor issues, but nothing too major.",
+        "rating": 4
+      }
+    ],
   },
   {
     name: 'Hibiscus',
@@ -460,6 +511,31 @@ export const products = [
         countInStock: 30,
       },
     ],
-    reviews: [],
+    reviews: [
+      {
+        "product": "60c72b2f9e1d4b4c5c5c5c5c",
+        "user": "60c72b2f9e1d4b4c5c5c5c6d",
+        "isVerifiedPurchase": true,
+        "title": "Great Product!",
+        "comment": "I absolutely love this product. The quality is amazing, and it does exactly what it promises.",
+        "rating": 5
+      },
+      {
+        "product": "60c72b2f9e1d4b4c5c5c5c5c",
+        "user": "60c72b2f9e1d4b4c5c5c5c6e",
+        "isVerifiedPurchase": false,
+        "title": "Not what I expected",
+        "comment": "The product was decent, but not as described. It didn’t match the images on the website.",
+        "rating": 3
+      },
+      {
+        "product": "60c72b2f9e1d4b4c5c5c5c5c",
+        "user": "60c72b2f9e1d4b4c5c5c5c6f",
+        "isVerifiedPurchase": true,
+        "title": "Good Value for Money",
+        "comment": "For the price, it's a great deal. It has some minor issues, but nothing too major.",
+        "rating": 4
+      }
+    ],
   }
 ]

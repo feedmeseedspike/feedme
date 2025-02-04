@@ -14,12 +14,13 @@ import { ChevronDownIcon } from 'lucide-react'
 
 type RatingSummaryProps = {
   asPopover?: boolean
-  avgRating: number
-  numReviews: number
+  avgRating?: number
+  numReviews?: number
   ratingDistribution: {
     rating: number
     count: number
   }[]
+  hideSummaryText?: boolean // New prop to control visibility
 }
 
 export default function RatingSummary({
@@ -27,6 +28,7 @@ export default function RatingSummary({
   avgRating = 0,
   numReviews = 0,
   ratingDistribution = [],
+  hideSummaryText = false,
 }: RatingSummaryProps) {
   const RatingDistribution = () => {
     const ratingPercentageDistribution = ratingDistribution.map((x) => ({
@@ -36,15 +38,13 @@ export default function RatingSummary({
 
     return (
       <>
-        <div className='flex flex-wrap items-center gap-1 cursor-help'>
-          <Rating rating={avgRating} />
-          <span className='text-[14px]'>
-            {avgRating.toFixed(1)} out of 5
-          </span>
-        </div>
-        <div className=' text-[14px]'>
-          {numReviews} ratings
-        </div>
+        {!hideSummaryText && (
+            <div className='flex flex-wrap items-center gap-1 cursor-help'>
+              <Rating rating={avgRating} />
+              <span className='text-[14px]'>{avgRating.toFixed(1)} out of 5</span>
+            <div className='text-[14px]'>{numReviews} ratings</div>
+          </div>
+        )}
 
         <div className='space-y-3'>
           {ratingPercentageDistribution
@@ -54,10 +54,8 @@ export default function RatingSummary({
                 key={rating}
                 className='grid grid-cols-[50px_1fr_30px] gap-2 items-center'
               >
-                <div className='text-sm'>
-                  {rating} star
-                </div>
-                <Progress value={percentage} className='h-4' />
+                <div className='text-sm'>{rating} star</div>
+                <Progress value={percentage} className='h-[6px]' />
                 <div className='text-sm text-right'>{percentage}%</div>
               </div>
             ))}
@@ -87,7 +85,7 @@ export default function RatingSummary({
           </div>
         </PopoverContent>
       </Popover>
-      <div className=' '>
+      <div>
         <Link href='#reviews' className='highlight-link text-[14px]'>
           {numReviews} ratings
         </Link>

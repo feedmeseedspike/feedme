@@ -5,19 +5,12 @@
 @tailwind components;
 @tailwind utilities;
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-family: "Young Serif", serif;
-}
 
 @layer base {
   html {
-    font-family: "Poppins", sans-serif;
+    font-family: var(--font-proxima), "Poppins";
   }
+  
   :root {
     --background: 0 0% 100%;
     --foreground: 0 0% 3.9%;
@@ -126,9 +119,7 @@ h6 {
       --error-900: #7a271a;
     }
 
-  .font-custom {
-    font-family: var(--font-proxima), sans-serif;
-  }
+
 
 @layer utilities {
   .highlight-link a,
@@ -142,6 +133,18 @@ h6 {
 
   .h4-bold {
     @apply font-proxima font-semibold text-[14px] md:text-[18px] text-[#1D2939];
+  }
+
+  .h5-light {
+    @apply font-[400] text-[#565959] text-[14px] leading-[20px]
+
+  }
+
+  .h6-light {
+    @apply font-[400] text-[#475467] text-xs leading-[18px]
+  }
+  .h6-bold {
+    @apply font-[700] text-[13px] leading-[20px]
   }
 }
     

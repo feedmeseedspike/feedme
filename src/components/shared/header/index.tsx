@@ -54,7 +54,7 @@ const Header = async () => {
     <header className=" ">
       <div className={`fixe bg-[#1B6013] transition-all duration-300 
         `}>
-          <Container className="py-4">
+          <Container className="py-2">
             <div className="flex items-center h-auto">
               <nav className="rounded-xl flex flex-row w-full">
                 <div className="flex flex-row gap-x-12 items-center relative">
@@ -77,7 +77,7 @@ const Header = async () => {
               </nav>
               <div className="pl-6 flex items-center gap-3">
                 <Cart />
-                <button className="bg-[#EAECF0] w-full h-[48px] rounded-[8px] text-[#1B6013] px-[16px] py-[6px] md:px-[1.2rem] md:py-[0.8rem] font-[600] whitespace-nowrap">Sign in</button>
+                <button className="bg-[#EAECF0] w-full h-[48px] rounded-[8px] text-[#1B6013] px-[16px] py-[8px] md:px-[20px] md:py-[12px] font-[600] whitespace-nowrap">Sign in</button>
               </div>
             </div>
               <div className="py-2 w-full md:hidden">

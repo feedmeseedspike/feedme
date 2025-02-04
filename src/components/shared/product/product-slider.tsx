@@ -13,8 +13,7 @@ import ProductCard from './product-card'
 import { IProductInput } from 'src/types'
 import Link from "next/link"
 import { Separator } from '@components/ui/separator'
-import  ArrowRight  from '@components/icons/ArrowRight.svg'
-// import { IProduct } from '@/lib/db/models/product.model'
+import  ArrowRight  from '@components/icons/arrowRight.svg'
 
 export default function ProductSlider({
   title,
@@ -27,9 +26,12 @@ export default function ProductSlider({
 }) {
   return (
     <section className=''>
-      <div className="flex justify-between text-[14px] ">
+      <div className="flex items-center justify-between text-[14px] ">
         <h2 className='h2-bold '>{title}</h2>
-        <Link className='flex gap-1 items-center text-[#F0800F]' href={""}>See More <ArrowRight className="text-[#F0800F]" /></Link>
+        <Link href={""} className='flex gap-1 items-center text-[#F0800F]'>
+          <p  >See More</p>
+          <ArrowRight className="fill-[#F0800F] !text-[2.5px]" />
+        </Link>
       </div>
       <Separator className="my-4" />
       <Carousel

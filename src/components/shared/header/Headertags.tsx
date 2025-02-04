@@ -26,7 +26,7 @@ const Headertags = async () => {
                 categories={categoriesResponse.data} 
                 />
                 <div className="border-l h-7 rounded" /> 
-                  <div className='flex items-center text-[14px] gap-3 overflow-hidden overflow-x-scroll whitespace-nowrap scrollbar-hide w-full'>
+                  <div className="flex items-center text-[14px] gap-3 overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide w-full">
                     {headerMenus.map((menu) => (
                       <Link
                         href={menu.href}

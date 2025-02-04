@@ -3,7 +3,6 @@ import Stroke from "@components/home/Stroke";
 import Container from "../shared/Container";
 import Image from "next/image";
 import React, { useRef, useState, useEffect, useMemo } from "react";
-import { IoIosArrowForward } from "react-icons/io";
 // import {
 //   useDeleteCategoryMutation,
 //   useGetCategoriesQuery,
@@ -61,7 +60,7 @@ const TopCategories = ({ categories }: Props) => {
     <section className="w-full pb-[80px]">
       {/* <Container> */}
         <Stroke />
-        <div className="flex gap-3 md:gap-6 pt-6 cursor-pointer overflow-x-scroll whitespace-nowrap scrollbar-hide w-full">
+        <div className="flex gap-3 md:gap-6 pt-6 cursor-pointer overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide w-full">
           {categories.map((category) => {
             return (
               <Link href={`/category/?category_id=${category?._id}`}

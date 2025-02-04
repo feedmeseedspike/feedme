@@ -1,7 +1,4 @@
-
-// import Header from '@/components/shared/header'
-// import Footer from '@/components/shared/footer'
-
+import Footer from "@components/shared/footer"
 import Header from "@components/shared/header"
 
 
@@ -14,7 +11,7 @@ export default async function HomeLayout({
     <div className='flex flex-col '>
       <Header />
       <main className='bg-[#F9FAFB] min-h-screen'>{children}</main>
-      {/* <Footer /> */}
+      <Footer />
     </div>
   )
 }
