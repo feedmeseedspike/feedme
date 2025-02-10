@@ -20,10 +20,10 @@ export default function ProductGallery({ images }: { images: string[] }) {
             }}
             className={` overflow-hidden ${
               selectedImage === index
-                && 'ring-1 ring-[#F0800F] rounded-[8px] size-[60px] p-[2px]'
+                && 'border border-[#F0800F] rounded-[8px] size-[60px] p-[1px]'
             }`}
           >
-            <Image src={image} alt={'product image'} width={60} height={60} className="border rounded-[8px] size-[60px]" />
+            <Image src={image} alt={'product image'} width={60} height={60} className="border rounded-[8px] w-full h-full" />
           </button>
         ))}
       </div>

@@ -7,23 +7,17 @@ import RatingSummary from "@components/shared/product/rating-summary";
 import { Separator } from "@components/ui/separator";
 import { Label } from "@components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
-import { formatNaira } from "src/lib/utils";
+import { formatNaira, generateId } from "src/lib/utils";
 import ReviewList from "src/app/(home)/product/[slug]/review-list";
+import AddToCart from "@components/shared/product/add-to-cart";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@components/ui/accordion"
+import ShareLike from "@components/shared/product/product-shareLike";
 
-const datas = [
-  {
-    id: 1,
-    icon: "",
-    title: "Fast Delivery",
-    description: "Get your order at your doorstep in 3 hours or less"
-  },
-  {
-    id: 1,
-    icon: "",
-    title: "Fast Delivery",
-    description: "Get your order at your doorstep in 3 hours or less"
-  }
-]
 
 const ProductDetails = async (props: {
   params: Promise<{ slug: string }>;
@@ -42,11 +36,12 @@ const ProductDetails = async (props: {
   const product = getProductBySlug(slug);
 
   const totalRatings = product.ratingDistribution.reduce((acc, { count }) => acc + count, 0);
+
   return (
     <section>
       <Container>
         <div className="py-4 grid grid-cols-1 md:grid-cols-8 gap-8 bg-white my-6 p-3">
-          <div className="col-span-3">
+          <div className="col-span-3 w-full">
             <Image
               src={product.images[0]}
               width={450}
@@ -62,6 +57,7 @@ const ProductDetails = async (props: {
               numReviews={product.numReviews}
               asPopover
               ratingDistribution={product.ratingDistribution}
+              showTotalCount={true}
             />
             <p className="text-[#12B76A] text-[14px] border py-1 px-2 border-[#12B76A] w-fit">
               Freshness Guarantee
@@ -89,7 +85,7 @@ const ProductDetails = async (props: {
                         width={54}
                         height={54}
                         src={option.image}
-                        alt={option.image}
+                        alt={option.name}
                         className="size-[54px] rounded-[5px] border-[0.31px] border-[#81a6e2]"
                       />
                       <div className="flex flex-col gap-[4px]">
@@ -103,33 +99,51 @@ const ProductDetails = async (props: {
               </RadioGroup>
             </div>
           </div>
-          <div className="col-span-2">
-            <div className="border border-[#EBEBEB] p-4">
-              <div className="">
-              <p className="h6-bold">Sold by <span className="h6-light">{product?.seller ?? "Unknown Seller"}</span></p>
-
+          <div className="col-span-2 border border-[#EBEBEB] p-4 w-fit">
+      <div className="">
+        <p className="h6-bold">
+          Sold by
+          {/* <span className="h6-light">
+            {product?.seller ?? "Unknown Seller"}
+          </span> */}
+        </p>
+      </div>
+      <Separator className="my-4" />
+             <AddToCart
+                item={{
+                  clientId: generateId(),
+                  product: product?._id,
+                  name: product.name,
+                  slug: product.slug,
+                  category: product.category,
+                  price: product.price,
+                  quantity: 1,
+                  image: product.images[0],
+                  option: product.options[0],
+                }}
+              />
+              <div className="pt-[8px]  w-full">
+                <ShareLike product={product} />
               </div>
-              <Separator className="my-4" />
-              <div className="">
-                <div className="flex flex-col gap-[5px]">
-                {
-                  datas.map(data => (
-                    <div className="" key={data.id}>
-                      <p className="h6-bold">{data.title}</p>
-                      <p className="h6-light">{data.description}</p>
-  
-                    </div>
-                  )
-                )}
-                </div>
-              </div>
-              <Separator className="mt-4 mb-2" />
-              <div className="">
-                <p className="h6-bold">Quantity</p>
-              </div>
-
-            </div>
           </div>
+        </div>
+        <div className="bg-white my-6 p-3">
+        <Accordion type="single" collapsible className="w-full">
+      <AccordionItem value="item-1">
+        <AccordionTrigger>Product Description</AccordionTrigger>
+        <AccordionContent>
+          {product.description}
+        </AccordionContent>
+      </AccordionItem>
+      <AccordionItem value="item-2">
+        <AccordionTrigger>Is it styled?</AccordionTrigger>
+        <AccordionContent>
+          Yes. It comes with default styles that matches the other
+          components&apos; aesthetic.
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+
         </div>
         <Separator className="mt-2"/>
               <section className='mt-6'>

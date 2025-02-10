@@ -7,15 +7,15 @@ const imgs = ["/banners/banner3.png", "/banners/banner4.png"];
 
 const Banner = () => {
   return (
-    <section className="pt-4 pb-5 md:pt-10 md:pb-20">
+    <section className="pt-4 pb-5 md:pt-10 md:pb-10 lg:pb-20">
       <div className="flex items-stretch gap-2 md:gap-4 w-full">
         {/* Carousel: Taller height on mobile */}
-        <div className="w-[70%] md:w-[75%]">
+        <div className="basis-[896px]">
           <HomeCarousel />
         </div>
 
         {/* Side images: Combined height equals the carousel height */}
-        <div className="w-[30%] md:w-[25%] flex flex-col gap-2 md:gap-4">
+        <div className="basis-[444px] flex flex-col gap-2 md:gap-4">
           {imgs.map((imgSrc, idx) => (
             <div key={idx} className="h-1/2">
               <Image

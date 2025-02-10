@@ -2,6 +2,7 @@
 
 import Header from "@components/shared/header"
 import BreadCrumb from "@components/shared/breadcrumb";
+import Container from "@components/shared/Container";
 
 
 export default async function HomeLayout({
@@ -12,7 +13,12 @@ export default async function HomeLayout({
   return (
     <div className='flex flex-col '>
       {/* <Header /> */}
-      <BreadCrumb />
+      <div className="bg-white">
+        <Container className="py-4">
+          <BreadCrumb  
+            />
+        </Container>
+      </div>
 
       <main className=''>{children}</main>
       {/* <Footer /> */}

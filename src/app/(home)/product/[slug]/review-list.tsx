@@ -17,7 +17,7 @@ import { Product } from "src/lib/validator";
 import { IReviewInput } from "src/types";
 
 type ReviewListProps = {
-  avgRating: number;
+  avgRating?: number;
   product: Product;
 };
 

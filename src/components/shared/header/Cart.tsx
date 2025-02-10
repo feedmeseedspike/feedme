@@ -1,13 +1,184 @@
-import React from 'react'
-import ShoppingCart from "@components/icons/cart.svg"
+"use client";
 
+import ShoppingCart from "@components/icons/cart.svg";
+import { Button } from "@components/ui/button";
+import { Separator } from "@components/ui/separator";
+import { Checkbox } from "@components/ui/checkbox"
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@components/ui/sheet";
+import { ArrowLeft, Trash2Icon } from "lucide-react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import React, { useMemo, useState } from "react";
+import { AiOutlineMinus, AiOutlinePlus } from "react-icons/ai";
+import { useDispatch, useSelector } from "react-redux";
+import { formatNaira } from "src/lib/utils";
+import { RootState } from "src/store";
+import { removeItem, updateItem, clearCart } from "src/store/features/cartSlice";
+import { OrderItem } from "src/types";
+import { Input } from "@components/ui/input";
+import Link from "next/link";
 
 const Cart = () => {
-  return (
-    <div>
-      <ShoppingCart className="size-[24px]" />
-    </div>
-  )
-}
 
-export default Cart
+  const [checkedItems, setCheckedItems] = useState<OrderItem[]>([]);
+
+  const router = useRouter();
+  const dispatch = useDispatch();
+  const cart = useSelector((state: RootState) => state.cart);
+  const { items, itemsPrice, shippingPrice, totalPrice } = cart;
+
+
+  const handleQuantityChange = (item: OrderItem, increment: boolean) => {
+    const newQuantity = increment ? item.quantity + 1 : item.quantity - 1;
+    if (newQuantity > 0) {
+      dispatch(updateItem({ item, quantity: newQuantity }));
+    }
+  };
+
+  const handleRemoveItem = (item: OrderItem) => {
+    dispatch(removeItem(item));
+  };
+  
+  const handleClearItem = () => {
+    dispatch(clearCart());
+  };
+
+  const handleCheckItem = (item: OrderItem) => {
+    setCheckedItems((prevChecked) =>
+      prevChecked.some((checkedItem) => checkedItem.name === item.name)
+        ? prevChecked.filter((checkedItem) => checkedItem.name !== item.name)
+        : [...prevChecked, item]
+    );
+  };
+  const totalQuantity = useMemo(() => items.reduce((acc, item) => acc + item.quantity, 0), [items]);
+
+  
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <div className="relative">
+          <ShoppingCart className="size-[24px]" />
+          {items.length === 0 ? "" : <p className="absolute -top-2 -right-2 bg-[#D0D5DD] px-[6px] py-[2px] rounded-full text-xs text-white">
+            {totalQuantity}
+          </p>}
+          
+        </div>
+      </SheetTrigger>
+      <SheetContent className="flex flex-col gap-6">
+        <SheetHeader className="flex justify-between w-full items-center">
+          <SheetClose className="rounded-sm opacity-70 transition-opacity hover:opacity-100">
+            <ArrowLeft className="size-[22px]" />
+          </SheetClose>
+          <SheetTitle className="h2-bold flex-1 text-center">
+            Cart ({items.reduce((acc: any, item: any) => acc + item.quantity, 0)})
+          </SheetTitle>
+          {items.length > 0 && (
+            <p className="badge cursor-pointer w-fit" onClick={handleClearItem}>Clear Cart</p>
+          )}
+        </SheetHeader>
+
+        <div className="flex flex-col gap-6 flex-grow">
+          {items.length === 0 ? (
+            <div className="text-center text-gray-500 mt-10">
+              <p className="text-lg font-semibold">Your cart is empty.</p>
+              <p className="text-sm text-gray-400">Start adding items to your cart!</p>
+            </div>
+          ) : (
+            items.map((item: OrderItem) => (
+              <React.Fragment key={item.name}>
+                <div className="flex items-center gap-4">
+                <Checkbox
+                  id={`checkbox-${item.name}`}
+                  checked={checkedItems.some((checkedItem) => checkedItem.name === item.name)}
+                  onCheckedChange={() => handleCheckItem(item)}
+                />
+
+                  <Image
+                    width={64}
+                    height={64}
+                    src={item.image}
+                    alt={item.name}
+                    className="h-[64px] rounded-[5px] border-[0.31px] border-[#DDD5DD] object-contain"
+                  />
+                  <div className="flex flex-col gap-[6px] w-full">
+                    <div className="flex justify-between">
+                      <p className="h6-light !text-[14px]">{item.name}</p>
+                      <Trash2Icon className="size-4" onClick={() => handleRemoveItem(item)} aria-label="Remove item" />
+                    </div>
+                    <p className="text-[8px] text-[#344054] bg-[#F2F4F7] rounded-[16px] w-fit px-2 py-[2px]">
+                      1kg
+                    </p>
+                    <div className="flex justify-between items-center">
+                      <p className="text-[#101828] font-bold">{formatNaira(item.price)}</p>
+                      <div className="flex items-center gap-4">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-[9px] bg-[#D0D5DD] rounded-[4px] p-3 text-white"
+                          onClick={() => handleQuantityChange(item, false)}
+                        >
+                          <AiOutlineMinus />
+                        </Button>
+                        <span>{item.quantity}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-[9px] bg-[#1B6013] rounded-[4px] p-3 text-white"
+                          onClick={() => handleQuantityChange(item, true)}
+                        >
+                          <AiOutlinePlus />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <Separator />
+              </React.Fragment>
+            ))
+          )}
+        </div>
+
+        {/* Footer is now always at the bottom */}
+        {items.length > 0 && (
+          <SheetFooter className="mt-auto">
+            <div className="w-full">
+              <Separator className="my-2" />
+              <div className="h4-light flex justify-between">
+                <p>Subtotal</p>
+                <p>{formatNaira(itemsPrice)}</p>
+              </div>
+              <div className="flex w-full items-center pt-[10px] gap-3">
+                <Input type="email" placeholder="Discount Code" className="h-10 placeholder:text-xs text-[#737373] placeholder:font-semibold" />
+                <Button type="submit" className='btn-primary !text-[#B7CDB4] !bg-[#F2F4F7] h-10'>Apply</Button>
+              </div>
+              <Separator className="my-5"/>
+              <div className="flex justify-between text-[14px] text-[#101828]">
+                <p>Total</p>
+                <p>{formatNaira(itemsPrice)}</p>
+              </div>
+              <button
+                className={`mt-6 w-full btn-primary ${checkedItems.length === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
+                disabled={checkedItems.length === 0}
+              >
+                <Link href={{ pathname: "/checkout", query: { items: JSON.stringify(checkedItems) } }}>
+                  Checkout
+                </Link>
+              </button>
+            </div>
+          </SheetFooter>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+};
+
+export default Cart;

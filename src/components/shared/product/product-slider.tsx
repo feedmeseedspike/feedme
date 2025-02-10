@@ -13,7 +13,7 @@ import ProductCard from './product-card'
 import { IProductInput } from 'src/types'
 import Link from "next/link"
 import { Separator } from '@components/ui/separator'
-import  ArrowRight  from '@components/icons/arrowRight.svg'
+import  ArrowRight  from '@components/icons/ArrowRight.svg'
 
 export default function ProductSlider({
   title,

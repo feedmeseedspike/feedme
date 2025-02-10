@@ -17,7 +17,7 @@ const Waitlist = () => {
               className="p-5 rounded-[8px] w-full border border-[#D0D5DD] placeholder:text-xs sm:placeholder:text-sm"
               placeholder="Enter your email address..."
             />
-            <button className="text-white bg-[#1B6013] rounded-[8px] px-3 sm:px-[20px] py-3 absolute right-3 top-1/2 transform -translate-y-1/2 text-xs lg:text-sm">
+            <button className="text-white bg-[#1B6013] rounded-[8px] px-3 sm:px-[20px] py-3 absolute right-3 top-1/2 transform -translate-y-1/2 text-xs lg:text-[16px]">
               Join The Waitlist
             </button>
           </div>

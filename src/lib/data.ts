@@ -84,7 +84,7 @@ export const products = [
     _id: "66ec2b2abc0e9f3ea6616686",
     name: "Riverbite",
     slug: "riverbite",
-    category: "6769a979015abc57a03ec8b5",
+    category: "Pepper",
     images: ["https://res.cloudinary.com/ahisi/image/upload/v1732000738/ahisi/1732000738261_produce_20241119_081636_0000.jpg"], // Default image
     brand: "Riverbite",
     description: "Riverbite is a premium smoked catfish snack set apart by superior quality and careful preparation. Each package contains four expertly degutted catfish cutlets.",
@@ -268,10 +268,11 @@ export const products = [
     reviews: [],
   },
   {
+    _id: "66ec2b2abgh0e9f3ea6616686",
     name: 'Irish Potato',
     slug: toSlug('Irish Potato'),
     category: 'Tubers',
-    images: ["https://res.cloudinary.com/ahisi/image/upload/v1732430067/ahisi/1732430066821_produce-1.png", "https://www.google.com/url?sa=i&url=https%3A%2F%2Funsplash.com%2Fs%2Fphotos%2Fpotato&psig=AOvVaw2tkfvzxPIwLRBqu5HtIIBi&ust=1738406948684000&source=images&cd=vfe&opi=89978449&ved=0CBEQjRxqFwoTCPjXp9rkn4sDFQAAAAAdAAAAABAE", "https://t4.ftcdn.net/jpg/02/75/77/89/360_F_275778955_xxJe5fQvDy5oXbjupdJ162zLwU4sf3kT.jpg"],
+    images: ["https://res.cloudinary.com/ahisi/image/upload/v1732430067/ahisi/1732430066821_produce-1.png", "https://th.bing.com/th/id/R.aa0a7e5f75178906f0d2741f13543af0?rik=q4vuMh3PW8lGJg&riu=http%3a%2f%2fwww.valleyspuds.com%2fwp-content%2fuploads%2fValley-Spuds-Pile-of-White-Potatoes.jpg&ehk=ZQ5wZKG9ZoqCX22zdRT6MQaW6zeZyVUIQUbCWIpJ7kU%3d&risl=&pid=ImgRaw&r=0", "https://t4.ftcdn.net/jpg/02/75/77/89/360_F_275778955_xxJe5fQvDy5oXbjupdJ162zLwU4sf3kT.jpg"],
     tags: ['new-arrival', "best-seller"],
     isPublished: true,
     price: 4000,
@@ -372,6 +373,7 @@ export const products = [
     reviews: [],
   },
   {
+    _id: "66ec2b2afdbc0e9f3ea6616686",
     name: 'Ginger',
     slug: toSlug('Ginger'),
     category: 'General',
@@ -475,6 +477,7 @@ export const products = [
     ],
   },
   {
+  _id: "66ed7c2b2abc0e9f3ea6616686",
     name: 'Hibiscus',
     slug: toSlug('Hibiscus'),
     category: 'Vegetables',

@@ -1,4 +1,3 @@
-
 // "use client";
 import React, { useState, useEffect } from "react";
 // import Container from "../Container";
@@ -15,7 +14,7 @@ import Container from "@components/shared/Container";
 import { Locations } from "@components/shared/header/Location";
 import Cart from "@components/shared/header/Cart";
 import Sidebar from "@components/shared/header/Sidebar";
-import { CategoryResponse } from '../../../types/category';
+import { CategoryResponse } from "../../../types/category";
 import Link from "next/link";
 import { headerMenus } from "src/lib/data";
 
@@ -36,7 +35,6 @@ const Header = async () => {
   // const user = useSelector((state) => state?.auth?.user);
   // const router = useRouter();
 
-
   // useEffect(() => {
   //   const handleScroll = () => {
   //     if (window.scrollY > 0) {
@@ -52,41 +50,45 @@ const Header = async () => {
 
   return (
     <header className=" ">
-      <div className={`fixe bg-[#1B6013] transition-all duration-300 
-        `}>
-          <Container className="py-2">
-            <div className="flex items-center h-auto">
-              <nav className="rounded-xl flex flex-row w-full">
-                <div className="flex flex-row gap-x-12 items-center relative">
+      <div
+        className={`fixe bg-[#1B6013] transition-all duration-300 
+        `}
+      >
+        <Container className="py-2">
+          <div className="flex items-center h-auto">
+            <nav className="rounded-xl flex flex-row w-full">
+              <div className="flex flex-row gap-x-12 items-center relative">
+                <Link href="/">
                   <Image
                     src="/logo.png"
                     alt="logo"
                     width={148}
                     height={32}
                     className="w-[6rem] md:w-[9rem] cursor-pointer"
-                    // onClick={() => router.push("/")}
                   />
-                  <div className="hidden md:block pr-4 ">
-                    <Locations />
-                  </div>
-  
+                </Link>
+                <div className="hidden md:block pr-4 ">
+                  <Locations />
                 </div>
-                  <div className="hidden md:block flex-1 md:max-w-[55rem]">
-                    <Search  />
-                  </div>
-              </nav>
-              <div className="pl-6 flex items-center gap-3">
+              </div>
+              <div className="hidden md:block flex-1 md:max-w-[55rem]">
+                <Search />
+              </div>
+            </nav>
+            <div className="md:pl-6 flex items-center gap-3">
+              <div className="cursor-pointer">
                 <Cart />
-                <button className="bg-[#EAECF0] w-full h-[48px] rounded-[8px] text-[#1B6013] px-[16px] py-[8px] md:px-[20px] md:py-[12px] font-[600] whitespace-nowrap">Sign in</button>
               </div>
+              <button className="bg-[#EAECF0] w-full h-[48px] rounded-[8px] text-[#1B6013] px-[16px] py-[8px] md:px-[20px] md:py-[12px] font-[600] whitespace-nowrap">
+                Sign in
+              </button>
             </div>
-              <div className="py-2 w-full md:hidden">
-                  <Search />
-              </div>
-          
-          </Container>
+          </div>
+          <div className="py-2 w-full md:hidden">
+            <Search />
+          </div>
+        </Container>
       </div>
-      
     </header>
   );
 };

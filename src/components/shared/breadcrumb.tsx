@@ -1,17 +1,52 @@
-import Container from '@components/shared/Container'
-import Link from 'next/link'
-import React from 'react'
+'use client'
 
-const breadcrumb = () => {
+import React from "react";
+import Link from 'next/link'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@components/ui/breadcrumb'
+import { usePathname } from 'next/navigation'
+
+const CustomBreadcrumb = () => {
+  const paths = usePathname() ?? '' // Handle null or undefined paths
+  const pathNames = paths.split('/').filter(path => path)
+
   return (
-    <div className='bg-white'>
-      <Container>
-          <div className="my-4 flex items-center gap-x-2 ">
-              <p className="">hello</p>
-          </div>
-        </Container>
-    </div>
+    <Breadcrumb className="">
+      <BreadcrumbList>
+        <BreadcrumbItem>
+          <BreadcrumbLink asChild>
+            <Link href='/'>Home</Link>
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+        {pathNames.length > 0 && <BreadcrumbSeparator />}
+        {pathNames.map((link, index) => {
+          const href = `/${pathNames.slice(0, index + 1).join('/')}`
+          const isLast = index === pathNames.length - 1
+
+          return (
+            <React.Fragment key={index}>
+              <BreadcrumbItem>
+                {isLast ? (
+                  <BreadcrumbPage>{link}</BreadcrumbPage>
+                ) : (
+                  <BreadcrumbLink asChild>
+                    <Link href={href}>{link}</Link>
+                  </BreadcrumbLink>
+                )}
+              </BreadcrumbItem>
+              {!isLast && <BreadcrumbSeparator />}
+            </React.Fragment>
+          )
+        })}
+      </BreadcrumbList>
+    </Breadcrumb>
   )
 }
 
-export default breadcrumb
+export default CustomBreadcrumb;

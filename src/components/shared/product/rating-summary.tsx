@@ -20,7 +20,8 @@ type RatingSummaryProps = {
     rating: number
     count: number
   }[]
-  hideSummaryText?: boolean // New prop to control visibility
+  hideSummaryText?: boolean 
+  showTotalCount?: boolean 
 }
 
 export default function RatingSummary({
@@ -29,34 +30,38 @@ export default function RatingSummary({
   numReviews = 0,
   ratingDistribution = [],
   hideSummaryText = false,
+  showTotalCount = false, 
 }: RatingSummaryProps) {
   const RatingDistribution = () => {
-    const ratingPercentageDistribution = ratingDistribution.map((x) => ({
-      ...x,
-      percentage: Math.round((x.count / numReviews) * 100),
-    }))
-
     return (
       <>
         {!hideSummaryText && (
-            <div className='flex flex-wrap items-center gap-1 cursor-help'>
+          <div className=''>
+            <div className="flex flex-wrap items-center gap-1 cursor-help">
               <Rating rating={avgRating} />
               <span className='text-[14px]'>{avgRating.toFixed(1)} out of 5</span>
+            </div>
             <div className='text-[14px]'>{numReviews} ratings</div>
           </div>
         )}
 
         <div className='space-y-3'>
-          {ratingPercentageDistribution
+          {ratingDistribution
             .sort((a, b) => b.rating - a.rating)
-            .map(({ rating, percentage }) => (
+            .map(({ rating, count }) => (
               <div
                 key={rating}
-                className='grid grid-cols-[50px_1fr_30px] gap-2 items-center'
+                className='flex gap-4 items-center'
               >
-                <div className='text-sm'>{rating} star</div>
-                <Progress value={percentage} className='h-[6px]' />
-                <div className='text-sm text-right'>{percentage}%</div>
+                <div className='flex items-center gap-1'>
+                  <Rating rating={rating} />
+                </div>
+
+                <Progress value={Math.round((count / numReviews) * 100)} className='h-[6px]' />
+
+                <div className='text-sm text-right'>
+                  {showTotalCount ? `${Math.round((count / numReviews) * 100)}%` : count}
+                </div>
               </div>
             ))}
         </div>
@@ -78,7 +83,6 @@ export default function RatingSummary({
           <div className='flex flex-col gap-2'>
             <RatingDistribution />
             <Separator />
-
             <Link className='highlight-link text-center text-[14px]' href='#reviews'>
               See customer reviews
             </Link>

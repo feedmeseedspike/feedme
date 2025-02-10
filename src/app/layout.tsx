@@ -9,6 +9,7 @@ import localFont from 'next/font/local'
 // import "@styles/globals.sass";
 import "../app/global.css";
 import Header from "@components/shared/header";
+import { ReduxProvider } from "src/store/providers";
 // import Header from "@components/shared/header/Header";
 
 // Font files can be colocated inside of `pages`
@@ -48,8 +49,10 @@ export default async function RootLayout({
         {/* <AntdConfigProvider> */}
           {/* <AuthSessionProvider session={session}> */}
             <body className="font-custom">
-              {/* <Header /> */}
-              {children}
+              <ReduxProvider>
+                {/* <Header /> */}
+                {children}
+              </ReduxProvider>
             </body>
           {/* </AuthSessionProvider> */}
         {/* </AntdConfigProvider> */}

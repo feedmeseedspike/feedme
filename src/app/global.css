@@ -126,6 +126,11 @@
   a.highlight-link {
     @apply text-[#F0800F]  hover:text-orange-700 hover:underline;
   }
+
+  .badge {
+    @apply text-[#B54708] text-xs font-semibold bg-[#FFFAEB] py-1 px-2 rounded-[16px] flex items-center
+  }
+  
   .h2-bold {
     @apply font-proxima font-bold text-lg sm:text-2xl;
     /* HK Grotesk */
@@ -133,6 +138,9 @@
 
   .h4-bold {
     @apply font-proxima font-semibold text-[14px] md:text-[18px] text-[#1D2939];
+  }
+  .h4-light {
+    @apply font-proxima font-semibold text-[14px] text-[#545454];
   }
 
   .h5-light {
@@ -146,7 +154,11 @@
   .h6-bold {
     @apply font-[700] text-[13px] leading-[20px]
   }
+
+  .btn-primary {
+    @apply text-white bg-[#1B6013] rounded-[8px] px-3 sm:px-[20px] py-3 text-xs lg:text-[16px]
+  }
 }
-    
+/* absolute right-3 top-1/2 transform -translate-y-1/2  */
   }
 
