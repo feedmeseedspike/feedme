@@ -91,7 +91,7 @@ export const products = [
     price: 5850, // Default price
     listPrice: 5850,
     countInStock: 50, // Total stock across all options
-    tags: ["best-seller", "todals-deal"],
+    tags: ["best-seller", "todays-deal"],
     colors: [], // No colors for smoked catfish
     sizes: [], // No sizes for smoked catfish
     avgRating: 0,
@@ -112,6 +112,7 @@ export const products = [
     ],
   },
   {
+    _id: "66ec2b2abgh0e9f3ea6jtk4616686",
     name: 'Apple',
     slug: toSlug('Apple'),
     category: 'Fruits',
@@ -151,11 +152,12 @@ export const products = [
     reviews: [],
   },
   {
+    _id: "66ec2b2abgh0e9fhrj33ea6616686",
     name: 'Pineapple',
     slug: toSlug('Pineapple'),
     category: 'Fruits',
     images: ["https://res.cloudinary.com/ahisi/image/upload/v1732136297/ahisi/1732136297347_produce-2.jpg"],
-    tags: ['new-arrival', "todals-deal"],
+    tags: ['new-arrival', "todays-deal"],
     isPublished: true,
     price: 1550,
     listPrice: 1550,
@@ -190,6 +192,7 @@ export const products = [
     reviews: [],
   },
   {
+    _id: "66ec2ngjrkb2abgh0e9f3ea6616686",
     name: 'Orange',
     slug: toSlug('Orange'),
     category: 'Fruits',
@@ -229,6 +232,7 @@ export const products = [
     reviews: [],
   },
   {
+    _id: "66ec2bbfd2abgh0e9f3ea6616686",
     name: 'Watermelon',
     slug: toSlug('Watermelon'),
     category: 'Fruits',
@@ -334,7 +338,8 @@ export const products = [
     ,
   },
   {
-    name: 'Garlic ',
+    _id: "66ec2b2abgh0e9no03f3ea6616686",
+    name: 'Garlic',
     slug: toSlug('Garlic)'),
     category: 'General',
     images: ["https://res.cloudinary.com/ahisi/image/upload/v1732540256/ahisi/1732540256046_produce-30.jpg"],
@@ -381,7 +386,7 @@ export const products = [
     tags: ['todays-deal'],
     isPublished: true,
     price: 5000,
-    listPrice: 5000,
+    listPrice: 6500,
     brand: 'Local Farm',
     avgRating: 4.6,
     numReviews: 7,
@@ -413,6 +418,7 @@ export const products = [
     reviews: [],
   },
   {
+    _id: "66e3267ec2b2abgh0e9f3ea6616686",
     name: 'Turmeric',
     slug: toSlug('Turmeric'),
     category: 'Spices and Condiments',

@@ -53,12 +53,12 @@ const Cart = () => {
   };
 
   const handleCheckItem = (item: OrderItem) => {
-    setCheckedItems((prevChecked) =>
-      prevChecked.some((checkedItem) => checkedItem.name === item.name)
-        ? prevChecked.filter((checkedItem) => checkedItem.name !== item.name)
-        : [...prevChecked, item]
-    );
+    setCheckedItems((prevChecked) => {
+      const isChecked = prevChecked.some((checkedItem) => checkedItem.clientId === item.clientId);
+      return isChecked ? prevChecked.filter((checkedItem) => checkedItem.clientId !== item.clientId) : [...prevChecked, item];
+    });
   };
+  
   const totalQuantity = useMemo(() => items.reduce((acc, item) => acc + item.quantity, 0), [items]);
 
   
@@ -67,7 +67,7 @@ const Cart = () => {
       <SheetTrigger asChild>
         <div className="relative">
           <ShoppingCart className="size-[24px]" />
-          {items.length === 0 ? "" : <p className="absolute -top-2 -right-2 bg-[#D0D5DD] px-[6px] py-[2px] rounded-full text-xs text-white">
+          {items.length === 0 ? "" : <p className="absolute -top-2 -right-2 bg-[#D0D5DD] px-[7px] py-[2px] rounded-full text-xs text-white">
             {totalQuantity}
           </p>}
           
@@ -95,7 +95,7 @@ const Cart = () => {
           ) : (
             items.map((item: OrderItem) => (
               <React.Fragment key={item.name}>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 sm:gap-4 overflow-y-visible">
                 <Checkbox
                   id={`checkbox-${item.name}`}
                   checked={checkedItems.some((checkedItem) => checkedItem.name === item.name)}
@@ -119,7 +119,7 @@ const Cart = () => {
                     </p>
                     <div className="flex justify-between items-center">
                       <p className="text-[#101828] font-bold">{formatNaira(item.price)}</p>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2 sm:gap-4">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -147,7 +147,6 @@ const Cart = () => {
           )}
         </div>
 
-        {/* Footer is now always at the bottom */}
         {items.length > 0 && (
           <SheetFooter className="mt-auto">
             <div className="w-full">
@@ -169,7 +168,7 @@ const Cart = () => {
                 className={`mt-6 w-full btn-primary ${checkedItems.length === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
                 disabled={checkedItems.length === 0}
               >
-                <Link href={{ pathname: "/checkout", query: { items: JSON.stringify(checkedItems) } }}>
+                <Link href={{ pathname: "/checkout" }}>
                   Checkout
                 </Link>
               </button>

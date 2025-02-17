@@ -1,6 +1,6 @@
-import Banner from "@components/home/Home-banner";
-import { HomeCarousel } from "@components/home/Home-carousel";
-import TopCategories from "@components/home/TopCategories";
+import Banner from "@components/shared/home/Home-banner";
+import { HomeCarousel } from "@components/shared/home/Home-carousel";
+import TopCategories from "@components/shared/home/TopCategories";
 import {
   getAllCategories,
   getProductsByTag,
@@ -11,7 +11,7 @@ import { Card, CardContent } from "@components/ui/card";
 import ProductSlider from "@components/shared/product/product-slider";
 import Container from "@components/shared/Container";
 import Headertags from "@components/shared/header/Headertags";
-import Promo from "@components/home/promo";
+import Promo from "@components/shared/home/promo";
 
 const fetchCategories = async (): Promise<CategoryResponse> => {
   const response = await fetch(

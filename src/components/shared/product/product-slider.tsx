@@ -13,6 +13,7 @@ import ProductCard from './product-card'
 import { IProductInput } from 'src/types'
 import Link from "next/link"
 import { Separator } from '@components/ui/separator'
+import {ChevronRight} from "lucide-react"
 import  ArrowRight  from '@components/icons/ArrowRight.svg'
 
 export default function ProductSlider({
@@ -30,7 +31,7 @@ export default function ProductSlider({
         <h2 className='h2-bold '>{title}</h2>
         <Link href={""} className='flex gap-1 items-center text-[#F0800F]'>
           <p  >See More</p>
-          <ArrowRight className="fill-[#F0800F] !text-[2.5px]" />
+          <ChevronRight className="size-[14px]" />
         </Link>
       </div>
       <Separator className="my-4" />
@@ -40,7 +41,7 @@ export default function ProductSlider({
         }}
         className='w-full'
       >
-        <CarouselContent className="px-[4rem]">
+        <CarouselContent className="px-2  md:px-[4rem]">
           {products.map((product) => (
             <CarouselItem
               key={product.slug}

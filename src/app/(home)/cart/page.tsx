@@ -6,6 +6,7 @@ import { Card } from '@components/ui/card'
 import { useRouter } from 'next/navigation'
 import { useSelector } from 'react-redux'
 import Image from 'next/image'
+import { Trash2Icon } from "lucide-react";
 // import { OrderItem } from '@/lib/validator'
 import { useDispatch } from 'react-redux'
 // import { removeItem, updateItem } from '@/store/features/cartSlice'
@@ -105,7 +106,7 @@ const CartPage = () => {
                           variant="ghost" 
                           onClick={() => handleRemoveItem(item)}
                         >
-                          Remove
+                          <Trash2Icon className="text-red-600" />
                         </Button>
                       </div>
                     </div>

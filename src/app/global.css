@@ -9,7 +9,13 @@
 @layer base {
   html {
     font-family: var(--font-proxima), "Poppins";
+    /* overflow-y: scroll !important; */
   }
+
+  /* body[style*="overflow: hidden"] {
+    overflow: auto !important;
+  } */
+  
   
   :root {
     --background: 0 0% 100%;

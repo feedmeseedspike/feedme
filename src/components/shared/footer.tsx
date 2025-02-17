@@ -51,20 +51,20 @@ const Icons = [
 const Footer = async() => {
   // const router = useRouter();
   const year = new Date().getFullYear();
-const fetchCategories = async (): Promise<CategoryResponse> => {
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/category/get-categories`,
-    {
-      cache: "no-store",
-    }
-  );
-  if (!response.ok) {
-    throw new Error("Failed to fetch categories");
-  }
-  return response.json();
-};
-const categoriesResponse = await fetchCategories();
-const categories = categoriesResponse.data
+// const fetchCategories = async (): Promise<CategoryResponse> => {
+//   const response = await fetch(
+//     `${process.env.NEXT_PUBLIC_API_URL}/category/get-categories`,
+//     {
+//       cache: "no-store",
+//     }
+//   );
+//   if (!response.ok) {
+//     throw new Error("Failed to fetch categories");
+//   }
+//   return response.json();
+// };
+// const categoriesResponse = await fetchCategories();
+// const categories = categoriesResponse.data
 
 
   return (
@@ -88,12 +88,12 @@ const categories = categoriesResponse.data
               <p>Real Food, Real Fast</p>
             </div>
             <div className="lg:w-[70%]">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 ">
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 ">
                 {/* Categories Section */}
                 <div>
                   <h3 className="font-bold mb-4 uppercase text-black text-sm">Categories</h3>
                   <ul className="space-y-2">
-                    {categories.slice(0, 5).map((category) => (
+                    {/* {categories.slice(0, 5).map((category) => (
                       <li key={category._id} className="text-sm">
                         <a
                           href={`/category/?category_id=${category._id}`}
@@ -102,7 +102,7 @@ const categories = categoriesResponse.data
                           {category.title}
                         </a>
                       </li>
-                    ))}
+                    ))} */}
                   </ul>
                   <Link href="/categories">
                     <button className="mt-4 text-orange-600 hover:underline">
