@@ -3,10 +3,8 @@ import Link from "next/link";
 import React from "react";
 
 import { Card, CardContent, CardFooter, CardHeader } from "@components/ui/card";
-// import { IProduct } from '@/lib/db/models/product.model'
 
 import Rating from "./rating";
-import { formatNumber } from "../../../lib/utils";
 // import ProductPrice from './product-price'
 import ImageHover from "./image-hover";
 import { IProductInput } from "src/types";

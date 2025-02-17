@@ -60,13 +60,13 @@ const SearchFilter = () => {
     [searchTerm, products]
   );
 
-  const handleSearchClick = () => {
-    if (searchTerm && filteredProducts.length) {
-      const matchingProduct = filteredProducts[0];
-      router.push(`/search?q=${product.name.replace(/ /g, "-").toLowerCase()}`)
-      setIsOpen(false);
-    }
-  };
+  // const handleSearchClick = () => {
+  //   if (searchTerm && filteredProducts.length) {
+  //     const matchingProduct = filteredProducts[0];
+  //     router.push(`/search?q=${product.name.replace(/ /g, "-").toLowerCase()}`)
+  //     setIsOpen(false);
+  //   }
+  // };
 
   return (
     <form action="/search" method="GET" className="relative w-full" ref={searchRef}>

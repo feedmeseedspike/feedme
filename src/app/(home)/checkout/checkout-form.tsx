@@ -21,7 +21,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@components/ui/select";
 import useIsMounted from "src/hooks/use-is-mounted";
 import { ShippingAddress } from "src/types";
 import { ShippingAddressSchema } from "src/lib/validator";

@@ -17,15 +17,12 @@ const OptionSchema = z.object({
   name: z.string().min(1, "Option name is required"), // Example: "1kg", "500g"
   price: Price("Option price"),
   image: z.string().url("Invalid image URL"),
-  countInStock: z.coerce
-    .number()
-    .int()
-    .nonnegative("Stock must be a non-negative number"),
 });
 
 
 // Order Item
 export const OrderItemSchema = z.object({
+  _id: z.string().optional(),
   clientId: z.string().min(1, "Client ID is required"),
   product: MongoId,
   name: z.string().min(3, "Name must be at least 3 characters"),
@@ -38,11 +35,12 @@ export const OrderItemSchema = z.object({
   countInStock: z.coerce
   .number()
   .int()
-  .nonnegative("Count in stock must be a non-negative number"),
+  .optional(),
+  // .nonnegative("Count in stock must be a non-negative number"),
   image: z.string().url("Invalid image URL"), 
   price: Price("Price"),
   color: z.string().optional(),
-  options: z.array(OptionSchema).default([]),
+  options: z.array(OptionSchema).optional().default([]),
 });
 
 export const ShippingAddressSchema = z.object({
@@ -86,6 +84,7 @@ export const ReviewInputSchema = z.object({
 
 
 export const ProductInputSchema = z.object({
+  _id: z.string().optional(), 
   name: z.string().min(3, "Name must be at least 3 characters"),
   slug: z.string().min(3, "Slug must be at least 3 characters"),
   category: MongoId,
@@ -109,10 +108,7 @@ export const ProductInputSchema = z.object({
     .number()
     .int()
     .nonnegative("Number of sales must be non-negative"),
-  countInStock: z.coerce
-    .number()
-    .int()
-    .nonnegative("Count in stock must be non-negative"),
+    countInStock: z.coerce.number().int().optional(),
   description: z.string().min(1, "Description is required"),
   colors: z.array(z.string()).default([]),
   options: z.array(OptionSchema).default([]), // Supports multiple product variants
@@ -120,8 +116,9 @@ export const ProductInputSchema = z.object({
 });
 
 export const ProductUpdateSchema = ProductInputSchema.extend({
-  _id: z.string(),
+  _id: z.string().optional(),
 });
+
 
 export type Product = z.infer<typeof ProductInputSchema>;
 export type ProductOption = z.infer<typeof OptionSchema>;

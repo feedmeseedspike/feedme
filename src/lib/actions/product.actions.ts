@@ -111,7 +111,7 @@ export function getAllProducts({
   if (sort && sortingOptions[sort]) {
     filteredProducts.sort(sortingOptions[sort]);
   } else {
-    filteredProducts.sort((a, b) => a.id - b.id);
+    filteredProducts.sort((a: any, b: any) => a._id - b._id);
   }
 
   const totalProducts = filteredProducts.length;

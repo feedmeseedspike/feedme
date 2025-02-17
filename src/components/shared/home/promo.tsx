@@ -38,7 +38,7 @@ const Promo = () => {
     <section className="flex flex-col my-10 gap-20">
       {/* Heading */}
       <div className="flex flex-col gap-6 max-w-[40rem] mx-auto text-center">
-        <h1 className="text-3xl md:text-6xl font-semibold md:leading-[3] font-proxima">
+        <h1 className="text-3xl md:text-6xl font-semibold md:leading-[3 font-proxima">
           Order Today And{" "} <br />
           <span className="bg-[#161B20] mt-2 rounded-xl text-white px-3 py-1 inline-block rotate-[1.5deg]">
             Save Up To

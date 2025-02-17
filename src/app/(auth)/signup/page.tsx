@@ -155,3 +155,16 @@
 // };
 
 // export default Signup;
+
+
+
+const Signup = () => {
+  return (
+    <section className="">
+
+    </section>
+  )
+}
+
+export default Signup
+

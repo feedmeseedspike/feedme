@@ -1,5 +1,6 @@
 import { products } from "src/lib/data";
 import { ReviewInputSchema } from "src/lib/validator";
+import { IReviewInput } from "src/types";
 import { z } from "zod";
 
 export async function createUpdateReview({
@@ -32,7 +33,7 @@ export async function createUpdateReview({
       };
     } else {
       // Add new review
-      product.reviews.push(review);
+      (product.reviews as IReviewInput[]).push(review)
       return {
         success: true,
         message: "Review created successfully",
@@ -41,7 +42,7 @@ export async function createUpdateReview({
   } catch (error: unknown) {
     return {
       success: false,
-      message: error.message,
+      // message: error.message,
     };
   }
 }

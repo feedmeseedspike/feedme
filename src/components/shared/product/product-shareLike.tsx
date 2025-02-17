@@ -11,7 +11,7 @@ import { IProductInput } from 'src/types';
 import { toggleLike } from 'src/store/features/wishlistSlice';
 
 
-const ShareLike = ({product}: {product: IProductInput}) => {
+const ShareLike = ({product}: {product: any}) => {
   const dispatch = useDispatch();
   const likedProducts = useSelector((state: RootState) => state.likes.likedProducts);
   const isLiked = likedProducts.includes(product.slug);

@@ -18,7 +18,7 @@ import { IReviewInput } from "src/types";
 
 type ReviewListProps = {
   avgRating?: number;
-  product: Product;
+  product: any;
 };
 
 const ReviewList = ({ product, avgRating = 0 }: ReviewListProps) => {

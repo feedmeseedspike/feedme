@@ -48,6 +48,7 @@ const ProductDetails = async (props: {
   // const session = await auth()
 
   const product = getProductBySlug(slug);
+  console.log(product)
 
   const totalRatings = product.ratingDistribution.reduce(
     (acc, { count }) => acc + count,
@@ -144,14 +145,14 @@ const ProductDetails = async (props: {
             <AddToCart
               item={{
                 clientId: generateId(),
-                product: product?._id,
+                product: product?._id || "",
                 name: product.name,
                 slug: product.slug,
                 category: product.category,
                 price: product.price,
                 quantity: 1,
                 image: product.images[0],
-                option: product.options[0],
+                // options: product.options,
               }}
             />
             <div className="pt-[8px]  w-full">
