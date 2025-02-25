@@ -12,6 +12,7 @@ import ProductSlider from "@components/shared/product/product-slider";
 import Container from "@components/shared/Container";
 import Headertags from "@components/shared/header/Headertags";
 import Promo from "@components/shared/home/promo";
+import { getUser } from "src/lib/actions/user.actions";
 
 const fetchCategories = async (): Promise<CategoryResponse> => {
   const response = await fetch(
@@ -27,6 +28,9 @@ const fetchCategories = async (): Promise<CategoryResponse> => {
 };
 
 export default async function Home() {
+    const user = await getUser();
+    // console.log(user)
+  
   const todaysDeals = getProductsByTag({ tag: "todays-deal" });
   const bestSellingProducts = getProductsByTag({ tag: "best-seller" });
 

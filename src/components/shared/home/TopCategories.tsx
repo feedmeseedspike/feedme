@@ -12,6 +12,7 @@ import React, { useRef, useState, useEffect, useMemo } from "react";
 // import { useRouter } from "next/navigation";
 import { Category } from "src/types/category";
 import Link from "next/link";
+import { toSlug } from "src/lib/utils";
 // import { setCategories, setCategory } from "@/features/category/categorySlice";
 type Props = {
   categories: Category[];
@@ -63,12 +64,12 @@ const TopCategories = ({ categories }: Props) => {
         <div className="flex gap-3 md:gap-6 pt-6 cursor-pointer overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide w-full">
           {categories.map((category) => {
             return (
-              <Link href={`/category/?category_id=${category?._id}`}
+              <Link href={`/search/?category=${category?.title}`}
                 className="flex flex-col gap-2 justify-center items-center flex-shrink-0"
                 key={category._id}
               >
                 <div
-                  className="size-[6rem] md:size-[8rem] bg-[#F2F4F7] rounded-[100%]  p-3 flex justify-center items-center">
+                  className="size-[6rem] md:size-[8rem] bg-[#F2F4F7] rounded-[100%] p-3 flex justify-center items-center">
                   <Image
                     src={category.thumbnail.url}
                     width={150}

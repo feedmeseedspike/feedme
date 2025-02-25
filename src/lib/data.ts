@@ -11,7 +11,7 @@ export const headerMenus =  [
   },
   {
     name: 'Favourites',
-    href: '/search?tag=favourites',
+    href: '/customer/favourites',
   },
   {
     name: 'Subscriptions',
