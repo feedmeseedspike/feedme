@@ -79,6 +79,7 @@ const ProductdetailsCard = ({
     <div className='w-full text-center'>
       <AddToCart
         minimal
+        className='!bg-white !text-[#1B6013] hover:!bg-[#1B6013] hover:!text-white transition-all ease-in-out border border-[#DDD5DD]'
         item={{
           clientId: generateId(),
           product: product._id,
@@ -108,13 +109,13 @@ const ProductdetailsCard = ({
       )}
     </div>
   ) : (
-    <Card className='flex flex-col  '>
+    <Card className='flex flex-col '>
       <CardHeader className='p-2'>
         <ProductImage />
       </CardHeader>
       {!hideDetails && (
         <>
-          <CardContent className='p-2 flex-1'>
+          <CardContent className='p-2 flex-1 gap-2 '>
             <ProductDetails />
           </CardContent>
           <CardFooter className='p-2'>

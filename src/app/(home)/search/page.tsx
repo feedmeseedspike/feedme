@@ -36,7 +36,7 @@ const prices = [
     value: "2100-50000",
   },
   {
-    name: "Under ₦100000",
+    name: "Under ₦100000", 
     value: "51000-100000",
   },
 ];
@@ -53,7 +53,7 @@ export async function generateMetadata(props: {
   }>;
 }) {
   const searchParams = await props.searchParams;
-  console.log(searchParams)
+  // console.log(searchParams)
   const {
     q = "all",
     category = "all",
@@ -103,7 +103,7 @@ const SearchPage = async (props: {
     sort = "best-selling",
     page = "1",
   } = searchParams;
-  console.log(searchParams)
+  // console.log(searchParams)
 
 
   const params = { q, category, tag, price, rating, sort, page };

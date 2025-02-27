@@ -10,6 +10,9 @@ import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
 import { formatNaira, generateId } from "src/lib/utils";
 import ReviewList from "src/app/(home)/product/[slug]/review-list";
 import AddToCart from "@components/shared/product/add-to-cart";
+import FastDelivery from "@components/icons/fastDelivery.svg"
+import Security from "@components/icons/security.svg"
+import Freshness from "@components/icons/freshness.svg"
 import {
   Accordion,
   AccordionContent,
@@ -17,19 +20,22 @@ import {
   AccordionTrigger,
 } from "@components/ui/accordion";
 import ShareLike from "@components/shared/product/product-shareLike";
+import { getUser } from "src/lib/actions/user.actions";
+import AddToBrowsingHistory from "@components/shared/product/add-to-browsing-history";
+import BrowsingHistoryList from "@components/shared/browsing-history-list";
 
 const datas = [
   {
     id: 1,
-    icon: "",
+    icon: <FastDelivery />,
     title: "Fast Delivery",
-    description: "Get your order at your doorstep in 3 hours or less",
+    description: "Get your order at your doorstep in 3 hours or less.",
   },
   {
-    id: 1,
-    icon: "",
-    title: "Fast Delivery",
-    description: "Get your order at your doorstep in 3 hours or less",
+    id: 2,
+    icon: <Security />,
+    title: "Security & Privacy",
+    description: "Safe payments: We do not share vyour personal details with any third parties without your consent.",
   },
 ];
 
@@ -45,10 +51,10 @@ const ProductDetails = async (props: {
 
   const { slug } = params;
 
-  // const session = await auth()
+  const user = await getUser();
 
   const product = getProductBySlug(slug);
-  console.log(product)
+  console.log(product);
 
   const totalRatings = product.ratingDistribution.reduce(
     (acc, { count }) => acc + count,
@@ -58,6 +64,7 @@ const ProductDetails = async (props: {
   return (
     <section>
       <Container>
+        <AddToBrowsingHistory id={product._id!} category={product.category} />
         <div className="py-4 grid grid-cols-1 md:grid-cols-8 gap-8 bg-white my-6 p-3">
           <div className="col-span-3 w-full md:h-auto">
             <Image
@@ -77,8 +84,8 @@ const ProductDetails = async (props: {
               ratingDistribution={product.ratingDistribution}
               showTotalCount={true}
             />
-            <p className="text-[#12B76A] text-[14px] border py-1 px-2 border-[#12B76A] w-fit">
-              Freshness Guarantee
+            <p className="text-[#12B76A] text-[14px] border py-1 px-2 border-[#bfe0d0] w-fit flex gap-1 items-center">
+              Freshness Guarantee <Freshness className="size-4" />
             </p>
             <p className="text-[12px] pt-2">90k+ brought in past month</p>
             <Separator className="mt-4 mb-2" />
@@ -136,7 +143,10 @@ const ProductDetails = async (props: {
             <div className="flex flex-col gap-[5px]">
               {datas.map((data) => (
                 <div className="" key={data.id}>
+                  <div className="flex gap-1 items-center">
+                  <p className="size-4">{data.icon}</p>
                   <p className="h6-bold">{data.title}</p>
+                  </div>
                   <p className="h6-light">{data.description}</p>
                 </div>
               ))}
@@ -180,7 +190,10 @@ const ProductDetails = async (props: {
           <h2 className="h2-bold mb-2" id="reviews">
             Customer Reviews ({totalRatings})
           </h2>
-          <ReviewList product={product} />
+          <ReviewList userId={user.data?._id} product={product} />
+        </section>
+        <section>
+          <BrowsingHistoryList className='mt-10' />
         </section>
       </Container>
     </section>

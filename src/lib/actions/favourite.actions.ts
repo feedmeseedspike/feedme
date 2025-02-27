@@ -35,7 +35,7 @@ export async function getFavourites() {
     },
     cache: "no-store", // Ensure fresh data
   });
-  console.log(res)
+  // console.log(res)
 
   if (!res.ok) {
     throw new Error("Failed to fetch favorites");

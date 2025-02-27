@@ -13,6 +13,7 @@ import Container from "@components/shared/Container";
 import Headertags from "@components/shared/header/Headertags";
 import Promo from "@components/shared/home/promo";
 import { getUser } from "src/lib/actions/user.actions";
+import BrowsingHistoryList from "@components/shared/browsing-history-list";
 
 const fetchCategories = async (): Promise<CategoryResponse> => {
   const response = await fetch(
@@ -71,6 +72,9 @@ export default async function Home() {
               products={bestSellingProducts}
             />
             <Promo />
+            <section>
+              <BrowsingHistoryList className='mt-10' />
+            </section>
           </div>
         </Container>
       </div>

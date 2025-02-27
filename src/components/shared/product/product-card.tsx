@@ -29,7 +29,7 @@ const ProductCard = ({
               src={product.images[0]}
               alt={product.name}
               width={160}
-              height={125}
+              height={135}
               // fill
               // sizes='80vw'
               className="object-cover rounded-[8px] max-w-[10rem] max-h-[8rem] overflow-hidden"
@@ -51,7 +51,7 @@ const ProductCard = ({
     </div>
   );
 
-   return ( <div className="flex flex-col">
+   return ( <div className="flex flex-col  pb-8">
       <ProductImage />
       {!hideDetails && (
         <>

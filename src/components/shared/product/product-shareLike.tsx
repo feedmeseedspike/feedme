@@ -40,8 +40,8 @@ const ShareLike = ({product}: {product: any}) => {
   };
   return (
     <div className="grid grid-cols-2 gap-3 justify-center ite w-full">
-      <button className="text-[#284625] bg-[#F2F8F1] rounded-[8px] px-3 sm:px-[20px] py-3 text-xs lg:text-[16px] flex justify-center " onClick={handleShare}>
-      <Share2 />
+      <button className="text-[#284625] bg-[#F2F8F1] rounded-[8px] px-3 sm:px-[20px] py-3 text-xs lg:text-[16px] flex justify-center items-center gap-2" onClick={handleShare}>
+      <Share2 /> <span className="text-[15px]">Share</span>
       </button>
       <button className="text-[#284625] bg-[#F2F8F1] rounded-[8px] px-3 sm:px-[20px] py-3 text-xs lg:text-[16px] flex justify-center" onClick={() => dispatch(toggleLike(product.slug))}>
       {isLiked ? <Heart className="text-2xl fill-red-600 text-red-600" /> : <Heart className="text-2xl" />}

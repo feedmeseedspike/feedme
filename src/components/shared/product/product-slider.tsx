@@ -26,7 +26,7 @@ export default function ProductSlider({
   hideDetails?: boolean
 }) {
   return (
-    <section className=''>
+    <section className='bg-white rounded-[8px] p-4'>
       <div className="flex items-center justify-between text-[14px] ">
         <h2 className='h2-bold '>{title}</h2>
         <Link href={""} className='flex gap-1 items-center text-[#F0800F]'>

@@ -9,7 +9,7 @@ const Container: FC<ContainerProps> = ({ className, children, ...props }) => {
   return (
     <section
       {...props}
-      className={"max-w-[1300px] mx-auto px-2 w-full" + (className ? " " + className : "")}
+      className={"lg:px-[120px] md:px-8 mx-auto px-2 w-full" + (className ? " " + className : "")}
     >
       {children}
     </section>
