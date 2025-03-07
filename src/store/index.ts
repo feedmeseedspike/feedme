@@ -4,6 +4,7 @@ import wishlistReducer from "./features/wishlistSlice";
 // import userReducer from "./features/userSlice";
 // import productReducer from "./features/productSlice";
 import browsingHistoryReducer from "./features/browsingHistorySlice";
+import optionsReducer from "./features/optionsSlice";
 import storage from "redux-persist/lib/storage";
 import { persistReducer, persistStore } from "redux-persist";
 
@@ -19,6 +20,7 @@ export const store = configureStore({
   reducer: {
     cart: cartReducer,
     likes: wishlistReducer,
+    options: optionsReducer,
     browsingHistory: persistedReducer,
     // user: userReducer,
     // product: productReducer,

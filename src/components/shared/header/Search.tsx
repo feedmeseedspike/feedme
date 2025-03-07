@@ -79,6 +79,9 @@ const SearchFilter = () => {
       <input
         name="q"
         type="search"
+        autoComplete="off"
+        spellCheck="false"
+        aria-autocomplete="none"
         className="w-full py-2 pl-10 pr-4 text-gray-700 bg-white border rounded-md focus:border-blue-400 focus:outline-none focus:ring focus:ring-opacity-40 focus:ring-blue-300"
         placeholder="Search for products..."
         onChange={handleSearch}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 // import { AntdRegistry } from '@ant-design/nextjs-registry';
 import { Inter } from "next/font/google";
 import localFont from 'next/font/local'
+import { Toaster } from 'sonner';
  
 // import { getServerSession } from "next-auth";
 // import AuthSessionProvider from "@providers/AuthSessionProvider";
@@ -52,6 +53,7 @@ export default async function RootLayout({
               <ReduxProvider>
                 {/* <Header /> */}
                 {children}
+                <Toaster />
               </ReduxProvider>
             </body>
           {/* </AuthSessionProvider> */}

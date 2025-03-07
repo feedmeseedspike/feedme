@@ -10,9 +10,9 @@ import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
 import { formatNaira, generateId } from "src/lib/utils";
 import ReviewList from "src/app/(home)/product/[slug]/review-list";
 import AddToCart from "@components/shared/product/add-to-cart";
-import FastDelivery from "@components/icons/fastDelivery.svg"
-import Security from "@components/icons/security.svg"
-import Freshness from "@components/icons/freshness.svg"
+import FastDelivery from "@components/icons/fastDelivery.svg";
+import Security from "@components/icons/security.svg";
+import Freshness from "@components/icons/freshness.svg";
 import {
   Accordion,
   AccordionContent,
@@ -20,9 +20,10 @@ import {
   AccordionTrigger,
 } from "@components/ui/accordion";
 import ShareLike from "@components/shared/product/product-shareLike";
-import { getUser } from "src/lib/actions/user.actions";
+import { getUser } from "src/lib/actions/auth.actions";
 import AddToBrowsingHistory from "@components/shared/product/add-to-browsing-history";
 import BrowsingHistoryList from "@components/shared/browsing-history-list";
+import Options from "../options";
 
 const datas = [
   {
@@ -35,7 +36,8 @@ const datas = [
     id: 2,
     icon: <Security />,
     title: "Security & Privacy",
-    description: "Safe payments: We do not share vyour personal details with any third parties without your consent.",
+    description:
+      "Safe payments: We do not share vyour personal details with any third parties without your consent.",
   },
 ];
 
@@ -54,7 +56,7 @@ const ProductDetails = async (props: {
   const user = await getUser();
 
   const product = getProductBySlug(slug);
-  console.log(product);
+  // console.log(product);
 
   const totalRatings = product.ratingDistribution.reduce(
     (acc, { count }) => acc + count,
@@ -95,40 +97,7 @@ const ProductDetails = async (props: {
             </div>
             <Separator className="mt-4 mb-2" />
             {/* Select Option */}
-            <div className="flex flex-col gap-4">
-              <div className="flex gap-[10px]">
-                <p className="h4-bold">Select Option</p>
-                <p className="text-[#B54708] text-xs font-semibold bg-[#FFFAEB] py-1 px-2 rounded-[16px] flex items-center">
-                  Required
-                </p>
-              </div>
-              <RadioGroup>
-                {product.options?.map((option) => (
-                  <div
-                    key={option.name}
-                    className="flex items-center justify-between"
-                  >
-                    <Label
-                      htmlFor={option.name}
-                      className="flex items-center gap-4"
-                    >
-                      <Image
-                        width={54}
-                        height={54}
-                        src={option.image}
-                        alt={option.name}
-                        className="size-[54px] rounded-[5px] border-[0.31px] border-[#81a6e2]"
-                      />
-                      <div className="flex flex-col gap-[4px]">
-                        <p className="h4-bold">{option.name}</p>
-                        <p>{formatNaira(option.price)}</p>
-                      </div>
-                    </Label>
-                    <RadioGroupItem value={option.name} id={option.name} />
-                  </div>
-                ))}
-              </RadioGroup>
-            </div>
+            <Options options={product.options} />
           </div>
           <div className="col-span-2 border border-[#DDD5DD] p-4 w-full h-fit">
             <div className="">
@@ -144,8 +113,8 @@ const ProductDetails = async (props: {
               {datas.map((data) => (
                 <div className="" key={data.id}>
                   <div className="flex gap-1 items-center">
-                  <p className="size-4">{data.icon}</p>
-                  <p className="h6-bold">{data.title}</p>
+                    <p className="size-4">{data.icon}</p>
+                    <p className="h6-bold">{data.title}</p>
                   </div>
                   <p className="h6-light">{data.description}</p>
                 </div>
@@ -162,7 +131,7 @@ const ProductDetails = async (props: {
                 price: product.price,
                 quantity: 1,
                 image: product.images[0],
-                // options: product.options,
+                options: product.options,
               }}
             />
             <div className="pt-[8px]  w-full">
@@ -176,7 +145,7 @@ const ProductDetails = async (props: {
               <AccordionTrigger>Product Description</AccordionTrigger>
               <AccordionContent>{product.description}</AccordionContent>
             </AccordionItem>
-            <AccordionItem value="item-2">
+            <AccordionItem value="item-2" className="border-none">
               <AccordionTrigger>Is it styled?</AccordionTrigger>
               <AccordionContent>
                 Yes. It comes with default styles that matches the other
@@ -190,10 +159,10 @@ const ProductDetails = async (props: {
           <h2 className="h2-bold mb-2" id="reviews">
             Customer Reviews ({totalRatings})
           </h2>
-          <ReviewList userId={user.data?._id} product={product} />
+          <ReviewList userId={user?.data?._id} product={product} />
         </section>
         <section>
-          <BrowsingHistoryList className='mt-10' />
+          <BrowsingHistoryList className="mt-10" />
         </section>
       </Container>
     </section>

@@ -1,11 +1,6 @@
-// "use client";
-import React, { useState, useEffect } from "react";
-// import Container from "../Container";
+import React from "react";
 import Image from "next/image";
-// import Categories from "./Categories";
-// import Auth from "./Auth";
-// import Dashboard from "@/components/icons/Dashboard";
-import Search from "./Search";
+import { User, Package, Heart } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,54 +11,18 @@ import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
 import Container from "@components/shared/Container";
 import { Locations } from "@components/shared/header/Location";
 import Cart from "@components/shared/header/Cart";
-import Sidebar from "@components/shared/header/Sidebar";
-import { CategoryResponse } from "../../../types/category";
-import Order from "@components/icons/orders.svg";
-import Avatars from "@components/icons/avatar.svg";
+import Search from "./Search";
 import Link from "next/link";
-import { headerMenus } from "src/lib/data";
-import { getUser } from "src/lib/actions/user.actions";
-import { Heart } from "lucide-react";
-
-// const fetchCategories = async (): Promise<CategoryResponse> => {
-//   const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/category/get-categories`, {
-//     cache: 'no-store',
-//   });
-//   if (!response.ok) {
-//     throw new Error('Failed to fetch categories');
-//   }
-//   return response.json();
-// };
+import { getUser } from "src/lib/actions/auth.actions";
+import LogoutButton from "./LogoutButton";
+import { Separator } from "@components/ui/separator";
 
 const Header = async () => {
-  // const categoriesResponse = await fetchCategories();
-  // console.log(categoriesResponse)
-  // const [isScrolled, setIsScrolled] = useState(false);
-  // const user = useSelector((state) => state?.auth?.user);
-  // const router = useRouter();
-
-  // useEffect(() => {
-  //   const handleScroll = () => {
-  //     if (window.scrollY > 0) {
-  //       setIsScrolled(true);
-  //     } else {
-  //       setIsScrolled(false);
-  //     }
-  //   };
-
-  //   window.addEventListener('scroll', handleScroll);
-  //   return () => window.removeEventListener('scroll', handleScroll);
-  // }, []);
-
   const user = await getUser();
-  console.log(user.data._id);
 
   return (
-    <header className="">
-      <div
-        className={`fixe bg-[#1B6013] transition-all duration-300 
-        `}
-      >
+    <header>
+      <div className="fixe bg-[#1B6013] transition-all duration-300">
         <Container className="py-2">
           <div className="flex items-center h-auto">
             <nav className="rounded-xl flex flex-row w-full">
@@ -77,7 +36,7 @@ const Header = async () => {
                     className="w-[6rem] md:w-[9rem] cursor-pointer"
                   />
                 </Link>
-                <div className="hidden md:block pr-4 ">
+                <div className="hidden md:block pr-4">
                   <Locations />
                 </div>
               </div>
@@ -96,12 +55,11 @@ const Header = async () => {
                       type="button"
                       className="inline-flex justify-center items-center gap-2 py-3 px-6 text-sm text-white rounded-full cursor-pointer font-semibold text-center shadow-xs transition-all duration-500 whitespace-nowrap"
                     >
-                      <span className="">
+                      <span>
                         <Avatar>
-                        <AvatarImage src={user.data.avatar.url} />
-                        <AvatarFallback>{user.data.name[0]}</AvatarFallback>
-                      </Avatar>
-                      {/* || <Avatars className="size-6" /> */}
+                          <AvatarImage src={user.data.avatar.url} />
+                          <AvatarFallback>{user.data.name[0]}</AvatarFallback>
+                        </Avatar>
                       </span>
                       <span className="hidden md:block">
                         Hello, {user.data.name}
@@ -126,10 +84,6 @@ const Header = async () => {
 
                   <DropdownMenuContent align="end" className="w-72">
                     <div className="px-4 py-3 flex gap-3">
-                      {/* <Avatar>
-                        <AvatarImage src={user.data.avatar.url} />
-                        <AvatarFallback>{user.data.name[0]}</AvatarFallback>
-                      </Avatar> */}
                       <div>
                         <div className="text-[#1B6013] font-normal mb-1">
                           {user.data.name}
@@ -139,15 +93,29 @@ const Header = async () => {
                         </div>
                       </div>
                     </div>
+                    <Separator className="my-2" />
 
-                    <DropdownMenuItem className="cursor-pointer">
-                      Your account
+                      <Link className="cursor-pointer flex items-center gap-2" href={"/account"}>
+                    <DropdownMenuItem className="">
+                        <User className="w-5 h-5 text-gray-600" />
+                        Your account
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="cursor-pointer">
+                      </Link>
+
+                    <DropdownMenuItem className="cursor-pointer flex items-center gap-2">
+                      <Package className="w-5 h-5 text-gray-600" />
                       Orders
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="cursor-pointer">
-                      Logout
+
+                    <DropdownMenuItem className="cursor-pointer flex items-center gap-2">
+                      <Heart className="w-5 h-5 text-gray-600" />
+                      <Link href={"/customer/favourites"}>Favourites</Link>
+                    </DropdownMenuItem>
+
+                    <Separator className="my-2" />
+
+                    <DropdownMenuItem asChild>
+                      <LogoutButton />
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

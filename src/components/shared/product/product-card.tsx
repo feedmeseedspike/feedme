@@ -8,6 +8,7 @@ import Rating from "./rating";
 // import ProductPrice from './product-price'
 import ImageHover from "./image-hover";
 import { IProductInput } from "src/types";
+import { formatNaira } from "src/lib/utils";
 // import AddToCart from './add-to-cart'
 
 const ProductCard = ({
@@ -47,7 +48,7 @@ const ProductCard = ({
       >
         {product.name}
       </Link>
-      <span className="text-[14px] text-[#1B6013]">From ₦{product.price}</span>
+      <span className="text-[14px] text-[#1B6013]">From {formatNaira(product.options[0].price) || product.price} </span>
     </div>
   );
 

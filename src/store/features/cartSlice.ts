@@ -33,8 +33,14 @@ const cartSlice = createSlice({
       return newState;
     },
     
-    addItem: (state, action: PayloadAction<{ item: OrderItem; quantity: number }>) => {
-      const { item, quantity } = action.payload;
+    addItem: (state, action: PayloadAction<{ item: OrderItem; quantity: number; requiresOption?: boolean; selectedOption?: string | null }>) => {
+      const { item, quantity, requiresOption, selectedOption } = action.payload;
+    
+      if (requiresOption && !selectedOption) {
+        console.log('Option required but not selected');
+        return;
+      }
+    
       const existItem = state.items.find((x) => x.product === item.product);
     
       if (existItem) {
@@ -42,10 +48,11 @@ const cartSlice = createSlice({
       } else {
         state.items.push({ ...item, quantity });
       }
-      
+    
       state.itemsPrice = calculateItemsPrice(state.items);
       localStorage.setItem('cart', JSON.stringify(state));
     },
+    
     
     updateItem: (state, action: PayloadAction<{ item: OrderItem; quantity: number }>) => {
       const { item, quantity } = action.payload;

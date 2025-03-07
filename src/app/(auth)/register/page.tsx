@@ -1,15 +1,16 @@
-import { Metadata } from 'next'
-import { redirect } from 'next/navigation'
+import { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import Image from 'next/image'
-import { FcGoogle } from 'react-icons/fc'
-import Link from 'next/link'
-import CredentialsSignUpForm from './signup-form'
-import { getUser } from 'src/lib/actions/user.actions'
+import Image from "next/image";
+import { FcGoogle } from "react-icons/fc";
+import Link from "next/link";
+import CredentialsSignUpForm from "./signup-form";
+import { getUser } from "src/lib/actions/auth.actions";
+import { PreloadResource } from "../preload-resources";
 
 export const metadata: Metadata = {
-  title: 'Create Account',
-}
+  title: "Create Account",
+};
 
 export default async function SignUpPage(props: {
   searchParams: Promise<{
@@ -27,22 +28,13 @@ export default async function SignUpPage(props: {
   return (
     <main className="h-screen flex">
       {/* Right Section (Image) */}
-      <Link href="/" className="hidden md:flex md:w-[40%] lg:w-[60%] fixed h-screen">
-        <Image
-          src="/loginBanner.jpeg"
-          width={900}
-          height={900}
-          quality={100}
-          alt="loginbanner"
-          className="w-full h-full object-cover"
-        />
-      </Link>
+      <PreloadResource />
 
       {/* Left Section (Signup Form) */}
       <div className="flex md:w-[60%] lg:w-[40%] w-full flex-col justify-center px-4 md:px-8 !pt-10 pb-10 overflow-y-auto ml-auto">
         <div className="pb-6">
           <div className="flex flex-col gap-7 pt-16">
-          <Link href="/">
+            <Link href="/">
               <Image src="/footerLogo.png" alt="logo" width={200} height={52} />
             </Link>
             <div className="flex flex-col gap-3">
@@ -73,7 +65,9 @@ export default async function SignUpPage(props: {
           </button>
           <div className="flex items-center gap-2">
             <span className="bg-[#EEF2FF] h-[2px] w-full"></span>
-            <p className="whitespace-nowrap text-xs">or with email and password</p>
+            <p className="whitespace-nowrap text-xs">
+              or with email and password
+            </p>
             <span className="bg-[#EEF2FF] h-[2px] w-full"></span>
           </div>
         </div>
@@ -84,4 +78,3 @@ export default async function SignUpPage(props: {
     </main>
   );
 }
-

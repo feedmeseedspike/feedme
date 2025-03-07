@@ -128,3 +128,5 @@ const ProductdetailsCard = ({
 }
 
 export default ProductdetailsCard
+
+

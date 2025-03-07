@@ -12,7 +12,7 @@ import ProductSlider from "@components/shared/product/product-slider";
 import Container from "@components/shared/Container";
 import Headertags from "@components/shared/header/Headertags";
 import Promo from "@components/shared/home/promo";
-import { getUser } from "src/lib/actions/user.actions";
+import { getUser } from "src/lib/actions/auth.actions";
 import BrowsingHistoryList from "@components/shared/browsing-history-list";
 
 const fetchCategories = async (): Promise<CategoryResponse> => {
@@ -29,9 +29,9 @@ const fetchCategories = async (): Promise<CategoryResponse> => {
 };
 
 export default async function Home() {
-    const user = await getUser();
-    // console.log(user)
-  
+  const user = await getUser();
+  // console.log(user)
+
   const todaysDeals = getProductsByTag({ tag: "todays-deal" });
   const bestSellingProducts = getProductsByTag({ tag: "best-seller" });
 
@@ -73,7 +73,7 @@ export default async function Home() {
             />
             <Promo />
             <section>
-              <BrowsingHistoryList className='mt-10' />
+              <BrowsingHistoryList className="mt-10" />
             </section>
           </div>
         </Container>

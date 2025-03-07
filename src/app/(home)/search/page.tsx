@@ -8,7 +8,12 @@ import {
   getAllProducts,
   getAllTags,
 } from "../../../lib/actions/product.actions";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@components/ui/accordion"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@components/ui/accordion";
 import ProductSortSelector from "@components/shared/product/product-sort-selector";
 import { getFilterUrl, toSlug } from "../../../lib/utils";
 import Rating from "@components/shared/product/rating";
@@ -17,6 +22,7 @@ import CollapsibleOnMobile from "@components/shared/collapsible-on-mobile";
 import Container from "@components/shared/Container";
 import ProductdetailsCard from "@components/shared/product/productDetails-card";
 import Headertags from "@components/shared/header/Headertags";
+import { Separator } from "@components/ui/separator";
 
 const sortOrders = [
   { value: "price-low-to-high", name: "Price: Low to high" },
@@ -36,7 +42,7 @@ const prices = [
     value: "2100-50000",
   },
   {
-    name: "Under ₦100000", 
+    name: "Under ₦100000",
     value: "51000-100000",
   },
 ];
@@ -70,9 +76,11 @@ export async function generateMetadata(props: {
     price !== "all"
   ) {
     return {
-      title: `Search ${q !== "all" ? q : ""}${category !== "all" ? ` : Category ${category}` : ""
-        }${tag !== "all" ? ` : Tag ${tag}` : ""}${price !== "all" ? ` : Price ${price}` : ""
-        }${rating !== "all" ? ` : Rating ${rating}` : ""}`,
+      title: `Search ${q !== "all" ? q : ""}${
+        category !== "all" ? ` : Category ${category}` : ""
+      }${tag !== "all" ? ` : Tag ${tag}` : ""}${
+        price !== "all" ? ` : Price ${price}` : ""
+      }${rating !== "all" ? ` : Rating ${rating}` : ""}`,
     };
   } else {
     return {
@@ -103,8 +111,6 @@ const SearchPage = async (props: {
     sort = "best-selling",
     page = "1",
   } = searchParams;
-  // console.log(searchParams)
-
 
   const params = { q, category, tag, price, rating, sort, page };
 
@@ -125,54 +131,38 @@ const SearchPage = async (props: {
   return (
     <main>
       <Headertags />
-      {!noResults
-        &&
-        <div className="my-2 md:border-b flex justify-between shadow-sm">
-          <div className="flex items-center">
-            <Container>
-              <>
-                <span className="">
-                  {`${data.from}-${data.to} of ${data.totalProducts} results`}
-                </span>
-                {(q !== "all" && q !== "") ||
-                  (category !== "all" && category !== "") ||
-                  (tag !== "all" && tag !== "") ||
-                  rating !== "all" ||
-                  price !== "all"
-                  ? " for "
-                  : null}
-                {q !== "all" && q !== "" && (
-                  <span className="text-green-800 font-medium">&quot;{q}&quot;</span>
+      {!noResults && (
+        <div className="py-2 md:border-b shadow-sm">
+              <Container>
+          <div className="flex justify-between items-center ">
+            <div className="flex items-center">
+                {category !== "all" ? (
+                  <h1 className="relative z-10 py-1 md:py-3 text-[#1B6013] text-2xl md:text-3xl font-bold">
+                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                  </h1>
+                ) : (
+                  <>
+                    <span className="">{`${data.from}-${data.to} of ${data.totalProducts} results`}</span>
+                    {(q !== "all" && q !== "") ||
+                    tag !== "all" ||
+                    rating !== "all" ||
+                    price !== "all" ? (
+                      <Button variant={"link"} asChild>
+                        <Link href="/search">Clear</Link>
+                      </Button>
+                    ) : null}
+                  </>
                 )}
-                {category !== "all" && category !== "" && ` Category: ${category}`}
-                {tag !== "all" && tag !== "" && ` Tag: ${tag}`}
-                {price !== "all" && ` Price: ${price}`}
-                {rating !== "all" && ` Rating: ${rating} & up`}
-                &nbsp;
-                {(q !== "all" && q !== "") ||
-                  (category !== "all" && category !== "") ||
-                  (tag !== "all" && tag !== "") ||
-                  rating !== "all" ||
-                  price !== "all" ? (
-                  <Button variant={"link"} asChild>
-                    <Link href="/search">Clear</Link>
-                  </Button>
-                ) : null}
-              </>
-
-            </Container>
-          </div>
-          <div className="rounded-2xl px-4">
-            <ProductSortSelector
-              sortOrders={sortOrders}
-              sort={sort}
-              params={params}
-            />
-          </div>
-        </div>
-      }
-
-      {!noResults &&
+            </div>
+            <div className="flex items-center">
+              <div className="rounded-2xl px-4">
+                <ProductSortSelector
+                  sortOrders={sortOrders}
+                  sort={sort}
+                  params={params}
+                  />
+              </div>
+              {!noResults && (
         <CollapsibleOnMobile title="Filters">
           <div className="">
             {/* Category */}
@@ -183,14 +173,20 @@ const SearchPage = async (props: {
                   <ul className="flex gap-3 flex-wrap ">
                     <li className="border-[2px] p-2 rounded-md border-gray-600">
                       <Link
-                        className={`${("all" === category || "" === category) && "text-primary"}`}
+                        className={`${
+                          ("all" === category || "" === category) &&
+                          "text-primary"
+                        }`}
                         href={getFilterUrl({ category: "all", params })}
                       >
                         All
                       </Link>
                     </li>
                     {categories.map((c) => (
-                      <li key={c} className="border p-2 rounded-md border-gray-300">
+                      <li
+                        key={c}
+                        className="border p-2 rounded-md border-gray-300"
+                      >
                         <Link
                           className={`${c === category && "text-green-600"}`}
                           href={getFilterUrl({ category: c, params })}
@@ -219,7 +215,10 @@ const SearchPage = async (props: {
                       </Link>
                     </li>
                     {prices.map((p) => (
-                      <li key={p.value} className="border px-2 py-1 rounded-md border-gray-400">
+                      <li
+                        key={p.value}
+                        className="border px-2 py-1 rounded-md border-gray-400"
+                      >
                         <Link
                           href={getFilterUrl({ price: p.value, params })}
                           className={`${p.value === price && "text-primary"}`}
@@ -270,14 +269,19 @@ const SearchPage = async (props: {
                   <ul className="flex gap-3 flex-wrap ">
                     <li className="border px-2 py-1 rounded-md border-gray-400">
                       <Link
-                        className={`${("all" === tag || "" === tag) && "text-primary"}`}
+                        className={`${
+                          ("all" === tag || "" === tag) && "text-primary"
+                        }`}
                         href={getFilterUrl({ tag: "all", params })}
                       >
                         All
                       </Link>
                     </li>
                     {tags.map((t) => (
-                      <li key={t} className="border px-2 py-1 rounded-md border-gray-400">
+                      <li
+                        key={t}
+                        className="border px-2 py-1 rounded-md border-gray-400"
+                      >
                         <Link
                           className={`${toSlug(t) === tag && "text-primary"}`}
                           href={getFilterUrl({ tag: t, params })}
@@ -292,17 +296,31 @@ const SearchPage = async (props: {
             </Accordion>
           </div>
         </CollapsibleOnMobile>
-      }
-      <Container className="grid md:grid-cols-5 md:gap-4">
-        {!noResults &&
-          <div className="hidden md:block space-y-4">
+      )}
+            </div>
+          </div>
+                </Container>
+        </div>
+      )}
+
+
+      <Container className="grid md:grid-cols-8 md:gap-4 py-4">
+        {!noResults && (
+          <div className="hidden md:block space-y-4 bg-white h-fit p-4 rounded-md col-span-2">
             <div>
-              <div className="font-bold">Categories</div>
+              <div className="font-bold flex gap-1 items-center w-full">
+                Categories{" "}
+                <div className="flex items-center w-full">
+                  <span className="bg-[#1B6013] flex items-center h-1 w-10 rounded-md"></span>
+                  <span className="w-full border-b" />
+                </div>
+              </div>
               <ul className="text-[14p]">
                 <li>
                   <Link
-                    className={`${("all" === category || "" === category) && "text-primary"
-                      }`}
+                    className={`${
+                      ("all" === category || "" === category) && "text-primary"
+                    }`}
                     href={getFilterUrl({ category: "all", params })}
                   >
                     All
@@ -321,7 +339,13 @@ const SearchPage = async (props: {
               </ul>
             </div>
             <div>
-              <div className="font-bold">Price</div>
+              <div className="font-bold flex gap-1 items-center w-full">
+                Price{" "}
+                <div className="flex items-center w-full">
+                  <span className="bg-[#1B6013] flex items-center h-1 w-10 rounded-md"></span>
+                  <span className="w-full border-b" />
+                </div>
+              </div>
               <ul>
                 <li>
                   <Link
@@ -344,7 +368,13 @@ const SearchPage = async (props: {
               </ul>
             </div>
             <div>
-              <div className="font-bold">Customer Review</div>
+              <div className="font-bold flex gap-1 items-center w-full whitespace-nowrap">
+                Customer Review{" "}
+                <div className="flex items-center w-full">
+                  <span className="bg-[#1B6013] flex items-center h-1 w-10 rounded-md"></span>
+                  <span className="w-full border-b" />
+                </div>
+              </div>
               <ul>
                 <li>
                   <Link
@@ -367,12 +397,20 @@ const SearchPage = async (props: {
               </ul>
             </div>
             <div>
-              <div className="font-bold">Tags</div>
+              <div className="font-bold flex gap-1 items-center w-full">
+                Tags{" "}
+                <div className="flex items-center w-full">
+                  <span className="bg-[#1B6013] flex items-center h-1 w-10 rounded-md"></span>
+                  <span className="w-full border-b" />
+                </div>
+              </div>
               <ul className="flex gap-x-2 gap-y-5 flex-wrap pt-4">
                 <li>
                   <Link
-                    className={`${("all" === tag || "" === tag) && "border-zinc-700 text-green-600"
-                      }  border px-2 py-2 rounded-sm border-zinc-500`}
+                    className={`${
+                      ("all" === tag || "" === tag) &&
+                      "border-zinc-700 text-green-600"
+                    }  border px-2 py-2 rounded-sm border-zinc-500`}
                     href={getFilterUrl({ tag: "all", params })}
                   >
                     All
@@ -381,7 +419,9 @@ const SearchPage = async (props: {
                 {tags.map((t) => (
                   <li key={t}>
                     <Link
-                      className={`${toSlug(t) === tag && "text-primary"} border px-2 py-2 rounded-sm border-zinc-500`}
+                      className={`${
+                        toSlug(t) === tag && "text-primary"
+                      } border px-2 py-2 rounded-sm border-zinc-500`}
                       href={getFilterUrl({ tag: t, params })}
                     >
                       {t}
@@ -391,15 +431,21 @@ const SearchPage = async (props: {
               </ul>
             </div>
           </div>
-        }
+        )}
 
-        <div className="md:col-span-4 space-y-4">
-          <div>
-            <div className="font-bold text-xl">Results</div>
-            <div>Check each product page for other buying options</div>
-          </div>
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
-            {data.products.length === 0 && <div className="text-2xl font-semibold">No product found</div>}
+        <div className="md:col-span-6 space-y-4">
+          {category !== "all" ? (
+            <div className="font-medium text-lg bg-white rounded-md p-3 w-full">{`Showing ${data.from}-${data.to} of ${data.totalProducts} results`}</div>
+          ) : (
+            <div>
+              <div className="font-bold text-xl">Results</div>
+              <div>Check each product page for other buying options</div>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-">
+            {data.products.length === 0 && (
+              <div className="text-2xl font-semibold">No product found</div>
+            )}
             {data.products.map((product) => (
               <ProductdetailsCard key={product._id} product={product} />
             ))}

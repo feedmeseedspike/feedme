@@ -10,7 +10,7 @@ import {
 } from '../ui/drawer'
 import useDeviceType from '../../hooks/use-device-type'
 import { Button } from '../ui/button'
-import { X } from 'lucide-react'
+import { ListFilter, X } from 'lucide-react'
 
 export default function CollapsibleOnMobile({
   title,
@@ -35,8 +35,9 @@ export default function CollapsibleOnMobile({
         {deviceType === 'mobile' && (
           <Button
             variant="outline"
-            className="w-fit flex justify-end items-end px-4"
+            className="w-fit flex gap-2 items-center justify-end px-4"
           >
+            <ListFilter />
             {title}
           </Button>
         )}

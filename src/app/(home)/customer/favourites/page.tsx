@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@components/ui/table";
 import Image from "next/image";
-import { getUser } from "src/lib/actions/user.actions";
+import { getUser } from "src/lib/actions/auth.actions";
 import { redirect } from "next/navigation";
 import { formatNaira } from "src/lib/utils";
 import { Trash2 } from "lucide-react";
@@ -21,19 +21,19 @@ import FavouriteActions from "src/app/(home)/customer/favourites/favourite-actio
 import { Separator } from "@components/ui/separator";
 
 const Favourites = async () => {
-
   const session = await getUser();
   if (!session?.data) {
-      redirect('/sign-in?callbackUrl=/favourites')
-    }
+    redirect("/login?callbackUrl=/customer/favourites");
+  }
 
-    // console.log(session.data.favorites[0].product)
+  // console.log(session.data.favorites[0].product)
 
-
-  return (  
+  return (
     <main>
       <Container className="py-6">
-        <h1 className="h2-bold">Favourites ({session.data.favorites.length})</h1>
+        <h1 className="h2-bold">
+          Favourites ({session.data.favorites.length})
+        </h1>
         <Separator className="mt-2 mb-8" />
 
         {session.data.favorites.length > 0 ? (
@@ -41,7 +41,9 @@ const Favourites = async () => {
             <TableCaption>Your favorite products</TableCaption>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-md md:text-xl font-semibold flex flex-1">Products</TableHead>
+                <TableHead className="text-md md:text-xl font-semibold flex flex-1">
+                  Products
+                </TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Price</TableHead>
                 <TableHead></TableHead>
@@ -49,19 +51,24 @@ const Favourites = async () => {
             </TableHeader>
             <TableBody>
               {session.data.favorites.map((product: any) => {
-                console.log(product)
+                console.log(product);
                 return (
-                <TableRow key={product.product._id}>
-                  <TableCell>
-                    <Image src={product.product.thumbnail.url} width={100} height={100} alt={product.product.title} />
-                  </TableCell>
-                  <TableCell>{product.product.title}</TableCell>
-                  <TableCell>{formatNaira(product.product.price)}</TableCell>
-                  <TableCell className="w-auto p-0">
-                    <FavouriteActions />
-                  </TableCell>
-                </TableRow>
-                )
+                  <TableRow key={product.product._id}>
+                    <TableCell>
+                      <Image
+                        src={product.product.thumbnail.url}
+                        width={100}
+                        height={100}
+                        alt={product.product.title}
+                      />
+                    </TableCell>
+                    <TableCell>{product.product.title}</TableCell>
+                    <TableCell>{formatNaira(product.product.price)}</TableCell>
+                    <TableCell className="w-auto p-0">
+                      <FavouriteActions />
+                    </TableCell>
+                  </TableRow>
+                );
               })}
             </TableBody>
           </Table>

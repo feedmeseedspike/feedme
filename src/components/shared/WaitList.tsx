@@ -4,7 +4,6 @@ import Container from "./Container";
 const Waitlist = () => {
   return (
     <section>
-      <Container>
         <div className="flex flex-col md:flex-row gap-6 justify-between md:items-center my-12">
           <div className="flex flex-col gap-3">
             <h1 className="text-xl font-semibold">Join The FeedMe Waitlist</h1>
@@ -22,7 +21,6 @@ const Waitlist = () => {
             </button>
           </div>
         </div>
-      </Container>
     </section>
   );
 };

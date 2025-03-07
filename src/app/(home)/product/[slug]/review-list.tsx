@@ -39,6 +39,7 @@ import { SubmitHandler, useForm } from "react-hook-form";
 import { Product, ReviewInputSchema } from "src/lib/validator";
 import { IReviewInput } from "src/types";
 import { z } from "zod";
+import ReviewActions from "./ReviewActions";
 
 type ReviewListProps = {
   avgRating?: number;
@@ -290,10 +291,7 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
                   {review.comment}
                 </p>
                 <div className="flex  items-center gap-4 pt-3">
-                  <button className="border border-[#188C8C] rounded-[100px] px-8 py-[6px] text-[13px] hover:bg-[#12B76A] hover:text-white ease-in-out duration-300 transition-colors">
-                    Helpful
-                  </button>
-                  <div className="h5-light cursor-pointer">Report</div>
+                  <ReviewActions />
                 </div>
               </div>
             ))}

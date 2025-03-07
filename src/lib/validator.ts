@@ -13,7 +13,7 @@ const Price = (field: string) =>
       `${field} must be a whole number greater than zero`
     );
 
-const OptionSchema = z.object({
+export const OptionSchema = z.object({
   name: z.string().min(1, "Option name is required"), // Example: "1kg", "500g"
   price: Price("Option price"),
   image: z.string().url("Invalid image URL"),
@@ -44,14 +44,12 @@ export const OrderItemSchema = z.object({
 });
 
 export const ShippingAddressSchema = z.object({
-  fullName: z.string().min(1, 'Full name is required'),
-  street: z.string().min(1, 'Address is required'),
-  city: z.string().min(1, 'City is required'),
-  postalCode: z.string().min(1, 'Postal code is required'),
-  province: z.string().min(1, 'Province is required'),
-  phone: z.string().min(1, 'Phone number is required'),
-  country: z.string().min(1, 'Country is required'),
-})
+  fullName: z.string().min(1, "Full name is required"),
+  street: z.string().min(1, "Address is required"),
+  // city: z.string().min(1, "City is required"),
+  phone: z.string().min(1, "Phone number is required"),
+  location: z.string().min(1, "Please select a location"),
+});
 // Cart
 
 export const CartSchema = z.object({
@@ -80,7 +78,10 @@ export const ReviewInputSchema = z.object({
     .int()
     .min(1, "Rating must be at least 1")
     .max(5, "Rating must be at most 5"),
+  helpfulCount: z.number().default(0), // Track how many users found the review helpful
+  reports: z.array(z.string()).default([]), // Store reasons for reports
 });
+
 
 
 export const ProductInputSchema = z.object({

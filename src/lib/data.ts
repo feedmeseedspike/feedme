@@ -504,7 +504,9 @@ export const products = [
         "isVerifiedPurchase": true,
         "title": "Great Product!",
         "comment": "I absolutely love this product. The quality is amazing, and it does exactly what it promises.",
-        "rating": 5
+        "rating": 5,
+        "helpfulCount": 12,
+        "reports": []
       },
       {
         "product": "60c72b2f9e1d4b4c5c5c5c5c",
@@ -512,7 +514,9 @@ export const products = [
         "isVerifiedPurchase": false,
         "title": "Not what I expected",
         "comment": "The product was decent, but not as described. It didn’t match the images on the website.",
-        "rating": 3
+        "rating": 3,
+        "helpfulCount": 14,
+        "reports": []
       },
       {
         "product": "60c72b2f9e1d4b4c5c5c5c5c",
@@ -520,7 +524,9 @@ export const products = [
         "isVerifiedPurchase": true,
         "title": "Good Value for Money",
         "comment": "For the price, it's a great deal. It has some minor issues, but nothing too major.",
-        "rating": 4
+        "rating": 4,
+        "helpfulCount": 8,
+        "reports": []
       }
     ],
   }

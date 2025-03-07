@@ -1,17 +1,17 @@
 "use client";
 
-import { Separator } from "@components/ui/separator";
 import React, { useState } from "react";
 import { AiOutlineMinus, AiOutlinePlus } from "react-icons/ai";
 import { useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import { addItem } from "src/store/features/cartSlice";
 import clsx from "clsx";
+import Link from "next/link";
 
 const AddToCart = ({
   item,
   minimal = false,
-  className, 
+  className,
 }: {
   item: any;
   minimal?: boolean;
@@ -20,18 +20,25 @@ const AddToCart = ({
   const dispatch = useDispatch();
   const router = useRouter();
   const [quantity, setQuantity] = useState(1);
+  const [missingOption, setMissingOption] = useState(false); // Track if an option is missing
 
-  const handleIncrement = () => {
-    setQuantity((prev) => prev + 1);
-  };
-
-  const handleDecrement = () => {
-    setQuantity((prev) => prev - 1);
-  };
+  const handleIncrement = () => setQuantity((prev) => prev + 1);
+  const handleDecrement = () => setQuantity((prev) => Math.max(prev - 1, 1));
 
   const handleAddToCart = () => {
+    // Check if the item requires an option (modify this condition based on your logic)
+    if (item.requiresOption && !item.selectedOption) {
+      setMissingOption(true);
+      setTimeout(() => setMissingOption(false), 500); // Remove shake after animation
+      return;
+    }
+
     dispatch(addItem({ item, quantity }));
-    if (!minimal) router.push("/cart");
+
+    // Only navigate if minimal is false and the item was successfully added
+    if (!minimal) {
+      router.push("/cart");
+    }
   };
 
   return minimal ? (
@@ -69,13 +76,14 @@ const AddToCart = ({
         </div>
       </div>
       <div className="flex flex-col gap-2">
-        <button className="text-white bg-[#1B6013] rounded-[8px] px-3 sm:px-[20px] py-3 text-xs lg:text-[16px] w-full">
+        <Link href={"/checkout"} className="text-white bg-[#1B6013] rounded-[8px] px-3 sm:px-[20px] py-3 text-xs lg:text-[16px] w-full flex justify-center items-center">
           Buy Now
-        </button>
+        </Link>
         <button
           onClick={handleAddToCart}
           className={clsx(
             "text-[#284625] bg-[#F2F8F1] rounded-[8px] px-3 sm:px-[20px] py-3 text-xs lg:text-[16px] w-full",
+            missingOption && "animate-shake border border-red-500",
             className
           )}
         >

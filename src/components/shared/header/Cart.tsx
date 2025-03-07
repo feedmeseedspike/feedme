@@ -115,7 +115,7 @@ const Cart = () => {
                       <Trash2Icon className="size-4" onClick={() => handleRemoveItem(item)} aria-label="Remove item" />
                     </div>
                     <p className="text-[8px] text-[#344054] bg-[#F2F4F7] rounded-[16px] w-fit px-2 py-[2px]">
-                      1kg
+                      {/* {item.options[0].name} */} 1kg
                     </p>
                     <div className="flex justify-between items-center">
                       <p className="text-[#101828] font-bold">{formatNaira(item.price)}</p>

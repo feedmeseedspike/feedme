@@ -22,7 +22,7 @@ const Headertags = async () => {
   return (
     <div className="bg-white">
       <Container>
-        <div className="py-4 flex items-center gap-x-2 whitespace-nowrap scrollbar-hide w-full">
+        <div className="py-2 flex items-center gap-x-2 whitespace-nowrap scrollbar-hide w-full">
           <Sidebar
             categories={categoriesResponse.data}
           />
