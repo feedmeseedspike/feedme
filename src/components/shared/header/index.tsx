@@ -95,12 +95,12 @@ const Header = async () => {
                     </div>
                     <Separator className="my-2" />
 
-                      <Link className="cursor-pointer flex items-center gap-2" href={"/account"}>
-                    <DropdownMenuItem className="">
+                    <DropdownMenuItem className="cursor-pointer flex items-center gap-2">
                         <User className="w-5 h-5 text-gray-600" />
+                      <Link  href={"/account"}>
                         Your account
-                    </DropdownMenuItem>
                       </Link>
+                    </DropdownMenuItem>
 
                     <DropdownMenuItem className="cursor-pointer flex items-center gap-2">
                       <Package className="w-5 h-5 text-gray-600" />
@@ -109,7 +109,7 @@ const Header = async () => {
 
                     <DropdownMenuItem className="cursor-pointer flex items-center gap-2">
                       <Heart className="w-5 h-5 text-gray-600" />
-                      <Link href={"/customer/favourites"}>Favourites</Link>
+                      <Link href={"/account/favourites"}>Favourites</Link>
                     </DropdownMenuItem>
 
                     <Separator className="my-2" />

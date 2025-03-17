@@ -35,10 +35,10 @@ export const products = [
   {
     name: 'Onion',
     slug: toSlug('Onion'),
-    category: 'General',
+    category: ['General'],
     images: ["https://res.cloudinary.com/ahisi/image/upload/v1732183603/ahisi/1732183602881_produce.jpg", '/images/p11-2.jpg'],
     tags: ['new-arrival'],
-    isPublished: true,
+    isPublished: false,
     price: 3000,
     listPrice: 0,
     brand: 'Onion',
@@ -53,6 +53,7 @@ export const products = [
     ],
     numSales: 9,
     countInStock: 11,
+    stockStatus: 'In Stock',
     description:
       'Onions are versatile root vegetables known for their sharp flavor, aroma, and health benefits. Available in red, and white varieties.',
     // sizes: ['S', 'M', 'L', 'XL', 'XXL'],
@@ -81,7 +82,7 @@ export const products = [
     _id: "66ec2b2abc0e9f3ea6616686",
     name: "Riverbite",
     slug: "riverbite",
-    category: "Pepper",
+    category: ["Pepper"],
     images: ["https://res.cloudinary.com/ahisi/image/upload/v1732000738/ahisi/1732000738261_produce_20241119_081636_0000.jpg"], // Default image
     brand: "Riverbite",
     description: "Riverbite is a premium smoked catfish snack set apart by superior quality and careful preparation. Each package contains four expertly degutted catfish cutlets.",
@@ -93,6 +94,7 @@ export const products = [
     sizes: [], // No sizes for smoked catfish
     avgRating: 0,
     numReviews: 0,
+    stockStatus: 'In Stock',
     ratingDistribution: [],
     numSales: 0,
     isPublished: true,
@@ -111,7 +113,7 @@ export const products = [
     _id: "66ec2b2abgh0e9f3ea6jtk4616686",
     name: 'Apple',
     slug: toSlug('Apple'),
-    category: 'Fruits',
+    category: ['Fruits'],
     images: ["https://res.cloudinary.com/ahisi/image/upload/v1732372960/ahisi/1732372957967_1732110649466_produce-1.jpg"],
     tags: ['new-arrival'],
     isPublished: true,
@@ -129,6 +131,7 @@ export const products = [
     ],
     numSales: 7,
     countInStock: 20,
+    stockStatus: 'Out of Stock',
     description: 'Apples are versatile, and used in snacks, baking, and juices. They come in various colors and are rich in fiber, vitamin C, and antioxidants.',
     colors: ['Red', 'Green', 'Yellow'],
     options: [
@@ -149,7 +152,7 @@ export const products = [
     _id: "66ec2b2abgh0e9fhrj33ea6616686",
     name: 'Pineapple',
     slug: toSlug('Pineapple'),
-    category: 'Fruits',
+    category: ['Fruits'],
     images: ["https://res.cloudinary.com/ahisi/image/upload/v1732136297/ahisi/1732136297347_produce-2.jpg"],
     tags: ['new-arrival', "todays-deal"],
     isPublished: true,
@@ -167,6 +170,7 @@ export const products = [
     ],
     numSales: 12,
     countInStock: 25,
+    stockStatus: 'In Stock',
     description: 'Pineapple is a tropical fruit with a sweet, tangy flavor and high in Vitamin C, fiber, and antioxidants. It is enjoyed fresh or in various dishes like smoothies, desserts, and juices.',
     colors: ['Yellow'],
     options: [
@@ -187,7 +191,7 @@ export const products = [
     _id: "66ec2ngjrkb2abgh0e9f3ea6616686",
     name: 'Orange',
     slug: toSlug('Orange'),
-    category: 'Fruits',
+    category: ['Fruits'],
     images: ["https://res.cloudinary.com/ahisi/image/upload/v1732429967/ahisi/1732429966569_produce-26.jpg"],
     tags: ["new-arrival"],
     isPublished: true,
@@ -205,6 +209,7 @@ export const products = [
     ],
     numSales: 15,
     countInStock: 50,
+    stockStatus: 'In Stock',
     description: 'Oranges are often eaten fresh, juiced, or used in cooking and baking. They are a popular choice for boosting immunity and promoting hydration.',
     colors: ['Orange'],
     options: [
@@ -225,7 +230,7 @@ export const products = [
     _id: "66ec2bbfd2abgh0e9f3ea6616686",
     name: 'Watermelon',
     slug: toSlug('Watermelon'),
-    category: 'Fruits',
+    category: ['Fruits'],
     images: ["https://res.cloudinary.com/ahisi/image/upload/v1732184338/ahisi/1732184337235_produce-5.jpg"],
     tags: ["new-arrival"],
     isPublished: true,
@@ -243,6 +248,7 @@ export const products = [
     ],
     numSales: 20,
     countInStock: 30,
+    stockStatus: 'Out of Stock',
     description: 'Watermelon is a sweet, juicy fruit with high water content, making it hydrating and refreshing. It’s rich in vitamins A and C, low in calories, and perfect for snacking or adding to fruit salads.',
     colors: ['Green', 'Red'],
     options: [
@@ -263,7 +269,7 @@ export const products = [
     _id: "66ec2b2abgh0e9f3ea6616686",
     name: 'Irish Potato',
     slug: toSlug('Irish Potato'),
-    category: 'Tubers',
+    category: ['Tubers'],
     images: ["https://res.cloudinary.com/ahisi/image/upload/v1732430067/ahisi/1732430066821_produce-1.png", "https://th.bing.com/th/id/R.aa0a7e5f75178906f0d2741f13543af0?rik=q4vuMh3PW8lGJg&riu=http%3a%2f%2fwww.valleyspuds.com%2fwp-content%2fuploads%2fValley-Spuds-Pile-of-White-Potatoes.jpg&ehk=ZQ5wZKG9ZoqCX22zdRT6MQaW6zeZyVUIQUbCWIpJ7kU%3d&risl=&pid=ImgRaw&r=0", "https://t4.ftcdn.net/jpg/02/75/77/89/360_F_275778955_xxJe5fQvDy5oXbjupdJ162zLwU4sf3kT.jpg"],
     tags: ['new-arrival', "best-seller"],
     isPublished: true,
@@ -281,6 +287,7 @@ export const products = [
     ],
     numSales: 10,
     countInStock: 25,
+    stockStatus: 'In Stock',
     description: 'Irish potatoes are rich in carbohydrates, fiber, and vitamins. They are versatile in cooking and are used in dishes like mashed potatoes, fries, and stews. The product is sourced from Jos.',
     colors: ['Brown'],
     options: [
@@ -327,7 +334,7 @@ export const products = [
     _id: "66ec2b2abgh0e9no03f3ea6616686",
     name: 'Garlic',
     slug: toSlug('Garlic)'),
-    category: 'General',
+    category: ['General'],
     images: ["https://res.cloudinary.com/ahisi/image/upload/v1732540256/ahisi/1732540256046_produce-30.jpg"],
     tags: ["new-arrival"],
     isPublished: true,
@@ -345,6 +352,7 @@ export const products = [
     ],
     numSales: 12,
     countInStock: 30,
+    stockStatus: 'Out of Stock',
     description: 'Garlic is a flavorful, aromatic bulb used in cooking and known for its health benefits, such as boosting immunity and supporting heart health.',
     colors: ['White'],
     options: [
@@ -365,7 +373,7 @@ export const products = [
     _id: "66ec2b2afdbc0e9f3ea6616686",
     name: 'Ginger',
     slug: toSlug('Ginger'),
-    category: 'General',
+    category: ['General'],
     images: ["https://res.cloudinary.com/ahisi/image/upload/v1732430259/ahisi/1732430259444_produce-27.jpg"],
     tags: ['todays-deal'],
     isPublished: true,
@@ -383,6 +391,7 @@ export const products = [
     ],
     numSales: 15,
     countInStock: 40,
+    stockStatus: 'In Stock',
     description: 'Ginger is known for its spicy flavor and health benefits, including aiding digestion and reducing inflammation. It is used in cooking, baking and beverages.',
     colors: ['Beige'],
     options: [
@@ -403,7 +412,7 @@ export const products = [
     _id: "66e3267ec2b2abgh0e9f3ea6616686",
     name: 'Turmeric',
     slug: toSlug('Turmeric'),
-    category: 'Spices and Condiments',
+    category: ['Spices and Condiments'],
     images: ["https://res.cloudinary.com/ahisi/image/upload/v1732430481/ahisi/1732430481369_produce-29.jpg"],
     tags: ['new-arrival'],
     isPublished: true,
@@ -421,6 +430,7 @@ export const products = [
     ],
     numSales: 18,
     countInStock: 35,
+    stockStatus: 'In Stock',
     description: 'Turmeric is a yellow spice known for its earthy flavor and active compound, curcumin. It offers potential anti-inflammatory and antioxidant benefits and is used in cooking, natural remedies, and beauty products.',
     colors: ['Yellow'],
     options: [
@@ -466,7 +476,7 @@ export const products = [
   _id: "66ed7c2b2abc0e9f3ea6616686",
     name: 'Hibiscus',
     slug: toSlug('Hibiscus'),
-    category: 'Vegetables',
+    category: ['Vegetables'],
     images: ["https://res.cloudinary.com/ahisi/image/upload/v1732430647/ahisi/1732430647434_produce-28.jpg"],
     tags: ['new-arrival', "best-seller"],
     isPublished: true,
@@ -475,6 +485,7 @@ export const products = [
     brand: 'Local Farm',
     avgRating: 4.9,
     numReviews: 10,
+    stockStatus: 'In Stock',
     ratingDistribution: [
       { rating: 1, count: 0 },
       { rating: 2, count: 0 },
@@ -531,3 +542,104 @@ export const products = [
     ],
   }
 ]
+
+export const categories = [
+    {
+      "thumbnail": {
+        "url": "https://res.cloudinary.com/ahisi/image/upload/v1734976806/ahisi/1734976793066_fruit.png",
+        "public_id": "ahisi/1734976793066_fruit"
+      },
+      "_id": "6769a527015abc57a03ec870",
+      "title": "Fruits",
+      "description": "Fruits",
+      "keynotes": ["Fruits"],
+      "tags": ["fruits"],
+      "createdAt": "2024-12-23T18:00:07.504Z",
+      "updatedAt": "2025-03-11T10:43:03.352Z",
+      "__v": 0
+    },
+    {
+      "thumbnail": {
+        "url": "https://res.cloudinary.com/ahisi/image/upload/v1734977737/ahisi/1734977735158_tubers.png",
+        "public_id": "ahisi/1734977735158_tubers"
+      },
+      "_id": "6769a8ca015abc57a03ec8a5",
+      "title": "Tubers",
+      "description": "Tubers",
+      "keynotes": ["Tubers"],
+      "tags": ["tubers"],
+      "createdAt": "2024-12-23T18:15:38.180Z",
+      "updatedAt": "2024-12-23T18:15:38.180Z",
+      "__v": 0
+    },
+    {
+      "thumbnail": {
+        "url": "https://res.cloudinary.com/ahisi/image/upload/v1734977790/ahisi/1734977785892_vegetable-oil.png",
+        "public_id": "ahisi/1734977785892_vegetable-oil"
+      },
+      "_id": "6769a8fe015abc57a03ec8a9",
+      "title": "Oil & Sauces",
+      "description": "Oil & Sauces",
+      "keynotes": ["Oil & Sauces"],
+      "tags": ["oil-& sauces"],
+      "createdAt": "2024-12-23T18:16:30.950Z",
+      "updatedAt": "2025-03-03T16:18:11.402Z",
+      "__v": 0
+    },
+    {
+      "thumbnail": {
+        "url": "https://res.cloudinary.com/ahisi/image/upload/v1734977840/ahisi/1734977836137_spices.png",
+        "public_id": "ahisi/1734977836137_spices"
+      },
+      "_id": "6769a931015abc57a03ec8ad",
+      "title": "Spices & Condiments",
+      "description": "Spices & Condiments",
+      "keynotes": ["Spices & Condiments"],
+      "tags": ["spices-& condiments"],
+      "createdAt": "2024-12-23T18:17:21.435Z",
+      "updatedAt": "2024-12-23T18:17:21.435Z",
+      "__v": 0
+    },
+    {
+      "thumbnail": {
+        "url": "https://res.cloudinary.com/ahisi/image/upload/v1734977873/ahisi/1734977869118_vegetables.png",
+        "public_id": "ahisi/1734977869118_vegetables"
+      },
+      "_id": "6769a952015abc57a03ec8b1",
+      "title": "Vegetables",
+      "description": "Vegetables",
+      "keynotes": ["Vegetables"],
+      "tags": ["vegetables"],
+      "createdAt": "2024-12-23T18:17:54.600Z",
+      "updatedAt": "2025-02-11T14:30:21.900Z",
+      "__v": 0
+    },
+    {
+      "thumbnail": {
+        "url": "https://res.cloudinary.com/ahisi/image/upload/v1734977912/ahisi/1734977907653_general.png",
+        "public_id": "ahisi/1734977907653_general"
+      },
+      "_id": "6769a979015abc57a03ec8b5",
+      "title": "General",
+      "description": "General",
+      "keynotes": ["General"],
+      "tags": ["general"],
+      "createdAt": "2024-12-23T18:18:33.603Z",
+      "updatedAt": "2025-03-03T16:07:49.242Z",
+      "__v": 0
+    },
+    {
+      "thumbnail": {
+        "url": "https://res.cloudinary.com/ahisi/image/upload/v1741007109/Seedspike_1_bs13fo.png",
+        "public_id": "ahisi/1734977907653_general"
+      },
+      "_id": "67c57837f10910b0c27eed7c",
+      "title": "Ramadan Special",
+      "description": "Ramadan Special",
+      "keynotes": ["General"],
+      "tags": ["general"],
+      "createdAt": "2024-12-23T18:18:33.603Z",
+      "updatedAt": "2025-03-05T13:53:54.840Z",
+      "__v": 0
+    }
+  ]

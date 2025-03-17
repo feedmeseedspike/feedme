@@ -11,6 +11,8 @@ import { AppSidebar } from "@components/shared/account/app-sidebar";
 import { UserData } from "src/types";
 import Header from "@components/shared/header";
 import Footer from "@components/shared/footer";
+import CustomBreadcrumb from "@components/shared/breadcrumb";
+import Container from "@components/shared/Container";
 
 const Dashboard = async ({ children }: { children: React.ReactNode }) => {
   const userData = await getUser();
@@ -18,15 +20,21 @@ const Dashboard = async ({ children }: { children: React.ReactNode }) => {
 
   return (
     <SidebarProvider>
+      <div className="bg-[#F9FAFB]">
         {user?.role === "buyer" && <Header /> }
-        <div className="flex">
+        <Container className="py-4 bg-white">
+          <CustomBreadcrumb />
+        </Container>
+        <Container className="flex">
           <AppSidebar user={user} />
           <main className="w-full">
             {/* <SidebarTrigger /> */}
             {children}
           </main>
-        </div>
+        </Container>
           <Footer />
+
+      </div>
 
 
       {/* <footer className="border px-4 py-2 rounded flex justify-center items-center flex-row">

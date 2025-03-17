@@ -109,7 +109,12 @@ export const toSlug = (text: string): string =>
 
   export const formatDate = (isoString: string) => {
     const date = new Date(isoString);
-    return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(date);
+    return new Intl.DateTimeFormat("en-US", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(date);
   };
+  
   
   

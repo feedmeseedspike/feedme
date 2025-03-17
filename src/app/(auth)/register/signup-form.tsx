@@ -1,6 +1,6 @@
 "use client";
 import { redirect, useSearchParams } from "next/navigation";
-
+import { useState } from "react";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import Link from "next/link";
@@ -14,14 +14,13 @@ import {
 } from "@components/ui/form";
 import { useForm } from "react-hook-form";
 import { IUserSignUp } from "../../../types/index";
-// import { registerUser, signInWithCredentials } from '@/lib/actions/user.actions'
 import { toast } from "src/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { UserSignUpSchema } from "../../../lib/validator";
 import { Separator } from "@components/ui/separator";
 import { isRedirectError } from "next/dist/client/components/redirect";
 import { registerUser } from "src/lib/actions/auth.actions";
-// import { isRedirectError } from 'next/dist/client/components/redirect-error'
+import { Eye, EyeOff, Loader2 } from "lucide-react"; 
 
 const signUpDefaultValues =
   process.env.NODE_ENV === "development"
@@ -41,6 +40,9 @@ const signUpDefaultValues =
 export default function CredentialsSignUpForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const [showPassword, setShowPassword] = useState(false); 
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const form = useForm<IUserSignUp>({
     resolver: zodResolver(UserSignUpSchema),
@@ -50,7 +52,7 @@ export default function CredentialsSignUpForm() {
   const { control, handleSubmit } = form;
 
   const onSubmit = async (data: IUserSignUp) => {
-    console.log(data);
+    setLoading(true);
     try {
       const res = await registerUser(data);
       if (!res.success) {
@@ -72,6 +74,8 @@ export default function CredentialsSignUpForm() {
         description: "Invalid email or password",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false); 
     }
   };
 
@@ -129,17 +133,31 @@ export default function CredentialsSignUpForm() {
                   Password
                 </FormLabel>
                 <FormControl>
-                  <Input
-                    type="password"
-                    placeholder="Enter password"
-                    className="py-6 ring-1 ring-zinc-400"
-                    {...field}
-                  />
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"} 
+                      placeholder="Enter password"
+                      className="py-6 ring-1 ring-zinc-400 pr-10"
+                      {...field}
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                      onClick={() => setShowPassword(!showPassword)} 
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-5 w-5 text-zinc-400" />
+                      ) : (
+                        <Eye className="h-5 w-5 text-zinc-400" />
+                      )}
+                    </button>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
+
           <FormField
             control={control}
             name="confirmPassword"
@@ -149,23 +167,39 @@ export default function CredentialsSignUpForm() {
                   Confirm Password
                 </FormLabel>
                 <FormControl>
-                  <Input
-                    type="password"
-                    placeholder="Confirm Password"
-                    className="py-6 ring-1 ring-zinc-400"
-                    {...field}
-                  />
+                  <div className="relative">
+                    <Input
+                      type={showConfirmPassword ? "text" : "password"} 
+                      placeholder="Confirm Password"
+                      className="py-6 ring-1 ring-zinc-400 pr-10"
+                      {...field}
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-5 w-5 text-zinc-400" />
+                      ) : (
+                        <Eye className="h-5 w-5 text-zinc-400" />
+                      )}
+                    </button>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
+
           <div className="w-full pt-4">
             <Button
-              className="w-full py-4 text-base bg-[#E0E0E0] text-zinc-600 ring-1 ring-zinc-400 font-semibold hover:bg-[#1B6013] transition-all ease-in-out hover:text-white hover:duration-500"
+              className="w-full py-4 text-base bg-[#E0E0E0] text-zinc-600 ring-1 ring-zinc-400 font-semibold hover:bg-[#1B6013] transition-all ease-in-out hover:text-white hover:duration-500 flex items-center justify-center gap-2"
               type="submit"
+              disabled={loading} 
             >
-              Sign Up
+              {loading && <Loader2 className="w-5 h-5 animate-spin" />} 
+              {loading ? "Signing Up..." : "Sign Up"}
             </Button>
           </div>
         </div>

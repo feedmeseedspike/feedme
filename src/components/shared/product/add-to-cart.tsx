@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { addItem } from "src/store/features/cartSlice";
 import clsx from "clsx";
 import Link from "next/link";
+import { ShoppingCart } from "lucide-react"; // Import the cart icon
 
 const AddToCart = ({
   item,
@@ -35,7 +36,6 @@ const AddToCart = ({
 
     dispatch(addItem({ item, quantity }));
 
-    // Only navigate if minimal is false and the item was successfully added
     if (!minimal) {
       router.push("/cart");
     }
@@ -45,11 +45,21 @@ const AddToCart = ({
     <button
       onClick={handleAddToCart}
       className={clsx(
-        "text-white bg-[#1B6013] rounded-[6px] px-3 sm:px-[20px] py-3 text-xs lg:text-[16px] w-full",
+        "group relative rounded-full border border-[#1B6013] bg-[#1B6013] p-2 text-md font-semibold overflow-hidden flex items-start justify-start",
         className
       )}
     >
-      Add to Cart
+      <div
+        className="absolute left-0 top-0 flex h-full w-11 items-center justify-end rounded-full transition-all duration-500 ease-in-out group-hover:w-full"
+        style={{ backgroundColor: "#1B6013" }}
+      >
+        <span className="mr-3 text-white transition-all duration-500 ease-in-out">
+          <ShoppingCart size={20} /> 
+        </span>
+      </div>
+      <span className="relative left-4 z-10 whitespace-nowrap px-8 font-medium text-black hover:text-white transition-all duration-500 ease-in-out group-hover:-left-3">
+        Add to Cart
+      </span>
     </button>
   ) : (
     <div>
@@ -76,18 +86,31 @@ const AddToCart = ({
         </div>
       </div>
       <div className="flex flex-col gap-2">
-        <Link href={"/checkout"} className="text-white bg-[#1B6013] rounded-[8px] px-3 sm:px-[20px] py-3 text-xs lg:text-[16px] w-full flex justify-center items-center">
+        <Link
+          href={"/checkout"}
+          className="text-white bg-[#1B6013] rounded-[8px] px-3 sm:px-[20px] py-3 text-xs lg:text-[16px] w-full flex justify-center items-center"
+        >
           Buy Now
         </Link>
         <button
           onClick={handleAddToCart}
           className={clsx(
-            "text-[#284625] bg-[#F2F8F1] rounded-[8px] px-3 sm:px-[20px] py-3 text-xs lg:text-[16px] w-full",
+            "group relative rounded-full border border-[#1B6013] bg-[#1B6013] p-2 text-xl font-semibold overflow-hidden",
             missingOption && "animate-shake border border-red-500",
             className
           )}
         >
-          Add to Cart
+          <div
+            className="absolute left-0 top-0 flex h-full w-11 items-center justify-end rounded-full transition-all duration-500 ease-in-out group-hover:w-full"
+            style={{ backgroundColor: "#1B6013" }}
+          >
+            <span className="mr-3 text-white transition-all duration-700 ease-in-out">
+              <ShoppingCart size={20} />
+            </span>
+          </div>
+          <span className="relative left-4 z-10 whitespace-nowrap px-8 font-semibold text-white transition-all duration-500 ease-in-out group-hover:-left-3">
+            Add to Cart
+          </span>
         </button>
       </div>
     </div>

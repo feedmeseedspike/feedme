@@ -13,11 +13,34 @@ const Price = (field: string) =>
       `${field} must be a whole number greater than zero`
     );
 
+// export const OptionSchema = z.object({
+//   name: z.string().min(1, "Option name is required"), // Example: "1kg", "500g"
+//   price: Price("Option price"),
+//   image: z.string().url("Invalid image URL"),
+// });
+
 export const OptionSchema = z.object({
-  name: z.string().min(1, "Option name is required"), // Example: "1kg", "500g"
-  price: Price("Option price"),
-  image: z.string().url("Invalid image URL"),
+  name: z.string().min(1, "Option name is required"),
+  price: z
+  .number({
+    invalid_type_error: "Price must be a number",
+    required_error: "Price is required",
+  })
+  .min(50, "Price must be at least ₦50"),
+  stockStatus: z.enum(["In Stock", "Out of Stock"], {
+    required_error: "Stock status is required",
+  }),
+  image: z
+    .instanceof(File, { message: "Image is required" })
+    .refine((file) => file.size <= 5 * 1024 * 1024, {
+      message: "Image must be less than 5MB",
+    })
+    .refine((file) => file.type.startsWith("image/"), {
+      message: "Only image files are allowed",
+    }),
 });
+
+export type OptionType = z.infer<typeof OptionSchema>;
 
 
 // Order Item
@@ -96,6 +119,9 @@ export const ProductInputSchema = z.object({
   isPublished: z.boolean(),
   price: Price("Price"),
   listPrice: Price("List price"),
+  stockStatus: z.enum(["In Stock", "Out of Stock"], {
+    required_error: "Stock status is required",
+  }),
   brand: z.string().min(1, "Brand is required"),
   avgRating: z.coerce.number().min(0).max(5, "Rating must be between 0 and 5"),
   numReviews: z.coerce
@@ -172,4 +198,5 @@ export const ProductUpdateSchema = ProductInputSchema.extend({
 
 
 export type Product = z.infer<typeof ProductInputSchema>;
+export type option = z.infer<typeof OptionSchema>;
 export type ProductOption = z.infer<typeof OptionSchema>;

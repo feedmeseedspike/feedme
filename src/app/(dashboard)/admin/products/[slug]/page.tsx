@@ -1,0 +1,557 @@
+"use client";
+
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Button } from "@components/ui/button";
+import { Input } from "@components/ui/input";
+import { Textarea } from "@components/ui/textarea";
+import {
+  Select as ShadSelect,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
+import { ArrowDown, Plus } from "lucide-react";
+import { Separator } from "@components/ui/separator";
+import ReactSelect, { MultiValue } from "react-select";
+import makeAnimated from "react-select/animated";
+import { motion } from "framer-motion";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@components/ui/form";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@components/ui/table";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import OptionModal from "@components/admin/optionsModal";
+import {
+  OptionSchema,
+  option as OptionType,
+  Product,
+  ProductUpdateSchema,
+} from "src/lib/validator";
+import { Avatar } from "@components/ui/avatar";
+import { Badge } from "@components/ui/badge";
+import Image from "next/image";
+import { formatNaira } from "src/lib/utils";
+import Edit from "@components/icons/edit.svg";
+import Trash from "@components/icons/trash.svg";
+import { toast } from "sonner";
+import { getProductBySlug } from "src/lib/actions/product.actions";
+import { categories } from "src/lib/data";
+// import { Product } from "src/lib/validator";
+
+const animatedComponents = makeAnimated();
+
+const productSchema = z.object({
+  productName: z
+    .string()
+    .min(1, "Product name is required")
+    .max(100, "Product name cannot exceed 100 characters"),
+  description: z
+    .string()
+    .min(1, "Description is required")
+    .max(500, "Description cannot exceed 500 characters"),
+  price: z
+    .number({
+      invalid_type_error: "Price must be a number",
+      required_error: "Price is required",
+    })
+    .min(50, "Price must be at least ₦50")
+    .optional(),
+  stockStatus: z
+    .enum(["In Stock", "Out of Stock"], {
+      required_error: "Stock status is required",
+    })
+    .optional(),
+  selectedCategories: z
+    .array(z.string())
+    .min(1, "At least one category is required"),
+  variation: z.enum(["Yes", "No"], {
+    required_error: "Variation is required",
+  }),
+  images: z
+    .array(z.instanceof(File))
+    .refine(
+      (files) => files.every((file) => file.size <= 5 * 1024 * 1024),
+      "Each image must be less than 5MB"
+    )
+    .refine(
+      (files) => files.every((file) => file.type.startsWith("image/")),
+      "Only image files are allowed"
+    )
+    .optional(),
+  options: z.array(OptionSchema).optional(),
+});
+
+type ProductFormValues = z.infer<typeof productSchema>;
+
+export default function AddProduct() {
+  const searchParams = useSearchParams();
+  const productSlug = searchParams.get("slug");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [options, setOptions] = useState<OptionType[]>([]);
+  const [isEditing, setIsEditing] = useState(false);
+
+  const form = useForm<ProductFormValues>({
+    resolver: zodResolver(productSchema),
+    defaultValues: {
+      productName: "",
+      description: "",
+      price: 0,
+      stockStatus: "In Stock",
+      selectedCategories: [],
+      variation: "No",
+      images: [],
+    },
+  });
+
+  // Fetch product data if in edit mode
+  useEffect(() => {
+    if (productSlug) {
+      setIsEditing(true);
+      const fetchProduct = async () => {
+        try {
+          const product = getProductBySlug(productSlug);
+          if (product) {
+            form.reset({
+              productName: product.name,
+              description: product.description,
+              price: product.price,
+              stockStatus: product.stockStatus as "In Stock" | "Out of Stock",
+              selectedCategories: product.category,
+              variation: product.options?.length > 0 ? "Yes" : "No",
+              images: []
+            });
+            setOptions(product.options?.map(option => ({
+              ...option,
+              stockStatus: "In Stock",
+              image: new File([option.image], "image.jpg", { type: "image/jpeg" })
+            })) || []);
+          }
+        } catch (error) {
+          toast.error("Error fetching product");
+        }
+      };
+      fetchProduct();    }
+  }, [productSlug, form]);
+  
+
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+
+  useEffect(() => {
+    const images = form.watch("images");
+    if (images && images.length > 0) {
+      const previews = images.map((file) => URL.createObjectURL(file));
+      setImagePreviews(previews);
+    } else {
+      setImagePreviews([]);
+    }
+  }, [form.watch("images")]);
+  
+
+  const handleSaveDraft = async (data: ProductFormValues) => {
+    try {
+      const draft = {
+        ...data,
+        options: options,
+        lastSaved: new Date().toISOString()
+      };
+      localStorage.setItem("productDraft", JSON.stringify(draft));
+      toast.success("Draft saved successfully");
+    } catch (error) {
+      toast.error("Error saving draft");
+    }
+  };
+  
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      form.setValue("images", Array.from(files));
+    }
+  };
+
+  const onSubmit = async (data: ProductFormValues) => {
+    if (data.variation === "Yes" && options.length === 0) {
+      alert("At least one option is required when variation is 'Yes'");
+      return;
+    }
+
+    if (isEditing) {
+      // Handle edit product logic
+      console.log("Editing Product:", data);
+      toast.success("Product updated successfully!");
+    } else {
+      // Handle add product logic
+      console.log("Adding Product:", data);
+      toast.success("Product added successfully!");
+    }
+
+    localStorage.removeItem("productDraft");
+  };
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl sm:text-3xl font-semibold mb-4 text-center sm:text-left">
+        {isEditing ? "Edit Product" : "Add New Product"}
+      </h1>
+      <Separator className="my-5" />
+
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="p-6 rounded-lg shadow-md bg-white flex flex-col gap-2"
+        >
+          {/* Product Name */}
+          <FormField
+            control={form.control}
+            name="productName"
+            render={({ field }) => (
+              <FormItem className="mb-4 grid grid-cols-1 sm:grid-cols-9 gap-4">
+                <FormLabel className="text-sm font-medium col-span-2">
+                  Product Name
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    placeholder="Enter the product name"
+                    className="col-span-7"
+                  />
+                </FormControl>
+                <FormMessage className="col-span-7 col-start-3" />
+              </FormItem>
+            )}
+          />
+
+          {/* Categories */}
+          <FormField
+            control={form.control}
+            name="selectedCategories"
+            render={({ field }) => (
+              <FormItem className="mb-4 grid grid-cols-1 sm:grid-cols-9 gap-4">
+                <FormLabel className="text-sm font-medium col-span-2">
+                  Categories
+                </FormLabel>
+                <FormControl>
+                  <ReactSelect
+                    isMulti
+                    components={animatedComponents}
+                    options={categories.map((cat) => ({
+                      value: cat.title,
+                      label: cat.title,
+                      image: cat.thumbnail.url,
+                    }))}
+                    value={field.value.map((val) => ({
+                      value: val,
+                      label: val,
+                    }))}
+                    onChange={(newValue) => {
+                      const values = newValue.map((item) => item.value);
+                      field.onChange(values);
+                    }}
+                    className="col-span-7"
+                  />
+                </FormControl>
+                <FormMessage className="col-span-7 col-start-3" />
+              </FormItem>
+            )}
+          />
+
+          {/* Description */}
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem className="mb-4 grid grid-cols-1 sm:grid-cols-9 gap-4">
+                <FormLabel className="text-sm font-medium col-span-2">
+                  Description
+                </FormLabel>
+                <FormControl>
+                  <Textarea
+                    {...field}
+                    placeholder="Enter product description"
+                    className="col-span-7"
+                  />
+                </FormControl>
+                <FormMessage className="col-span-7 col-start-3" />
+              </FormItem>
+            )}
+          />
+
+          {/* Variations */}
+          <FormField
+            control={form.control}
+            name="variation"
+            render={({ field }) => (
+              <FormItem className="mb-4 grid grid-cols-1 sm:grid-cols-9 gap-4">
+                <FormLabel className="text-sm font-medium col-span-2">
+                  Variations
+                </FormLabel>
+                <FormControl>
+                  <RadioGroup
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    className="flex gap-6 mt-1 col-span-7"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="No" id="no" />
+                      <label htmlFor="no">No</label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="Yes" id="yes" />
+                      <label htmlFor="yes">Yes</label>
+                    </div>
+                  </RadioGroup>
+                </FormControl>
+                <FormMessage className="col-span-7 col-start-3" />
+              </FormItem>
+            )}
+          />
+          <motion.div
+            key={form.watch("variation")}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            {form.watch("variation") === "No" ? (
+              <>
+                {/* Image Upload */}
+                <FormField
+                  control={form.control}
+                  name="images"
+                  render={({ field }) => (
+                    <FormItem className="mb-4 grid grid-cols-1 sm:grid-cols-9 gap-4">
+                      <FormLabel className="text-sm font-medium col-span-2">
+                        Image(s)
+                      </FormLabel>
+                      <FormControl>
+                        <div className="col-span-7">
+                          <label className="flex flex-col items-center justify-center size-[156px] border border-dashed rounded-lg cursor-pointer hover:bg-gray-50 bg-[#EBFFF3]">
+                            <input
+                              type="file"
+                              className="hidden"
+                              onChange={handleImageUpload}
+                              multiple
+                            />
+                            <div className="text-[#61BB84] flex items-center gap-1 justify-center w-full h-full bg-[#ebfff8] px-3 py-[3px] rounded-[3.66px] font-semibold text-[10px]">
+                              <Plus size={10} /> Upload
+                            </div>
+                          </label>
+                          {imagePreviews.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {imagePreviews.map((preview, index) => (
+                                <div key={index} className="relative size-16">
+                                  <Image
+                                    src={preview}
+                                    alt={`Preview ${index}`}
+                                    fill
+                                    className="rounded-lg object-cover"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {field.value && field.value.length > 0 && (
+                            <p className="mt-2 text-sm text-green-600">
+                              {field.value.length} file(s) selected
+                            </p>
+                          )}
+                        </div>
+                      </FormControl>
+                      <FormMessage className="col-span-7 col-start-3" />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Price */}
+                <FormField
+                  control={form.control}
+                  name="price"
+                  render={({ field }) => (
+                    <FormItem className="mb-4 grid grid-cols-1 sm:grid-cols-9 gap-4">
+                      <FormLabel className="text-sm font-medium col-span-2">
+                        Price (₦)
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Enter price"
+                          type="number"
+                          className="col-span-7"
+                        />
+                      </FormControl>
+                      <FormMessage className="col-span-7 col-start-3" />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Stock Status */}
+                <FormField
+                  control={form.control}
+                  name="stockStatus"
+                  render={({ field }) => (
+                    <FormItem className="mb-4 grid grid-cols-1 sm:grid-cols-9 gap-4">
+                      <FormLabel className="text-sm font-medium col-span-2">
+                        Stock Status
+                      </FormLabel>
+                      <FormControl>
+                        <ShadSelect
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <SelectTrigger className="col-span-7 border p-4 rounded-lg">
+                            <SelectValue placeholder="Select Stock Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="In Stock">In Stock</SelectItem>
+                            <SelectItem value="Out of Stock">
+                              Out of Stock
+                            </SelectItem>
+                          </SelectContent>
+                        </ShadSelect>
+                      </FormControl>
+                      <FormMessage className="col-span-7 col-start-3" />
+                    </FormItem>
+                  )}
+                />
+              </>
+            ) : (
+              <div className="mb-4 grid grid-cols-9">
+                <div className="col-span-2"></div>
+                <div className="col-span-7">
+                  {options.length > 0 && (
+                    <div className="border border-gray-200 rounded-lg overflow-hidden mb-4">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-gray-100 w-full">
+                            <TableHead className="text-center w-1/2 !px-6">
+                              <div className="flex items-center gap-1">
+                                Option
+                                <ArrowDown size={16} strokeWidth={0.7} />
+                              </div>
+                            </TableHead>
+                            <TableHead className="text-center w-1/4">
+                              <div className="flex items-center justify-center gap-1">
+                                Price
+                                <ArrowDown size={16} strokeWidth={0.7} />
+                              </div>
+                            </TableHead>
+                            <TableHead className="text-center w-1/4">
+                              <div className="flex items-center justify-center gap-1">
+                                Stock Status
+                                <ArrowDown size={16} strokeWidth={0.7} />
+                              </div>
+                            </TableHead>
+                            <TableHead className="text-center w-1/4"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+
+                        <TableBody>
+                          {options.map((option, index) => (
+                            <TableRow key={index}>
+                              <TableCell className="flex items-center justify-start gap-3 w-1/2 !px-6">
+                                <div className="size-[40px] h relative">
+                                  {option.image instanceof File ? (
+                                    <Image
+                                      src={URL.createObjectURL(option.image)}
+                                      alt={option.name}
+                                      fill
+                                      className="rounded-[12px]"
+                                    />
+                                  ) : (
+                                    <Image
+                                      src={option.image}
+                                      alt={option.name}
+                                      fill
+                                      className="rounded-[12px]"
+                                    />
+                                  )}
+                                </div>
+                                <span>{option.name}</span>
+                              </TableCell>
+                              <TableCell className="text-center w-1/4">
+                                {formatNaira(option.price)}
+                              </TableCell>
+                              <TableCell className="text-center w-1/4">
+                                <p>In Stock</p>
+                                {/* {option.stockStatus} */}
+                              </TableCell>
+                              <TableCell className="text-center flex gap-2 w-full h-full">
+                                <button>
+                                  <Edit />
+                                </button>
+                                <button className="size-5">
+                                  <Trash />
+                                </button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                  <button
+                    className="bg-[#E8F3E7] px-4 py-[10px] flex items-center gap-2 text-sm whitespace-nowrap rounded-[8px]"
+                    onClick={() => setIsDialogOpen(true)}
+                  >
+                    <Plus size={14} />
+                    Add New Option
+                  </button>
+                  <OptionModal
+                    isOpen={isDialogOpen}
+                    onClose={() => setIsDialogOpen(false)}
+                    onSubmit={(data) => {
+                      setOptions([...options, data]);
+                      setIsDialogOpen(false);
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </motion.div>
+
+          {/* Buttons */}
+          <div className="flex flex-col sm:flex-row justify-end mt-6 gap-4">
+            <Button
+              type="button"
+              onClick={form.handleSubmit(handleSaveDraft)}
+              variant="outline"
+              className="w-full sm:w-auto"
+            >
+              Save Draft
+            </Button>
+            <Button
+              type="submit"
+              className="w-full sm:w-auto bg-[#1B6013] text-white"
+            >
+              {isEditing ? "Update Product" : "Add Product"}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
+  );
+}

@@ -3,9 +3,7 @@ import { redirect, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
-import { Loader2 } from "lucide-react"; 
-// import { useToast } from "@components/hooks/use-toast"
-import { ToastAction } from "@components/ui/toast"
+import { Loader2, Eye, EyeOff } from "lucide-react"; 
 import {
   Form,
   FormControl,
@@ -37,7 +35,8 @@ export default function CredentialsSignInForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast()
+  const [showPassword, setShowPassword] = useState(false);
+  const { toast } = useToast();
 
   const form = useForm<IUserSignIn>({
     resolver: zodResolver(UserSignInSchema),
@@ -53,23 +52,13 @@ export default function CredentialsSignInForm() {
         email: data.email,
         password: data.password,
       });
-      // if(user.success === true){
-      //   toast({
-      //     variant: "destructive",
-      //     title: "Uh oh! Something went wrong.",
-      //     description: "There was a problem with your request.",
-      //     action: <ToastAction altText="Try again">Try again</ToastAction>,
-      //   })
-        // return;
-      // }
       console.log(user);
       redirect(callbackUrl);
     } catch (error) {
-      console.log(error)
+      console.log(error);
       if (isRedirectError(error)) {
         throw error;
       }
-      // Handle error (e.g., show toast)
     } finally {
       setLoading(false);
     }
@@ -105,11 +94,24 @@ export default function CredentialsSignInForm() {
                   Password
                 </FormLabel>
                 <FormControl>
-                  <Input
-                    className="py-6 ring-1 ring-zinc-400"
-                    type="password"
-                    {...field}
-                  />
+                  <div className="relative">
+                    <Input
+                      className="py-6 ring-1 ring-zinc-400 pr-10"
+                      type={showPassword ? "text" : "password"}
+                      {...field}
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-5 w-5 text-zinc-400" />
+                      ) : (
+                        <Eye className="h-5 w-5 text-zinc-400" />
+                      )}
+                    </button>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>

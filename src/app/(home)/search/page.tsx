@@ -315,7 +315,7 @@ const SearchPage = async (props: {
                   <span className="w-full border-b" />
                 </div>
               </div>
-              <ul className="text-[14p]">
+              <ul className="text-[14p] pl-2">
                 <li>
                   <Link
                     className={`${
@@ -346,10 +346,10 @@ const SearchPage = async (props: {
                   <span className="w-full border-b" />
                 </div>
               </div>
-              <ul>
+              <ul className="pl-2">
                 <li>
                   <Link
-                    className={`${"all" === price && "text-primary"}`}
+                    className={`${"all" === price && "text-[#1B6013]"}`}
                     href={getFilterUrl({ price: "all", params })}
                   >
                     All
@@ -359,7 +359,7 @@ const SearchPage = async (props: {
                   <li key={p.value}>
                     <Link
                       href={getFilterUrl({ price: p.value, params })}
-                      className={`${p.value === price && "text-primary"}`}
+                      className={`${p.value === price && "text-[#1B6013]"}`}
                     >
                       {p.name}
                     </Link>
@@ -375,11 +375,11 @@ const SearchPage = async (props: {
                   <span className="w-full border-b" />
                 </div>
               </div>
-              <ul>
+              <ul className="pl-2">
                 <li>
                   <Link
                     href={getFilterUrl({ rating: "all", params })}
-                    className={`${"all" === rating && "text-primary"}`}
+                    className={`${"all" === rating && "text-[#1B6013]"}`}
                   >
                     All
                   </Link>
@@ -387,7 +387,7 @@ const SearchPage = async (props: {
                 <li>
                   <Link
                     href={getFilterUrl({ rating: "4", params })}
-                    className={`${"4" === rating && "text-primary"}`}
+                    className={`${"4" === rating && "text-[#1B6013]"}`}
                   >
                     <div className="flex">
                       <Rating size={4} rating={4} /> & Up
@@ -404,12 +404,12 @@ const SearchPage = async (props: {
                   <span className="w-full border-b" />
                 </div>
               </div>
-              <ul className="flex gap-x-2 gap-y-5 flex-wrap pt-4">
+              <ul className="flex gap-x-2 gap-y-5 flex-wrap pt-4 pl-2">
                 <li>
                   <Link
                     className={`${
                       ("all" === tag || "" === tag) &&
-                      "border-zinc-700 text-green-600"
+                      "border-zinc-700 text-[#1B6013]"
                     }  border px-2 py-2 rounded-sm border-zinc-500`}
                     href={getFilterUrl({ tag: "all", params })}
                   >
@@ -420,7 +420,7 @@ const SearchPage = async (props: {
                   <li key={t}>
                     <Link
                       className={`${
-                        toSlug(t) === tag && "text-primary"
+                        toSlug(t) === tag && "text-[#1B6013]"
                       } border px-2 py-2 rounded-sm border-zinc-500`}
                       href={getFilterUrl({ tag: t, params })}
                     >

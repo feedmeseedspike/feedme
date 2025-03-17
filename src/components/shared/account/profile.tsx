@@ -96,7 +96,7 @@ const Profile = ({ user }: AppSidebarProps) => {
               <div className="flex flex-col w-fit gap-2">
                 <label
                   htmlFor="avatar"
-                  className="bg-[#1B6013] cursor-pointer absolute right-[2.3rem] bottom-[1.8rem] rounded-full p-2 text-white"
+                  className="bg-[#1B6013] cursor-pointer absolute right-[0.9rem] md:right-[2.3rem] bottom-[2.3rem] md:bottom-[1.8rem] rounded-full p-2 text-white border-white border-2"
                 >
                   <Pencil className="size-4" />
                   {/* {user?.avatar?.url === "" ? "Choose Avatar" : "Change Avatar"} */}

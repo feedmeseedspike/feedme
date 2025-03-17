@@ -5,10 +5,26 @@ import { RadioGroup, RadioGroupItem } from '@components/ui/radio-group'
 import Image from 'next/image'
 import React from 'react'
 import { formatNaira } from 'src/lib/utils'
-import { Options } from 'src/types'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState } from 'src/store'
 import { setSelectedOption } from 'src/store/features/optionsSlice'
+import { z } from 'zod'
+
+const Price = (field: string) =>
+  z.coerce
+    .number()
+    .int()
+    .refine(
+      (value) => value > 0,
+      `${field} must be a whole number greater than zero`
+    );
+
+export const OptionSchema = z.object({
+  name: z.string().min(1, "Option name is required"),
+  price: Price("Option price"),
+  image: z.string().url("Invalid image URL"),
+});
+export type Options = z.infer<typeof OptionSchema>
 
 const Options = ({ options }: { options: Options[] }) => {
   const dispatch = useDispatch()
@@ -47,7 +63,7 @@ const Options = ({ options }: { options: Options[] }) => {
           </div>
         ))}
       </RadioGroup>
-      {selectedOption && <p>Selected: {selectedOption}</p>}
+      {/* {selectedOption && <p>Selected: {selectedOption}</p>} */}
     </div>
   )
 }

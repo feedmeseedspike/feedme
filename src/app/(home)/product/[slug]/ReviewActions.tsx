@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner"; // Notification library
+import { toast } from "sonner";
 
 type ReviewActionsProps = {
   initialHelpfulCount?: number;
@@ -40,7 +40,7 @@ export default function ReviewActions({ initialHelpfulCount = 0 }: ReviewActions
         }`}
         onClick={handleHelpful}
       >
-        Helpful ({helpfulCount})
+        Helpful
       </button>
       <div
         className={`h5-light cursor-pointer ${reported ? "text-red-500" : "hover:underline"}`}

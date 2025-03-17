@@ -1,7 +1,13 @@
 import { products } from "src/lib/data";
 
 export function getAllCategories() {
-  return Array.from(new Set(products.map((product) => product.category)));
+  return Array.from(
+    new Set(
+      products.flatMap((product) =>
+        Array.isArray(product.category) ? product.category : [product.category]
+      )
+    )
+  );
 }
 
 
@@ -21,7 +27,7 @@ export function getProductsByTag({ tag, limit = 10 }: { tag: string; limit?: num
 }
 
 export function getProductBySlug(slug: string) {
-  const product = products.find((p) => p.slug === slug && p.isPublished);
+  const product = products.find((p) => p.slug === slug )|| null;
   if (!product) throw new Error('Product not found');
   return product;
 }
@@ -78,7 +84,7 @@ export function getAllProducts({
 
   if (category && category !== 'all') {
     filteredProducts = filteredProducts.filter(
-      (product) => product.category === category
+      (product) => product.category[0] === category
     );
   }
 

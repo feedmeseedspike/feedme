@@ -9,7 +9,8 @@ import {
   Grid,
   ShoppingBag,
   ClipboardList,
-  History
+  History,
+  Key
 } from "lucide-react";
 import Circles from "../../icons/Cirles.svg";
 import {
@@ -25,7 +26,7 @@ import {
 import Image from "next/image";
 import { Route, UserData } from "src/types";
 import Link from "next/link";
-import { usePathname } from "next/navigation"; // Import usePathname
+import { usePathname } from "next/navigation"; 
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
 import LogoutButton from "@components/shared/header/LogoutButton";
 
@@ -34,27 +35,27 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ user }: AppSidebarProps) {
-  const pathname = usePathname(); // Get the current route
+  const pathname = usePathname(); 
 
   let routes: Route[] = [];
 
   if (user?.role === "buyer") {
     routes = [
       { title: "My Profile", url: "/account", icon: User },
-      { title: "Orders", url: "/account/orders", icon: ClipboardList },
-      { title: "Wishlist", url: "/customer/favourites", icon: Heart },
-      { title: "Recently Viewed", url: "/cart", icon: History },
+      { title: "Orders", url: "/account/order", icon: ClipboardList },
+      { title: "Password Manager", url: "/account/password", icon: Key },
+      { title: "Wishlist", url: "/account/favourites", icon: Heart },
+      { title: "Recently Viewed", url: "/account/history", icon: History },
     ];
   }
 
   if (user?.role === "seller") {
     routes = [
-      { title: "Profile", url: "/dashboard/seller/my-profile", icon: User },
-      { title: "Brand", url: "/dashboard/seller/my-brand", icon: Store },
-      { title: "Category", url: "/dashboard/seller/my-category", icon: Grid },
-      { title: "Store", url: "/dashboard/seller/my-store", icon: Store },
-      { title: "Add Product", url: "/dashboard/seller/add-product", icon: Package },
-      { title: "List Products", url: "/dashboard/seller/list-products", icon: Package },
+      { title: "My Profile", url: "/account", icon: User },
+      { title: "Orders", url: "/account/order", icon: ClipboardList },
+      { title: "Password Manager", url: "/account/password", icon: Key },
+      { title: "Wishlist", url: "/account/favourites", icon: Heart },
+      { title: "Recently Viewed", url: "/account/history", icon: History },
     ];
   }
 
@@ -71,7 +72,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
   }
 
   return (
-    <Sidebar className="mt-6">
+    <Sidebar className="mt-4 border h-fi py-4 overflow-y-hidden scroll">
       <SidebarContent>
         <SidebarGroup>
           {/* <Circles className="mt-6" />
@@ -84,7 +85,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
               className="pt-6 cursor-pointer"
             />
           </div> */}
-          <SidebarGroupContent>
+          <SidebarGroupContent >
             <SidebarMenu className="mt-6 flex gap-2">
               {routes.map((item) => {
                 const isActive = pathname === item.url;
