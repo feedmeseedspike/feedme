@@ -1,42 +1,87 @@
-import React from 'react';
-import { getProductBySlug } from 'src/lib/actions/product.actions';
-import ProductGalleryWrapper from '@components/shared/product/gallery-wrapper';
-import Container from '@components/shared/Container';
-import RatingSummary from '@components/shared/product/rating-summary';
-import { Separator } from '@components/ui/separator';
-import { formatNaira, generateId } from 'src/lib/utils';
-import ReviewList from 'src/app/(home)/product/[slug]/review-list';
-import AddToCart from '@components/shared/product/add-to-cart';
-import FastDelivery from '@components/icons/fastDelivery.svg';
-import Security from '@components/icons/security.svg';
-import Freshness from '@components/icons/freshness.svg';
+import React from "react";
+import {
+  getProductBySlug,
+  getRelatedProductsByCategory,
+} from "src/lib/actions/product.actions";
+import ProductGalleryWrapper from "@components/shared/product/gallery-wrapper";
+import Container from "@components/shared/Container";
+import RatingSummary from "@components/shared/product/rating-summary";
+import { Separator } from "@components/ui/separator";
+import { formatNaira, generateId } from "src/lib/utils";
+import ReviewList from "src/app/(home)/product/[slug]/review-list";
+import AddToCart from "@components/shared/product/add-to-cart";
+import FastDelivery from "@components/icons/fastDelivery.svg";
+import Security from "@components/icons/security.svg";
+import Freshness from "@components/icons/freshness.svg";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@components/ui/accordion';
-import ShareLike from '@components/shared/product/product-shareLike';
-import { getUser } from 'src/lib/actions/auth.actions';
-import AddToBrowsingHistory from '@components/shared/product/add-to-browsing-history';
-import BrowsingHistoryList from '@components/shared/browsing-history-list';
-import Options from '../options';
+} from "@components/ui/accordion";
+import ShareLike from "@components/shared/product/product-shareLike";
+import { getUser } from "src/lib/actions/auth.actions";
+import AddToBrowsingHistory from "@components/shared/product/add-to-browsing-history";
+import BrowsingHistoryList from "@components/shared/browsing-history-list";
+import Options from "../options";
+import ProductSlider from "@components/shared/product/product-slider";
 
 const datas = [
   {
     id: 1,
     icon: <FastDelivery />,
-    title: 'Fast Delivery',
-    description: 'Get your order at your doorstep in 3 hours or less.',
+    title: "Fast Delivery",
+    description: "Get your order at your doorstep in 3 hours or less.",
   },
   {
     id: 2,
     icon: <Security />,
-    title: 'Security & Privacy',
+    title: "Security & Privacy",
     description:
-      'Safe payments: We do not share your personal details with any third parties without your consent.',
+      "Safe payments: We do not share your personal details with any third parties without your consent.",
   },
 ];
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { slug: string };
+}) {
+  const { slug } = params;
+
+  try {
+    const product = getProductBySlug(slug);
+
+    if (product) {
+      return {
+        title: product.name,
+        description: `${
+          product.description || product.description.substring(0, 160)
+        } Buy fresh and premium-quality ${
+          product.name
+        } online at FeedMe Nigeria today. Enjoy competitive prices in Naira, swift delivery, and the convenience of cash on delivery. Shop now and bring nature's goodness to your kitchen!`,
+        openGraph: {
+          title: product.name,
+          description:
+            product.description || product.description.substring(0, 160),
+          images: product.images[0] || "/logo.png",
+        },
+      };
+    }
+  } catch (error) {
+    console.error("Error fetching product metadata:", error);
+  }
+
+  return {
+    title: "Product Not Found",
+    description: "The product you are looking for does not exist.",
+    openGraph: {
+      title: "Product Not Found",
+      description: "The product you are looking for does not exist.",
+      images: "/logo.png",
+    },
+  };
+}
 
 const ProductDetails = async (props: {
   params: Promise<{ slug: string }>;
@@ -56,13 +101,81 @@ const ProductDetails = async (props: {
     0
   );
 
+  const relatedProducts = await getRelatedProductsByCategory({
+    category: product.category[0],
+    productId: product._id as string,
+    page: Number(page || "1"),
+  });
+
+  console.log(relatedProducts);
+
+  const ProductJsonLd = ({
+    product,
+  }: {
+    product: {
+      name: string;
+      images: string[];
+      description: string;
+      brand?: string;
+      slug: string;
+      price: number;
+      countInStock: number;
+      numReviews: number;
+      avgRating: number;
+    };
+  }) => {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+    return (
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org/",
+            "@type": "Product",
+            name: product.name,
+            image: product.images[0],
+            description: product.description,
+            brand: {
+              "@type": "Brand",
+              name: product.brand || "FeedMe",
+            },
+            offers: {
+              "@type": "Offer",
+              url: `${siteUrl}/product/${product.slug}`,
+              priceCurrency: "NGN",
+              price: product.price,
+              availability:
+                product.countInStock > 0
+                  ? "https://schema.org/InStock"
+                  : "https://schema.org/OutOfStock",
+              seller: {
+                "@type": "Organization",
+                name: "FeedMe Nigeria",
+              },
+            },
+            aggregateRating:
+              product.numReviews > 0
+                ? {
+                    "@type": "AggregateRating",
+                    ratingValue: product.avgRating,
+                    reviewCount: product.numReviews,
+                  }
+                : undefined,
+          }),
+        }}
+      />
+    );
+  };
   return (
     <section>
       <Container>
         <AddToBrowsingHistory id={product._id!} category={product.category} />
         <div className="py-4 grid grid-cols-1 md:grid-cols-8 gap-8 bg-white my-6 p-3">
           <div className="col-span-3">
-            <ProductGalleryWrapper images={product.images} name={product.name} />
+            <ProductGalleryWrapper
+              images={product.images}
+              name={product.name}
+            />
           </div>
 
           <div className="col-span-3">
@@ -107,7 +220,7 @@ const ProductDetails = async (props: {
             <AddToCart
               item={{
                 clientId: generateId(),
-                product: product?._id || '',
+                product: product?._id || "",
                 name: product.name,
                 slug: product.slug,
                 category: product.category,
@@ -138,6 +251,12 @@ const ProductDetails = async (props: {
             Customer Reviews ({totalRatings})
           </h2>
           <ReviewList userId={user?.data?._id} product={product} />
+        </section>
+        <section className="mt-10">
+          <ProductSlider
+            products={relatedProducts.data}
+            title={"You may also like"}
+          />
         </section>
         <section>
           <BrowsingHistoryList className="mt-10" />

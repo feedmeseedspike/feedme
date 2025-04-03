@@ -1,4 +1,4 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createAction, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { Cart, OrderItem, ShippingAddress } from 'src/types';
 
 const calculateItemsPrice = (items: OrderItem[]) => {
@@ -20,8 +20,15 @@ const loadCartState = (): Cart => {
     totalPrice: 0,
     shippingAddress: undefined,
     deliveryDateIndex: undefined,
+    checkoutItems: [],
   };
 };
+
+export const setCheckoutItems = createAction('cart/setCheckoutItems', (items: OrderItem[]) => {
+  return {
+    payload: items
+  };
+});
 
 const cartSlice = createSlice({
   name: 'cart',
@@ -85,7 +92,12 @@ const cartSlice = createSlice({
     setDeliveryDateIndex: (state, action: PayloadAction<number>) => {
       state.deliveryDateIndex = action.payload;
       localStorage.setItem('cart', JSON.stringify(state));
-    }
+    },
+
+    setCheckoutItems: (state, action: PayloadAction<OrderItem[]>) => {
+      state.checkoutItems = action.payload;
+      localStorage.setItem('cart', JSON.stringify(state));
+    }  
   }
 });
 
@@ -96,7 +108,7 @@ export const {
   removeItem,
   clearCart,
   setShippingAddress,
-  setDeliveryDateIndex
+  setDeliveryDateIndex,
+  setCheckoutItems: setCheckoutItemsAction 
 } = cartSlice.actions;
-
 export default cartSlice.reducer;

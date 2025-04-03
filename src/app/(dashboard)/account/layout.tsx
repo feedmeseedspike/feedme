@@ -1,11 +1,8 @@
-// "use client";
-
 import React from "react";
 import Link from "next/link";
 import { getUser } from "src/lib/actions/auth.actions";
 import LogoutButton from "@components/shared/header/LogoutButton";
 import Sidebar from "@components/shared/account/sidebar";
-// import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { SidebarProvider, SidebarTrigger } from "@components/ui/sidebar";
 import { AppSidebar } from "@components/shared/account/app-sidebar";
 import { UserData } from "src/types";
@@ -26,7 +23,9 @@ const Dashboard = async ({ children }: { children: React.ReactNode }) => {
           <CustomBreadcrumb />
         </Container>
         <Container className="flex">
-          <AppSidebar user={user} />
+          <div  className="hidden lg:block">
+            <AppSidebar user={user} />
+          </div>
           <main className="w-full">
             {/* <SidebarTrigger /> */}
             {children}

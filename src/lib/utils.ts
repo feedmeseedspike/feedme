@@ -48,40 +48,62 @@ export const toSlug = (text: string): string =>
     export const generateId = () =>
       Array.from({ length: 24 }, () => Math.floor(Math.random() * 10)).join('')
     
-  export const getFilterUrl = ({
-    params,
-    category,
-    tag,
-    sort,
-    price,
-    rating,
-    page,
-  }: {
-    params: {
-      q?: string
-      category?: string
-      tag?: string
-      price?: string
-      rating?: string
-      sort?: string
-      page?: string
-    }
-    tag?: string
-    category?: string
-    sort?: string
-    price?: string
-    rating?: string
-    page?: string
-  }) => {
-    const newParams = { ...params }
-    if (category) newParams.category = category
-    if (tag) newParams.tag = toSlug(tag)
-    if (price) newParams.price = price
-    if (rating) newParams.rating = rating
-    if (page) newParams.page = page
-    if (sort) newParams.sort = sort
-    return `/search?${new URLSearchParams(newParams).toString()}`
-  }
+    export const getFilterUrl = ({
+      category,
+      tag,
+      price,
+      rating,
+      sort,
+      page,
+      params,
+    }: {
+      category?: string;
+      tag?: string;
+      price?: string;
+      rating?: string;
+      sort?: string;
+      page?: string;
+      params: any;
+    }) => {
+      const { q = "all" } = params;
+    
+      if (typeof window === "undefined") {
+        return "/search";
+      }
+    
+      // Check if we're on a tag page
+      const isTagPage = window.location.pathname.startsWith('/');
+    
+      // Create a new URLSearchParams object
+      const searchParams = new URLSearchParams();
+    
+      // Add all the filter parameters
+      if (tag && tag !== "all") searchParams.set("tag", tag);
+      if (price && price !== "all") searchParams.set("price", price);
+      if (rating && rating !== "all") searchParams.set("rating", rating);
+      if (sort && sort !== "best-selling") searchParams.set("sort", sort);
+      if (page && page !== "1") searchParams.set("page", page);
+    
+      // For tag pages
+      if (isTagPage) {
+        const currentPath = window.location.pathname;
+        return `${currentPath}?${searchParams.toString()}`;
+      }
+    
+      // For category pages
+      const isCategoryPage = params.category && params.category !== "all";
+      if (isCategoryPage) {
+        const categorySlug = category?.toLowerCase().replace(/ /g, "-");
+        return `/category/${categorySlug}?${searchParams.toString()}`;
+      }
+    
+      // For search pages
+      if (category && category !== "all") searchParams.set("category", category);
+      if (q && q !== "all") searchParams.set("q", q);
+    
+      return `/search?${searchParams.toString()}`;
+    };
+    
 
   export const formatError = (error: any): string => {
     if (error.name === 'ZodError') {

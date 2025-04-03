@@ -12,13 +12,26 @@ export default function BrowsingHistoryList({ className }: { className?: string 
 
   return (
     products.length > 0 && (
-      <div className="pt-6">
-        {/* <Separator className={cn('mb-4', className)} /> */}
-        <ProductList title="Related to items that you've viewed" type="related" />
-        {/* <Separator className="mb-4" /> */}
-        <div className="pt-6"></div>
-        <ProductList title="Your browsing history" hideDetails type="history" />
-      </div>
+      <>
+        {/* Related Products Section */}
+        <div className={cn('bg-white rounded-[8px] p-4 mb-4', className)}>
+          <ProductList 
+            title="Related to items you've viewed" 
+            type="related" 
+            href="/recommended"
+          />
+        </div>
+        
+        {/* Browsing History Section */}
+        <div className={cn('bg-white rounded-[8px] p-4', className)}>
+          <ProductList 
+            title="Your browsing history" 
+            type="history" 
+            hideDetails 
+            href="/browsing-history"
+          />
+        </div>
+      </>
     )
   )
 }
@@ -28,14 +41,15 @@ function ProductList({
   type = 'history',
   hideDetails = false,
   excludeId = '',
+  href,
 }: {
   title: string
   type: 'history' | 'related'
   excludeId?: string
   hideDetails?: boolean
+  href?: string
 }) {
   const products = useSelector((state: RootState) => state.browsingHistory.products)
-  console.log(products)
   const [data, setData] = useState([])
 
   useEffect(() => {
@@ -47,8 +61,6 @@ function ProductList({
             .join(',')}&ids=${products.map((product) => product.id).join(',')}`
         )
         const result = await res.json()
-        console.log(result)
-
         setData(result)
       } catch (error) {
         console.error('Failed to fetch browsing history:', error)
@@ -56,8 +68,13 @@ function ProductList({
     }
     fetchProducts()
   }, [excludeId, products, type])
-  console.log(data)
 
-
-  return data.length > 0 ? <ProductSlider title={title} products={data} hideDetails={hideDetails} /> : null
+  return data.length > 0 ? (
+    <ProductSlider 
+      title={title} 
+      products={data} 
+      hideDetails={hideDetails}
+      href={href}
+    />
+  ) : null
 }

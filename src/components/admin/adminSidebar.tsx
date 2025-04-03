@@ -19,7 +19,7 @@ import {
 import Image from "next/image";
 import { Route, UserData } from "src/types";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation"; // Import useRouter
+import { usePathname, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
 import LogoutButton from "@components/shared/header/LogoutButton";
 import { useEffect } from "react";
@@ -41,11 +41,12 @@ export function AdminSidebar({ user }: AppSidebarProps) {
 
   const routes: Route[] = [
     { title: "Overview", url: "/admin/overview", icon: Overview },
-    { title: "Orders", url: "/dashboard/admin/list-categories", icon: Order },
+    { title: "Orders", url: "/admin/orders", icon: Order },
     { title: "Products", url: "/admin/products", icon: Product },
-    { title: "Bundles", url: "/dashboard/admin/list-products", icon: Bundle },
+    { title: "Bundles", url: "/admin/bundles", icon: Bundle },
     { title: "Agents", url: "/admin/agents", icon: User },
     { title: "Customers", url: "/admin/customers", icon: Profile },
+    { title: "Promotions", url: "/admin/promotions", icon: Product },
   ];
 
   return (
@@ -53,7 +54,7 @@ export function AdminSidebar({ user }: AppSidebarProps) {
       <SidebarContent>
         <SidebarGroup>
           <Circles />
-          <div>
+          <Link href={"/"}>
             <Image
               src="/footerlogo.png"
               alt="logo"
@@ -61,9 +62,9 @@ export function AdminSidebar({ user }: AppSidebarProps) {
               height={40}
               className="pt-6 cursor-pointer"
             />
-          </div>
+          </Link>
           <SidebarGroupContent>
-            <SidebarMenu className="mt-6 flex gap-2">
+            <SidebarMenu className="my-6 flex gap-2 overflow-y-scroll max-h-[calc(100vh-200px)]">
               {routes.map((item) => {
                 const isActive = pathname.startsWith(item.url);
 
@@ -78,7 +79,7 @@ export function AdminSidebar({ user }: AppSidebarProps) {
                             : "hover:bg-[#1B6013] hover:text-white"
                         }`}
                       >
-                        <span className={`size-5 text-[#667085] ${isActive && "fill-white"}`}>
+                        <span className={`size-5 text-[#667085] hover:fill-white ${isActive && "fill-white"}`}>
                           <item.icon />
                         </span>
                         <span className="text-xl">{item.title}</span>

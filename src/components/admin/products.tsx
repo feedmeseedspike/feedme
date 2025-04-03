@@ -30,7 +30,7 @@ import {
 import { Checkbox } from "@components/ui/checkbox";
 import { formatNaira } from "src/lib/utils";
 import { BiEdit } from "react-icons/bi";
-import Pagination from "@components/admin/productPagination"; // Import the Pagination component
+import Pagination from "@components/admin/productPagination"; 
 import { Separator } from "@components/ui/separator";
 import Link from "next/link";
 import { products } from "src/lib/data";

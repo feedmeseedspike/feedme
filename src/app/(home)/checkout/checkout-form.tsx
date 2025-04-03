@@ -82,7 +82,7 @@ interface AppSidebarProps {
 const CheckoutForm = ({ user }: AppSidebarProps) => {
   const router = useRouter();
   const dispatch = useDispatch();
-  const { items, itemsPrice, shippingAddress } = useSelector(
+  const { items, checkoutItems, itemsPrice, shippingAddress } = useSelector(
     (state: RootState) => state.cart
   );
   const [isPending, startTransition] = useTransition();
@@ -97,8 +97,15 @@ const CheckoutForm = ({ user }: AppSidebarProps) => {
   const cost =
     locations.find((loc) => loc.value === locationAddress)?.cost || 2500;
 
-  // Total amount calculation
-  const totalAmount = itemsPrice;
+  // Use checkoutItems if available, otherwise use all items
+  const itemsToProcess = checkoutItems.length > 0 ? checkoutItems : items;
+
+  // Calculate total based on checkout items
+  const totalAmount =
+    checkoutItems.length > 0
+      ? checkoutItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
+      : itemsPrice;
+
   const totalAmountPaid =
     totalAmount + 0.075 * totalAmount + cost - voucherDiscount;
 
@@ -174,7 +181,7 @@ const CheckoutForm = ({ user }: AppSidebarProps) => {
     startTransition(async () => {
       const orderData = {
         userId: user._id,
-        cartItems: items.map((item) => ({
+        cartItems: itemsToProcess.map((item) => ({
           productId: item.product,
           quantity: item.quantity,
         })),
@@ -310,12 +317,12 @@ const CheckoutForm = ({ user }: AppSidebarProps) => {
             <h1 className="font-semibold pt-5 pb-3">Order Summary</h1>
             <Separator />
             <div className="flex flex-col gap-3 py-5">
-              {items.length === 0 ? (
+              {itemsToProcess.length === 0 ? (
                 <div className="flex justify-center items-center text-xl text-gray-500">
                   Your cart is empty.
                 </div>
               ) : (
-                items.map((item) => (
+                itemsToProcess.map((item) => (
                   <div
                     className="flex items-center justify-between"
                     key={item.name}
@@ -345,50 +352,6 @@ const CheckoutForm = ({ user }: AppSidebarProps) => {
                   </div>
                 ))
               )}
-              <Separator className="my-2" />
-              <div className="flex w-full items-center space-x-2">
-                <Input
-                  type="text"
-                  placeholder="Discount Code"
-                  className="h-12"
-                  value={voucherCode}
-                  onChange={(e) => setVoucherCode(e.target.value)}
-                />
-                <Button
-                  type="button"
-                  className="btn-primary h-12"
-                  onClick={handleVoucherValidation}
-                  disabled={isPending}
-                >
-                  Apply
-                </Button>
-              </div>
-              <Separator className="my-2" />
-              <div className="flex justify-between">
-                <p>Subtotal</p>
-                <p>{formatNaira(itemsPrice)}</p>
-              </div>
-              <div className="flex justify-between">
-                <p>Delivery Fee</p>
-                <p>{formatNaira(cost)}</p>
-              </div>
-              {isVoucherValid && (
-                <div className="flex justify-between">
-                  <p>Voucher Discount</p>
-                  <p>- {formatNaira(voucherDiscount)}</p>
-                </div>
-              )}
-              <div className="flex justify-between font-bold">
-                <p>Total</p>
-                <p>{formatNaira(totalAmountPaid)}</p>
-              </div>
-              <Button
-                className="w-full mt-4 rounded-full py-6 font-medium bg-[#1B6013]"
-                onClick={handleOrderSubmission}
-                disabled={items.length === 0 || isPending}
-              >
-                Proceed To Payment
-              </Button>
             </div>
           </div>
         </div>

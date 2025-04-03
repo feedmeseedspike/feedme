@@ -64,7 +64,7 @@ const TopCategories = ({ categories }: Props) => {
         <div className="flex gap-3 md:gap-6 pt-6 cursor-pointer overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide w-full">
           {categories.map((category) => {
             return (
-              <Link href={`/search/?category=${category?.title}`}
+              <Link href={`/category/${category?.title}`}
                 className="flex flex-col gap-2 justify-center items-center flex-shrink-0"
                 key={category._id}
               >

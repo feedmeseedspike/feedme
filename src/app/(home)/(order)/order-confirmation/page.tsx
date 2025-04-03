@@ -20,7 +20,7 @@ const OrderConfirmation = () => {
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto">
       <div className="grid justify-center items-center">
-      <img src="/order-confirmation.gif" alt="Order Confirmation" className="mx-auto mb-4" style={{ width: '150px', height: '150px' }} />
+      <img src="/order-confirmation.gif" width={300} height={300} alt="Order Confirmation" className="mx-auto mb-4" style={{ width: '150px', height: '150px' }} />
         <h1 className="text-2xl md:text-3xl font-bold md:mb-2 text-center">Your order is completed!</h1>
         <p className="mb-8 text-sm text-gray-500 text-center">Thank you. Your Order has been received.</p>
       </div>
@@ -86,5 +86,4 @@ const OrderConfirmation = () => {
     </div>
   );
 
-};
-export default OrderConfirmation;
+};export default OrderConfirmation;

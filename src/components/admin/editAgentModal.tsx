@@ -21,6 +21,7 @@ import {
 } from "@components/ui/select";
 import { CloudUpload } from "lucide-react";
 import Agent from "@components/icons/addAgent.svg";
+import Image from "next/image";
 
 const AgentSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -42,7 +43,7 @@ interface EditAgentModalProps {
     email: string;
     phoneNumber: string;
     location: string;
-    image: string; // URL of the existing image
+    image: string; 
   };
 }
 
@@ -109,17 +110,16 @@ export default function EditAgentModal({
 
   // Handle form submission
   const submitForm = (data: AgentFormValues) => {
-    if (image || previewImage) {
+    if (image) {
       const formData = {
         ...data,
-        location: `${data.location}, Lagos`, // Concatenate location with "Lagos"
-        image: image || previewImage, // Use the new image or the existing one
+        location: `${data.location}, Lagos`,
+        image: image,
       };
-      if (onSubmit) onSubmit(formData); // Pass updated data to parent
+      if (onSubmit) onSubmit(formData);
       onClose();
     }
   };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px] lg:max-w-[640px]">
@@ -234,10 +234,12 @@ export default function EditAgentModal({
                 className="cursor-pointer text-center"
               >
                 {previewImage ? (
-                  <img
+                  <Image
                     src={previewImage}
                     alt="Preview"
-                    className="w-20 h-20 object-cover rounded-md"
+                    width={80}
+                    height={80}
+                    className="object-cover rounded-md"
                   />
                 ) : (
                   <div className="flex flex-col items-center justify-center gap-2 py-2">

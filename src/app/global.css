@@ -6,6 +6,56 @@
 @tailwind utilities;
 
 
+/* Custom animation for filled paths */
+@keyframes fill-draw {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+
+/* Apply to filled paths */
+.animate-fill-draw {
+  animation: fill-draw 0.6s ease-out forwards;
+}
+
+/* Add this to your global.css */
+.simplebar-scrollbar::before {
+  background-color: #1B6013 !important;
+  opacity: 0.8 !important;
+}
+
+.simplebar-scrollbar.simplebar-visible::before {
+  opacity: 0.7 !important;
+}
+
+/* Hide default scrollbars */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
+/* Apply SimpleBar to all scrollable elements */
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto,
+.overflow-scroll,
+.overflow-y-scroll,
+.overflow-x-scroll {
+  position: relative;
+}
+
+
+
 @layer base {
   html {
     font-family: var(--font-proxima), "Poppins";

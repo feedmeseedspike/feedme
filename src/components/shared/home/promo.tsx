@@ -4,8 +4,7 @@ import Image from "next/image";
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { formatNaira } from "src/lib/utils";
-import { ZodNumberCheck } from "zod";
-import { AlignHorizontalJustifyEnd } from "lucide-react";
+import Link from "next/link";
 
 const promos = [
   {
@@ -16,6 +15,7 @@ const promos = [
     newPrice: 5850,
     bgColor: "#1B6013",
     imageUrl: "/images/riverbite.png",
+    tag: "todays-deal",
   },
   {
     id: 2,
@@ -23,7 +23,8 @@ const promos = [
     discount: "BEST DEALS",
     bgColor: "#000000",
     imageUrl: "/images/fruits.png",
-    countdown: 3 * 24 * 60 * 60, // 3 days in seconds
+    countdown: 3 * 24 * 60 * 60,
+    tag: "black-friday",
   },
   {
     id: 3,
@@ -32,9 +33,9 @@ const promos = [
     extraDiscount: "64% OFF",
     bgColor: "#F0800F",
     imageUrl: "/images/lemon.png",
+    tag: "fresh-fruits",
   },
 ];
-
 const Promo = () => {
   const [timeLeft, setTimeLeft] = useState(promos[1].countdown);
 
@@ -50,13 +51,17 @@ const Promo = () => {
 
   const formatTime = (time: number) => {
     const days = String(Math.floor(time / (24 * 60 * 60))).padStart(2, "0");
-    const hours = String(Math.floor((time % (24 * 60 * 60)) / (60 * 60))).padStart(2, "0");
-    const minutes = String(Math.floor((time % (60 * 60)) / 60)).padStart(2, "0");
+    const hours = String(
+      Math.floor((time % (24 * 60 * 60)) / (60 * 60))
+    ).padStart(2, "0");
+    const minutes = String(Math.floor((time % (60 * 60)) / 60)).padStart(
+      2,
+      "0"
+    );
     const seconds = String(time % 60).padStart(2, "0");
-  
+
     return { days, hours, minutes, seconds };
   };
-  
 
   const { days, hours, minutes, seconds } = formatTime(timeLeft ?? 0);
 
@@ -89,57 +94,63 @@ const Promo = () => {
               {promo.title}
             </h1>
 
-<div className="flex flex-col min-h-[100px]">
-  {promo.oldPrice && promo.newPrice && (
-    <div className="flex gap-2 items-center justify-center pt-4">
-      <p className="line-through text-white">{formatNaira(promo.oldPrice)}</p>
-      <p className="text-white font-bold">{formatNaira(promo.newPrice)}</p>
-    </div>
-  )}
+            <div className="flex flex-col min-h-[100px]">
+              {promo.oldPrice && promo.newPrice && (
+                <div className="flex gap-2 items-center justify-center pt-4">
+                  <p className="line-through text-white">
+                    {formatNaira(promo.oldPrice)}
+                  </p>
+                  <p className="text-white font-bold">
+                    {formatNaira(promo.newPrice)}
+                  </p>
+                </div>
+              )}
 
-  {promo.extraDiscount && (
-    <div className="flex gap-2 items-center justify-center pt-4">
-      <p className="text-white">Up to</p>
-      <h1 className="bg-[#161B20] rounded-xl text-white text-2xl px-4 py-1">
-        {promo.extraDiscount}
-      </h1>
-    </div>
-  )}
+              {promo.extraDiscount && (
+                <div className="flex gap-2 items-center justify-center pt-4">
+                  <p className="text-white">Up to</p>
+                  <h1 className="bg-[#161B20] rounded-xl text-white text-2xl px-4 py-1">
+                    {promo.extraDiscount}
+                  </h1>
+                </div>
+              )}
 
-  {promo.countdown && (
-    <motion.div
-      className="mt-6 text-white flex items-center gap-4"
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5 }}
-    >
-      <div className="flex flex-col gap-2">
-        <div className="font-semibold text-3xl">{days}</div>
-        <span className="text-base">DAYS</span>
-      </div>
-      <span className="">:</span>
-      <div className="flex flex-col gap-2">
-        <div className="font-semibold text-3xl">{hours}</div>
-        <span className="">HOURS</span>
-      </div>
-      <span className="">:</span>
-      <div className="flex flex-col gap-2">
-        <div className="font-semibold text-3xl">{minutes}</div>
-        <span className="">MINS</span>
-      </div>
-      <span className="">:</span>
-      <div className="flex flex-col gap-2">
-        <div className="font-semibold text-3xl">{seconds}</div>
-        <span className="">SECS</span>
-      </div>
-    </motion.div>
-  )}
-</div>
+              {promo.countdown && (
+                <motion.div
+                  className="mt-6 text-white flex items-center gap-4"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <div className="flex flex-col gap-2">
+                    <div className="font-semibold text-3xl">{days}</div>
+                    <span className="text-base">DAYS</span>
+                  </div>
+                  <span className="">:</span>
+                  <div className="flex flex-col gap-2">
+                    <div className="font-semibold text-3xl">{hours}</div>
+                    <span className="">HOURS</span>
+                  </div>
+                  <span className="">:</span>
+                  <div className="flex flex-col gap-2">
+                    <div className="font-semibold text-3xl">{minutes}</div>
+                    <span className="">MINS</span>
+                  </div>
+                  <span className="">:</span>
+                  <div className="flex flex-col gap-2">
+                    <div className="font-semibold text-3xl">{seconds}</div>
+                    <span className="">SECS</span>
+                  </div>
+                </motion.div>
+              )}
+            </div>
 
-
-            <button className="text-[#1B6013] relative z-50 rounded-lg px-6 py-3 bg-white font-semibold mt-12">
+            <Link
+              href={`/${promo.tag}`}
+              className="text-[#1B6013] relative z-50 rounded-lg px-6 py-3 bg-white font-semibold mt-12 inline-block"
+            >
               Shop Now
-            </button>
+            </Link>
 
             <Image
               className="absolute bottom-0 w-full"

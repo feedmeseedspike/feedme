@@ -9,14 +9,13 @@ export default function AddToBrowsingHistory({
   category,
 }: {
   id: string
-  category: string
+  category: string[]
 }) {
   const dispatch = useDispatch()
 
   useEffect(() => {
-    dispatch(addItem({ id, category }))
+    dispatch(addItem({ id, category: category[0] }))
   }, [dispatch, id, category])
-
   // console.log(addItem({ id, category }))
 
   return null

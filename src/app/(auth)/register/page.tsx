@@ -27,11 +27,10 @@ export default async function SignUpPage(props: {
 
   return (
     <main className="h-screen flex">
-      {/* Right Section (Image) */}
       <PreloadResource />
 
       {/* Left Section (Signup Form) */}
-      <div className="flex md:w-[60%] lg:w-[40%] w-full flex-col justify-center px-4 md:px-8 !pt-10 pb-10 overflow-y-auto ml-auto">
+      <div className="flex md:w-[60%] lg:w-[40%] w-full flex-col justify-center px-4 md:px-8 !pt-20 pb-10 overflow-y-auto ml-auto">
         <div className="pb-6">
           <div className="flex flex-col gap-7 pt-16">
             <Link href="/">

@@ -22,6 +22,25 @@ export function getProductsForCard({ tag, limit = 4 }: { tag: string; limit?: nu
     }));
 }
 
+
+export function getTrendingProducts({ limit = 10 }: { limit?: number }) {
+  return products
+    .filter((product) => product.tags.includes('trending') && product.isPublished)
+    .slice(0, limit);
+}
+
+export function getFreshFruits({ limit = 10 }: { limit?: number }) {
+  return products
+    .filter((product) => product.tags.includes('fresh-fruits') && product.isPublished)
+    .slice(0, limit);
+}
+
+export function getFreshVegetables({ limit = 10 }: { limit?: number }) {
+  return products
+    .filter((product) => product.tags.includes('fresh-vegetables') && product.isPublished)
+    .slice(0, limit);
+}
+
 export function getProductsByTag({ tag, limit = 10 }: { tag: string; limit?: number }) {
   return products.filter((product) => product.tags.includes(tag) && product.isPublished).slice(0, limit);
 }
@@ -43,7 +62,11 @@ export function getRelatedProductsByCategory({
   page: number;
 }) {
   const filteredProducts = products
-    .filter((product) => product.category === category && product.slug !== productId && product.isPublished)
+    .filter((product) => 
+      product.category[0] === category && 
+      product._id !== productId && 
+      product.isPublished
+    )
     .sort((a, b) => b.numSales - a.numSales);
 
   const start = (page - 1) * limit;
@@ -54,6 +77,7 @@ export function getRelatedProductsByCategory({
     totalPages: Math.ceil(filteredProducts.length / limit),
   };
 }
+
 
 export function getAllProducts({
   query,

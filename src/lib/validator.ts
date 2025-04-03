@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { array, z } from "zod";
 
 const MongoId = z
   .string()
@@ -22,23 +22,27 @@ const Price = (field: string) =>
 export const OptionSchema = z.object({
   name: z.string().min(1, "Option name is required"),
   price: z
-  .number({
-    invalid_type_error: "Price must be a number",
-    required_error: "Price is required",
-  })
-  .min(50, "Price must be at least ₦50"),
+    .number({
+      invalid_type_error: "Price must be a number",
+      required_error: "Price is required",
+    })
+    .min(50, "Price must be at least ₦50"),
   stockStatus: z.enum(["In Stock", "Out of Stock"], {
     required_error: "Stock status is required",
-  }),
-  image: z
-    .instanceof(File, { message: "Image is required" })
-    .refine((file) => file.size <= 5 * 1024 * 1024, {
-      message: "Image must be less than 5MB",
-    })
-    .refine((file) => file.type.startsWith("image/"), {
-      message: "Only image files are allowed",
-    }),
+  }).optional(),
+  image: z.union([
+    // Accept either a File object or a string URL
+    z.instanceof(File, { message: "Image is required" })
+      .refine((file) => file.size <= 5 * 1024 * 1024, {
+        message: "Image must be less than 5MB",
+      })
+      .refine((file) => file.type.startsWith("image/"), {
+        message: "Only image files are allowed",
+      }),
+    z.string().url("Invalid image URL")
+  ]),
 });
+
 
 export type OptionType = z.infer<typeof OptionSchema>;
 
@@ -111,7 +115,7 @@ export const ProductInputSchema = z.object({
   _id: z.string().optional(), 
   name: z.string().min(3, "Name must be at least 3 characters"),
   slug: z.string().min(3, "Slug must be at least 3 characters"),
-  category: MongoId,
+  category: array(z.string()),
   images: z
     .array(z.string().url("Invalid image URL"))
     .min(1, "At least one image is required"),
@@ -119,9 +123,11 @@ export const ProductInputSchema = z.object({
   isPublished: z.boolean(),
   price: Price("Price"),
   listPrice: Price("List price"),
-  stockStatus: z.enum(["In Stock", "Out of Stock"], {
-    required_error: "Stock status is required",
-  }),
+  stockStatus: z.any().optional(),
+  // stockStatus: z.union([
+  //   z.enum(["In Stock", "Out of Stock"]),
+  //   z.string()
+  // ]).optional(),
   brand: z.string().min(1, "Brand is required"),
   avgRating: z.coerce.number().min(0).max(5, "Rating must be between 0 and 5"),
   numReviews: z.coerce
@@ -138,8 +144,10 @@ export const ProductInputSchema = z.object({
     countInStock: z.coerce.number().int().optional(),
   description: z.string().min(1, "Description is required"),
   colors: z.array(z.string()).default([]),
-  options: z.array(OptionSchema).default([]), // Supports multiple product variants
-  reviews: z.array(ReviewInputSchema).default([]),
+  options: z.array(z.any()).default([]),
+  reviews: z.array(z.any()).default([]),
+  // options: z.array(OptionSchema).default([]), // Supports multiple product variants
+  // reviews: z.array(ReviewInputSchema).default([]),
 });
 
 // USER
@@ -197,6 +205,7 @@ export const ProductUpdateSchema = ProductInputSchema.extend({
 });
 
 
+export type Products = z.infer<typeof ProductUpdateSchema>;
 export type Product = z.infer<typeof ProductInputSchema>;
 export type option = z.infer<typeof OptionSchema>;
 export type ProductOption = z.infer<typeof OptionSchema>;

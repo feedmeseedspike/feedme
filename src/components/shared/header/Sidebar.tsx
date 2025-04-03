@@ -40,12 +40,6 @@ export default function Sidebar({ categories }: Props) {
           ))}
         </SelectContent>
       </Select>
-
-      {selectedCategory && (
-        <p className="mt-4 text-sm text-gray-600">
-          Selected Category: {categories.find((cat) => cat._id === selectedCategory)?.title}
-        </p>
-      )}
     </div>
   );
 }

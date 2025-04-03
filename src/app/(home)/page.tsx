@@ -5,9 +5,11 @@ import {
   getAllCategories,
   getProductsByTag,
   getProductsForCard,
+  getFreshFruits,
+  getFreshVegetables,
+  getTrendingProducts,
 } from "src/lib/actions/product.actions";
 import { CategoryResponse } from "src/types/category";
-import { Card, CardContent } from "@components/ui/card";
 import ProductSlider from "@components/shared/product/product-slider";
 import Container from "@components/shared/Container";
 import Headertags from "@components/shared/header/Headertags";
@@ -30,23 +32,19 @@ const fetchCategories = async (): Promise<CategoryResponse> => {
 
 export default async function Home() {
   const user = await getUser();
-  // console.log(user)
+  const categoriesResponse = await fetchCategories();
 
+  // Fetch products for each section
   const todaysDeals = getProductsByTag({ tag: "todays-deal" });
   const bestSellingProducts = getProductsByTag({ tag: "best-seller" });
-
-  const categories = getAllCategories().slice(0, 4);
-  const newArrivals = getProductsForCard({
-    tag: "new-arrival",
-  });
-  // console.log(newArrivals)
-  const featureds = getProductsForCard({
-    tag: "featured",
-  });
-  const bestSellers = getProductsForCard({
-    tag: "best-seller",
-  });
-  const categoriesResponse = await fetchCategories();
+  const newArrivals = getProductsByTag({ tag: "new-arrival" });
+  const featureds = getProductsByTag({ tag: "featured" });
+  const recommendedProducts = getProductsByTag({ tag: "recommended" });
+  
+  // Use our new functions for these sections
+  const trendingProducts = getTrendingProducts({ limit: 10 });
+  const freshFruits = getFreshFruits({ limit: 10 });
+  const freshVegetables = getFreshVegetables({ limit: 10 });
 
   return (
     <main className="">
@@ -56,22 +54,57 @@ export default async function Home() {
           <Banner />
           <TopCategories categories={categoriesResponse.data} />
           <div className="flex flex-col gap-12">
+            {/* New Arrivals */}
+            <ProductSlider
+              title={"New Arrivals"}
+              products={newArrivals}
+              href="/new-arrival"
+            />
+
+            {/* Today's Deals */}
+            <ProductSlider
+              title={"Today's Deals"}
+              products={todaysDeals}
+              href="/todays-deal"
+            />
+
+            {/* Best Sellers */}
             <ProductSlider
               title={"Best Selling Products 🔥"}
               products={bestSellingProducts}
-              // hideDetails
+              href="/best-seller"
             />
-            <ProductSlider title={"New Stock"} products={todaysDeals} />
-            <ProductSlider
-              title={"Pick For You"}
-              products={bestSellingProducts}
-              // hideDetails
-            />
+
+            {/* Featured Products */}
+            {/* <ProductSlider
+              title={"Featured Products"}
+              products={featureds}
+              href="/featured"
+            /> */}
+
+            <Promo />
+            
+            {/* Trending Products */}
             <ProductSlider
               title={"Trending Near You"}
-              products={bestSellingProducts}
+              products={trendingProducts}
+              href="/trending"
             />
-            <Promo />
+
+            {/* Fresh Fruits */}
+            <ProductSlider
+              title={"Fresh Fruits"}
+              products={freshFruits}
+              href="/fresh-fruits"
+            />
+            
+            {/* Fresh Vegetables */}
+            <ProductSlider
+              title={"Fresh Vegetables"}
+              products={freshVegetables}
+              href="/fresh-vegetables"
+            />
+            
             <section>
               <BrowsingHistoryList className="mt-10" />
             </section>

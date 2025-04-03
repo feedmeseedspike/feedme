@@ -72,7 +72,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
   }
 
   return (
-    <Sidebar className="mt-4 border h-fi py-4 overflow-y-hidden scroll">
+    <Sidebar  className="sticky top-0 h-[calc(100vh-80px)] border py-4 overflow-y-auto">
       <SidebarContent>
         <SidebarGroup>
           {/* <Circles className="mt-6" />
@@ -85,7 +85,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
               className="pt-6 cursor-pointer"
             />
           </div> */}
-          <SidebarGroupContent >
+          <SidebarGroupContent  >
             <SidebarMenu className="mt-6 flex gap-2">
               {routes.map((item) => {
                 const isActive = pathname === item.url;
@@ -97,7 +97,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
                         href={item.url}
                         className={`my-3 !flex !items-center gap-4 px-2 py-3 rounded-lg transition-all duration-300 w-full ${
                           isActive
-                            ? "bg-[#1B6013] text-white rounded-[10px]" // Active state
+                            ? "bg-[#1B6013] text-white rounded-[10px]"
                             : "hover:bg-[#1B6013] hover:text-white"
                         }`}
                       >

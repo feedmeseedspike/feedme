@@ -3,15 +3,15 @@ import { toSlug } from "src/lib/utils"
 export const headerMenus =  [
   {
     name: "Today's Deal",
-    href: '/search?tag=todays-deal',
+    href: '/todays-deal',
   },
   {
     name: 'Completed Orders',
-    href: '/search?tag=completed-orders',
+    href: '/account/order',
   },
   {
     name: 'Favourites',
-    href: '/customer/favourites',
+    href: '/account/favourites',
   },
   {
     name: 'Subscriptions',
@@ -37,7 +37,7 @@ export const products = [
     slug: toSlug('Onion'),
     category: ['General'],
     images: ["https://res.cloudinary.com/ahisi/image/upload/v1732183603/ahisi/1732183602881_produce.jpg", '/images/p11-2.jpg'],
-    tags: ['new-arrival'],
+    tags: ['new-arrival', "best-seller", "fresh-vegetables"],
     isPublished: false,
     price: 3000,
     listPrice: 0,
@@ -115,7 +115,7 @@ export const products = [
     slug: toSlug('Apple'),
     category: ['Fruits'],
     images: ["https://res.cloudinary.com/ahisi/image/upload/v1732372960/ahisi/1732372957967_1732110649466_produce-1.jpg"],
-    tags: ['new-arrival'],
+    tags: ["new-arrival", "fresh-fruits"],
     isPublished: true,
     price: 650,
     listPrice: 650,
@@ -193,7 +193,7 @@ export const products = [
     slug: toSlug('Orange'),
     category: ['Fruits'],
     images: ["https://res.cloudinary.com/ahisi/image/upload/v1732429967/ahisi/1732429966569_produce-26.jpg"],
-    tags: ["new-arrival"],
+    tags: ["new-arrival", "fresh-fruits"],
     isPublished: true,
     price: 150,
     listPrice: 150,

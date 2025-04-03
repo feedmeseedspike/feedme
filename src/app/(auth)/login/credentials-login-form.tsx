@@ -19,6 +19,7 @@ import { UserSignInSchema } from "../../../lib/validator";
 import { isRedirectError } from "next/dist/client/components/redirect";
 import { signInUser } from "src/lib/actions/auth.actions";
 import { useToast } from "src/hooks/use-toast";
+import Link from "next/link";
 
 const signInDefaultValues =
   process.env.NODE_ENV === "development"
@@ -127,6 +128,14 @@ export default function CredentialsSignInForm() {
               {loading && <Loader2 className="w-5 h-5 animate-spin" />}
               Sign In
             </Button>
+          </div>
+          <div className="flex justify-end">
+            <Link
+              href="/forgot-password"
+              className="text-sm text-blue-600 hover:underline"
+            >
+              Forgot Password?
+            </Link>
           </div>
         </div>
       </form>
