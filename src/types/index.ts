@@ -68,3 +68,15 @@ export type User = {
   data: UserData;
 };
 
+export type PublicUserData = {
+  id: string;
+  email: string;
+  display_name: string;
+  avatar_url: string | null;
+  phone: string | null;
+  role: 'buyer' | 'seller' | 'admin';
+  status: string;
+  address: string | null;
+  created_at: string;
+};
+

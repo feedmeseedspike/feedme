@@ -1,22 +1,22 @@
-'use client'
+"use client";
 
-import { useEffect } from 'react'
-import { useDispatch } from 'react-redux'
-import { addItem } from 'src/store/features/browsingHistorySlice'
+import { useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { addItem } from "src/store/features/browsingHistorySlice";
 
 export default function AddToBrowsingHistory({
   id,
   category,
 }: {
-  id: string
-  category: string[]
+  id: string;
+  category: string[];
 }) {
-  const dispatch = useDispatch()
+  const dispatch = useDispatch();
 
   useEffect(() => {
-    dispatch(addItem({ id, category: category[0] }))
-  }, [dispatch, id, category])
-  // console.log(addItem({ id, category }))
+    dispatch(addItem({ id, category: category[0] }));
+  }, [dispatch, id, category]);
+  // // console.log(addItem({ id, category }))
 
-  return null
+  return null;
 }

@@ -3,67 +3,130 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { formatError } from "src/lib/utils";
+import { createClient } from "src/utils/supabase/server";
 
-// Base API URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
-
-//  Sign Up
+// Sign Up
 export async function registerUser(userData: { name: string; email: string; password: string }) {
+  const supabase = await createClient();
+
   try {
-    const response = await fetch(`${API_BASE_URL}/user/sign-up`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(userData),
+    // Check if email already exists in users table
+    const { data: existingUser, error: checkError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', userData.email)
+      .single();
+
+    if (existingUser) {
+      return { success: false, error: { message: 'This email is already registered. Try signing in instead.' } };
+    }
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      return { success: false, error: { message: checkError.message } };
+    }
+
+    // Try to sign up the user
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email: userData.email,
+      password: userData.password,
+      options: {
+        data: { display_name: userData.name, name: userData.name },
+        emailRedirectTo: process.env.NEXT_PUBLIC_SITE_URL + "/auth/callback",
+      },
     });
 
-    if (!response.ok) throw new Error("Failed to register");
-    return { success: true, message: "User registered successfully" };
+    if (signUpError) {
+      if (signUpError.message.includes('User already registered')) {
+        return { success: false, error: { message: 'This email is already registered. Try signing in instead.' } };
+      }
+      return { success: false, error: { message: signUpError.message } };
+    }
+
+    if (!data.user) {
+      return { success: false, error: { message: 'Failed to create user account' } };
+    }
+
+    return { success: true, data };
   } catch (error: any) {
-    return { success: false, error: formatError(error.message) };
+    return { success: false, error: { message: error?.message || 'Something went wrong' } };
   }
 }
 
-//  Sign In
+// Sign In
 export async function signInUser(credentials: { email: string; password: string }) {
+  const supabase = await createClient();
   try {
-    const response = await fetch(`${API_BASE_URL}/user/sign-in`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(credentials),
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: credentials.email,
+      password: credentials.password,
     });
-
-    const data = await response.json();
-    if (!response.ok) throw new Error(data?.message || "Failed to sign in");
-
-    // Store the token in cookies (HTTP only for security)
-    cookies().set("accessToken", data.accessToken, { httpOnly: true });
-
-    return { success: true };
+    if (error) throw error;
+    // Store the access token and refresh token in cookies (HTTP only for security)
+    if (data.session?.access_token) {
+      cookies().set("accessToken", data.session.access_token, { httpOnly: true });
+    }
+    if (data.session?.refresh_token) {
+      cookies().set("refreshToken", data.session.refresh_token, { httpOnly: true });
+    }
+    return { success: true, data };
   } catch (error: any) {
     return { success: false, error: formatError(error.message) };
   }
 }
 
-//  Sign Out
+
+// Sign Out
 export async function signOutUser() {
+  const supabase = await createClient();
+  try {
+    await supabase.auth.signOut();
+  } catch {}
   cookies().delete("accessToken");
   revalidatePath("/"); // Refresh session-based UI
   return { success: true };
 }
 
-//  Get User Data (Persist Login)
+// Get User Data (Persist Login)
 export async function getUser() {
   try {
-    const token = cookies().get("accessToken")?.value;
-    if (!token) return null;
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) return null;
 
-    const response = await fetch(`${API_BASE_URL}/user/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const { data: profile } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .single();
 
-    if (!response.ok) return null;
-    return await response.json();
-  } catch {
+    return profile;
+  } catch (error) {
+    console.error('Error getting user:', error);
     return null;
   }
 }
+
+// Request Password Reset
+// Direct Password Reset (without token)
+export async function updatePassword(currentPassword: string, newPassword: string) {
+  const supabase = await createClient();
+  try {
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return { success: true, data };
+  } catch (error: any) {
+    // Handle specific Supabase auth errors if needed
+    if (error.message.includes('Invalid login credentials')) {
+        return { success: false, error: { message: 'Incorrect current password' } };
+    }
+    return { success: false, error: formatError(error.message) };
+  }
+}
+

@@ -1,56 +1,78 @@
-import { products } from "src/lib/data";
+import { getProducts, getCategories } from '../api';
+import { supabase } from '../supabaseClient';
 
-export function getAllCategories() {
-  return Array.from(
-    new Set(
-      products.flatMap((product) =>
-        Array.isArray(product.category) ? product.category : [product.category]
-      )
-    )
-  );
+export async function getAllCategories() {
+  const allCategories = await getCategories();
+  return allCategories;
 }
 
-
-export function getProductsForCard({ tag, limit = 4 }: { tag: string; limit?: number }) {
-  return products
-    .filter((product) => product.tags.includes(tag) && product.isPublished)
+export async function getProductsForCard({ tag, limit = 4 }: { tag: string; limit?: number }) {
+  const allProducts = await getProducts();
+  return allProducts
+    .filter((product) => product.tags?.includes(tag) && product.is_published)
     .slice(0, limit)
     .map(({ name, slug, images }) => ({
       name,
       href: `/product/${slug}`,
-      image: images[0],
+      image: images?.[0],
     }));
 }
 
-
-export function getTrendingProducts({ limit = 10 }: { limit?: number }) {
-  return products
-    .filter((product) => product.tags.includes('trending') && product.isPublished)
-    .slice(0, limit);
+export async function getTrendingProducts({ limit = 10 }: { limit?: number }) {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .contains('tags', ['trending'])
+    .eq('is_published', true)
+    .limit(limit);
+  if (error) throw error;
+  return data;
 }
 
-export function getFreshFruits({ limit = 10 }: { limit?: number }) {
-  return products
-    .filter((product) => product.tags.includes('fresh-fruits') && product.isPublished)
-    .slice(0, limit);
+export async function getFreshFruits({ limit = 10 }: { limit?: number }) {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .contains('tags', ['fresh-fruits'])
+    .eq('is_published', true)
+    .limit(limit);
+  if (error) throw error;
+  return data;
 }
 
-export function getFreshVegetables({ limit = 10 }: { limit?: number }) {
-  return products
-    .filter((product) => product.tags.includes('fresh-vegetables') && product.isPublished)
-    .slice(0, limit);
+export async function getFreshVegetables({ limit = 10 }: { limit?: number }) {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .contains('tags', ['fresh-vegetables'])
+    .eq('is_published', true)
+    .limit(limit);
+  if (error) throw error;
+  return data;
 }
 
-export function getProductsByTag({ tag, limit = 10 }: { tag: string; limit?: number }) {
-  return products.filter((product) => product.tags.includes(tag) && product.isPublished).slice(0, limit);
+export async function getProductsByTag({ tag, limit = 10 }: { tag: string; limit?: number }) {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .contains('tags', [tag])
+    .eq('is_published', true)
+    .limit(limit);
+  if (error) throw error;
+  return data;
 }
 
-export function getProductBySlug(slug: string) {
-  const product = products.find((p) => p.slug === slug )|| null;
-  if (!product) throw new Error('Product not found');
-  return product;
+export async function getProductBySlug(slug: string) {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('slug', slug)
+    .single();
+  if (error) throw error;
+  return data;
 }
-export function getRelatedProductsByCategory({
+
+export async function getRelatedProductsByCategory({
   category,
   productId,
   limit = 4,
@@ -61,25 +83,22 @@ export function getRelatedProductsByCategory({
   limit?: number;
   page: number;
 }) {
-  const filteredProducts = products
-    .filter((product) => 
-      product.category[0] === category && 
-      product._id !== productId && 
-      product.isPublished
-    )
-    .sort((a, b) => b.numSales - a.numSales);
-
-  const start = (page - 1) * limit;
-  const paginatedProducts = filteredProducts.slice(start, start + limit);
-
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .contains('category_ids', [category])
+    .neq('id', productId)
+    .eq('is_published', true)
+    .order('num_sales', { ascending: false })
+    .range((page - 1) * limit, page * limit - 1);
+  if (error) throw error;
   return {
-    data: paginatedProducts,
-    totalPages: Math.ceil(filteredProducts.length / limit),
+    data,
+    totalPages: Math.ceil(data.length / limit),
   };
 }
 
-
-export function getAllProducts({
+export async function getAllProducts({
   query,
   limit = 10,
   page = 1,
@@ -98,75 +117,67 @@ export function getAllProducts({
   rating?: string;
   sort?: string;
 }) {
-  let filteredProducts = products.filter((product) => product.isPublished);
+  let queryBuilder = supabase
+    .from('products')
+    .select('*')
+    .eq('is_published', true);
 
   if (query && query !== 'all') {
-    filteredProducts = filteredProducts.filter((product) =>
-      product.name.toLowerCase().includes(query.toLowerCase())
-    );
+    queryBuilder = queryBuilder.ilike('name', `%${query}%`);
   }
 
   if (category && category !== 'all') {
-    filteredProducts = filteredProducts.filter(
-      (product) => product.category[0] === category
-    );
+    queryBuilder = queryBuilder.contains('category_ids', [category]);
   }
 
   if (tag && tag !== 'all') {
-    filteredProducts = filteredProducts.filter((product) =>
-      product.tags.includes(tag)
-    );
+    queryBuilder = queryBuilder.contains('tags', [tag]);
   }
 
   if (rating && rating !== 'all') {
-    filteredProducts = filteredProducts.filter(
-      (product) => product.avgRating >= Number(rating)
-    );
+    queryBuilder = queryBuilder.gte('avg_rating', Number(rating));
   }
 
   if (price && price !== 'all') {
     const [minPrice, maxPrice] = price.split('-').map(Number);
-    filteredProducts = filteredProducts.filter(
-      (product) => product.price >= minPrice && product.price <= maxPrice
-    );
+    queryBuilder = queryBuilder.gte('price', minPrice).lte('price', maxPrice);
   }
 
-  const sortingOptions: Record<string, (a: any, b: any) => number> = {
-    'best-selling': (a, b) => b.numSales - a.numSales,
-    'price-low-to-high': (a, b) => a.price - b.price,
-    'price-high-to-low': (a, b) => b.price - a.price,
-    'avg-customer-review': (a, b) => b.avgRating - a.avgRating,
+  const sortingOptions: Record<string, { column: string; ascending: boolean }> = {
+    'best-selling': { column: 'num_sales', ascending: false },
+    'price-low-to-high': { column: 'price', ascending: true },
+    'price-high-to-low': { column: 'price', ascending: false },
+    'avg-customer-review': { column: 'avg_rating', ascending: false },
   };
 
   if (sort && sortingOptions[sort]) {
-    filteredProducts.sort(sortingOptions[sort]);
+    queryBuilder = queryBuilder.order(sortingOptions[sort].column, { ascending: sortingOptions[sort].ascending });
   } else {
-    filteredProducts.sort((a: any, b: any) => a._id - b._id);
+    queryBuilder = queryBuilder.order('id', { ascending: true });
   }
 
-  const totalProducts = filteredProducts.length;
-  const totalPages = Math.ceil(totalProducts / limit);
-  const start = (page - 1) * limit;
-  const paginatedProducts = filteredProducts.slice(start, start + limit);
+  const { data, error } = await queryBuilder.range((page - 1) * limit, page * limit - 1);
+  if (error) throw error;
 
   return {
-    products: paginatedProducts,
-    totalPages,
-    totalProducts,
-    from: start + 1,
-    to: start + paginatedProducts.length,
+    products: data,
+    totalPages: Math.ceil(data.length / limit),
+    totalProducts: data.length,
+    from: (page - 1) * limit + 1,
+    to: (page - 1) * limit + data.length,
   };
 }
 
-
-export function getAllTags() {
+export async function getAllTags() {
+  const allProducts = await getProducts();
   return Array.from(
-    new Set(products.flatMap((product) => product.tags))
-  ).sort((a, b) => a.localeCompare(b))
-  .map((tag) =>
-    tag
-      .split('-')
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ')
-  );
+    new Set(allProducts.flatMap((product) => product.tags || []))
+  )
+    .sort((a, b) => a.localeCompare(b))
+    .map((tag) =>
+      tag
+        .split('-')
+        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ')
+    );
 }

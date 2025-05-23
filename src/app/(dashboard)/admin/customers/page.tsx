@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableHeader,
@@ -28,97 +28,47 @@ import {
   SheetFooter,
 } from "@components/ui/sheet";
 import { Checkbox } from "@components/ui/checkbox";
-import { BiEdit } from "react-icons/bi";
+// import { BiEdit } from "react-icons/bi";
 import Pagination from "@components/admin/productPagination";
 import Image from "next/image";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@components/ui/select";
+// import {
+//   Select,
+//   SelectContent,
+//   SelectItem,
+//   SelectTrigger,
+//   SelectValue,
+// } from "@components/ui/select";
 import { useRouter } from "next/navigation";
-
-// Dummy data for customers
-const customers = [
-  {
-    id: 1,
-    name: "John Doe",
-    phoneNumber: "+234 812 345 6789",
-    email: "johndoe@example.com",
-    totalAmountSpent: 50000,
-    totalOrders: 10,
-    location: "Ikeja, Lagos",
-    image: "/images/customer1.jpg",
-    orders: [
-      {
-        orderNo: "#0001",
-        date: "Nov 11 at 7:56pm",
-        amount: "N5,000.00",
-        platform: "WhatsApp",
-        address: "17, ABC Street, Ikeja, Lagos",
-        progress: "Out for Delivery",
-      },
-      {
-        orderNo: "#0002",
-        date: "Nov 10 at 5:30pm",
-        amount: "N3,000.00",
-        platform: "Mobile App",
-        address: "17, ABC Street, Ikeja, Lagos",
-        progress: "Processing order",
-      },
-    ],
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    phoneNumber: "+234 812 345 6789",
-    email: "janesmith@example.com",
-    totalAmountSpent: 75000,
-    totalOrders: 15,
-    location: "Victoria Island, Lagos",
-    image: "/images/customer2.jpg",
-    orders: [
-      {
-        orderNo: "#0003",
-        date: "Nov 9 at 8:00pm",
-        amount: "N7,000.00",
-        platform: "Website",
-        address: "12, XYZ Street, Victoria Island, Lagos",
-        progress: "Order Continued",
-      },
-    ],
-  },
-];
+import { getCustomers } from "../../../../lib/api";
 
 export default function Customers() {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<{
-    id: number;
-    name: string;
-    email: string;
-    phoneNumber: string;
-    location: string;
-    image: string;
-    totalAmountSpent: number;
-    totalOrders: number;
-    orders: {
-      orderNo: string;
-      date: string;
-      amount: string;
-      platform: string;
-      address: string;
-      progress: string;
-    }[];
-  } | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    getCustomers()
+      .then((data) => {
+        setCustomers(data || []);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message || "Failed to fetch customers");
+        setLoading(false);
+      });
+  }, []);
 
   // Filter customers based on search
   const filteredCustomers = customers.filter((customer) =>
-    customer.name.toLowerCase().includes(search.toLowerCase())
+    (customer.display_name || customer.name || "")
+      .toLowerCase()
+      .includes(search.toLowerCase())
   );
 
   // Pagination
@@ -137,16 +87,20 @@ export default function Customers() {
 
   // When a customer row is clicked, navigate to their page
   const handleCustomerClick = (customerId: number) => {
-    console.log("Customer ID:", customerId);
+    // // console.log("Customer ID:", customerId);
     // router.push(`/customers/${customerId}`);
   };
 
+  if (loading) return <div className="p-4">Loading customers...</div>;
+  if (error) return <div className="p-4 text-red-500">{error}</div>;
   return (
     <div className="p-4">
       <div className="flex justify-between items-center mb-4">
         <div>
           <h2 className="text-3xl font-semibold">Customers</h2>
-          <p className="text-[#475467]">View customers and their orders here.</p>
+          <p className="text-[#475467]">
+            View customers and their orders here.
+          </p>
         </div>
       </div>
 
@@ -282,7 +236,7 @@ export default function Customers() {
               <TableRow
                 key={customer.id}
                 className="hover:bg-gray-100 cursor-pointer"
-                onClick={() => handleCustomerClick(customer.id)} 
+                onClick={() => handleCustomerClick(customer.id)}
               >
                 <TableCell className="text-center px-6 py-4">
                   {customer.id}
@@ -326,7 +280,6 @@ export default function Customers() {
           onPageChange={handlePageChange}
         />
       </div>
-
 
       {/* Customer Orders Modal */}
       {selectedCustomer && (
@@ -372,7 +325,9 @@ export default function Customers() {
                 Previous
               </button>
               <span>Page 1 of 10</span>
-              <button className="text-gray-500 hover:text-gray-700">Next</button>
+              <button className="text-gray-500 hover:text-gray-700">
+                Next
+              </button>
             </div>
           </div>
         </div>

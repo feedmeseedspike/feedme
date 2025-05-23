@@ -1,86 +1,416 @@
-import { products } from "src/lib/data";
-import { ReviewInputSchema } from "src/lib/validator";
-import { IReviewInput } from "src/types";
-import { z } from "zod";
+"use server";
 
+import { createClient } from "src/utils/supabase/server";
+
+interface ActionResponse {
+  success: boolean;
+  message?: string;
+  data?: any;
+}
+
+interface ReviewQueryResult {
+  id: string;
+  title: string;
+  comment: string;
+  rating: number;
+  is_verified_purchase: boolean;
+  helpful_count: number;
+  reports: any[];
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  users: {
+    id: string;
+    display_name: string | null;
+    avatar_url: string | null;
+  }[] | null;
+}
+
+// Create or update a review (only owner can modify)
 export async function createUpdateReview({
   data,
-  path,
+  userId,
 }: {
-  data: z.infer<typeof ReviewInputSchema>;
-  path: string;
-}) {
-  try {
-    const review = ReviewInputSchema.parse(data);
+  data: {
+    product: string;
+    title: string;
+    comment: string;
+    rating: number;
+    isVerifiedPurchase: boolean;
+    reviewId?: string;
+  };
+  userId: string;
+}): Promise<ActionResponse> {
+  const supabase = await createClient();
 
-    // Find the product
-    const product = products.find((p) => p.slug === review.product);
-    if (!product) {
-      throw new Error("Product not found");
+  try {
+    console.log("createUpdateReview - data.product:", data.product);
+    console.log("createUpdateReview - userId:", userId);
+    if (data.reviewId) {
+      console.log("createUpdateReview - data.reviewId:", data.reviewId);
     }
 
-    // Check if the review exists
-    const existingReviewIndex = product.reviews.findIndex(
-      (r) => r.user === review.user
-    );
+    // Check for existing review by this user for this product
+    const { data: existingReview, error: fetchError } = data.reviewId
+      ? { data: { id: data.reviewId, user_id: userId }, error: null }
+      : await supabase
+        .from("product_reviews")
+        .select("id, user_id")
+        .eq("product_id", data.product)
+        .eq("user_id", userId)
+        .maybeSingle();
 
-    if (existingReviewIndex !== -1) {
+    if (fetchError && !fetchError.message.includes("No rows found")) {
+      throw fetchError;
+    }
+
+    if (existingReview) {
+      // Only the owner can update
+      if (existingReview.user_id !== userId) {
+        return {
+          success: false,
+          message: "You can only edit your own reviews",
+        };
+      }
+
       // Update existing review
-      product.reviews[existingReviewIndex] = review;
+      const { error: updateError } = await supabase
+        .from("product_reviews")
+        .update({
+          title: data.title,
+          comment: data.comment,
+          rating: data.rating,
+          is_verified_purchase: data.isVerifiedPurchase,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existingReview.id);
+
+      if (updateError) throw updateError;
+
       return {
         success: true,
         message: "Review updated successfully",
       };
     } else {
-      // Add new review
-      (product.reviews as IReviewInput[]).push(review)
+      // Create new review
+      console.log("createUpdateReview - Inserting new review with product_id:", data.product, "and user_id:", userId);
+      const { error: insertError } = await supabase
+        .from("product_reviews")
+        .insert([{
+          product_id: data.product,
+          user_id: userId,
+          title: data.title,
+          comment: data.comment,
+          rating: data.rating,
+          is_verified_purchase: data.isVerifiedPurchase,
+          helpful_count: 0,
+          reports: [],
+        }]);
+
+      if (insertError) throw insertError;
+
       return {
         success: true,
         message: "Review created successfully",
       };
     }
-  } catch (error: unknown) {
+  } catch (error) {
+    console.error("Error in createUpdateReview:", error);
     return {
       success: false,
-      // message: error.message,
+      message: error instanceof Error ? error.message : "Failed to process review",
     };
   }
 }
 
+// Get reviews for a product
 export async function getReviews({
   productId,
-  limit,
-  page,
-}: {
-  productId: string;
-  limit?: number;
-  page: number;
-}) {
-  const product = products.find((p) => p.slug === productId);
-  if (!product) {
-    return { data: [], totalPages: 1 };
-  }
-
-  const totalReviews = product.reviews.length;
-  const totalPages = totalReviews === 0 ? 1 : Math.ceil(totalReviews / (limit || 10));
-
-  return {
-    data: product.reviews.slice((page - 1) * (limit || 10), page * (limit || 10)),
-    totalPages,
-  };
-}
-
-export const getReviewByProductId = async ({
-  productId,
+  page = 1,
+  limit = 5,
   userId,
 }: {
   productId: string;
+  page?: number;
+  limit?: number;
+  userId?: string;
+}): Promise<{
+  data: any[];
+  totalPages: number;
+}> {
+  const supabase = await createClient();
+
+  try {
+    // Get total count
+    const { count } = await supabase
+      .from("product_reviews")
+      .select("*", { count: "exact", head: true })
+      .eq("product_id", productId);
+
+      console.log(count)
+      
+      const totalPages = count ? Math.ceil(count / limit) : 1;
+
+      // Get paginated reviews with user info
+      const { data: reviews, error } = await supabase
+      .from("product_reviews")
+      .select(`
+        id,
+        title,
+        comment,
+        rating,
+        is_verified_purchase,
+        helpful_count,
+        reports,
+        created_at,
+        updated_at,
+        user_id,
+        users (id, display_name, avatar_url)
+      `)
+        .eq("product_id", productId)
+        .order("created_at", { ascending: false })
+        .range((page - 1) * limit, page * limit - 1);
+        
+        console.log(reviews)
+    if (error) throw error;
+
+    // Check if current user has voted on each review
+    const reviewsWithVotes = await Promise.all(
+      (reviews as ReviewQueryResult[] || []).map(async (review: ReviewQueryResult) => {
+        if (!userId) {
+             return {
+                 ...review,
+                 hasVoted: false,
+                 canEdit: false,
+                 user: review.users?.[0] ? {
+                     id: review.users[0].id,
+                     name: review.users[0].display_name || 'Anonymous',
+                     avatar_url: review.users[0].avatar_url || null,
+                 } : null
+             };
+        }
+
+        const { data: vote } = await supabase
+          .from("review_helpful_votes")
+          .select()
+          .eq("review_id", review.id)
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        const userData = review.users?.[0];
+
+        return {
+          ...review,
+          hasVoted: !!vote,
+          canEdit: review.user_id === userId,
+          user: {
+            id: userData?.id || '',
+            name: userData?.display_name || 'Anonymous',
+            avatar_url: userData?.avatar_url || null,
+          }
+        };
+      })
+    );
+
+    return {
+      data: reviewsWithVotes,
+      totalPages,
+    };
+  } catch (error) {
+    console.error("Error in getReviews:", error);
+    return {
+      data: [],
+      totalPages: 1,
+    };
+  }
+}
+
+// Helpful vote actions
+export async function addHelpfulVote({
+  reviewId,
+  userId,
+}: {
+  reviewId: string;
   userId: string;
-}) => {
-  const product = products.find((p) => p.slug === productId);
-  if (!product) return null;
+}): Promise<ActionResponse> {
+  const supabase = await createClient();
 
-  const review = product.reviews.find((r) => r.user === userId);
-  return review || null;
-};
+  try {
+    // Check if vote already exists
+    const { data: existingVote } = await supabase
+      .from("review_helpful_votes")
+      .select()
+      .eq("review_id", reviewId)
+      .eq("user_id", userId)
+      .maybeSingle();
 
+    if (existingVote) {
+      return { success: false, message: "You've already voted for this review" };
+    }
+
+    // Add vote record
+    const { error: voteError } = await supabase
+      .from("review_helpful_votes")
+      .insert({
+        review_id: reviewId,
+        user_id: userId,
+      });
+
+    if (voteError) throw voteError;
+
+    // Increment count
+    const { error: countError } = await supabase.rpc("increment_helpful_count", {
+      review_id_param: reviewId,
+    });
+
+    if (countError) throw countError;
+
+    return { success: true, message: "Vote added successfully" };
+  } catch (error) {
+    console.error("Error in addHelpfulVote:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to add vote",
+    };
+  }
+}
+
+export async function removeHelpfulVote({
+  reviewId,
+  userId,
+}: {
+  reviewId: string;
+  userId: string;
+}): Promise<ActionResponse> {
+  const supabase = await createClient();
+
+  try {
+    // Remove vote record
+    const { error: voteError } = await supabase
+      .from("review_helpful_votes")
+      .delete()
+      .eq("review_id", reviewId)
+      .eq("user_id", userId);
+
+    if (voteError) throw voteError;
+
+    // Decrement count
+    const { error: countError } = await supabase.rpc("decrement_helpful_count", {
+      review_id_param: reviewId,
+    });
+
+    if (countError) throw countError;
+
+    return { success: true, message: "Vote removed successfully" };
+  } catch (error) {
+    console.error("Error in removeHelpfulVote:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to remove vote",
+    };
+  }
+}
+
+// Report a review
+export async function addReport({
+  reviewId,
+  userId,
+  reason,
+}: {
+  reviewId: string;
+  userId: string;
+  reason: string;
+}): Promise<ActionResponse> {
+  const supabase = await createClient();
+
+  try {
+    // Check if already reported
+    const { data: review } = await supabase
+      .from("product_reviews")
+      .select("reports")
+      .eq("id", reviewId)
+      .single();
+
+    const existingReports = review?.reports || [];
+    const alreadyReported = existingReports.some(
+      (r: any) => r.userId === userId
+    );
+
+    if (alreadyReported) {
+      return { success: false, message: "You've already reported this review" };
+    }
+
+    // Add report
+    const newReport = {
+      userId,
+      reason,
+      createdAt: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+      .from("product_reviews")
+      .update({
+        reports: [...existingReports, newReport],
+      })
+      .eq("id", reviewId);
+
+    if (error) throw error;
+
+    return { success: true, message: "Report submitted successfully" };
+  } catch (error) {
+    console.error("Error in addReport:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to submit report",
+    };
+  }
+}
+
+// Delete a review (only owner can delete)
+export async function deleteReview({
+  reviewId,
+  userId,
+}: {
+  reviewId: string;
+  userId: string;
+}): Promise<ActionResponse> {
+  const supabase = await createClient();
+
+  try {
+    // Verify ownership before deleting
+    const { data: existingReview, error: fetchError } = await supabase
+      .from("product_reviews")
+      .select("id, user_id")
+      .eq("id", reviewId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    if (!existingReview || existingReview.user_id !== userId) {
+      return {
+        success: false,
+        message: "You can only delete your own reviews",
+      };
+    }
+
+    // Delete the review
+    const { error: deleteError } = await supabase
+      .from("product_reviews")
+      .delete()
+      .eq("id", reviewId);
+
+    if (deleteError) throw deleteError;
+
+    // Note: Supabase triggers or edge functions might be needed to
+    // update product's avg_rating and num_reviews after deletion.
+    // This action only handles deleting the review record itself.
+
+    return { success: true, message: "Review deleted successfully" };
+  } catch (error) {
+    console.error("Error in deleteReview:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to delete review",
+    };
+  }
+}

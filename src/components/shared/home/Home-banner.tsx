@@ -1,37 +1,53 @@
 import Container from "@components/shared/Container";
 import { HomeCarousel } from "@components/shared/home/Home-carousel";
 import Image from "next/image";
+import Link from "next/link";
 import React from "react";
 
-const imgs = ["/banners/banner3.png", "/banners/banner4.png"];
+// This would typically come from your database/API
+const banners = [
+  {
+    id: 1,
+    imageUrl: "/banners/banner3.png",
+    tag: "todays-deal",
+    active: true,
+  },
+  {
+    id: 2,
+    imageUrl: "/banners/banner4.png",
+    tag: "fresh-fruits",
+    active: true,
+  },
+];
 
 const Banner = () => {
   return (
-    <section className="pt-4 pb-5 md:pt-10 md:pb-10 lg:pb-20">
+    <section className="pt-4 pb-5 md:pt-10 md:pb-10 lg:pb-20 w-full">
       <div className="md:flex items-stretch gap-2 md:gap-4 w-full h-full">
         <div className="basis-[896px]">
           <HomeCarousel />
         </div>
 
-        <div className="basis-[444px] flex flex-row md:flex-col gap-2 mt-3 mt:0 md:gap-4">
-          {imgs.map((imgSrc, idx) => (
-            <div key={idx} className="md:h-1/2">
+        <div className="md:basis-[444px] w-full flex flex-row md:flex-col gap-2 mt-3 md:mt-0 md:gap-4">
+          {banners.map((banner) => (
+            <Link
+              href={`/${banner.tag}`}
+              key={banner.id}
+              className="w-1/2 md:w-full md:h-1/2 hover:opacity-90 transition-opacity"
+            >
               <Image
-                src={imgSrc}
-                alt=""
+                src={banner.imageUrl}
+                alt={`${banner.tag} banner`}
                 width={445}
-                height={150}
+                height={250}
                 className="w-full h-full"
               />
-            </div>
+            </Link>
           ))}
         </div>
       </div>
     </section>
   );
 };
-
-
-
 
 export default Banner;

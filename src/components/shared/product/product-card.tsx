@@ -2,14 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import React from "react";
 
-import { Card, CardContent, CardFooter, CardHeader } from "@components/ui/card";
-
-import Rating from "./rating";
-// import ProductPrice from './product-price'
-import ImageHover from "./image-hover";
 import { IProductInput } from "src/types";
 import { formatNaira } from "src/lib/utils";
-// import AddToCart from './add-to-cart'
 
 const ProductCard = ({
   product,
@@ -24,18 +18,15 @@ const ProductCard = ({
 }) => {
   const ProductImage = () => (
     <Link href={`/product/${product.slug}`}>
-      <div className="relative">
-         <div className="relative bg-[#F2F4F7  overflow-hidden ">
-            <Image
-              src={product.images[0]}
-              alt={product.name}
-              width={160}
-              height={135}
-              // fill
-              // sizes='80vw'
-              className="object-cover rounded-[8px] max-w-[10rem] max-h-[8rem] overflow-hidden"
-            />
-          </div>
+      <div className="relative h-[100px] w-[120px] md:h-[135px] md:w-[160px]">
+        <div className="relative w-full h-full bg-[#F2F4F7] overflow-hidden rounded-[8px]">
+          <Image
+            src={product.images[0]}
+            alt={product.name}
+            fill
+            className="object-cover"
+          />
+        </div>
       </div>
     </Link>
   );
@@ -44,15 +35,17 @@ const ProductCard = ({
       <Link
         href={`/product/${product.slug}`}
         className="overflow-hidden h4-bold text-ellipsis"
-
       >
         {product.name}
       </Link>
-      <span className="text-[14px] text-[#1B6013]">From {formatNaira(product.options[0].price) || product.price} </span>
+      <span className="text-[14px] text-[#1B6013]">
+        From {formatNaira(product.options[0].price) || product.price}{" "}
+      </span>
     </div>
   );
 
-   return ( <div className="flex flex-col  pb-8">
+  return (
+    <div className="flex flex-col mb-4 md:pb-8">
       <ProductImage />
       {!hideDetails && (
         <>
@@ -66,7 +59,7 @@ const ProductCard = ({
         </>
       )}
     </div>
-   )
+  );
 };
 
-export default ProductCard;
+export default React.memo(ProductCard);

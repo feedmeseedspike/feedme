@@ -20,7 +20,7 @@ const Headertags = async () => {
   const categoriesResponse = await fetchCategories();
 
   return (
-    <div className="bg-white">
+    <div className="bg-white mt-6">
       <Container>
         <div className="py-2 flex items-center gap-x-2 whitespace-nowrap scrollbar-hide w-full">
           <Sidebar

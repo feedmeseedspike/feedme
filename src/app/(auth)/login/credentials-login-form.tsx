@@ -1,9 +1,9 @@
 "use client";
-import { redirect, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
-import { Loader2, Eye, EyeOff } from "lucide-react"; 
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -18,8 +18,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { UserSignInSchema } from "../../../lib/validator";
 import { isRedirectError } from "next/dist/client/components/redirect";
 import { signInUser } from "src/lib/actions/auth.actions";
-import { useToast } from "src/hooks/use-toast";
 import Link from "next/link";
+import { useToast } from "src/hooks/useToast";
+import { useRouter } from "next/navigation";
 
 const signInDefaultValues =
   process.env.NODE_ENV === "development"
@@ -37,7 +38,8 @@ export default function CredentialsSignInForm() {
   const callbackUrl = searchParams.get("callbackUrl") || "/";
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { toast } = useToast();
+  const { showToast } = useToast();
+  const router = useRouter();
 
   const form = useForm<IUserSignIn>({
     resolver: zodResolver(UserSignInSchema),
@@ -53,13 +55,19 @@ export default function CredentialsSignInForm() {
         email: data.email,
         password: data.password,
       });
-      console.log(user);
-      redirect(callbackUrl);
+      // Show success toast
+      showToast("Successfully signed in!", "success");
+      router.push(callbackUrl);
     } catch (error) {
-      console.log(error);
+      // console.log(error);
       if (isRedirectError(error)) {
         throw error;
       }
+      // Show error toast
+      showToast(
+        "Invalid credentials. Please check your email and password.",
+        "error"
+      );
     } finally {
       setLoading(false);
     }

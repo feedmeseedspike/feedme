@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableHeader,
@@ -41,55 +41,7 @@ import {
   SelectValue,
 } from "@components/ui/select";
 import EditAgentModal from "@components/admin/editAgentModal";
-
-// Dummy data for agents
-const agents = [
-  {
-    id: 1,
-    name: "John Doe",
-    phoneNumber: "+234 812 345 6789",
-    email: "johndoe@example.com",
-    location: "Ikeja, Lagos",
-    status: "Onboarded",
-    image: "/images/agent1.jpg",
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    phoneNumber: "+234 812 345 6789",
-    email: "janesmith@example.com",
-    location: "Victoria Island, Lagos",
-    status: "Trial",
-    image: "/images/agent2.jpg",
-  },
-  {
-    id: 3,
-    name: "Michael Brown",
-    phoneNumber: "+234 812 345 6789",
-    email: "michaelbrown@example.com",
-    location: "Lekki, Lagos",
-    status: "Archived",
-    image: "/images/agent3.jpg",
-  },
-  {
-    id: 4,
-    name: "Sarah Johnson",
-    phoneNumber: "+234 812 345 6789",
-    email: "sarahjohnson@example.com",
-    location: "Surulere, Lagos",
-    status: "Onboarded",
-    image: "/images/agent4.jpg",
-  },
-  {
-    id: 5,
-    name: "David Williams",
-    phoneNumber: "+234 812 345 6789",
-    email: "davidwilliams@example.com",
-    location: "Yaba, Lagos",
-    status: "Trial",
-    image: "/images/agent5.jpg",
-  },
-];
+import { getAgents } from "../../../../lib/api";
 
 export default function Agents() {
   const [search, setSearch] = useState("");
@@ -97,15 +49,23 @@ export default function Agents() {
   const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedAgent, setSelectedAgent] = useState<{
-    id: number;
-    name: string;
-    email: string;
-    phoneNumber: string;
-    location: string;
-    image: string;
-    status: string;
-  }>();
+  const [selectedAgent, setSelectedAgent] = useState<any>();
+  const [agents, setAgents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    getAgents()
+      .then((data) => {
+        setAgents(data || []);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message || "Failed to fetch agents");
+        setLoading(false);
+      });
+  }, []);
 
   const toggleFilter = (
     value: string,
@@ -121,7 +81,9 @@ export default function Agents() {
 
   const filteredAgents = agents.filter(
     (agent) =>
-      agent.name.toLowerCase().includes(search.toLowerCase()) &&
+      (agent.display_name || agent.name || "")
+        .toLowerCase()
+        .includes(search.toLowerCase()) &&
       (selectedStatus.length === 0 || selectedStatus.includes(agent.status))
   );
 
@@ -129,7 +91,7 @@ export default function Agents() {
     const updatedAgents = agents.map((agent) =>
       agent.id === selectedAgent?.id ? { ...agent, ...updatedAgent } : agent
     );
-    console.log("Updated Agents:", updatedAgents); 
+    // // console.log("Updated Agents:", updatedAgents);
     setIsEditModalOpen(false);
   };
 
@@ -144,6 +106,8 @@ export default function Agents() {
     setCurrentPage(page);
   };
 
+  if (loading) return <div className="p-4">Loading agents...</div>;
+  if (error) return <div className="p-4 text-red-500">{error}</div>;
   return (
     <div className="p-4">
       <div className="flex justify-between items-center mb-4">
@@ -338,7 +302,7 @@ export default function Agents() {
                     size={20}
                     onClick={() => {
                       setSelectedAgent(agent);
-                      setIsEditModalOpen(true); 
+                      setIsEditModalOpen(true);
                     }}
                   />
                 </TableCell>

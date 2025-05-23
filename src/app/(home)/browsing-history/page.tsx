@@ -24,7 +24,7 @@ export default function BrowsingHistoryPage() {
             .join(",")}`
         );
         const result = await res.json();
-        console.log(products.map((product) => product.id).join(","));
+        // console.log(products.map((product) => product.id).join(","));
         setData(result);
       } catch (error) {
         console.error("Failed to fetch browsing history:", error);
@@ -33,7 +33,7 @@ export default function BrowsingHistoryPage() {
     fetchProducts();
   }, [products]);
 
-  console.log(data);
+  // // console.log(data);
 
   return (
     <main>
@@ -51,7 +51,7 @@ export default function BrowsingHistoryPage() {
       </div>
       <Container className="py-8">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {data.length === 0 && (
               <div className="text-2xl font-semibold">No products found</div>
             )}

@@ -14,13 +14,14 @@ import {
 } from "@components/ui/form";
 import { useForm } from "react-hook-form";
 import { IUserSignUp } from "../../../types/index";
-import { toast } from "src/hooks/use-toast";
+import { useToast } from "src/hooks/useToast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { UserSignUpSchema } from "../../../lib/validator";
 import { Separator } from "@components/ui/separator";
 import { isRedirectError } from "next/dist/client/components/redirect";
 import { registerUser } from "src/lib/actions/auth.actions";
-import { Eye, EyeOff, Loader2 } from "lucide-react"; 
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const signUpDefaultValues =
   process.env.NODE_ENV === "development"
@@ -40,9 +41,10 @@ const signUpDefaultValues =
 export default function CredentialsSignUpForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
-  const [showPassword, setShowPassword] = useState(false); 
+  const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const form = useForm<IUserSignUp>({
     resolver: zodResolver(UserSignUpSchema),
@@ -51,33 +53,32 @@ export default function CredentialsSignUpForm() {
 
   const { control, handleSubmit } = form;
 
-  const onSubmit = async (data: IUserSignUp) => {
-    setLoading(true);
-    try {
-      const res = await registerUser(data);
-      if (!res.success) {
-        toast({
-          title: "Error",
-          description: res.error,
-          variant: "destructive",
-        });
-        return;
-      }
-      console.log(res);
-      redirect(callbackUrl);
-    } catch (error) {
-      if (isRedirectError(error)) {
-        throw error;
-      }
-      toast({
-        title: "Error",
-        description: "Invalid email or password",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false); 
+  const { showToast } = useToast();
+
+const onSubmit = async (data: IUserSignUp) => {
+  const { name, email, password } = data;
+  setLoading(true);
+  try {
+    const res = await registerUser({ name, email, password });
+    console.log(res)
+    
+    if (!res.success) {
+      showToast(res.error?.message || "Something went wrong", "error");
+      return;
     }
-  };
+    
+    // OR Option 2: Show success message before redirecting to login
+    showToast("Registration successful! Please login", "success");
+    router.push(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+    
+  } catch (error: any) {
+    if (isRedirectError(error)) throw error;
+    // Show the actual error message if available
+    showToast(error?.message || "Registration failed", "error");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <Form {...form}>
@@ -135,7 +136,7 @@ export default function CredentialsSignUpForm() {
                 <FormControl>
                   <div className="relative">
                     <Input
-                      type={showPassword ? "text" : "password"} 
+                      type={showPassword ? "text" : "password"}
                       placeholder="Enter password"
                       className="py-6 ring-1 ring-zinc-400 pr-10"
                       {...field}
@@ -143,7 +144,7 @@ export default function CredentialsSignUpForm() {
                     <button
                       type="button"
                       className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
-                      onClick={() => setShowPassword(!showPassword)} 
+                      onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? (
                         <EyeOff className="h-5 w-5 text-zinc-400" />
@@ -169,7 +170,7 @@ export default function CredentialsSignUpForm() {
                 <FormControl>
                   <div className="relative">
                     <Input
-                      type={showConfirmPassword ? "text" : "password"} 
+                      type={showConfirmPassword ? "text" : "password"}
                       placeholder="Confirm Password"
                       className="py-6 ring-1 ring-zinc-400 pr-10"
                       {...field}
@@ -177,7 +178,9 @@ export default function CredentialsSignUpForm() {
                     <button
                       type="button"
                       className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
                     >
                       {showConfirmPassword ? (
                         <EyeOff className="h-5 w-5 text-zinc-400" />
@@ -196,9 +199,9 @@ export default function CredentialsSignUpForm() {
             <Button
               className="w-full py-4 text-base bg-[#E0E0E0] text-zinc-600 ring-1 ring-zinc-400 font-semibold hover:bg-[#1B6013] transition-all ease-in-out hover:text-white hover:duration-500 flex items-center justify-center gap-2"
               type="submit"
-              disabled={loading} 
+              disabled={loading}
             >
-              {loading && <Loader2 className="w-5 h-5 animate-spin" />} 
+              {loading && <Loader2 className="w-5 h-5 animate-spin" />}
               {loading ? "Signing Up..." : "Sign Up"}
             </Button>
           </div>

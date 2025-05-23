@@ -16,7 +16,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
 import { ArrowDown, Plus } from "lucide-react";
@@ -45,37 +44,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import OptionModal from "@components/admin/optionsModal";
 import { OptionSchema, option as OptionType } from "src/lib/validator";
-import { Avatar } from "@components/ui/avatar";
-import { Badge } from "@components/ui/badge";
 import Image from "next/image";
-import { formatNaira } from "src/lib/utils";
+import { formatNaira, toSlug } from "src/lib/utils";
 import Edit from "@components/icons/edit.svg";
 import Trash from "@components/icons/trash.svg";
-import { toast } from "sonner";
+import { useToast } from "src/hooks/useToast";
+// @ts-ignore
+import { getCategories, addProduct } from "../../../../../lib/api";
+import { supabase } from "../../../../../lib/supabaseClient";
 
 const animatedComponents = makeAnimated();
-const categories = [
-  { label: "Electronics", value: "electronics" },
-  { label: "Clothing", value: "clothing" },
-  { label: "Home & Kitchen", value: "home-kitchen" },
-  { label: "Beauty & Personal Care", value: "beauty-personal-care" },
-  { label: "Sports & Outdoors", value: "sports-outdoors" },
-  { label: "Books", value: "books" },
-  { label: "Toys & Games", value: "toys-games" },
-  { label: "Health & Wellness", value: "health-wellness" },
-  { label: "Automotive", value: "automotive" },
-  { label: "Grocery", value: "grocery" },
-  { label: "Furniture", value: "furniture" },
-  { label: "Jewelry", value: "jewelry" },
-  { label: "Pet Supplies", value: "pet-supplies" },
-  { label: "Office Supplies", value: "office-supplies" },
-  { label: "Baby Products", value: "baby-products" },
-  { label: "Tools & Home Improvement", value: "tools-home-improvement" },
-  { label: "Music & Movies", value: "music-movies" },
-  { label: "Art & Crafts", value: "art-crafts" },
-  { label: "Fitness & Exercise", value: "fitness-exercise" },
-  { label: "Travel & Luggage", value: "travel-luggage" },
-];
 
 const productSchema = z
   .object({
@@ -86,7 +64,7 @@ const productSchema = z
     description: z
       .string()
       .min(1, "Description is required")
-      .max(500, "Description cannot exceed 500 characters"),
+      .max(1000, "Description cannot exceed 1000 characters"),
     price: z
       .string()
       .regex(/^\d+$/, "Price must be a number")
@@ -163,6 +141,31 @@ type ProductFormValues = z.infer<typeof productSchema>;
 export default function AddProduct() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [options, setOptions] = useState<OptionType[]>([]);
+  const [categories, setCategories] = useState<
+    { label: string; value: string }[]
+  >([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const { showToast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [pendingProduct, setPendingProduct] = useState<any>(null);
+
+  useEffect(() => {
+    // console.log(getCategories());
+    setLoadingCategories(true);
+    getCategories()
+      .then((data: any[]) => {
+        // console.log(data);
+        setCategories(
+          (data || []).map((cat: any) => ({
+            label: cat.title,
+            value: cat.id,
+          }))
+        );
+        setLoadingCategories(false);
+      })
+      .catch(() => setLoadingCategories(false));
+  }, []);
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -181,53 +184,56 @@ export default function AddProduct() {
     const savedDraft = localStorage.getItem("productDraft");
     if (savedDraft) {
       const draftData = JSON.parse(savedDraft);
-  
       // Convert product base64 images back to File objects
-      const productFiles = draftData.images?.map((base64String: string) => {
-        if (!base64String) return null;
-        
-        // Handle both full data URLs and raw base64 strings
-        const dataUrl = base64String.includes('data:') 
-          ? base64String 
-          : `data:image/png;base64,${base64String}`;
-        
-        const response = fetch(dataUrl);
-        return response.then(res => res.blob())
-          .then(blob => new File([blob], "product-image.png", { type: 'image/png' }));
-      }).filter(Boolean) || [];
-  
+      const productFiles =
+        draftData.images
+          ?.map((base64String: string) => {
+            if (!base64String) return null;
+            const dataUrl = base64String.includes("data:")
+              ? base64String
+              : `data:image/png;base64,${base64String}`;
+            const response = fetch(dataUrl);
+            return response
+              .then((res) => res.blob())
+              .then(
+                (blob) =>
+                  new File([blob], "product-image.png", { type: "image/png" })
+              );
+          })
+          .filter(Boolean) || [];
       // Convert option base64 images back to File objects
-      const optionFiles = draftData.options?.map((option: OptionType) => {
-        if (typeof option.image === "string") {
-          const dataUrl = option.image.includes('data:') 
-            ? option.image 
-            : `data:image/png;base64,${option.image}`;
-          
-          return {
-            ...option,
-            image: dataUrl
-          };
-        }
-        return option;
-      }) || [];
-  
-      Promise.all(productFiles).then(files => {
+      const optionFiles =
+        draftData.options?.map((option: OptionType) => {
+          if (typeof option.image === "string") {
+            const dataUrl = option.image.includes("data:")
+              ? option.image
+              : `data:image/png;base64,${option.image}`;
+            return {
+              ...option,
+              image: dataUrl,
+            };
+          }
+          return option;
+        }) || [];
+      Promise.all(productFiles).then((files) => {
         setOptions(optionFiles);
         form.setValue("productName", draftData.productName);
         form.setValue("description", draftData.description);
         form.setValue("price", draftData.price);
         form.setValue("stockStatus", draftData.stockStatus);
-        form.setValue("selectedCategories", draftData.selectedCategories?.map((value: string) => ({
-          label: value,
-          value,
-        })) || []);
+        // Map selectedCategories to {label, value} using loaded categories
+        form.setValue(
+          "selectedCategories",
+          (draftData.selectedCategories || []).map((catId: string) => {
+            const found = categories.find((c) => c.value === catId);
+            return found || { label: catId, value: catId };
+          })
+        );
         form.setValue("variation", draftData.variation);
         form.setValue("images", files);
       });
     }
-  }, [form]);
-  
-  
+  }, [form, categories]);
 
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
@@ -240,51 +246,53 @@ export default function AddProduct() {
     }
     setImagePreviews([]);
   }, [form.watch("images")]);
-  
 
   const handleSaveDraft = async (data: ProductFormValues) => {
     // Convert product images to base64
-    const productImagePromises = data.images?.map((file) => {
-      return new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          // Get the full base64 string including data URL prefix
-          const base64String = reader.result as string;
-          resolve(base64String);
-        };
-        reader.readAsDataURL(file);
-      });
-    }) || [];
-  
-    const optionImagePromises = data.variation === "Yes"
-      ? options.map((option) => {
-          return new Promise<string>((resolve) => {
-            if (option.image instanceof File) {
-              const reader = new FileReader();
-              reader.onload = () => {
-                const base64String = reader.result as string;
-                resolve(base64String);
-              };
-              reader.readAsDataURL(option.image);
-            } else {
-              resolve(option.image);
-            }
-          });
-        })
-      : [];
-  
+    const productImagePromises =
+      data.images?.map((file) => {
+        return new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            // Get the full base64 string including data URL prefix
+            const base64String = reader.result as string;
+            resolve(base64String);
+          };
+          reader.readAsDataURL(file);
+        });
+      }) || [];
+
+    const optionImagePromises =
+      data.variation === "Yes"
+        ? options.map((option) => {
+            return new Promise<string>((resolve) => {
+              if (option.image instanceof File) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const base64String = reader.result as string;
+                  resolve(base64String);
+                };
+                reader.readAsDataURL(option.image);
+              } else {
+                resolve(option.image);
+              }
+            });
+          })
+        : [];
+
     const [base64ProductImages, base64OptionImages] = await Promise.all([
       Promise.all(productImagePromises),
       Promise.all(optionImagePromises),
     ]);
-  
+
     const productState = {
-      options: data.variation === "Yes"
-        ? options.map((option, index) => ({
-            ...option,
-            image: base64OptionImages[index],
-          }))
-        : [],
+      options:
+        data.variation === "Yes"
+          ? options.map((option, index) => ({
+              ...option,
+              image: base64OptionImages[index],
+            }))
+          : [],
       productName: data.productName,
       description: data.description,
       price: data.price,
@@ -295,31 +303,82 @@ export default function AddProduct() {
       images: base64ProductImages,
       variation: data.variation,
     };
-  
+
     localStorage.setItem("productDraft", JSON.stringify(productState));
-    toast("Product draft saved successfully!");
+    showToast("Product draft saved successfully!", "success");
   };
-  
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
-      const validFiles = Array.from(files).filter(file => 
-        file.type.startsWith('image/') && 
-        file.size <= 5 * 1024 * 1024
+      const validFiles = Array.from(files).filter(
+        (file) => file.type.startsWith("image/") && file.size <= 5 * 1024 * 1024
       );
       form.setValue("images", validFiles);
     }
   };
-  const onSubmit = (data: ProductFormValues) => {
-    console.log(form.watch("selectedCategories"))
+  const onSubmit = async (data: ProductFormValues) => {
     if (data.variation === "Yes" && options.length === 0) {
       alert("At least one option is required when variation is 'Yes'");
       return;
     }
+    setLoading(true);
+    try {
+      // Check for duplicate product name (slug)
+      const slug = toSlug(data.productName);
+      const { data: existing, error: checkError } = await supabase
+        .from("products")
+        .select("id")
+        .eq("slug", slug)
+        .limit(1)
+        .single();
+      // Prepare product object for Supabase
+      const product = {
+        name: data.productName,
+        description: data.description,
+        slug,
+        price: data.price ? parseInt(data.price) : null,
+        stock_status: data.stockStatus,
+        category_ids: data.selectedCategories.map((cat) => cat.value),
+        images: [], // You may want to handle image upload to storage and save URLs here
+        // variation: data.variation,
+        options: data.variation === "Yes" ? options : [],
+      };
+      if (existing) {
+        setPendingProduct(product);
+        setDuplicateDialogOpen(true);
+        setLoading(false);
+        return;
+      }
+      await addProduct(product);
+      showToast("Product added successfully!", "success");
+      localStorage.removeItem("productDraft");
+      form.reset();
+      setOptions([]);
+    } catch (err: any) {
+      showToast(err.message || "Failed to add product", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    console.log("Form Data:", data);
-    localStorage.removeItem("productDraft");
+  // Handler for confirming duplicate add
+  const handleConfirmDuplicate = async () => {
+    if (!pendingProduct) return;
+    setLoading(true);
+    try {
+      await addProduct(pendingProduct);
+      showToast("Product added successfully!", "success");
+      localStorage.removeItem("productDraft");
+      form.reset();
+      setOptions([]);
+      setDuplicateDialogOpen(false);
+      setPendingProduct(null);
+    } catch (err: any) {
+      showToast(err.message || "Failed to add product", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -370,8 +429,10 @@ export default function AddProduct() {
                     components={animatedComponents}
                     options={categories}
                     value={form.watch("selectedCategories")}
+                    isLoading={loadingCategories}
                     onChange={(newValue) =>
-                      form.setValue("selectedCategories", [...newValue])                    }
+                      form.setValue("selectedCategories", [...newValue])
+                    }
                     className="col-span-7"
                   />
                 </FormControl>
@@ -472,6 +533,23 @@ export default function AddProduct() {
                                     fill
                                     className="rounded-lg object-cover"
                                   />
+                                  <button
+                                    type="button"
+                                    className="absolute top-0 right-0 bg-white rounded-full py-[2px] px-2 shadow"
+                                    onClick={() => {
+                                      const images = form.getValues("images");
+                                      const arr = Array.isArray(images)
+                                        ? images
+                                        : [];
+                                      arr.splice(index, 1);
+                                      form.setValue("images", arr);
+                                    }}
+                                    aria-label="Remove image"
+                                  >
+                                    <span className="text-red-500 font-bold text-xs">
+                                      X
+                                    </span>
+                                  </button>
                                 </div>
                               ))}
                             </div>
@@ -649,12 +727,97 @@ export default function AddProduct() {
             <Button
               type="submit"
               className="w-full sm:w-auto bg-[#1B6013] text-white"
+              disabled={loading}
             >
-              Add Product
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <svg
+                    className="animate-spin h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8z"
+                    ></path>
+                  </svg>{" "}
+                  Adding...
+                </span>
+              ) : (
+                "Add Product"
+              )}
             </Button>
           </div>
         </form>
       </Form>
+
+      {/* Duplicate Product Dialog */}
+      <Dialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Product Already Exists</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            A product with this name already exists. Do you want to add it
+            anyway?
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDuplicateDialogOpen(false);
+                setPendingProduct(null);
+              }}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-[#1B6013] text-white"
+              onClick={handleConfirmDuplicate}
+              disabled={loading}
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <svg
+                    className="animate-spin h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8z"
+                    ></path>
+                  </svg>{" "}
+                  Adding...
+                </span>
+              ) : (
+                "Add Anyway"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

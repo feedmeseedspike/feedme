@@ -1,14 +1,12 @@
-"use client"
+"use client";
 
-import { Label } from '@components/ui/label'
-import { RadioGroup, RadioGroupItem } from '@components/ui/radio-group'
-import Image from 'next/image'
-import React from 'react'
-import { formatNaira } from 'src/lib/utils'
-import { useDispatch, useSelector } from 'react-redux'
-import { RootState } from 'src/store'
-import { setSelectedOption } from 'src/store/features/optionsSlice'
-import { z } from 'zod'
+import { Label } from '@components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@components/ui/radio-group';
+import { Separator } from '@components/ui/separator';
+import Image from 'next/image';
+import React from 'react';
+import { formatNaira } from 'src/lib/utils';
+import { z } from 'zod';
 
 const Price = (field: string) =>
   z.coerce
@@ -26,15 +24,15 @@ export const OptionSchema = z.object({
 });
 export type Options = z.infer<typeof OptionSchema>
 
-const Options = ({ options }: { options: Options[] }) => {
-  const dispatch = useDispatch()
-  const selectedOption = useSelector((state: RootState) => state.options.selectedOption)
-
-  const handleSelect = (value: string) => {
-    dispatch(setSelectedOption(value))
-    console.log('Selected option:', value)
-  }
-
+const Options = ({ 
+  options, 
+  selectedOption, 
+  onOptionChange 
+}: { 
+  options: Options[];
+  selectedOption?: string;
+  onOptionChange: (value: string) => void;
+}) => {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-[10px]">
@@ -43,8 +41,9 @@ const Options = ({ options }: { options: Options[] }) => {
           Required
         </p>
       </div>
-      <RadioGroup onValueChange={handleSelect}>
+      <RadioGroup value={selectedOption || ''} onValueChange={onOptionChange} className='h-[10rem] overflow-y-auto'>
         {options?.map((option) => (
+          <>
           <div key={option.name} className="flex items-center justify-between">
             <Label htmlFor={option.name} className="flex items-center gap-4">
               <Image
@@ -61,11 +60,12 @@ const Options = ({ options }: { options: Options[] }) => {
             </Label>
             <RadioGroupItem value={option.name} id={option.name} />
           </div>
+            <Separator className="" />
+          </>
         ))}
       </RadioGroup>
-      {/* {selectedOption && <p>Selected: {selectedOption}</p>} */}
     </div>
-  )
-}
+  );
+};
 
-export default Options
+export default Options;

@@ -15,7 +15,7 @@ export type Category = {
     url: string;
     public_id: string;
   };
-  _id: string;
+  id: string;
   title: string;
   description: string;
   keynotes: string[];

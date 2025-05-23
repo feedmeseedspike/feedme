@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableHeader,
@@ -30,11 +30,12 @@ import {
 import { Checkbox } from "@components/ui/checkbox";
 import { formatNaira } from "src/lib/utils";
 import { BiEdit } from "react-icons/bi";
-import Pagination from "@components/admin/productPagination"; 
+import Pagination from "@components/admin/productPagination";
 import { Separator } from "@components/ui/separator";
 import Link from "next/link";
-import { products } from "src/lib/data";
+import { getProducts, deleteProduct } from "../../../src/lib/api";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 // const products = [
 //   {
@@ -110,6 +111,25 @@ export default function Product() {
   const [selectedStock, setSelectedStock] = useState<string[]>([]);
   const [selectedPublished, setSelectedPublished] = useState<string[]>([]);
   const [showAllCategories, setShowAllCategories] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<any>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    setLoading(true);
+    getProducts()
+      .then((data) => {
+        setProducts(data || []);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message || "Failed to fetch products");
+        setLoading(false);
+      });
+  }, []);
 
   const categories = [
     "Pepper",
@@ -138,12 +158,17 @@ export default function Product() {
 
   const filteredProducts = products.filter(
     (p) =>
-      p.name.toLowerCase().includes(search.toLowerCase()) &&
+      (p.name || "").toLowerCase().includes(search.toLowerCase()) &&
       (selectedCategories.length === 0 ||
-        selectedCategories.includes(p.category)) &&
-      (selectedStock.length === 0 || selectedStock.includes(p.stockStatus)) &&
+        selectedCategories.includes(
+          p.category?.[0] || p.category_ids?.[0] || ""
+        )) &&
+      (selectedStock.length === 0 ||
+        selectedStock.includes(p.stockStatus || p.stock_status)) &&
       (selectedPublished.length === 0 ||
-        selectedPublished.includes(p.isPublished ? "Published" : "Archived"))
+        selectedPublished.includes(
+          p.isPublished || p.is_published ? "Published" : "Archived"
+        ))
   );
 
   const ITEMS_PER_PAGE = 5;
@@ -157,6 +182,26 @@ export default function Product() {
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
+
+  const handleDelete = async () => {
+    if (!productToDelete) return;
+    try {
+      await deleteProduct(productToDelete.id || productToDelete._id);
+      setProducts((prev) =>
+        prev.filter(
+          (p) => (p.id || p._id) !== (productToDelete.id || productToDelete._id)
+        )
+      );
+      setDeleteDialogOpen(false);
+      setProductToDelete(null);
+      // Optionally show a toast here
+    } catch (err: any) {
+      alert(err.message || "Failed to delete product");
+    }
+  };
+
+  if (loading) return <div className="p-4">Loading products...</div>;
+  if (error) return <div className="p-4 text-red-500">{error}</div>;
 
   return (
     <div className="p-4">
@@ -356,36 +401,55 @@ export default function Product() {
             {paginatedProducts.map((product) => (
               <TableRow key={product._id}>
                 <TableCell className="text-left px-6 py-4 flex gap-2 items-center">
-                  <Image src={product.images[0]} alt={product.name} width={40} height={40} className="rounded-[12px]" />
+                  <Image
+                    src={product.images[0]}
+                    alt={product.name}
+                    width={40}
+                    height={40}
+                    className="rounded-[12px]"
+                  />
                   {product.name}
                 </TableCell>
                 <TableCell className="text-center px-6 py-4">
-                  <Badge className="bg-gray-100 text-gray-700">
+                  <Badge className="bg-gray-100 text-gray-700 rounded-full">
                     {product.category}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-center px-6 py-4">
                   {formatNaira(product.price)}
                 </TableCell>
-                <TableCell
-                  className={`text-center px-6 py-4 ${
-                    product.stockStatus === "In stock"
-                      ? "text-green-600"
-                      : "text-orange-600"
-                  }`}
-                >
-                  {product.stockStatus}
-                </TableCell>
-                <TableCell
-                  className={`text-center px-6 py-4 ${
-                    product.isPublished === true
-                      ? "text-green-600"
-                      : "text-gray-600"
-                  }`}
-                >
-                  {product.isPublished === true ? "Published" : "Archived"}
+                <TableCell className="text-center px-6 py-4">
+                  <span
+                    className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
+                      product.stockStatus === "In Stock"
+                        ? "bg-green-50 text-green-700"
+                        : "bg-orange-50 text-orange-700"
+                    }`}
+                  >
+                    {product.stockStatus}
+                  </span>
                 </TableCell>
                 <TableCell className="text-center px-6 py-4">
+                  <span className="inline-flex items-center gap-2">
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        product.isPublished === true
+                          ? "bg-green-500"
+                          : "bg-gray-400"
+                      }`}
+                    ></span>
+                    <span
+                      className={
+                        product.isPublished === true
+                          ? "text-green-700"
+                          : "text-gray-600"
+                      }
+                    >
+                      {product.isPublished === true ? "Published" : "Archived"}
+                    </span>
+                  </span>
+                </TableCell>
+                <TableCell className="text-center px-6 py-4 flex gap-2 justify-center">
                   <Link
                     href={{
                       pathname: "/admin/products/edit",
@@ -397,6 +461,29 @@ export default function Product() {
                       size={20}
                     />
                   </Link>
+                  <button
+                    className="text-red-500 hover:text-red-700 ml-2"
+                    onClick={() => {
+                      setProductToDelete(product);
+                      setDeleteDialogOpen(true);
+                    }}
+                    title="Delete Product"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
                 </TableCell>
               </TableRow>
             ))}
@@ -412,6 +499,31 @@ export default function Product() {
           onPageChange={handlePageChange}
         />
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {deleteDialogOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 shadow-lg max-w-sm w-full">
+            <h2 className="text-lg font-semibold mb-4">Confirm Deletion</h2>
+            <p className="mb-6">
+              Are you sure you want to delete{" "}
+              <span className="font-bold">{productToDelete?.name}</span>? This
+              action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setDeleteDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleDelete}>
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

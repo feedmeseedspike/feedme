@@ -57,7 +57,7 @@ export const toSlug = (text: string): string =>
       page,
       params,
     }: {
-      category?: string;
+    category?: string;
       tag?: string;
       price?: string;
       rating?: string;
@@ -65,42 +65,32 @@ export const toSlug = (text: string): string =>
       page?: string;
       params: any;
     }) => {
-      const { q = "all" } = params;
-    
-      if (typeof window === "undefined") {
-        return "/search";
-      }
-    
-      // Check if we're on a tag page
-      const isTagPage = window.location.pathname.startsWith('/');
-    
-      // Create a new URLSearchParams object
-      const searchParams = new URLSearchParams();
-    
-      // Add all the filter parameters
-      if (tag && tag !== "all") searchParams.set("tag", tag);
-      if (price && price !== "all") searchParams.set("price", price);
-      if (rating && rating !== "all") searchParams.set("rating", rating);
-      if (sort && sort !== "best-selling") searchParams.set("sort", sort);
-      if (page && page !== "1") searchParams.set("page", page);
-    
-      // For tag pages
-      if (isTagPage) {
-        const currentPath = window.location.pathname;
-        return `${currentPath}?${searchParams.toString()}`;
-      }
-    
+      // Create a new URLSearchParams object with existing params
+      const searchParams = new URLSearchParams(params);
+
+      // Update or remove parameters
+      if (category) searchParams.set("category", category);
+      if (tag) searchParams.set("tag", tag);
+      if (price) searchParams.set("price", price);
+      if (rating) searchParams.set("rating", rating);
+      if (sort) searchParams.set("sort", sort);
+      if (page) searchParams.set("page", page);
+
+      // Remove parameters if they are "all"
+      if (category === "all") searchParams.delete("category");
+      if (tag === "all") searchParams.delete("tag");
+      if (price === "all") searchParams.delete("price");
+      if (rating === "all") searchParams.delete("rating");
+      if (sort === "best-selling") searchParams.delete("sort");
+      if (page === "1") searchParams.delete("page");
+
       // For category pages
-      const isCategoryPage = params.category && params.category !== "all";
-      if (isCategoryPage) {
+      if (params.category && params.category !== "all") {
         const categorySlug = category?.toLowerCase().replace(/ /g, "-");
         return `/category/${categorySlug}?${searchParams.toString()}`;
       }
-    
+
       // For search pages
-      if (category && category !== "all") searchParams.set("category", category);
-      if (q && q !== "all") searchParams.set("q", q);
-    
       return `/search?${searchParams.toString()}`;
     };
     

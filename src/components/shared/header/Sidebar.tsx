@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   Select,
@@ -8,10 +8,11 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from '@components/ui/select';
-import { Category } from '../../../types/category';
-import { useState } from 'react';
-import Menu from "@components/icons/menu.svg"
+} from "@components/ui/select";
+import { Category } from "../../../types/category";
+import { useState } from "react";
+import Menu from "@components/icons/menu.svg";
+import Link from "next/link";
 
 type Props = {
   categories: Category[];
@@ -22,20 +23,20 @@ export default function Sidebar({ categories }: Props) {
 
   const handleCategoryChange = (categoryId: string) => {
     setSelectedCategory(categoryId);
-    console.log('Selected Category:', categories.find((cat) => cat._id === categoryId)?.title);
+    // console.log('Selected Category:', categories.find((cat) => cat._id === categoryId)?.title);
   };
 
   return (
     <div className="w-fit">
       <Select onValueChange={handleCategoryChange}>
         <SelectTrigger className="w-full flex items-center gap-1">
-          <Menu className=""/>
+          <Menu className="" />
           <SelectValue placeholder="categories" />
         </SelectTrigger>
         <SelectContent>
           {categories.map((category) => (
             <SelectItem key={category._id} value={category._id}>
-              {category.title}
+              <Link href={`/category/${category.title}`}>{category.title}</Link>
             </SelectItem>
           ))}
         </SelectContent>

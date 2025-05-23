@@ -19,28 +19,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@components/ui/accordion";
-import ShareLike from "@components/shared/product/product-shareLike";
 import { getUser } from "src/lib/actions/auth.actions";
 import AddToBrowsingHistory from "@components/shared/product/add-to-browsing-history";
 import BrowsingHistoryList from "@components/shared/browsing-history-list";
 import Options from "../options";
 import ProductSlider from "@components/shared/product/product-slider";
-
-const datas = [
-  {
-    id: 1,
-    icon: <FastDelivery />,
-    title: "Fast Delivery",
-    description: "Get your order at your doorstep in 3 hours or less.",
-  },
-  {
-    id: 2,
-    icon: <Security />,
-    title: "Security & Privacy",
-    description:
-      "Safe payments: We do not share your personal details with any third parties without your consent.",
-  },
-];
+import Image from "next/image";
+import ProductDetailsClient from "@components/shared/product/product-details-client";
 
 export async function generateMetadata({
   params,
@@ -50,7 +35,8 @@ export async function generateMetadata({
   const { slug } = params;
 
   try {
-    const product = getProductBySlug(slug);
+    const product = await getProductBySlug(slug);
+    console.log(product.id);
 
     if (product) {
       return {
@@ -94,20 +80,22 @@ const ProductDetails = async (props: {
   const { slug } = params;
 
   const user = await getUser();
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlug(slug);
+  // console.log(product);
+  const cartItemId = generateId();
 
-  const totalRatings = product.ratingDistribution.reduce(
+  const totalRatings = product.rating_distribution.reduce(
     (acc, { count }) => acc + count,
     0
   );
 
   const relatedProducts = await getRelatedProductsByCategory({
-    category: product.category[0],
-    productId: product._id as string,
+    category: product.category_ids[0],
+    productId: product.id,
     page: Number(page || "1"),
   });
 
-  console.log(relatedProducts);
+  // console.log(product.options);
 
   const ProductJsonLd = ({
     product,
@@ -169,72 +157,31 @@ const ProductDetails = async (props: {
   return (
     <section>
       <Container>
-        <AddToBrowsingHistory id={product._id!} category={product.category} />
-        <div className="py-4 grid grid-cols-1 md:grid-cols-8 gap-8 bg-white my-6 p-3">
-          <div className="col-span-3">
-            <ProductGalleryWrapper
-              images={product.images}
-              name={product.name}
-            />
-          </div>
-
-          <div className="col-span-3">
-            <h1 className="text-2xl">{product.name}</h1>
-            <RatingSummary
-              avgRating={product.avgRating}
-              numReviews={product.numReviews}
-              asPopover
-              ratingDistribution={product.ratingDistribution}
-              showTotalCount={true}
-            />
-            <p className="text-[#12B76A] text-[14px] border py-1 px-2 border-[#bfe0d0] w-fit flex gap-1 items-center">
-              Freshness Guarantee <Freshness className="size-4" />
-            </p>
-            <p className="text-[12px] pt-2">90k+ brought in past month</p>
-            <Separator className="mt-4 mb-2" />
-            <div className="flex flex-col gap-2">
-              <p className="h4-bold">Variation: Grade A</p>
-            </div>
-            <Separator className="mt-4 mb-2" />
-            <Options options={product.options} />
-          </div>
-
-          {/* Add to Cart Section */}
-          <div className="col-span-2 border border-[#DDD5DD] p-4 w-full h-fit">
-            <div className="">
-              <p className="h6-bold">Sold by</p>
-            </div>
-            <Separator className="my-4" />
-            <div className="flex flex-col gap-[5px]">
-              {datas.map((data) => (
-                <div className="" key={data.id}>
-                  <div className="flex gap-1 items-center">
-                    <p className="size-4">{data.icon}</p>
-                    <p className="h6-bold">{data.title}</p>
-                  </div>
-                  <p className="h6-light">{data.description}</p>
-                </div>
-              ))}
-            </div>
-            <Separator className="mt-4 mb-2" />
-            <AddToCart
-              item={{
-                clientId: generateId(),
-                product: product?._id || "",
-                name: product.name,
-                slug: product.slug,
-                category: product.category,
-                price: product.price,
-                quantity: 1,
-                image: product.images[0],
-                options: product.options,
-              }}
-            />
-            <div className="pt-[8px] w-full">
-              <ShareLike product={product} />
-            </div>
-          </div>
-        </div>
+        <AddToBrowsingHistory
+          id={product.id!}
+          category={product.category_ids}
+        />
+        <ProductDetailsClient
+          product={{
+            _id: product.id,
+            name: product.name,
+            images: product.images,
+            avgRating: product.avg_rating,
+            numReviews: product.num_reviews,
+            ratingDistribution: product.rating_distribution,
+            options: product.options,
+            slug: product.slug,
+            category: product.category_ids[0],
+            price: product.price,
+            vendor: {
+              id: product.vendor_id,
+              shopId: product.vendor_shopId,
+              displayName: product.vendor_displayName,
+              logo: product.vendor_logo,
+            },
+          }}
+          cartItemId={cartItemId}
+        />
 
         {/* Product Description and Reviews */}
         <div className="bg-white my-6 p-3">
@@ -250,7 +197,7 @@ const ProductDetails = async (props: {
           <h2 className="h2-bold mb-2" id="reviews">
             Customer Reviews ({totalRatings})
           </h2>
-          <ReviewList userId={user?.data?._id} product={product} />
+          <ReviewList userId={user?.id} product={product} />
         </section>
         <section className="mt-10">
           <ProductSlider
@@ -265,5 +212,4 @@ const ProductDetails = async (props: {
     </section>
   );
 };
-
 export default ProductDetails;

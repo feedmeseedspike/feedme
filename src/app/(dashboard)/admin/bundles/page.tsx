@@ -127,7 +127,7 @@ export default function Bundles() {
         ? { ...bundle, ...updatedBundle }
         : bundle
     );
-    console.log("Updated Bundles:", updatedBundles);
+    // console.log("Updated Bundles:", updatedBundles);
     setIsEditModalOpen(false);
   };
 

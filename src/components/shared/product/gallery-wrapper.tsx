@@ -1,18 +1,30 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Image from 'next/image';
-import Zoom from 'react-medium-image-zoom';
-import 'react-medium-image-zoom/dist/styles.css';
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTrigger,
+} from "@components/ui/dialog";
+import ProductGallery from "./product-gallery";
 
 export default function ProductGalleryWrapper({
   images,
   name,
+  selectedIndex = 0,
 }: {
   images: string[];
   name: string;
+  selectedIndex?: number;
 }) {
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(selectedIndex);
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    setSelectedImageIndex(selectedIndex);
+  }, [selectedIndex]);
 
   const handleImageSelect = (index: number) => {
     setSelectedImageIndex(index);
@@ -20,45 +32,49 @@ export default function ProductGalleryWrapper({
 
   return (
     <div className="flex flex-col gap-4 h-full">
-      {/* Main Image with Zoom */}
-      <div className="flex-1 relative w-full aspect-square bg-secondary">
-        <Zoom>
-          <div className="w-full h-full relative">
+      {/* Main Image with Modal Trigger */}
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogTrigger asChild>
+          <div className="flex-1 relative w-full h-full bg-white border border-gray-200 flex items-center justify-center p-4 cursor-zoom-in">
+            <div className="h-[40vh] sm:h-[50vh] md:h-[60vh] lg:h-[80vh] flex items-center justify-center">
+              <Image
+                src={images[selectedImageIndex]}
+                alt={`${name} - main view`}
+                fill
+                className="object-cove"
+                priority
+              />
+            </div>
+          </div>
+        </DialogTrigger>
+
+        {/* Modal Content */}
+        <DialogContent className="max-w-[90vw] md:max-w-[40vw] h-[90vh">
+          {/* <DialogHeader>
+            <h3 className="text-lg font-medium">{name}</h3>
+          </DialogHeader> */}
+
+          {/* Main Image in Modal */}
+          <div className="relative w-full h-[90dvh bg-white flex items-center justify-center">
             <Image
               src={images[selectedImageIndex]}
-              alt={name}
-              fill
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 40vw"
-              className="object-contain rounded-lg"
-              priority
+              alt={`${name} - enlarged view`}
+              width={1500}
+              height={1500}
+              className="object-contain"
             />
           </div>
-        </Zoom>
-      </div>
 
-      {/* Thumbnail Gallery */}
-      <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-        {images.map((image, index) => (
-          <button
-            key={index}
-            onClick={() => handleImageSelect(index)}
-            className={`shrink-0 w-16 h-16 border-2 rounded-lg overflow-hidden transition-all duration-200 ${
-              selectedImageIndex === index
-                ? 'border-[#F0800F] p-[1px]'
-                : 'border-transparent hover:border-gray-300'
-            }`}
-            aria-label={`View ${name} image ${index + 1}`}
-          >
-            <Image
-              src={image}
-              alt={`${name} thumbnail ${index + 1}`}
-              width={64}
-              height={64}
-              className="w-full h-full object-cover rounded-md"
+          {/* Thumbnail Gallery in Modal */}
+          <div className="flex flex-col items-center">
+            <ProductGallery
+              images={images}
+              selectedIndex={selectedImageIndex}
+              onImageSelect={handleImageSelect}
             />
-          </button>
-        ))}
-      </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

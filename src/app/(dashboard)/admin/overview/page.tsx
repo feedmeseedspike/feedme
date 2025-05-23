@@ -48,7 +48,9 @@ const Overview = () => {
     to: addDays(new Date(2022, 0, 20), 20),
   });
   const [selected, setSelected] = useState("Today");
-  const [compareTo, setCompareTo] = useState<"Previous period" | "Previous year" | null>(null);
+  const [compareTo, setCompareTo] = useState<
+    "Previous period" | "Previous year" | null
+  >(null);
 
   const orders = Array(10).fill({
     orderNo: "#0001",
@@ -61,19 +63,22 @@ const Overview = () => {
   });
 
   const handleApply = () => {
-    console.log("Selected Date Range:", date);
-    console.log("Compare To:", compareTo);
+    // // console.log("Selected Date Range:", date);
+    // // console.log("Compare To:", compareTo);
   };
 
   const handleCancel = () => {
     setCompareTo(null);
-    setDate({ from: new Date(2022, 0, 20), to: addDays(new Date(2022, 0, 20), 20) });
+    setDate({
+      from: new Date(2022, 0, 20),
+      to: addDays(new Date(2022, 0, 20), 20),
+    });
     setSelected("Today");
   };
 
   return (
     <main>
-      <div className="flex justify-between">
+      <div className="flex justify-between w-full">
         <h1 className="text-3xl font-semibold pb-8">Overview</h1>
         <div className="flex flex-col gap-4 items-end">
           <DropdownMenu>
@@ -86,7 +91,10 @@ const Overview = () => {
               </Button>
             </DropdownMenuTrigger>
 
-            <DropdownMenuContent className="w-[300px] md:w-[410px] mr-6 max-h-[80vh] overflow-y-auto" asChild>
+            <DropdownMenuContent
+              className="w-[300px] md:w-[410px] mr-6 max-h-[80vh] overflow-y-auto"
+              asChild
+            >
               <div className="p-2">
                 <Accordion type="single" className="w-full">
                   <AccordionItem value="item-1">
@@ -187,25 +195,27 @@ const Overview = () => {
 
                 {/* Compare to previous dates section */}
                 <div className="mt-4">
-                  <p className="text-[15px] font-bold mb-2">Compare to previous dates</p>
-                  <div className="flex flex-col gap-2">
+                  <p className="text-[15px] font-bold mb-2">
+                    Compare to previous dates
+                  </p>
+                  <RadioGroup
+                    value={compareTo || ""}
+                    onValueChange={(value) =>
+                      setCompareTo(
+                        value as "Previous period" | "Previous year" | null
+                      )
+                    }
+                    className="flex flex-col gap-2"
+                  >
                     <div className="flex items-center gap-2 p-2">
-                      <RadioGroupItem
-                        value="Previous period"
-                        checked={compareTo === "Previous period"}
-                        onClick={() => setCompareTo("Previous period")}
-                      />
+                      <RadioGroupItem value="Previous period" />
                       <span>Previous period</span>
                     </div>
                     <div className="flex items-center gap-2 p-2">
-                      <RadioGroupItem
-                        value="Previous year"
-                        checked={compareTo === "Previous year"}
-                        onClick={() => setCompareTo("Previous year")}
-                      />
+                      <RadioGroupItem value="Previous year" />
                       <span>Previous year</span>
                     </div>
-                  </div>
+                  </RadioGroup>
                 </div>
 
                 {/* Cancel and Apply buttons */}
@@ -220,13 +230,13 @@ const Overview = () => {
           </DropdownMenu>
         </div>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <Chart   />
-        <Chart   />
-        <Chart   />
-        <Chart   />
-        <Chart   />
-        <Chart   />
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 2xl:grid-cols-3 gap-4 mt-4">
+        <Chart />
+        <Chart />
+        <Chart />
+        <Chart />
+        <Chart />
+        <Chart />
       </div>
       <PendingOrders orders={orders} />
       <BestSellingProducts />

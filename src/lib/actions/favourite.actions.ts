@@ -1,64 +1,148 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { createClient } from "src/utils/supabase/server";
+import { revalidatePath } from "next/cache";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+// Add to favorites with error handling
+export async function addToFavorite(productId: string) {
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-// Add to favorite
-export async function addToFavorite(body: any) {
-  const token = cookies().get("accessToken")?.value;
-
-  const res = await fetch(`${BASE_URL}/favorite/add-to-favorite`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    throw new Error("Failed to add to favorites");
+  if (authError || !user) {
+    return { 
+      success: false, 
+      error: "You must be logged in to add favorites" 
+    };
   }
 
-  return res.json();
+  try {
+    const { error } = await supabase
+      .from('favorites')
+      .insert({
+        user_id: user.id,
+        product_id: productId
+      });
+
+    if (error?.code === '23505') { // Unique violation
+      return { 
+        success: false, 
+        error: "This product is already in your favorites" 
+      };
+    }
+
+    if (error) throw error;
+
+    revalidatePath('/account/favorites');
+    return { success: true };
+  } catch (error: any) {
+    console.error('Add to favorite error:', error);
+    return { 
+      success: false, 
+      error: error.message || "Failed to add to favorites" 
+    };
+  }
 }
 
-// Get favorites
+// Remove from favorites with error handling
+export async function removeFromFavorite(productId: string) {
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { 
+      success: false, 
+      error: "You must be logged in to modify favorites" 
+    };
+  }
+
+  try {
+    // Find and delete the favorite record for the user and product
+    const { error } = await supabase
+      .from('favorites')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('product_id', productId);
+
+    if (error) throw error;
+
+    revalidatePath('/account/favorites');
+    return { success: true };
+  } catch (error: any) {
+    console.error('Remove from favorite error:', error);
+    return { 
+      success: false, 
+      error: error.message || "Failed to remove from favorites" 
+    };
+  }
+}
+
+// Check favorite status with caching
+export async function isProductFavorited(productId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return false;
+
+  const { data, error } = await supabase
+    .from('favorites')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('product_id', productId)
+    .maybeSingle();
+
+  return !!data;
+}
+
+// Get favorites count with caching
+export async function getFavoritesCount() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return 0;
+
+  const { count } = await supabase
+    .from('favorites')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id);
+
+  return count || 0;
+}
+
+// Get all favorite product IDs for a user
+
+// Get favorites for the logged-in user
 export async function getFavourites() {
-  const token = cookies().get("accessToken")?.value;
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-  const res = await fetch(`${BASE_URL}/favorite/get-favorites`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    cache: "no-store", // Ensure fresh data
-  });
-  // console.log(res)
-
-  if (!res.ok) {
-    throw new Error("Failed to fetch favorites");
+  if (authError || !user) {
+    return { 
+      success: false, 
+      error: "You must be logged in to view favorites" 
+    };
   }
 
-  return res.json();
-}
+  try {
+    // First get just the favorite records
+    const { data: favorites, error } = await supabase
+      .from('favorites')
+      .select('id, user_id, product_id, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
 
+    if (error) throw error;
 
-// Remove from favorite
-export async function removeFromFavorite(id: string) {
-  const token = cookies().get("accessToken")?.value;
-
-  const res = await fetch(`${BASE_URL}/favorite/delete-from-favorite/${id}`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!res.ok) {
-    throw new Error("Failed to remove from favorites");
+    return { 
+      success: true, 
+      data: favorites || [],
+      error: null
+    };
+  } catch (error: any) {
+    console.error('Error fetching favorites:', error);
+    return { 
+      success: false, 
+      error: error.message || "Failed to fetch favorites",
+      data: null
+    };
   }
-
-  return res.json();
 }

@@ -54,8 +54,10 @@ const customers = [
 ];
 
 export default function CustomerPage({ params }: { params: { id: string } }) {
-  console.log(params.id);
-  const customer = customers.find((customer) => customer.id === Number(params.id));
+  // // console.log(params.id);
+  const customer = customers.find(
+    (customer) => customer.id === Number(params.id)
+  );
 
   if (!customer) {
     notFound();
@@ -119,7 +121,9 @@ export default function CustomerPage({ params }: { params: { id: string } }) {
           </table>
         </div>
         <div className="flex justify-between items-center mt-4">
-          <button className="text-gray-500 hover:text-gray-700">Previous</button>
+          <button className="text-gray-500 hover:text-gray-700">
+            Previous
+          </button>
           <span>Page 1 of 10</span>
           <button className="text-gray-500 hover:text-gray-700">Next</button>
         </div>

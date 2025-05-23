@@ -60,7 +60,7 @@ export default function Chart({ dateRange, compareTo }) {
   }, [dateRange]);
 
   return (
-    <div className="py-4 border border-[#EAECF0] rounded-xl shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)] bg-white w-full max-w-sm">
+    <div className="py-4 border border-[#EAECF0] rounded-xl shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)] bg-white w-full">
       <h3 className="font-semibold pb-4 px-5">Total Orders</h3>
       <Separator />
       <div className="flex justify-between items-center p-5 pb-3">

@@ -1,58 +1,97 @@
 'use client'
 
+import { cn } from '../../lib/utils'
 import { useRouter, useSearchParams } from 'next/navigation'
-import React from 'react'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '../../components/ui/pagination'
 
-import { formUrlQuery } from '../../lib/utils'
-
-import { Button } from '../ui/button'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-
-type PaginationProps = {
+type PaginationBarProps = {
   page: number | string
   totalPages: number
   urlParamName?: string
 }
 
-const Pagination = ({ page, totalPages, urlParamName }: PaginationProps) => {
+const PaginationBar = ({ page, totalPages, urlParamName = 'page' }: PaginationBarProps) => {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const currentPage = Number(page)
 
-  const onClick = (btnType: string) => {
-    const pageValue = btnType === 'next' ? Number(page) + 1 : Number(page) - 1
+  function getLink(pageNum: number) {
+    const newSearchParams = new URLSearchParams(searchParams.toString())
+    newSearchParams.set(urlParamName, pageNum.toString())
+    return `?${newSearchParams.toString()}`
+  }
 
-    const newUrl = formUrlQuery({
-      params: searchParams.toString(),
-      key: urlParamName || 'page',
-      value: pageValue.toString(),
-    })
-
-    router.push(newUrl, { scroll: true })
+  if (totalPages <= 1) {
+    return null
   }
 
   return (
-    <div className='flex items-center gap-2'>
-      <Button
-        size='lg'
-        variant='outline'
-        onClick={() => onClick('prev')}
-        disabled={Number(page) <= 1}
-        className='w-24'
-      >
-        <ChevronLeft /> Previous
-      </Button>
-      Page {page} of {totalPages}
-      <Button
-        size='lg'
-        variant='outline'
-        onClick={() => onClick('next')}
-        disabled={Number(page) >= totalPages}
-        className='w-24'
-      >
-        Next <ChevronRight />
-      </Button>
-    </div>
+    <Pagination>
+      <PaginationContent>
+        <PaginationItem>
+          <PaginationPrevious
+            href={getLink(currentPage - 1)}
+            className={cn(
+              currentPage === 1 && 'pointer-events-none text-muted-foreground'
+            )}
+          >
+            Previous
+          </PaginationPrevious>
+        </PaginationItem>
+        {Array.from({ length: totalPages }).map((_, i) => {
+          const pageNum = i + 1
+          const isEdgePage = pageNum === 1 || pageNum === totalPages
+          const isNearCurrentPage = Math.abs(pageNum - currentPage) <= 2
+
+          if (!isEdgePage && !isNearCurrentPage) {
+            if (i === 1 || i === totalPages - 2) {
+              return (
+                <PaginationItem key={pageNum} className="hidden md:block">
+                  <PaginationEllipsis className="text-muted-foreground" />
+                </PaginationItem>
+              )
+            }
+            return null
+          }
+          return (
+            <PaginationItem
+              key={pageNum}
+              className={cn(
+                'hidden md:block',
+                pageNum === currentPage && 'pointer-events-none block'
+              )}
+            >
+              <PaginationLink
+                href={getLink(pageNum)}
+                isActive={pageNum === currentPage}
+              >
+                {pageNum}
+              </PaginationLink>
+            </PaginationItem>
+          )
+        })}
+        <PaginationItem>
+          <PaginationNext
+            href={getLink(currentPage + 1)}
+            className={cn(
+              currentPage >= totalPages &&
+                'pointer-events-none text-muted-foreground'
+            )}
+          >
+            Next
+          </PaginationNext>
+        </PaginationItem>
+      </PaginationContent>
+    </Pagination>
   )
 }
 
-export default Pagination
+export default PaginationBar

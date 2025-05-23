@@ -59,8 +59,9 @@ import Edit from "@components/icons/edit.svg";
 import Trash from "@components/icons/trash.svg";
 import { toast } from "sonner";
 import { getProductBySlug } from "src/lib/actions/product.actions";
-import { categories } from "src/lib/data";
-// import { Product } from "src/lib/validator";
+// @ts-ignore
+import { getCategories, getCategoriesByIds } from "../../../../../lib/api";
+// import { Product }  from "src/lib/validator";
 
 const animatedComponents = makeAnimated();
 
@@ -113,6 +114,10 @@ export default function AddProduct() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [options, setOptions] = useState<OptionType[]>([]);
   const [isEditing, setIsEditing] = useState(false);
+  const [allCategories, setAllCategories] = useState<any[]>([]);
+  const [selectedCategoryObjs, setSelectedCategoryObjs] = useState<any[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -127,36 +132,65 @@ export default function AddProduct() {
     },
   });
 
+  // Fetch all categories for select options
+  useEffect(() => {
+    setLoadingCategories(true);
+    getCategories()
+      .then((data: any[]) => {
+        setAllCategories(data || []);
+        setLoadingCategories(false);
+      })
+      .catch((err: { message?: string }) => {
+        setCategoryError(err.message || "Failed to fetch categories");
+        setLoadingCategories(false);
+      });
+  }, []);
+
   // Fetch product data if in edit mode
   useEffect(() => {
     if (productSlug) {
       setIsEditing(true);
       const fetchProduct = async () => {
         try {
-          const product = getProductBySlug(productSlug);
+          const product = await getProductBySlug(productSlug);
+          // console.log(product);
           if (product) {
+            // Fetch category objects for the product's category_ids
+            let categoryObjs: any[] = [];
+            if (product.category_ids && product.category_ids.length > 0) {
+              try {
+                categoryObjs = await getCategoriesByIds(product.category_ids);
+                setSelectedCategoryObjs(categoryObjs);
+              } catch (e) {
+                setCategoryError("Failed to fetch product categories");
+              }
+            }
             form.reset({
               productName: product.name,
               description: product.description,
               price: product.price,
               stockStatus: product.stockStatus as "In Stock" | "Out of Stock",
-              selectedCategories: product.category,
+              selectedCategories: product.category_ids || [],
               variation: product.options?.length > 0 ? "Yes" : "No",
-              images: []
+              images: [],
             });
-            setOptions(product.options?.map(option => ({
-              ...option,
-              stockStatus: "In Stock",
-              image: new File([option.image], "image.jpg", { type: "image/jpeg" })
-            })) || []);
+            setOptions(
+              product.options?.map((option) => ({
+                ...option,
+                stockStatus: "In Stock",
+                image: new File([option.image], "image.jpg", {
+                  type: "image/jpeg",
+                }),
+              })) || []
+            );
           }
         } catch (error) {
           toast.error("Error fetching product");
         }
       };
-      fetchProduct();    }
+      fetchProduct();
+    }
   }, [productSlug, form]);
-  
 
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
@@ -168,15 +202,14 @@ export default function AddProduct() {
     } else {
       setImagePreviews([]);
     }
-  }, [form.watch("images")]);
-  
+  }, [form]);
 
   const handleSaveDraft = async (data: ProductFormValues) => {
     try {
       const draft = {
         ...data,
         options: options,
-        lastSaved: new Date().toISOString()
+        lastSaved: new Date().toISOString(),
       };
       localStorage.setItem("productDraft", JSON.stringify(draft));
       toast.success("Draft saved successfully");
@@ -184,7 +217,6 @@ export default function AddProduct() {
       toast.error("Error saving draft");
     }
   };
-  
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -201,11 +233,11 @@ export default function AddProduct() {
 
     if (isEditing) {
       // Handle edit product logic
-      console.log("Editing Product:", data);
+      // console.log("Editing Product:", data);
       toast.success("Product updated successfully!");
     } else {
       // Handle add product logic
-      console.log("Adding Product:", data);
+      // console.log("Adding Product:", data);
       toast.success("Product added successfully!");
     }
 
@@ -255,24 +287,32 @@ export default function AddProduct() {
                   Categories
                 </FormLabel>
                 <FormControl>
-                  <ReactSelect
-                    isMulti
-                    components={animatedComponents}
-                    options={categories.map((cat) => ({
-                      value: cat.title,
-                      label: cat.title,
-                      image: cat.thumbnail.url,
-                    }))}
-                    value={field.value.map((val) => ({
-                      value: val,
-                      label: val,
-                    }))}
-                    onChange={(newValue) => {
-                      const values = newValue.map((item) => item.value);
-                      field.onChange(values);
-                    }}
-                    className="col-span-7"
-                  />
+                  {loadingCategories ? (
+                    <div>Loading categories...</div>
+                  ) : categoryError ? (
+                    <div className="text-red-500">{categoryError}</div>
+                  ) : (
+                    <ReactSelect
+                      isMulti
+                      components={animatedComponents}
+                      options={allCategories.map((cat) => ({
+                        value: cat.id,
+                        label: cat.title,
+                        image: cat.thumbnail?.url,
+                      }))}
+                      value={field.value.map((val: string) => {
+                        const cat = allCategories.find((c) => c.id === val);
+                        return cat
+                          ? { value: cat.id, label: cat.title }
+                          : { value: val, label: val };
+                      })}
+                      onChange={(newValue) => {
+                        const values = newValue.map((item) => item.value);
+                        field.onChange(values);
+                      }}
+                      className="col-span-7"
+                    />
+                  )}
                 </FormControl>
                 <FormMessage className="col-span-7 col-start-3" />
               </FormItem>
@@ -470,7 +510,7 @@ export default function AddProduct() {
                         </TableHeader>
 
                         <TableBody>
-                          {options.map((option, index) => (
+                          {options.map((option: any, index: number) => (
                             <TableRow key={index}>
                               <TableCell className="flex items-center justify-start gap-3 w-1/2 !px-6">
                                 <div className="size-[40px] h relative">

@@ -66,7 +66,7 @@ const Promo = () => {
   const { days, hours, minutes, seconds } = formatTime(timeLeft ?? 0);
 
   return (
-    <section className="flex flex-col my-10 gap-20">
+    <section className="flex flex-col my-6 gap-20">
       {/* Heading */}
       <div className="flex flex-col gap-6 max-w-[40rem] mx-auto text-center">
         <h1 className="text-3xl md:text-6xl font-semibold font-proxima">
@@ -86,7 +86,7 @@ const Promo = () => {
         {promos.map((promo) => (
           <div
             key={promo.id}
-            className="rounded-3xl h-[600px] lg:h-[650px] relative pt-10 flex flex-col items-center text-center overflow-hidden"
+            className="rounded-3xl h-[500px] md:h-[600px] lg:h-[650px] relative pt-10 flex flex-col items-center text-center overflow-hidden"
             style={{ backgroundColor: promo.bgColor }}
           >
             <p className="text-white font-semibold">{promo.discount}</p>
@@ -147,7 +147,7 @@ const Promo = () => {
 
             <Link
               href={`/${promo.tag}`}
-              className="text-[#1B6013] relative z-50 rounded-lg px-6 py-3 bg-white font-semibold mt-12 inline-block"
+              className="text-[#1B6013] relative z-10 rounded-lg px-6 py-3 bg-white font-semibold mt-12 inline-block"
             >
               Shop Now
             </Link>

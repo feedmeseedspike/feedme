@@ -47,7 +47,7 @@ export default function TagBannersManager() {
   const [tagBanners, setTagBanners] = useState(initialTagBanners);
   const [editingBanner, setEditingBanner] = useState<any>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-
+ 
   const handleSave = async () => {
     alert("Changes saved!");
   };

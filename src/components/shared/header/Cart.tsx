@@ -3,7 +3,6 @@
 import ShoppingCart from "@components/icons/cart.svg";
 import { Button } from "@components/ui/button";
 import { Separator } from "@components/ui/separator";
-import { Checkbox } from "@components/ui/checkbox";
 import {
   Sheet,
   SheetClose,
@@ -17,7 +16,7 @@ import {
 import { ArrowLeft, Trash2Icon } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { AiOutlineMinus, AiOutlinePlus } from "react-icons/ai";
 import { useDispatch, useSelector } from "react-redux";
 import { formatNaira } from "src/lib/utils";
@@ -26,30 +25,20 @@ import {
   removeItem,
   updateItem,
   clearCart,
-  setCheckoutItems,
 } from "src/store/features/cartSlice";
 import { OrderItem } from "src/types";
 import { Input } from "@components/ui/input";
 import Link from "next/link";
+import { useMediaQuery } from "usehooks-ts";
 
-const Cart = () => {
-  const [checkedItems, setCheckedItems] = useState<OrderItem[]>([]);
-
+const Cart = ({ asLink = false }) => {
   const router = useRouter();
   const dispatch = useDispatch();
   const cart = useSelector((state: RootState) => state.cart);
-  const { items, itemsPrice, shippingPrice, totalPrice } = cart;
+  const { items, itemsPrice } = cart;
 
   const handleCheckout = () => {
-    // Only proceed with checked items
-    if (checkedItems.length === 0) return;
-    
-    // You need to store the selected items in your cart state
-    // This requires adding a new action in your cartSlice
-    dispatch(setCheckoutItems(checkedItems));
-    
-    // Navigate to checkout
-    router.push('/checkout');
+    router.push("/checkout");
   };
 
   const handleQuantityChange = (item: OrderItem, increment: boolean) => {
@@ -60,24 +49,16 @@ const Cart = () => {
   };
 
   const handleRemoveItem = (item: OrderItem) => {
-    dispatch(removeItem(item));
+    dispatch(
+      removeItem({
+        productId: item.product,
+        selectedOption: item.selectedOption,
+      })
+    );
   };
 
   const handleClearItem = () => {
     dispatch(clearCart());
-  };
-
-  const handleCheckItem = (item: OrderItem) => {
-    setCheckedItems((prevChecked) => {
-      const isChecked = prevChecked.some(
-        (checkedItem) => checkedItem.clientId === item.clientId
-      );
-      return isChecked
-        ? prevChecked.filter(
-            (checkedItem) => checkedItem.clientId !== item.clientId
-          )
-        : [...prevChecked, item];
-    });
   };
 
   const totalQuantity = useMemo(
@@ -85,14 +66,25 @@ const Cart = () => {
     [items]
   );
 
+  if (asLink) {
+    return (
+      <div className="relative">
+        <ShoppingCart className="size-[24px]" />
+        {items.length > 0 && (
+          <p className="absolute -top-2 -right-2 bg-[#D0D5DD] px-[7px] py-[2px] rounded-full text-xs text-white">
+            {totalQuantity}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <div className="relative">
+        <div className="relative cursor-pointer">
           <ShoppingCart className="size-[24px]" />
-          {items.length === 0 ? (
-            ""
-          ) : (
+          {items.length > 0 && (
             <p className="absolute -top-2 -right-2 bg-[#D0D5DD] px-[7px] py-[2px] rounded-full text-xs text-white">
               {totalQuantity}
             </p>
@@ -105,11 +97,13 @@ const Cart = () => {
             <ArrowLeft className="size-[22px]" />
           </SheetClose>
           <SheetTitle className="h2-bold flex-1 text-center">
-            Cart (
-            {items.reduce((acc: any, item: any) => acc + item.quantity, 0)})
+            Cart ({totalQuantity})
           </SheetTitle>
           {items.length > 0 && (
-            <p className="badge cursor-pointer w-fit" onClick={handleClearItem}>
+            <p
+              className="badge cursor-pointer w-fit select-none"
+              onClick={handleClearItem}
+            >
               Clear Cart
             </p>
           )}
@@ -125,23 +119,17 @@ const Cart = () => {
             </div>
           ) : (
             items.map((item: OrderItem) => (
-              <React.Fragment key={item.name}>
+              <React.Fragment key={`${item.clientId}-${item.name}`}>
                 <div className="flex items-center gap-3 sm:gap-4 overflow-y-visible">
-                  <Checkbox
-                    id={`checkbox-${item.name}`}
-                    checked={checkedItems.some(
-                      (checkedItem) => checkedItem.name === item.name
-                    )}
-                    onCheckedChange={() => handleCheckItem(item)}
-                  />
-
-                  <Image
-                    width={64}
-                    height={64}
-                    src={item.image}
-                    alt={item.name}
-                    className="h-[64px] rounded-[5px] border-[0.31px] border-[#DDD5DD] object-contain"
-                  />
+                  <Link href={`/product/${item.slug}`}>
+                    <Image
+                      width={64}
+                      height={64}
+                      src={item.image}
+                      alt={item.name}
+                      className="h-[64px] rounded-[5px] border-[0.31px] border-[#DDD5DD] object-contain"
+                    />
+                  </Link>
                   <div className="flex flex-col gap-[6px] w-full">
                     <div className="flex justify-between">
                       <p className="h6-light !text-[14px]">{item.name}</p>
@@ -151,9 +139,11 @@ const Cart = () => {
                         aria-label="Remove item"
                       />
                     </div>
-                    <p className="text-[8px] text-[#344054] bg-[#F2F4F7] rounded-[16px] w-fit px-2 py-[2px]">
-                      {/* {item.options[0].name} */} 1kg
-                    </p>
+                    {item.selectedOption && (
+                      <p className="text-[8px] text-[#344054] bg-[#F2F4F7] rounded-[16px] w-fit px-2 py-[2px]">
+                        {item.selectedOption}
+                      </p>
+                    )}
                     <div className="flex justify-between items-center">
                       <p className="text-[#101828] font-bold">
                         {formatNaira(item.price)}
@@ -212,24 +202,12 @@ const Cart = () => {
                 <p>Total</p>
                 <p>{formatNaira(itemsPrice)}</p>
               </div>
-              {/* <Link
-                href={{
-                  pathname: "/checkout",
-                  query: {
-                    items: JSON.stringify(
-                      checkedItems.map((item) => item.clientId)
-                    ),
-                  },
-                }}
-              > */}
-<button
-  className={`mt-3 w-full btn-primary ${checkedItems.length === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
-  disabled={checkedItems.length === 0}
-  onClick={handleCheckout}
->
-  Checkout
-</button>
-              {/* </Link> */}
+              <button
+                className="mt-3 w-full btn-primary"
+                onClick={handleCheckout}
+              >
+                Checkout
+              </button>
             </div>
           </SheetFooter>
         )}

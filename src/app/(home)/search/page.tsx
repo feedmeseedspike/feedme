@@ -1,5 +1,4 @@
 import Link from "next/link";
-
 import Pagination from "@components/shared/pagination";
 import ProductCard from "@components/shared/product/product-card";
 import { Button } from "@components/ui/button";
@@ -7,6 +6,7 @@ import {
   getAllCategories,
   getAllProducts,
   getAllTags,
+  getRelatedProductsByCategory,
 } from "../../../lib/actions/product.actions";
 import {
   Accordion,
@@ -22,10 +22,10 @@ import CollapsibleOnMobile from "@components/shared/collapsible-on-mobile";
 import Container from "@components/shared/Container";
 import ProductdetailsCard from "@components/shared/product/productDetails-card";
 import Headertags from "@components/shared/header/Headertags";
-import { Separator } from "@components/ui/separator";
-import { Checkbox } from "@components/ui/checkbox";
 import { Suspense } from "react";
 import { ProductSkeletonGrid } from "@components/shared/product/product-skeleton";
+import PriceRangeSlider from "@components/shared/product/price-range-slider";
+import ProductSlider from "@components/shared/product/product-slider";
 
 const sortOrders = [
   { value: "price-low-to-high", name: "Price: Low to high" },
@@ -33,21 +33,6 @@ const sortOrders = [
   { value: "newest-arrivals", name: "Newest arrivals" },
   { value: "avg-customer-review", name: "Avg. customer review" },
   { value: "best-selling", name: "Best selling" },
-];
-
-const prices = [
-  {
-    name: "Under 2000",
-    value: "1-2000",
-  },
-  {
-    name: "Under ₦50000",
-    value: "2100-50000",
-  },
-  {
-    name: "Under ₦100000",
-    value: "51000-100000",
-  },
 ];
 
 export async function generateMetadata(props: {
@@ -128,19 +113,54 @@ const SearchPage = async (props: {
     sort,
   });
 
+  // Safely get a category for related products
+  let relatedCategory = category !== "all" ? category : null;
+  let productIdForExclusion = null;
+
+  // If no category in params, try to get from first product
+  if (!relatedCategory && data.products.length > 0) {
+    const firstProduct = data.products[0];
+    if (firstProduct.category?.length > 0) {
+      relatedCategory = firstProduct.category[0];
+      productIdForExclusion = firstProduct._id;
+    }
+  }
+
+  // Fallback to first available category if still no category
+  if (!relatedCategory && categories.length > 0) {
+    relatedCategory = categories[0];
+  }
+
+  // Only fetch related products if we have a valid category
+  let relatedProducts = { data: [] };
+  if (relatedCategory) {
+    relatedProducts = await getRelatedProductsByCategory({
+      category: relatedCategory,
+      productId: productIdForExclusion,
+      page: 1,
+    });
+  }
+
   const noResults = data.totalProducts === 0;
 
   // Get categories that actually have products in the search results
-  const relevantCategories = q !== "all" && q !== "" 
-    ? Array.from(new Set(data.products.map(p => p.category[0])))
-    : categories;
+  const relevantCategories =
+    q !== "all" && q !== ""
+      ? Array.from(
+          new Set(
+            data.products
+              .filter((p) => Array.isArray(p.category) && p.category.length > 0)
+              .map((p) => p.category[0])
+          )
+        )
+      : categories;
 
   return (
     <main>
       <Headertags />
       {!noResults && (
         <div className="py-2 md:border-b shadow-sm">
-          <Container>
+          <Container className="lg:!px-[40px]">
             <div className="flex justify-between items-center ">
               <div className="flex items-center">
                 {category !== "all" ? (
@@ -217,36 +237,15 @@ const SearchPage = async (props: {
                         <AccordionItem value="price">
                           <AccordionTrigger>Price</AccordionTrigger>
                           <AccordionContent>
-                            <ul className="flex gap-3 flex-wrap ">
-                              <li className="border-[2px] px-2 py-1 rounded-md border-gray-600">
-                                <Link
-                                  className={`${
-                                    "all" === price && "text-primary"
-                                  }`}
-                                  href={getFilterUrl({ price: "all", params })}
-                                >
-                                  All
-                                </Link>
-                              </li>
-                              {prices.map((p) => (
-                                <li
-                                  key={p.value}
-                                  className="border px-2 py-1 rounded-md border-gray-400"
-                                >
-                                  <Link
-                                    href={getFilterUrl({
-                                      price: p.value,
-                                      params,
-                                    })}
-                                    className={`${
-                                      p.value === price && "text-primary"
-                                    }`}
-                                  >
-                                    {p.name}
-                                  </Link>
-                                </li>
-                              ))}
-                            </ul>
+                            <PriceRangeSlider
+                              params={params}
+                              maxPrice={Math.max(
+                                ...data.products.map((p) =>
+                                  typeof p.price === "number" ? p.price : 0
+                                ),
+                                0
+                              )}
+                            />
                           </AccordionContent>
                         </AccordionItem>
                       </Accordion>
@@ -256,63 +255,42 @@ const SearchPage = async (props: {
                         <AccordionItem value="customer-review">
                           <AccordionTrigger>Customer Review</AccordionTrigger>
                           <AccordionContent>
-                            <ul className="flex gap-3 flex-wrap ">
+                            <ul className="flex flex-col gap-2">
                               <li className="border px-2 py-1 rounded-md border-gray-400">
                                 <Link
                                   href={getFilterUrl({ rating: "all", params })}
                                   className={`${
-                                    "all" === rating && "text-primary"
+                                    !rating || rating === "all"
+                                      ? "text-primary"
+                                      : ""
                                   }`}
                                 >
-                                  All
+                                  All Ratings
                                 </Link>
                               </li>
-                              <li className="border px-2 py-1 rounded-md border-gray-400">
-                                <Link
-                                  href={getFilterUrl({ rating: "4", params })}
-                                  className={`${
-                                    "4" === rating && "text-primary"
-                                  }`}
-                                >
-                                  <div className="flex">
-                                    <Rating size={4} rating={4} /> & Up
-                                  </div>
-                                </Link>
-                              </li>
-                            </ul>
-                          </AccordionContent>
-                        </AccordionItem>
-                      </Accordion>
-
-                      {/* Tag */}
-                      <Accordion type="single" collapsible>
-                        <AccordionItem value="tag">
-                          <AccordionTrigger>Tag</AccordionTrigger>
-                          <AccordionContent>
-                            <ul className="flex gap-3 flex-wrap ">
-                              <li className="border px-2 py-1 rounded-md border-gray-400">
-                                <Link
-                                  className={`${
-                                    ("all" === tag || "" === tag) &&
-                                    "text-primary"
-                                  }`}
-                                  href={getFilterUrl({ tag: "all", params })}
-                                >
-                                  All
-                                </Link>
-                              </li>
-                              {tags.map((t) => (
+                              {[5, 4, 3, 2, 1].map((ratingValue) => (
                                 <li
-                                  key={t}
+                                  key={ratingValue}
                                   className="border px-2 py-1 rounded-md border-gray-400"
                                 >
                                   <Link
+                                    href={getFilterUrl({
+                                      rating: ratingValue.toString(),
+                                      params: {
+                                        ...params,
+                                        rating: ratingValue.toString(),
+                                      },
+                                    })}
                                     className={`${
-                                      toSlug(t) === tag && "text-primary"
+                                      rating === ratingValue.toString()
+                                        ? "text-primary"
+                                        : ""
                                     }`}
-                                    href={getFilterUrl({ tag: t, params })}
-                                    >
-                                    {t}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <Rating size={4} rating={ratingValue} />
+                                      <span>& Up</span>
+                                    </div>
                                   </Link>
                                 </li>
                               ))}
@@ -329,19 +307,19 @@ const SearchPage = async (props: {
         </div>
       )}
 
-      <Container className="grid md:grid-cols-8 md:gap-4 py-4">
-          <aside className="hidden md:block space-y-4 bg-white h-fit p-4 py-8 rounded-md col-span-2 lg:sticky lg:top-10">
-            {relevantCategories.length > 0 && (
-              <div>
-                <div className="font-bold flex gap-1 items-center w-full">
-                  Categories{" "}
-                  <div className="flex items-center w-full">
-                    <span className="bg-[#1B6013] flex items-center h-1 w-10 rounded-md"></span>
-                    <span className="w-full border-b" />
-                  </div>
+      <Container className="lg:!px-[40px] grid md:grid-cols-8 md:gap-4 py-4">
+        <aside className="hidden md:block space-y-4 bg-white h-fit p-4 py-8 rounded-md col-span-2 lg:sticky lg:top-10">
+          {relevantCategories.length > 0 && (
+            <div>
+              <div className="font-bold flex gap-1 items-center w-full">
+                Category{" "}
+                <div className="flex items-center w-full">
+                  <span className="bg-[#1B6013] flex items-center h-1 w-10 rounded-md"></span>
+                  <span className="w-full border-b" />
                 </div>
-                <ul className="text-[14p] pl-2 pt-2">
-                  {/* <li>
+              </div>
+              <ul className="text-[14p] pl-2 pt-2 flex flex-col gap-2">
+                {/* <li>
                     <Link
                       className={`${"all" === category && "text-[#1B6013]"}`}
                       href={getFilterUrl({ category: "all", params })}
@@ -349,113 +327,81 @@ const SearchPage = async (props: {
                       All
                     </Link>
                   </li> */}
-                  {relevantCategories.map((c) => (
-                    <li key={c}>
-                      <Link
-                        className={`${c === category && "text-[#1B6013]"} grid gap-2`}
-                        href={`/category/${c}`}
-                      >
-                        {c}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            <div>
-              <div className="font-bold flex gap-1 items-center w-full">
-                Price{" "}
-                <div className="flex items-center w-full">
-                  <span className="bg-[#1B6013] flex items-center h-1 w-10 rounded-md"></span>
-                  <span className="w-full border-b" />
-                </div>
-              </div>
-              <ul className="pl-2 space-y-2">
-                <li>
-                  <Link
-                    className={`${"all" === price && "text-[#1B6013]"}`}
-                    href={getFilterUrl({ price: "all", params })}
-                  >
-                    All
-                  </Link>
-                </li>
-
-                {prices.map((p) => (
-                  <li key={p.value}>
+                {relevantCategories.map((c) => (
+                  <li key={c}>
                     <Link
-                      href={getFilterUrl({ price: p.value, params })}
-                      className={`${p.value === price && "text-[#1B6013]"} flex gap-4`}
+                      className={`${
+                        c === category && "text-[#1B6013]"
+                      } grid gap-2`}
+                      href={`/category/${c}`}
                     >
-                      {p.name}
+                      {c}
                     </Link>
                   </li>
                 ))}
               </ul>
             </div>
-            <div>
-              <div className="font-bold flex gap-1 items-center w-full whitespace-nowrap">
-                Customer Review{" "}
-                <div className="flex items-center w-full">
-                  <span className="bg-[#1B6013] flex items-center h-1 w-10 rounded-md"></span>
-                  <span className="w-full border-b" />
-                </div>
+          )}
+          <div>
+            <div className="font-bold flex gap-1 items-center w-full">
+              Price{" "}
+              <div className="flex items-center w-full">
+                <span className="bg-[#1B6013] flex items-center h-1 w-10 rounded-md"></span>
+                <span className="w-full border-b" />
               </div>
-              <ul className="pl-2 space-y-2">
-                <li>
+            </div>
+            <div className="pl-2 pt-2">
+              <PriceRangeSlider
+                params={params}
+                maxPrice={Math.max(
+                  ...data.products.map((p) =>
+                    typeof p.price === "number" ? p.price : 0
+                  ),
+                  0
+                )}
+              />
+            </div>
+          </div>
+          <div>
+            <div className="font-bold flex gap-1 items-center w-full whitespace-nowrap">
+              Customer Review{" "}
+              <div className="flex items-center w-full">
+                <span className="bg-[#1B6013] flex items-center h-1 w-10 rounded-md"></span>
+                <span className="w-full border-b" />
+              </div>
+            </div>
+            <ul className="pl-2 pt-2 space-y-2">
+              <li>
+                <Link
+                  href={getFilterUrl({ rating: "all", params })}
+                  className={`${
+                    !rating || rating === "all" ? "text-[#1B6013]" : ""
+                  }`}
+                >
+                  All Ratings
+                </Link>
+              </li>
+              {[5, 4, 3, 2, 1].map((ratingValue) => (
+                <li key={ratingValue}>
                   <Link
-                    href={getFilterUrl({ rating: "all", params })}
-                    className={`${"all" === rating && "text-[#1B6013]"}`}
+                    href={getFilterUrl({
+                      rating: ratingValue.toString(),
+                      params: { ...params, rating: ratingValue.toString() },
+                    })}
+                    className={`${
+                      rating === ratingValue.toString() ? "text-[#1B6013]" : ""
+                    }`}
                   >
-                    All
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href={getFilterUrl({ rating: "4", params })}
-                    className={`${"4" === rating && "text-[#1B6013]"}`}
-                  >
-                    <div className="flex">
-                      <Rating size={4} rating={4} /> & Up
+                    <div className="flex items-center gap-2">
+                      <Rating size={4} rating={ratingValue} />
+                      <span>& Up</span>
                     </div>
                   </Link>
                 </li>
-              </ul>
-            </div>
-            <div>
-              <div className="font-bold flex gap-1 items-center w-full">
-                Tags{" "}
-                <div className="flex items-center w-full">
-                  <span className="bg-[#1B6013] flex items-center h-1 w-10 rounded-md"></span>
-                  <span className="w-full border-b" />
-                </div>
-              </div>
-              <ul className="flex gap-x-2 gap-y-5 flex-wrap pt-4 pl-2">
-                <li>
-                  <Link
-                    className={`${
-                      ("all" === tag || "" === tag) &&
-                      "border-zinc-700 text-[#1B6013]"
-                    }  border px-2 py-2 rounded-sm border-zinc-500`}
-                    href={getFilterUrl({ tag: "all", params })}
-                  >
-                    All
-                  </Link>
-                </li>
-                {tags.map((t) => (
-                  <li key={t}>
-                    <Link
-                      className={`${
-                        toSlug(t) === tag && "text-[#1B6013]"
-                      } border px-2 py-2 rounded-sm border-zinc-500`}
-                      href={getFilterUrl({ tag: t, params })}
-                    >
-                      {t}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </aside>
+              ))}
+            </ul>
+          </div>
+        </aside>
 
         <div className="md:col-span-6 space-y-4">
           {category !== "all" ? (
@@ -467,10 +413,28 @@ const SearchPage = async (props: {
             </div>
           )}
           <Suspense fallback={<ProductSkeletonGrid count={12} />}>
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols- justify-center items-center">
+            <div className="flex flex-col justify-center items-center mx-auto text-center">
               {data.products.length === 0 && (
-                <div className="text-2xl font-semibold">No product found</div>
+                <div className="max-w-xl  pt-[5rem]">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 mb-4"></div>
+                  <h3 className="text-lg md:text-5xl font-extrabold w-full  mb-4">
+                    Oops! We couldn&apos;t find what you&apos;re looking for
+                  </h3>
+                  <p className="text-gray-500 mb-6">
+                    Try checking the spelling or searching with different
+                    keywords.
+                  </p>
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="border-[#1B6013] bg-[#1B6013] text-white px-10 py-6 hover:bg-[#1B6013]/90 rounded-full"
+                  >
+                    <Link href="/search">Clear all filters</Link>
+                  </Button>
+                </div>
               )}
+            </div>
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4 ">
               {data.products.map((product) => (
                 <ProductdetailsCard key={product._id} product={product} />
               ))}
@@ -480,6 +444,15 @@ const SearchPage = async (props: {
             <Pagination page={page} totalPages={data.totalPages} />
           )}
         </div>
+        {relatedProducts.data.length > 0 && (
+            <section className="mt-10">
+              <ProductSlider
+                products={relatedProducts.data}
+                title={"You may also like"}
+              />
+            </section>
+          )}
+
       </Container>
     </main>
   );

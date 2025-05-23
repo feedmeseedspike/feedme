@@ -11,12 +11,15 @@ import { ProductSkeletonGrid } from "@components/shared/product/product-skeleton
 import Image from "next/image";
 import { Suspense } from "react";
 
-const promoBanners: Record<string, { 
-  title: string;
-  subtitle?: string;
-  imageUrl: string;
-  bgColor?: string;
-}> = {
+const promoBanners: Record<
+  string,
+  {
+    title: string;
+    subtitle?: string;
+    imageUrl: string;
+    bgColor?: string;
+  }
+> = {
   "black-friday": {
     title: "Black Friday Mega Sale!",
     subtitle: "Up to 70% OFF - Limited Time",
@@ -48,7 +51,7 @@ const pageTitles: Record<string, string> = {
   "new-arrival": "New Arrivals",
   "todays-deal": "Today's Deals",
   "black-friday": "Black Friday",
-  "featured": "Featured Products",
+  featured: "Featured Products",
   "best-seller": "Best Selling Products",
   recommended: "Recommended For You",
   trending: "Trending Products",
@@ -83,33 +86,36 @@ export default async function TagProductsPage({
 
   if (!data || data.totalProducts === 0) return notFound();
 
-  const pageTitle = pageTitles[params.tag] || params.tag.split('-').map(word => 
-    word.charAt(0).toUpperCase() + word.slice(1)
-  ).join(' ');
+  const pageTitle =
+    pageTitles[params.tag] ||
+    params.tag
+      .split("-")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
 
-  const promoBanner = promoBanners[params.tag]
+  const promoBanner = promoBanners[params.tag];
   return (
     <main>
       <Headertags />
-      
-      {promoBanner && (
-      <div 
-        className="w-full aspect-[16/6] md:aspect-[16/4] relative overflow-hidden"
-        style={{ backgroundColor: promoBanner.bgColor }}
-      >
-        <div className="absolute inset-0">
-          <Image
-            src={promoBanner.imageUrl}
-            alt={promoBanner.title}
-            fill
-            className="object-contain"
-            priority
-          />
-        </div>
-      </div>
-    )}
 
-      <div className="py-2 md:border-b shadow-sm">
+      {promoBanner && (
+        <div
+          className="w-full aspect-[16/6] md:aspect-[16/4] relative overflow-hidden"
+          style={{ backgroundColor: promoBanner.bgColor }}
+        >
+          <div className="absolute inset-0">
+            <Image
+              src={promoBanner.imageUrl}
+              alt={promoBanner.title}
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="py-2 px-4 md:border-b shadow-sm">
         <Container>
           <div className="flex justify-between items-center">
             <div className="flex items-center">
@@ -130,8 +136,8 @@ export default async function TagProductsPage({
 
       <Container className="py-8">
         <div className="space-y-4">
-        <Suspense fallback={<ProductSkeletonGrid count={12} />}>
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
+          <Suspense fallback={<ProductSkeletonGrid count={12} />}>
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-5">
               {data.products.map((product) => (
                 <ProductdetailsCard key={product._id} product={product} />
               ))}

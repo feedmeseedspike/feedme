@@ -1,89 +1,200 @@
-"use client"
+"use client";
 
 import React, { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { useToast } from "src/hooks/useToast";
+import { updatePassword } from "src/lib/actions/auth.actions";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Button } from "@components/ui/button";
+import { Input } from "@components/ui/input";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@components/ui/form";
+import { ErrorBoundary } from "@components/shared/ErrorBoundary";
 
-const Password = () => {
-  const [showPassword, setShowPassword] = useState({
-    current: false,
-    new: false,
-    confirm: false,
+const passwordSchema = z
+  .object({
+    currentPassword: z.string().min(8, "Current password is required"),
+    newPassword: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
+        "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"
+      ),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
   });
 
-  const toggleVisibility = (field: "current" | "new" | "confirm") => {
-    setShowPassword((prev) => ({ ...prev, [field]: !prev[field] }));
+type PasswordFormValues = z.infer<typeof passwordSchema>;
+
+export default function PasswordPage() {
+  const { showToast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const form = useForm<PasswordFormValues>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
+
+  const onSubmit = async (data: PasswordFormValues) => {
+    try {
+      setIsLoading(true);
+      await updatePassword(data.currentPassword, data.newPassword);
+      showToast("Password updated successfully", "success");
+      form.reset();
+    } catch (error: any) {
+      showToast(error.message || "Failed to update password", "error");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="p-6">
-      <h2 className="text-lg font-semibold mb-4">Update Password</h2>
+    <ErrorBoundary>
+      <div className="max-w-md mx-auto p-6">
+        <h1 className="text-2xl font-bold mb-6">Change Password</h1>
 
-      {/* Current Password */}
-      <div className="mb-4">
-        <label className="block font-medium mb-1">Password *</label>
-        <div className="relative">
-          <input
-            type={showPassword.current ? "text" : "password"}
-            placeholder="Enter Password"
-            className="w-full border rounded-full py-2 px-4 pr-10 focus:outline-none"
-          />
-          <button
-            type="button"
-            className="absolute right-3 top-[10px] text-gray-500"
-            onClick={() => toggleVisibility("current")}
-          >
-            {showPassword.current ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
-        </div>
-        <a href="#" className="text-green-800 text-sm mt-1 inline-block">
-          Forgot Password?
-        </a>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <FormField
+              control={form.control}
+              name="currentPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Current Password</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input
+                        type={
+                          form.watch("showCurrentPassword")
+                            ? "text"
+                            : "password"
+                        }
+                        {...field}
+                        disabled={isLoading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          form.setValue(
+                            "showCurrentPassword",
+                            !form.watch("showCurrentPassword")
+                          )
+                        }
+                        className="absolute right-3 top-1/2 -translate-y-1/2"
+                      >
+                        {form.watch("showCurrentPassword") ? (
+                          <EyeOff className="h-4 w-4 text-gray-500" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-gray-500" />
+                        )}
+                      </button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="newPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>New Password</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input
+                        type={
+                          form.watch("showNewPassword") ? "text" : "password"
+                        }
+                        {...field}
+                        disabled={isLoading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          form.setValue(
+                            "showNewPassword",
+                            !form.watch("showNewPassword")
+                          )
+                        }
+                        className="absolute right-3 top-1/2 -translate-y-1/2"
+                      >
+                        {form.watch("showNewPassword") ? (
+                          <EyeOff className="h-4 w-4 text-gray-500" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-gray-500" />
+                        )}
+                      </button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirm New Password</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input
+                        type={
+                          form.watch("showConfirmPassword")
+                            ? "text"
+                            : "password"
+                        }
+                        {...field}
+                        disabled={isLoading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          form.setValue(
+                            "showConfirmPassword",
+                            !form.watch("showConfirmPassword")
+                          )
+                        }
+                        className="absolute right-3 top-1/2 -translate-y-1/2"
+                      >
+                        {form.watch("showConfirmPassword") ? (
+                          <EyeOff className="h-4 w-4 text-gray-500" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-gray-500" />
+                        )}
+                      </button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Updating..." : "Update Password"}
+            </Button>
+          </form>
+        </Form>
       </div>
-
-      {/* New Password */}
-      <div className="mb-4">
-        <label className="block font-medium mb-1">New Password</label>
-        <div className="relative">
-          <input
-            type={showPassword.new ? "text" : "password"}
-            placeholder="Enter Password"
-            className="w-full border rounded-full py-2 px-4 pr-10 focus:outline-none"
-          />
-          <button
-            type="button"
-            className="absolute right-3 top-[10px] text-gray-500"
-            onClick={() => toggleVisibility("new")}
-          >
-            {showPassword.new ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
-        </div>
-      </div>
-
-      {/* Confirm New Password */}
-      <div className="mb-6">
-        <label className="block font-medium mb-1">Confirm New Password</label>
-        <div className="relative">
-          <input
-            type={showPassword.confirm ? "text" : "password"}
-            placeholder="Enter Password"
-            className="w-full border rounded-full py-2 px-4 pr-10 focus:outline-none"
-          />
-          <button
-            type="button"
-            className="absolute right-3 top-[10px] text-gray-500"
-            onClick={() => toggleVisibility("confirm")}
-          >
-            {showPassword.confirm ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
-        </div>
-      </div>
-
-      {/* Submit Button */}
-      <button className="w-fit bg-[#1B6013] text-white py-3 px-4 rounded-full hover:bg-green-800">
-        Update Password
-      </button>
-    </div>
+    </ErrorBoundary>
   );
-};
-
-export default Password;
+}

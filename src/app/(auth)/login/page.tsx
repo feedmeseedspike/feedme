@@ -11,28 +11,27 @@ export const metadata = { title: "Sign In" };
 
 const Signin = async (props: {
   searchParams: Promise<{
-    callbackUrl: string;
+    callbackUrl?: string;
   }>;
 }) => {
   const searchParams = await props.searchParams;
-  const { callbackUrl = "/" } = searchParams;
+  const callbackUrl = searchParams.callbackUrl || "/";
 
   const user = await getUser();
   if (user) {
     return redirect(callbackUrl);
   }
 
-  // console.log(user, callbackUrl)
+  // // console.log(user, callbackUrl)
 
   return (
     <main className="h-screen flex gap-6">
       <div className="flex md:w-[60%] lg:w-[40%] w-full flex-col justify-center px-4 md:px-8">
         <div className="pb-6">
           <div className="flex flex-col gap-7">
-            <PreloadResource />
-            {/* <Link href="/">
+            <Link href="/">
               <Image src="/footerLogo.png" alt="logo" width={200} height={52} />
-            </Link> */}
+            </Link>
             <div className="flex flex-col gap-3">
               <p className="h2-bold text-3xl text-[#1B6013]">
                 Log in to your account
@@ -75,7 +74,7 @@ const Signin = async (props: {
       </div>
 
       {/* Right Section (Image) */}
-      <div className="hidden md:flex md:w-[40%] lg:w-[60%]">
+      <div className="hidden md:flex md:w-[40%] lg:w-[60%] h-screen">
         <Image
           src="/loginBanner.jpeg"
           width={900}

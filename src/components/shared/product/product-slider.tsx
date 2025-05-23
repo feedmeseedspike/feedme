@@ -1,5 +1,3 @@
-'use client'
-
 import * as React from 'react'
 import {
   Carousel,
@@ -26,10 +24,10 @@ export default function ProductSlider({
   href?: string
 }) {
   return (
-    <section className='bg-white rounded-[8px] p-4'>
+    <section className='bg-white rounded-[8px] p-2 md:p-4'>
       <div className="flex items-center justify-between text-[14px] ">
         {href ? (
-          <Link href={href} className='h2-bold'>
+          <Link href={href} className='h2-bold truncate'>
             {title}
           </Link>
         ) : (

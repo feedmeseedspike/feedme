@@ -18,9 +18,7 @@ import Profile from "@components/shared/account/profile";
 
 const Page = async () => {
   // const userInfo = useSelector((state) => state.auth.user);
-  const userInfo = await getUser();
-  const user = userInfo?.data
-
+  const user = await getUser();
  
   // const [updateUserInformation, { isLoading, data, error }] =
   //   useUpdateUserMutation();
@@ -44,7 +42,7 @@ const Page = async () => {
 
 
   return (
-      <section className="max-w-4xl mx-auto py-8">
+      <section className=" py-8">
 
         <Profile user={user} />
         {/* <DeleteUser /> */}

@@ -101,7 +101,7 @@ const Images = ({ imgIndex }: { imgIndex: number }) => {
               src={imgSrc}
               alt={`Slide ${idx + 1}`}
               width={900}
-              height={260}
+              height={500}
               priority
               quality={100}
               // fill

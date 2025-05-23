@@ -66,7 +66,7 @@ export default function BundleModal({
       ...data,
       products: selectedProducts,
     };
-    console.log(formData);
+    // console.log(formData);
     if (onSubmit) onSubmit(formData);
     onClose();
   };

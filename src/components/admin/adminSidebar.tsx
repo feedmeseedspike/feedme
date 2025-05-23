@@ -22,7 +22,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
 import LogoutButton from "@components/shared/header/LogoutButton";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Menu, X } from "lucide-react";
+import { Button } from "@components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@components/ui/sheet";
 
 interface AppSidebarProps {
   user: UserData;
@@ -31,6 +38,7 @@ interface AppSidebarProps {
 export function AdminSidebar({ user }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const [open, setOpen] = useState(false);
 
   // Redirect "/admin" to "/admin/overview"
   useEffect(() => {
@@ -43,15 +51,16 @@ export function AdminSidebar({ user }: AppSidebarProps) {
     { title: "Overview", url: "/admin/overview", icon: Overview },
     { title: "Orders", url: "/admin/orders", icon: Order },
     { title: "Products", url: "/admin/products", icon: Product },
+    { title: "Categories", url: "/admin/categories", icon: Product },
     { title: "Bundles", url: "/admin/bundles", icon: Bundle },
     { title: "Agents", url: "/admin/agents", icon: User },
     { title: "Customers", url: "/admin/customers", icon: Profile },
     { title: "Promotions", url: "/admin/promotions", icon: Product },
   ];
 
-  return (
-    <Sidebar className="t-6 fixed">
-      <SidebarContent>
+  const RenderSidebarContent = () => (
+    <div className="h-full flex flex-col">
+      <div className="flex-1">
         <SidebarGroup>
           <Circles />
           <Link href={"/"}>
@@ -64,7 +73,7 @@ export function AdminSidebar({ user }: AppSidebarProps) {
             />
           </Link>
           <SidebarGroupContent>
-            <SidebarMenu className="my-6 flex gap-2 overflow-y-scroll max-h-[calc(100vh-200px)]">
+            <SidebarMenu className="my-6 flex gap-2 overflow-y-auto max-h-[calc(100vh-200px)]">
               {routes.map((item) => {
                 const isActive = pathname.startsWith(item.url);
 
@@ -75,9 +84,10 @@ export function AdminSidebar({ user }: AppSidebarProps) {
                         href={item.url}
                         className={`my-3 !flex !items-center gap-4 px-2 py-3 rounded-lg transition-all duration-300 w-full ${
                           isActive
-                            ? "bg-[#1B6013] text-white rounded-[10px] "
+                            ? "bg-[#1B6013] text-white rounded-[10px]"
                             : "hover:bg-[#1B6013] hover:text-white"
                         }`}
+                        onClick={() => setOpen(false)}
                       >
                         <span className={`size-5 text-[#667085] hover:fill-white ${isActive && "fill-white"}`}>
                           <item.icon />
@@ -91,10 +101,10 @@ export function AdminSidebar({ user }: AppSidebarProps) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-      </SidebarContent>
+      </div>
 
-      {/* Fixed Bottom User Section */}
-      <div className="absolute bottom-0 left-0 w-[315px] p-6 bg-[#09244B08] shadow-[inset_0px_1.3px_0px_0px_#F2F4F6]">
+      {/* User Section */}
+      <div className="p-6 bg-[#09244B08] shadow-[inset_0px_1.3px_0px_0px_#F2F4F6]">
         <div className="flex gap-2">
           <div className="flex gap-2 items-center">
             <Avatar>
@@ -109,6 +119,31 @@ export function AdminSidebar({ user }: AppSidebarProps) {
           <LogoutButton showText={false} />
         </div>
       </div>
-    </Sidebar>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Mobile */}
+      <div className="lg:hidden fixed top-4 left-4 z-50">
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="icon">
+              <Menu className="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="p-0 w-[280px]">
+            <RenderSidebarContent />
+          </SheetContent>
+        </Sheet>
+      </div>
+
+      {/* Desktop View */}
+      <Sidebar className="fixed z-50 h-full hidden lg:block">
+        <SidebarContent>
+          <RenderSidebarContent />
+        </SidebarContent>
+      </Sidebar>
+    </>
   );
 }

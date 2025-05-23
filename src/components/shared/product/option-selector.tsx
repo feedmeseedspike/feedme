@@ -7,24 +7,30 @@ import Image from "next/image";
 import { formatNaira } from "src/lib/utils";
 import clsx from "clsx";
 
-const OptionSelector = ({ options }: { options: { name: string; price: number; image: string }[] }) => {
+const OptionSelector = ({
+  options,
+}: {
+  options: { name: string; price: number; image: string }[];
+}) => {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [shake, setShake] = useState(false);
 
   const handleAddToCart = () => {
     if (!selectedOption) {
       setShake(true);
-      setTimeout(() => setShake(false), 500); // Remove shake effect after animation
+      setTimeout(() => setShake(false), 500);
     } else {
-      console.log("Added to cart:", selectedOption);
+      // console.log("Added to cart:", selectedOption);
     }
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-2">
       <div className="flex gap-[10px]">
         <p className="h4-bold">Select Option</p>
-        <p className={clsx("badge transition", { "animate-shake": shake })}>Required</p>
+        <p className={clsx("badge transition", { "animate-shake": shake })}>
+          Required
+        </p>
       </div>
       <RadioGroup onValueChange={setSelectedOption}>
         {options.map((option) => (

@@ -1,6 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
 import { Metadata } from "next";
-import PromoCardsManager from "@components/admin/promotions/PromCardsManager";
+import PromoCardsManager from "@components/admin/promotions/PromoCardsManager";
 import HomeBannersManager from "@components/admin/promotions/HomeBannersManager";
 import TagBannersManager from "@components/admin/promotions/TagBannersManager";
 

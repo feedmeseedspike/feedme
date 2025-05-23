@@ -15,18 +15,36 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@components/ui/select";
+
+const availableTags = [
+  { value: "todays-deal", label: "Today's Deals" },
+  { value: "black-friday", label: "Black Friday" },
+  { value: "fresh-fruits", label: "Fresh Fruits" },
+  { value: "new-arrival", label: "New Arrivals" },
+  { value: "featured", label: "Featured Products" },
+  { value: "best-seller", label: "Best Selling Products" },
+  { value: "recommended", label: "Recommended For You" },
+  { value: "trending", label: "Trending Products" },
+];
 
 const initialBanners = [
   {
     id: 1,
     imageUrl: "/banners/banner3.png",
-    link: "#",
+    tag: "todays-deal",
     active: true,
   },
   {
     id: 2,
     imageUrl: "/banners/banner4.png",
-    link: "#",
+    tag: "fresh-fruits",
     active: true,
   },
 ];
@@ -71,16 +89,20 @@ export default function HomeBannersManager() {
               />
             </div>
             <CardContent className="p-4">
-              <p className="text-sm">Link: {banner.link || "None"}</p>
-              <p className="text-sm">Status: {banner.active ? "Active" : "Inactive"}</p>
-              
+              <p className="text-sm">Tag: {banner.tag}</p>
+              <p className="text-sm">
+                Status: {banner.active ? "Active" : "Inactive"}
+              </p>
+
               <div className="flex justify-end gap-2 mt-4">
                 <Button variant="outline" onClick={() => openDialog(banner)}>
                   Edit
                 </Button>
-                <Button 
-                  variant="destructive" 
-                  onClick={() => setBanners(banners.filter(b => b.id !== banner.id))}
+                <Button
+                  variant="destructive"
+                  onClick={() =>
+                    setBanners(banners.filter((b) => b.id !== banner.id))
+                  }
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -100,13 +122,24 @@ export default function HomeBannersManager() {
               Make changes to the home page banner here
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="link">Link URL (optional)</Label>
-              <Input id="link" defaultValue={editingBanner?.link || ""} />
+              <Label htmlFor="tag">Link to Tag Page</Label>
+              <Select defaultValue={editingBanner?.tag}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a tag" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableTags.map((tag) => (
+                    <SelectItem key={tag.value} value={tag.value}>
+                      {tag.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            
+
             <div className="space-y-2">
               <Label>Banner Image</Label>
               <div className="border-2 border-dashed border-gray-300 p-4 text-center rounded-lg">
@@ -122,20 +155,20 @@ export default function HomeBannersManager() {
                 ) : (
                   <div className="py-4">
                     <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                    <p className="mt-2 text-sm text-gray-500">Click to upload or drag and drop</p>
+                    <p className="mt-2 text-sm text-gray-500">
+                      Click to upload or drag and drop
+                    </p>
                   </div>
                 )}
               </div>
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>
-              Save Changes
-            </Button>
+            <Button onClick={handleSave}>Save Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -20,7 +20,6 @@ const orders = [
   {
     orderId: "#123456",
     paymentMethod: "Credit Card",
-    transactionId: "TX123456",
     status: "Delivered",
     date: "2023-10-15", 
     products: products.slice(5, 8),
@@ -28,7 +27,6 @@ const orders = [
   {
     orderId: "#123457",
     paymentMethod: "PayPal",
-    transactionId: "TX123457",
     status: "Shipped",
     date: "2023-10-12",
     products: products.slice(2, 5),
@@ -36,7 +34,6 @@ const orders = [
   {
     orderId: "#123458",
     paymentMethod: "Credit Card",
-    transactionId: "TX123458",
     status: "Pending",
     date: "2023-10-10",
     products: products.slice(0, 3),
@@ -44,7 +41,6 @@ const orders = [
   {
     orderId: "#123459",
     paymentMethod: "PayPal",
-    transactionId: "TX123459",
     status: "Canceled",
     date: "2023-10-08", 
     products: products.slice(3, 6),
@@ -96,7 +92,7 @@ const Order = () => {
 
           return (
             <div key={order.orderId} className="border rounded-3xl mb-6">
-              <div className="grid grid-cols-5 bg-[#1B6013] w-full rounded-t-3xl px-6 py-4">
+              <div className="grid grid-cols-4 bg-[#F0800F] w-full rounded-t-3xl px-6 py-4">
                 <div className="grid gap-2">
                   <p className="font-semibold text-xs md:text-sm text-gray-300">
                     Order ID{" "}
@@ -108,12 +104,6 @@ const Order = () => {
                     Payment Method{" "}
                   </p>
                   <p className="">{order.paymentMethod}</p>
-                </div>
-                <div className="grid gap-2">
-                  <p className="font-semibold text-xs md:text-sm  text-gray-300">
-                    Transaction ID{" "}
-                  </p>
-                  <p className="">{order.transactionId}</p>
                 </div>
                 <div className="grid gap-2">
                   <p className="font-semibold text-xs md:text-sm  text-gray-300">

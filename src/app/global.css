@@ -1,10 +1,40 @@
 
-@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&family=Young+Serif&display=swap");
+/* @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&family=Young+Serif&display=swap"); */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Header dropping animation */
+@keyframes headerDropIn {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.header-animation {
+  animation: headerDropIn 0.5s ease-out forwards;
+}
+
+/* Add shadow on scroll effect */
+@keyframes addShadow {
+  from {
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  }
+  to {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+}
+
+/* Apply this class with JavaScript if you want shadow on scroll */
+.header-scrolled {
+  animation: addShadow 0.3s forwards;
+}
 
 /* Custom animation for filled paths */
 @keyframes fill-draw {
@@ -24,16 +54,38 @@
   animation: fill-draw 0.6s ease-out forwards;
 }
 
-/* Add this to your global.css */
+/* ===== SimpleBar Scrollbar Styles ===== */
+/* Track (background) */
+.simplebar-track {
+  background: transparent !important;
+}
+
+/* Vertical Scrollbar Track */
+.simplebar-track.simplebar-vertical {
+  width: 8px !important;
+  right: 0 !important;
+}
+
+/* Scrollbar Handle */
 .simplebar-scrollbar::before {
-  background-color: #1B6013 !important;
+  background-color: #1B6013 !important; /* Your green color */
+  opacity: 0.5 !important;
+  border-radius: 4px !important;
+  width: 8px !important;
+  right: 0 !important;
+}
+
+/* Visible Scrollbar Handle */
+.simplebar-scrollbar.simplebar-visible::before {
   opacity: 0.8 !important;
 }
 
-.simplebar-scrollbar.simplebar-visible::before {
-  opacity: 0.7 !important;
+/* Hide scrollbar when not hovering (optional) */
+.custom-scrollbar:hover .simplebar-scrollbar::before {
+  opacity: 0.5 !important;
 }
 
+/* ===== Keep your existing scrollbar hiding styles ===== */
 /* Hide default scrollbars */
 * {
   scrollbar-width: none;
@@ -43,17 +95,6 @@
 *::-webkit-scrollbar {
   display: none;
 }
-
-/* Apply SimpleBar to all scrollable elements */
-.overflow-auto,
-.overflow-y-auto,
-.overflow-x-auto,
-.overflow-scroll,
-.overflow-y-scroll,
-.overflow-x-scroll {
-  position: relative;
-}
-
 
 
 @layer base {

@@ -27,7 +27,7 @@ const AgentSchema = z.object({
   email: z.string().email("Invalid email address"),
   phoneNumber: z.string().min(10, "Phone number must be at least 10 digits"),
   location: z.string().min(1, "Location is required"),
-  image: z.any().refine((file) => file instanceof File, "Image is required"), 
+  image: z.any().refine((file) => file instanceof File, "Image is required"),
 });
 
 type AgentFormValues = z.infer<typeof AgentSchema>;
@@ -39,13 +39,51 @@ interface AgentModalProps {
 }
 
 const lagosAreas = [
-  "Lagos Island", "Lagos Mainland", "Victoria Island (VI)", "Ikoyi", "Lekki", 
-  "Ajah", "Ikeja", "Surulere", "Yaba", "Apapa", "Oshodi", "Isolo", "Egbeda", 
-  "Agege", "Ikorodu", "Badagry", "Epe", "Alimosho", "Mushin", "Festac Town", 
-  "Amuwo-Odofin", "Ijegun", "Ijora", "Gbagada", "Ogba", "Magodo", "Ketu", 
-  "Maryland", "Anthony", "Ojota", "Ilupeju", "Palmgrove", "Shomolu", "Bariga", 
-  "Oworonshoki", "Ikotun", "Ejigbo", "Idimu", "Ipaja", "Abule Egba", "Ojo", 
-  "Satellite Town", "Lagos Marina", "Oniru", "Lagos Lagoon"
+  "Lagos Island",
+  "Lagos Mainland",
+  "Victoria Island (VI)",
+  "Ikoyi",
+  "Lekki",
+  "Ajah",
+  "Ikeja",
+  "Surulere",
+  "Yaba",
+  "Apapa",
+  "Oshodi",
+  "Isolo",
+  "Egbeda",
+  "Agege",
+  "Ikorodu",
+  "Badagry",
+  "Epe",
+  "Alimosho",
+  "Mushin",
+  "Festac Town",
+  "Amuwo-Odofin",
+  "Ijegun",
+  "Ijora",
+  "Gbagada",
+  "Ogba",
+  "Magodo",
+  "Ketu",
+  "Maryland",
+  "Anthony",
+  "Ojota",
+  "Ilupeju",
+  "Palmgrove",
+  "Shomolu",
+  "Bariga",
+  "Oworonshoki",
+  "Ikotun",
+  "Ejigbo",
+  "Idimu",
+  "Ipaja",
+  "Abule Egba",
+  "Ojo",
+  "Satellite Town",
+  "Lagos Marina",
+  "Oniru",
+  "Lagos Lagoon",
 ];
 
 export default function AgentModal({
@@ -82,7 +120,7 @@ export default function AgentModal({
         location: `${data.location}, Lagos`, // Concatenate location with "Lagos"
         image, // Include the image file in the form data
       };
-      console.log(formData);
+      // console.log(formData);
       if (onSubmit) onSubmit(formData); // Call the onSubmit prop if provided
       onClose();
     }

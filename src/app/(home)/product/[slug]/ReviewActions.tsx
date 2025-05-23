@@ -1,53 +1,319 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { useToast } from "src/hooks/useToast";
+import { useRouter } from "next/navigation";
+import { CheckCircle2, Loader2, ThumbsUp, Flag, Trash2, Edit } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@components/ui/dialog";
+import { Button } from "@components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
+import { Textarea } from "@components/ui/textarea";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, SubmitHandler } from "react-hook-form";
+import { z } from "zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@components/ui/form";
+
+const reportReasons = [
+  { value: "off_topic", label: "Off topic - Not about the product" },
+  { value: "inappropriate", label: "Inappropriate content" },
+  { value: "fake", label: "Fake or sponsored review" },
+  { value: "other", label: "Other issues" },
+];
+
+const reportFormSchema = z.object({
+  reason: z.string().min(1, "Please select a reason"),
+  details: z.string().max(500, "Details must be less than 500 characters").optional(),
+});
+
+type ReportFormValues = z.infer<typeof reportFormSchema>;
 
 type ReviewActionsProps = {
+  reviewId: string;
+  userId?: string;
   initialHelpfulCount?: number;
+  canEdit?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  initialIsHelpful?: boolean;
 };
 
-export default function ReviewActions({ initialHelpfulCount = 0 }: ReviewActionsProps) {
-  const [helpfulCount, setHelpfulCount] = useState(initialHelpfulCount);
-  const [isHelpful, setIsHelpful] = useState(false);
-  const [reported, setReported] = useState(false);
+export default function ReviewActions({
+  reviewId,
+  userId,
+  initialHelpfulCount = 0,
+  canEdit = false,
+  onEdit,
+  onDelete,
+  initialIsHelpful = false,
+}: ReviewActionsProps) {
+  const { showToast } = useToast();
+  const router = useRouter();
 
-  const handleHelpful = () => {
-    if (isHelpful) {
-      setHelpfulCount(helpfulCount - 1);
-      toast.info("Removed from helpful");
-    } else {
-      setHelpfulCount(helpfulCount + 1);
-      toast.success("Marked as helpful!");
+  const [state, setState] = useState({
+    helpfulCount: initialHelpfulCount,
+    isHelpful: initialIsHelpful,
+    isReported: false,
+    isSubmittingHelpful: false,
+    isSubmittingReport: false,
+    hasInteracted: false,
+  });
+
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+
+  const reportForm = useForm<ReportFormValues>({
+    resolver: zodResolver(reportFormSchema),
+    defaultValues: {
+      reason: "",
+      details: "",
+    },
+  });
+
+  const handleHelpfulClick = async () => {
+    if (!userId) {
+      showToast("Please sign in to vote", "error");
+      router.push("/login");
+      return;
     }
-    setIsHelpful(!isHelpful);
+
+    setState(prev => ({ ...prev, isSubmittingHelpful: true }));
+
+    try {
+      if (state.isHelpful) {
+        // Optimistic update
+        setState(prev => ({
+          ...prev,
+          helpfulCount: prev.helpfulCount - 1,
+          isHelpful: false,
+        }));
+
+        // TODO: Call remove helpful vote API
+      } else {
+        // Optimistic update
+        setState(prev => ({
+          ...prev,
+          helpfulCount: prev.helpfulCount + 1,
+          isHelpful: true,
+        }));
+
+      }
+
+      setState(prev => ({ ...prev, hasInteracted: true }));
+    } catch (error) {
+      // Rollback optimistic update
+      setState(prev => ({
+        ...prev,
+        helpfulCount: state.isHelpful ? prev.helpfulCount + 1 : prev.helpfulCount - 1,
+        isHelpful: !state.isHelpful,
+      }));
+
+      showToast(
+        error instanceof Error ? error.message : "Failed to update vote",
+        "error"
+      );
+    } finally {
+      setState(prev => ({ ...prev, isSubmittingHelpful: false }));
+    }
   };
 
-  const handleReport = () => {
-    if (reported) return toast.warning("Already reported");
-    const reason = prompt("Enter your report reason:");
-    if (!reason) return;
+  const handleReportSubmit: SubmitHandler<ReportFormValues> = async (data) => {
+    if (!userId) {
+      showToast("Please sign in to report", "error");
+      router.push("/login");
+      return;
+    }
 
-    setReported(true);
-    toast.success("Report submitted!");
+    setState(prev => ({ ...prev, isSubmittingReport: true }));
+
+    try {
+      const reasonText = reportReasons.find(r => r.value === data.reason)?.label || data.reason;
+      const fullReason = data.details ? `${reasonText}: ${data.details}` : reasonText;
+
+      
+      setState(prev => ({ ...prev, isReported: true }));
+      setIsReportDialogOpen(false);
+      reportForm.reset();
+      showToast("Report submitted. Thank you!", "success");
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "Failed to submit report",
+        "error"
+      );
+    } finally {
+      setState(prev => ({ ...prev, isSubmittingReport: false }));
+    }
   };
 
   return (
-    <>
-      <button
-        className={`border border-[#188C8C] rounded-[100px] px-8 py-[6px] text-[13px] transition-colors ${
-          isHelpful ? "bg-[#12B76A] text-white" : "hover:bg-[#12B76A] hover:text-white"
-        }`}
-        onClick={handleHelpful}
-      >
-        Helpful
-      </button>
-      <div
-        className={`h5-light cursor-pointer ${reported ? "text-red-500" : "hover:underline"}`}
-        onClick={handleReport}
-      >
-        {reported ? "Reported" : "Report"}
-      </div>
-    </>
+    <div className="flex items-center gap-4 pt-3">
+      {/* Helpful Button */}
+      {!canEdit && (
+        <button
+          onClick={handleHelpfulClick}
+          disabled={state.isSubmittingHelpful || state.hasInteracted}
+          className={`flex items-center gap-1 text-sm px-3 py-1 rounded-full border transition-colors ${
+            state.isHelpful
+              ? "bg-green-50 border-green-200 text-green-600"
+              : "border-gray-200 text-gray-600 hover:border-green-200 hover:text-green-600"
+          } ${
+            state.isSubmittingHelpful ? "opacity-70 cursor-not-allowed" : ""
+          }`}
+        >
+          {state.isSubmittingHelpful ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : state.hasInteracted ? (
+            <span className="flex items-center gap-1">
+              <CheckCircle2 className="h-4 w-4" />
+              Thank you
+            </span>
+          ) : (
+            <span className="flex items-center gap-1">
+              <ThumbsUp className="h-4 w-4" />
+              Helpful
+            </span>
+          )}
+        </button>
+      )}
+
+      {/* Report Button */}
+      {!canEdit && (
+        <button
+          onClick={() => setIsReportDialogOpen(true)}
+          disabled={state.isReported}
+          className={`flex items-center gap-1 text-sm px-3 py-1 rounded-full border transition-colors ${
+            state.isReported
+              ? "bg-gray-50 border-gray-200 text-gray-500"
+              : "border-gray-200 text-gray-600 hover:border-red-200 hover:text-red-600"
+          }`}
+        >
+          <Flag className="h-4 w-4" />
+          {state.isReported ? "Reported" : "Report"}
+        </button>
+      )}
+
+      {/* Edit Button (only for owner) */}
+      {canEdit && onEdit && (
+        <button
+          onClick={onEdit}
+          className="flex items-center gap-1 text-sm px-3 py-1 rounded-full border border-gray-200 text-gray-600 hover:border-blue-200 hover:text-blue-600"
+        >
+          <Edit className="h-4 w-4" />
+          Edit
+        </button>
+      )}
+
+      {/* Delete Button (only for owner) */}
+      {canEdit && onDelete && (
+        <button
+          onClick={onDelete}
+          className="flex items-center gap-1 text-sm px-3 py-1 rounded-full border border-gray-200 text-gray-600 hover:border-red-200 hover:text-red-600"
+        >
+          <Trash2 className="h-4 w-4" />
+          Delete
+        </button>
+      )}
+
+      {/* Helpful Count */}
+      {state.helpfulCount > 0 && (
+        <span className="text-sm text-gray-500">
+          {state.helpfulCount} {state.helpfulCount === 1 ? "person" : "people"} found this helpful
+        </span>
+      )}
+
+      {/* Report Dialog */}
+      <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Report this review</DialogTitle>
+            <DialogDescription>
+              Please tell us why you're reporting this review.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...reportForm}>
+            <form onSubmit={reportForm.handleSubmit(handleReportSubmit)} className="space-y-4">
+              <FormField
+                control={reportForm.control}
+                name="reason"
+                render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel>Reason</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        className="flex flex-col space-y-2"
+                      >
+                        {reportReasons.map((reason) => (
+                          <FormItem key={reason.value} className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value={reason.value} />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              {reason.label}
+                            </FormLabel>
+                          </FormItem>
+                        ))}
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={reportForm.control}
+                name="details"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Additional details (optional)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Please provide more details..."
+                        className="resize-none"
+                        rows={3}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline">Cancel</Button>
+                </DialogClose>
+                <Button
+                  type="submit"
+                  disabled={state.isSubmittingReport}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {state.isSubmittingReport ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Submit Report"
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

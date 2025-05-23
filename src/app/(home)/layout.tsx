@@ -10,7 +10,7 @@ export default async function HomeLayout({
   return (
     <div className='flex flex-col '>
       <Header />
-      <main className='bg-[#F9FAFB] min-h-screen'>{children}</main>
+      <main className='bg-[#F9FAFB] min-h-screen '>{children}</main>
       <Footer />
     </div>
   )

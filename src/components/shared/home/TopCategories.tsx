@@ -1,4 +1,3 @@
-
 import Stroke from "@components/shared/home/Stroke";
 import Container from "../Container";
 import Image from "next/image";
@@ -19,7 +18,7 @@ type Props = {
 };
 
 const TopCategories = ({ categories }: Props) => {
-  // console.log(categories)
+  // // console.log(categories)
 
   // const {
   //   data: categoriesData,
@@ -56,35 +55,34 @@ const TopCategories = ({ categories }: Props) => {
   //   categories,
   // ]);
 
-
   return (
     <section className="w-full pb-[80px]">
       {/* <Container> */}
-        <Stroke />
-        <div className="flex gap-3 md:gap-6 pt-6 cursor-pointer overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide w-full">
-          {categories.map((category) => {
-            return (
-              <Link href={`/category/${category?.title}`}
-                className="flex flex-col gap-2 justify-center items-center flex-shrink-0"
-                key={category._id}
-              >
-                <div
-                  className="size-[6rem] md:size-[8rem] bg-[#F2F4F7] rounded-[100%] p-3 flex justify-center items-center">
-                  <Image
-                    src={category.thumbnail.url}
-                    width={150}
-                    height={150}
-                    alt={category.title}
-                    className="hover:scale-110 hover:transition-transform hover:ease-in-out hover:duration-500 object-contain"
-                  />
-                </div>
-                <p className="text-[14px] md:text-[22px] md:text-lg text-black hover:underline hover:underline-offset-2">
-                  {category.title}
-                </p>
-              </Link>
-            );
-          })}
-        </div>
+      <Stroke />
+      <div className="flex gap-3 md:gap-6 pt-6 cursor-pointer overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide w-full">
+        {categories.map((category) => {
+          return (
+            <Link
+              href={`/category/${toSlug(category?.title)}`}
+              className="flex flex-col gap-2 justify-center items-center flex-shrink-0"
+              key={category.id}
+            >
+              <div className="size-[6rem] md:size-[8rem] bg-[#F2F4F7] rounded-[100%] p-3 flex justify-center items-center">
+                <Image
+                  src={category.thumbnail.url}
+                  width={150}
+                  height={150}
+                  alt={category.title}
+                  className="hover:scale-110 hover:transition-transform hover:ease-in-out hover:duration-500 object-contain"
+                />
+              </div>
+              <p className="text-[14px] md:text-[22px] md:text-lg text-black hover:underline hover:underline-offset-2">
+                {category.title}
+              </p>
+            </Link>
+          );
+        })}
+      </div>
       {/* </Container> */}
     </section>
   );

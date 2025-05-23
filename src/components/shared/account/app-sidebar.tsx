@@ -45,7 +45,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
       { title: "Orders", url: "/account/order", icon: ClipboardList },
       { title: "Password Manager", url: "/account/password", icon: Key },
       { title: "Wishlist", url: "/account/favourites", icon: Heart },
-      { title: "Recently Viewed", url: "/account/history", icon: History },
+      { title: "Recently Viewed", url: "/browsing-history", icon: History },
     ];
   }
 
@@ -72,7 +72,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
   }
 
   return (
-    <Sidebar  className="sticky top-0 h-[calc(100vh-80px)] border py-4 overflow-y-auto">
+    <Sidebar  className="sticky top-0 h-[calc(100vh-80px)] py-4 overflow-y-auto">
       <SidebarContent>
         <SidebarGroup>
           {/* <Circles className="mt-6" />
@@ -114,23 +114,6 @@ export function AppSidebar({ user }: AppSidebarProps) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
-      {/* Fixed Bottom User Section */}
-      {/* <div className="absolute bottom-0 left-0 w-[315px] p-6 bg-[#09244B08] shadow-[inset_0px_1.3px_0px_0px_#F2F4F6]">
-        <div className="flex gap-2">
-          <div className="flex gap-2 items-center">
-            <Avatar>
-              <AvatarImage src={user?.avatar.url} />
-              <AvatarFallback>{user?.name[0]}</AvatarFallback>
-            </Avatar>
-            <div>
-              <h3 className="font-medium text-lg text-black">{user?.name}</h3>
-              <p className="truncate text-[14px]">{user?.email}</p>
-            </div>
-          </div>
-          <LogoutButton showText={false} />
-        </div>
-      </div> */}
     </Sidebar>
   );
 }

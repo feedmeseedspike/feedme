@@ -1,9 +1,14 @@
-"use client";	
+"use client";
 
-import * as React from "react"
-import { useState, useEffect, createContext, useContext } from "react"
-import Location from "@components/icons/location.svg"
-
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+  memo,
+} from "react";
+import Location from "@components/icons/location.svg";
 import {
   Select,
   SelectContent,
@@ -12,152 +17,174 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from "../../ui/select"
-import { toast } from "sonner"
+} from "../../ui/select";
+import { toast } from "sonner";
 
-// Create a context to share location data across components
-type LocationContextType = {
-  currentLocation: string;
-  setCurrentLocation: (location: string) => void;
-  locationName: string;
-}
-
-const LocationContext = createContext<LocationContextType | undefined>(undefined);
-
-export const useLocation = () => {
-  const context = useContext(LocationContext);
-  if (!context) {
-    throw new Error("useLocation must be used within a LocationProvider");
-  }
-  return context;
-}
-
-// Location mapping for display purposes
 const locationMapping: Record<string, string> = {
-  "ikeja": "Ikeja",
-  "lekki": "Lekki",
+  ikeja: "Ikeja",
+  lekki: "Lekki",
   "victoria-island": "Victoria Island",
-  "yaba": "Yaba",
-  "surulere": "Surulere",
-  "ikoyi": "Ikoyi",
-  "ajah": "Ajah",
-  "gbagada": "Gbagada",
-  "maryland": "Maryland",
-  "apapa": "Apapa",
-  "festac": "Festac",
-  "ojodu": "Ojodu",
-  "ogudu": "Ogudu",
-  "magodo": "Magodo",
-  "oshodi": "Oshodi"
+  yaba: "Yaba",
+  surulere: "Surulere",
+  ikoyi: "Ikoyi",
+  ajah: "Ajah",
+  gbagada: "Gbagada",
+  maryland: "Maryland",
+  apapa: "Apapa",
+  festac: "Festac",
+  ojodu: "Ojodu",
+  ogudu: "Ogudu",
+  magodo: "Magodo",
+  oshodi: "Oshodi",
 };
 
-export function LocationProvider({ children }: { children: React.ReactNode }) {
-  const [currentLocation, setCurrentLocation] = useState<string>("ikeja");
-  const [locationName, setLocationName] = useState<string>(locationMapping["ikeja"]);
+interface LocationContextType {
+  currentLocation: string;
+  locationName: string;
+  setCurrentLocation: (location: string) => void;
+}
 
-  const updateLocation = (location: string) => {
-    setCurrentLocation(location);
-    setLocationName(locationMapping[location] || "Lagos");
-    localStorage.setItem("userLocation", location);
-  }
+const LocationContext = createContext<LocationContextType | undefined>(
+  undefined
+);
 
-  useEffect(() => {
-    // Try to get saved location from localStorage
-    const savedLocation = localStorage.getItem("userLocation");
-    if (savedLocation && locationMapping[savedLocation]) {
-      updateLocation(savedLocation);
-    } else {
-      // Default to Ikeja if no saved location
-      updateLocation("ikeja");
+// Memoized location selector component
+const LocationSelector = memo(
+  ({
+    currentLocation,
+    onLocationChange,
+  }: {
+    currentLocation: string;
+    onLocationChange: (location: string) => void;
+  }) => (
+    <select
+      value={currentLocation}
+      onChange={(e) => onLocationChange(e.target.value)}
+      className="w-full p-2 border rounded-md"
+    >
+      {Object.entries(locationMapping).map(([key, value]) => (
+        <option key={key} value={key}>
+          {value}
+        </option>
+      ))}
+    </select>
+  )
+);
+
+LocationSelector.displayName = "LocationSelector";
+
+export const LocationProvider = memo(function LocationProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [state, setState] = useState(() => {
+    if (typeof window === "undefined") {
+      return {
+        currentLocation: "ikeja",
+        locationName: "Ikeja",
+      };
     }
+
+    const savedLocation = localStorage.getItem("userLocation");
+    const initialLocation =
+      savedLocation && locationMapping[savedLocation] ? savedLocation : "ikeja";
+
+    return {
+      currentLocation: initialLocation,
+      locationName: locationMapping[initialLocation] || "Lagos",
+    };
+  });
+
+  const setCurrentLocation = useCallback((location: string) => {
+    setState({
+      currentLocation: location,
+      locationName: locationMapping[location] || "Lagos",
+    });
+    localStorage.setItem("userLocation", location);
   }, []);
 
+  const value = useMemo(
+    () => ({
+      ...state,
+      setCurrentLocation,
+    }),
+    [state, setCurrentLocation]
+  );
+
   return (
-    <LocationContext.Provider value={{ 
-      currentLocation, 
-      setCurrentLocation: updateLocation,
-      locationName 
-    }}>
+    <LocationContext.Provider value={value}>
       {children}
     </LocationContext.Provider>
   );
-}
+});
 
-export function Locations() {
-  // const { toast } = useToast();
-  const { currentLocation, setCurrentLocation, locationName } = useLocation();
+export const useLocation = () => {
+  const context = useContext(LocationContext);
+  if (context === undefined) {
+    throw new Error("useLocation must be used within a LocationProvider");
+  }
+  return context;
+};
+
+export { LocationSelector };
+
+export const Locations = memo(function Locations() {
+  const { currentLocation, setCurrentLocation } = useLocation();
   const [isDetecting, setIsDetecting] = useState(false);
 
-  const handleLocationChange = (value: string) => {
-    setCurrentLocation(value);
-    toast(`Your delivery location is now set to ${locationMapping[value]}.`);
-  }
+  const handleLocationChange = useCallback(
+    (value: string) => {
+      setCurrentLocation(value);
+      toast(`Your delivery location is now set to ${locationMapping[value]}.`);
+    },
+    [setCurrentLocation]
+  );
 
-  const detectCurrentLocation = () => {
+  const detectCurrentLocation = useCallback(() => {
     setIsDetecting(true);
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          // In a real app, you would use reverse geocoding here
-          // For now, we'll just simulate by selecting a random Lagos location
-          const lagosLocations = Object.keys(locationMapping);
-          const randomLocation = lagosLocations[Math.floor(Math.random() * lagosLocations.length)];
-          
+        () => {
+          const locations = Object.keys(locationMapping);
+          const randomLocation =
+            locations[Math.floor(Math.random() * locations.length)];
           setCurrentLocation(randomLocation);
           toast(
             `We've detected your location as ${locationMapping[randomLocation]}.`
-            // title: "Location Detected",
-            // description: `We've detected your location as ${locationMapping[randomLocation]}.`,
-            // duration: 3000,
           );
           setIsDetecting(false);
         },
-        (error: any) => {
-          console.error("Error getting location:", error);
-          toast(
-           " Location Detection Failed"
-          //   {
-          //   title: "Location Detection Failed",
-          //   description: "We couldn't detect your location. Please select manually.",
-          //   variant: "destructive",
-          //   duration: 3000,
-          // }
-        );
+        () => {
+          toast("Location Detection Failed");
           setIsDetecting(false);
         }
       );
     } else {
       toast("Geolocation Not Supported");
-      //   {
-      //   title: "Geolocation Not Supported",
-      //   description: "Your browser doesn't support geolocation. Please select your location manually.",
-      //   variant: "destructive",
-      //   duration: 3000,
-      // }
       setIsDetecting(false);
     }
-  }
+  }, [setCurrentLocation]);
 
   return (
     <div className="flex items-center">
       <Select value={currentLocation} onValueChange={handleLocationChange}>
-        <SelectTrigger className="text-[12px] text-white flex justify-center items-center">
-          <Location className="mr-1"/>
+        <SelectTrigger className="text-[12px] text-white flex justify-center items-center !border-none">
+          <Location className="mr-1" />
           <SelectValue placeholder="Lagos, Nigeria" />
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
             <SelectLabel>Lagos Areas</SelectLabel>
             {Object.entries(locationMapping).map(([value, label]) => (
-              <SelectItem key={value} value={value}>{label}</SelectItem>
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
             ))}
           </SelectGroup>
           <div className="px-2 py-2">
             <button
-              onClick={(e) => {
-                e.preventDefault();
-                detectCurrentLocation();
-              }}
+              onClick={detectCurrentLocation}
               className="text-sm text-primary hover:underline flex items-center"
               disabled={isDetecting}
             >
@@ -167,14 +194,5 @@ export function Locations() {
         </SelectContent>
       </Select>
     </div>
-  )
-}
-
-// Usage example:
-// In your _app.tsx or layout component:
-// <LocationProvider>
-//   <YourApp />
-// </LocationProvider>
-//
-// Then in any component:
-// const { currentLocation, locationName } = useLocation();
+  );
+});

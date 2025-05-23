@@ -1,31 +1,19 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
-
-const PROTECTED_API_ROUTES = ["/api/todo"];
-const PROTECTED_ROUTES = ["/dashboard"];
+import { type NextRequest } from 'next/server'
+import { updateSession } from './utils/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
-  const isProtectedApiRoute = PROTECTED_API_ROUTES.some((route: string) => request.nextUrl?.pathname?.startsWith(route));
-  const isProtectedRoute = PROTECTED_ROUTES.some((route: string) => request.nextUrl?.pathname?.startsWith(route));
-
-  if (isProtectedApiRoute) {
-    const isAuth = await isAuthenticated(request);
-    if (!isAuth) {
-      return Response.json({ success: false, message: "Authentication failed" }, { status: 401 });
-    }
-  }
-
-  if (isProtectedRoute) {
-    const isAuth = await isAuthenticated(request);
-    if (!isAuth) {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
-  }
-
-  return NextResponse.next();
+  return await updateSession(request)
 }
 
-const isAuthenticated = async (request: NextRequest) => {
-  const token: any = await getToken({ req: request });
-  return !!token && Date.now() <= token.exp * 1000;
-};
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * Feel free to modify this pattern to include more paths.
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+}
