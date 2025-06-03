@@ -68,6 +68,7 @@ export async function signInUser(credentials: { email: string; password: string 
     if (data.session?.refresh_token) {
       cookies().set("refreshToken", data.session.refresh_token, { httpOnly: true });
     }
+    console.log(data)
     return { success: true, data };
   } catch (error: any) {
     return { success: false, error: formatError(error.message) };
