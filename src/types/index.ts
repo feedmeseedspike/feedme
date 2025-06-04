@@ -40,14 +40,11 @@ export type Route = {
 };
 
 export type UserData = {
-  avatar: {
-    url: string;
-    public_id: string;
-  };
+  avatar_url: string;
   vouchers: any[];
   deletedAt: string | null;
-  _id: string;
-  name: string;
+  id: string;
+  display_name: string;
   email: string;
   password: string;
   phone: string;
@@ -61,7 +58,6 @@ export type UserData = {
   address: string;
   createdAt: string;
   updatedAt: string;
-  __v: number;
 };
 
 export type User = {

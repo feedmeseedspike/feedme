@@ -18,6 +18,8 @@ import {
   ArrowUpDown,
   ListFilter,
   X,
+  Eye,
+  Trash2,
 } from "lucide-react";
 import {
   Sheet,
@@ -30,106 +32,106 @@ import {
 import { Checkbox } from "@components/ui/checkbox";
 import { formatNaira } from "src/lib/utils";
 import { BiEdit } from "react-icons/bi";
-import Pagination from "@components/admin/productPagination";
+import PaginationBar from "../shared/pagination";
 import { Separator } from "@components/ui/separator";
 import Link from "next/link";
-import { getProducts, deleteProduct } from "../../../src/lib/api";
+import {
+  getProducts,
+  deleteProduct,
+  getCategoryById,
+} from "../../../src/lib/api";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-
-// const products = [
-//   {
-//     id: 1,
-//     name: "Large Tomatoes",
-//     category: "Pepper",
-//     price: 5000,
-//     stock: "In stock",
-//     published: "Published",
-//   },
-//   {
-//     id: 2,
-//     name: "Onions",
-//     category: "Onions",
-//     price: 5000,
-//     stock: "In stock",
-//     published: "Published",
-//   },
-//   {
-//     id: 3,
-//     name: "Rodo",
-//     category: "Fruits",
-//     price: 5000,
-//     stock: "In stock",
-//     published: "Published",
-//   },
-//   {
-//     id: 4,
-//     name: "Tete",
-//     category: "Pepper",
-//     price: 5000,
-//     stock: "Out of stock",
-//     published: "Published",
-//   },
-//   {
-//     id: 5,
-//     name: "Potatoes",
-//     category: "Vegetables",
-//     price: 5000,
-//     stock: "In stock",
-//     published: "Published",
-//   },
-//   {
-//     id: 6,
-//     name: "Banana",
-//     category: "Tubers",
-//     price: 5000,
-//     stock: "In stock",
-//     published: "Archived",
-//   },
-//   {
-//     id: 7,
-//     name: "Tatashe",
-//     category: "Fruits",
-//     price: 5000,
-//     stock: "Out of stock",
-//     published: "Archived",
-//   },
-//   {
-//     id: 8,
-//     name: "Watermelon",
-//     category: "Fruits",
-//     price: 5000,
-//     stock: "Out of stock",
-//     published: "Archived",
-//   },
-// ];
+import { useRouter, useSearchParams } from "next/navigation";
+import { useToast } from "../../../src/hooks/useToast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@components/ui/dialog";
 
 export default function Product() {
-  const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedStock, setSelectedStock] = useState<string[]>([]);
-  const [selectedPublished, setSelectedPublished] = useState<string[]>([]);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { showToast } = useToast();
+
+  const [search, setSearch] = useState(searchParams.get("search") || "");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    searchParams.getAll("category") || []
+  );
+  const [selectedStock, setSelectedStock] = useState<string[]>(
+    searchParams.getAll("stock") || []
+  );
+  const [selectedPublished, setSelectedPublished] = useState<string[]>(
+    searchParams.getAll("published") || []
+  );
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<any>(null);
-  const router = useRouter();
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [categoryNames, setCategoryNames] = useState<Record<string, string>>(
+    {}
+  );
+
+  const currentPage = Number(searchParams.get("page") || 1);
+  const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
     setLoading(true);
-    getProducts()
-      .then((data) => {
+    const currentSearch = searchParams.get("search") || "";
+    const currentCategories = searchParams.getAll("category") || [];
+    const currentStock = searchParams.getAll("stock") || [];
+    const currentPublished = searchParams.getAll("published") || [];
+    const currentPageNumber = Number(searchParams.get("page") || 1);
+
+    const categoryFilter =
+      currentCategories.length > 0 ? currentCategories[0] : "";
+
+    const fetchProductsAndCategories = async () => {
+      try {
+        const { data, count } = await getProducts({
+          page: currentPageNumber,
+          limit: ITEMS_PER_PAGE,
+          search: currentSearch,
+          category: categoryFilter,
+        });
         setProducts(data || []);
+        setTotalProducts(count || 0);
         setLoading(false);
-      })
-      .catch((err) => {
+
+        // Fetch category names for each product
+        const categoryIds = data
+          ?.map((p: any) => p.category_ids?.[0])
+          .filter(Boolean);
+        if (categoryIds && categoryIds.length > 0) {
+          const uniqueCategoryIds = [...new Set(categoryIds)];
+          const fetchedCategoryNames: Record<string, string> = {};
+          const fetchPromises = uniqueCategoryIds.map(async (id) => {
+            try {
+              const category = await getCategoryById(id);
+              if (category) {
+                fetchedCategoryNames[id] = category.title;
+              }
+            } catch (error) {
+              console.error(`Failed to fetch category with ID ${id}:`, error);
+            }
+          });
+          await Promise.all(fetchPromises);
+          setCategoryNames((prev) => ({ ...prev, ...fetchedCategoryNames }));
+        }
+      } catch (err: any) {
         setError(err.message || "Failed to fetch products");
         setLoading(false);
-      });
-  }, []);
+      }
+    };
+
+    fetchProductsAndCategories();
+  }, [searchParams]);
 
   const categories = [
     "Pepper",
@@ -144,61 +146,84 @@ export default function Product() {
     "Meat",
   ];
 
+  const stockStatuses = ["In stock", "Out of stock"];
+
+  const publishedStatuses = ["Published", "Archived"];
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newSearch = e.target.value;
+    setSearch(newSearch);
+    const newSearchParams = new URLSearchParams(searchParams.toString());
+    if (newSearch) {
+      newSearchParams.set("search", newSearch);
+    } else {
+      newSearchParams.delete("search");
+    }
+    newSearchParams.set("page", "1");
+    router.push(`?${newSearchParams.toString()}`);
+  };
+
   const toggleFilter = (
     value: string,
-    setFilter: Function,
-    selectedFilter: string[]
+    filterType: "category" | "stock" | "published"
   ) => {
-    setFilter((prev: string[]) =>
-      prev.includes(value)
-        ? prev.filter((item) => item !== value)
-        : [...prev, value]
-    );
+    const currentFilters = searchParams.getAll(filterType);
+    const newFilters = currentFilters.includes(value)
+      ? currentFilters.filter((item) => item !== value)
+      : [...currentFilters, value];
+
+    const newSearchParams = new URLSearchParams(searchParams.toString());
+    newSearchParams.delete(filterType);
+    newFilters.forEach((filter) => newSearchParams.append(filterType, filter));
+    newSearchParams.set("page", "1");
+    router.push(`?${newSearchParams.toString()}`);
   };
 
-  const filteredProducts = products.filter(
-    (p) =>
-      (p.name || "").toLowerCase().includes(search.toLowerCase()) &&
-      (selectedCategories.length === 0 ||
-        selectedCategories.includes(
-          p.category?.[0] || p.category_ids?.[0] || ""
-        )) &&
-      (selectedStock.length === 0 ||
-        selectedStock.includes(p.stockStatus || p.stock_status)) &&
-      (selectedPublished.length === 0 ||
-        selectedPublished.includes(
-          p.isPublished || p.is_published ? "Published" : "Archived"
-        ))
-  );
-
-  const ITEMS_PER_PAGE = 5;
-
-  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
-  const paginatedProducts = filteredProducts.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
+  const handleDeleteClick = (product: any) => {
+    setProductToDelete(product);
+    setDeleteDialogOpen(true);
   };
 
-  const handleDelete = async () => {
+  const handleDeleteConfirm = async () => {
     if (!productToDelete) return;
+    console.log("Confirming deletion for product:", productToDelete);
     try {
-      await deleteProduct(productToDelete.id || productToDelete._id);
-      setProducts((prev) =>
-        prev.filter(
-          (p) => (p.id || p._id) !== (productToDelete.id || productToDelete._id)
-        )
-      );
-      setDeleteDialogOpen(false);
-      setProductToDelete(null);
-      // Optionally show a toast here
+      await deleteProduct(productToDelete.id);
+      showToast("Product deleted successfully!", "success");
+
+      // Refetch products after deletion
+      console.log("Refetching products after deletion...");
+      const currentSearch = searchParams.get("search") || "";
+      const currentCategories = searchParams.getAll("category") || [];
+      const currentStock = searchParams.getAll("stock") || [];
+      const currentPublished = searchParams.getAll("published") || [];
+      const currentPageNumber = Number(searchParams.get("page") || 1);
+      const categoryFilter =
+        currentCategories.length > 0 ? currentCategories[0] : "";
+
+      getProducts({
+        page: currentPageNumber,
+        limit: ITEMS_PER_PAGE,
+        search: currentSearch,
+        category: categoryFilter,
+      })
+        .then(({ data, count }) => {
+          setProducts(data || []);
+          setTotalProducts(count || 0);
+          setLoading(false);
+        })
+        .catch((err) => {
+          setError(err.message || "Failed to fetch products");
+          setLoading(false);
+        });
     } catch (err: any) {
-      alert(err.message || "Failed to delete product");
+      showToast(err.message || "Failed to delete product", "error");
     }
+    setDeleteDialogOpen(false);
+    setProductToDelete(null);
   };
+
+  const totalPages = Math.ceil(totalProducts / ITEMS_PER_PAGE);
 
   if (loading) return <div className="p-4">Loading products...</div>;
   if (error) return <div className="p-4 text-red-500">{error}</div>;
@@ -217,7 +242,6 @@ export default function Product() {
         </Link>
       </div>
 
-      {/* Search & Filter Section */}
       <div className="flex items-center justify-between w-full py-4">
         <div className="relative w-full max-w-[400px]">
           <Search
@@ -229,7 +253,7 @@ export default function Product() {
             placeholder="Search for products"
             className="w-full pl-9 pr-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-gray-300 shadow-[0px_1px_3px_0px_rgba(16,24,40,0.10)]"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={handleSearchChange}
           />
         </div>
         <div className="flex items-center gap-3">
@@ -238,7 +262,6 @@ export default function Product() {
             Sort
           </button>
 
-          {/* Filter Sheet */}
           <Sheet>
             <SheetTrigger asChild>
               <button className="flex items-center gap-1 px-6 py-2 border rounded-md text-gray-700 hover:bg-gray-100 shadow-[0px_1px_3px_0px_rgba(16,24,40,0.10)]">
@@ -265,80 +288,89 @@ export default function Product() {
                   Apply filters to table data.
                 </p>
               </SheetHeader>
-              <div className="mt-6 px-4">
-                <h3 className="text-sm text-[#344054] font-medium mb-2">
-                  Category
-                </h3>
-                {["Pepper", "Onions", "Fruits", "Vegetables", "Tubers"].map(
-                  (category) => (
+              <div className="mt-6 px-4 space-y-6">
+                <div>
+                  <h3 className="text-sm text-[#344054] font-medium mb-2">
+                    Categories
+                  </h3>
+                  {categories.map((category) => (
                     <div
                       key={category}
-                      className="flex items-center gap-3 mb-2 pl-2"
+                      className="flex items-center gap-2 mb-2 pl-2"
                     >
                       <Checkbox
-                        id={category}
+                        id={`category-${category}`}
                         className="size-4 !rounded-md border-[#D0D5DD]"
                         checked={selectedCategories.includes(category)}
                         onCheckedChange={() =>
-                          toggleFilter(
-                            category,
-                            setSelectedCategories,
-                            selectedCategories
-                          )
+                          toggleFilter(category, "category")
                         }
                       />
-                      <label className="font-medium text-sm" htmlFor={category}>
+                      <label
+                        className="font-medium text-sm"
+                        htmlFor={`category-${category}`}
+                      >
                         {category}
                       </label>
                     </div>
-                  )
-                )}
-                <h3 className="text-sm text-[#344054] font-medium mb-2 mt-4">
-                  Stock Status
-                </h3>
-                {["In stock", "Out of stock"].map((status) => (
-                  <div
-                    key={status}
-                    className="flex items-center gap-2 mb-2 pl-2"
-                  >
-                    <Checkbox
-                      id={status}
-                      className="size-4 !rounded-md border-[#D0D5DD]"
-                      checked={selectedStock.includes(status)}
-                      onCheckedChange={() =>
-                        toggleFilter(status, setSelectedStock, selectedStock)
-                      }
-                    />
-                    <label className="font-medium text-sm" htmlFor={status}>
-                      {status}
-                    </label>
-                  </div>
-                ))}
-                <h3 className="text-sm text-[#344054] font-medium mb-2 mt-4">
-                  Published Status
-                </h3>
-                {["Published", "Archived"].map((status) => (
-                  <div
-                    key={status}
-                    className="flex items-center gap-2 mb-2 pl-2"
-                  >
-                    <Checkbox
-                      id={status}
-                      className="size-4 !rounded-md border-[#D0D5DD]"
-                      checked={selectedPublished.includes(status)}
-                      onCheckedChange={() =>
-                        toggleFilter(
-                          status,
-                          setSelectedPublished,
-                          selectedPublished
-                        )
-                      }
-                    />
-                    <label className="font-medium text-sm" htmlFor={status}>
-                      {status}
-                    </label>
-                  </div>
-                ))}
+                  ))}
+                </div>
+
+                <Separator />
+
+                <div>
+                  <h3 className="text-sm text-[#344054] font-medium mb-2">
+                    Stock Status
+                  </h3>
+                  {stockStatuses.map((status) => (
+                    <div
+                      key={status}
+                      className="flex items-center gap-2 mb-2 pl-2"
+                    >
+                      <Checkbox
+                        id={`stock-${status}`}
+                        className="size-4 !rounded-md border-[#D0D5DD]"
+                        checked={selectedStock.includes(status)}
+                        onCheckedChange={() => toggleFilter(status, "stock")}
+                      />
+                      <label
+                        className="font-medium text-sm"
+                        htmlFor={`stock-${status}`}
+                      >
+                        {status}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+
+                <Separator />
+
+                <div>
+                  <h3 className="text-sm text-[#344054] font-medium mb-2">
+                    Published Status
+                  </h3>
+                  {publishedStatuses.map((status) => (
+                    <div
+                      key={status}
+                      className="flex items-center gap-2 mb-2 pl-2"
+                    >
+                      <Checkbox
+                        id={`published-${status}`}
+                        className="size-4 !rounded-md border-[#D0D5DD]"
+                        checked={selectedPublished.includes(status)}
+                        onCheckedChange={() =>
+                          toggleFilter(status, "published")
+                        }
+                      />
+                      <label
+                        className="font-medium text-sm"
+                        htmlFor={`published-${status}`}
+                      >
+                        {status}
+                      </label>
+                    </div>
+                  ))}
+                </div>
               </div>
               <SheetFooter className="border-t pt-4 !w-full">
                 <div className="font-semibold text-sm flex justify-between items-end px-4">
@@ -348,6 +380,14 @@ export default function Product() {
                       setSelectedCategories([]);
                       setSelectedStock([]);
                       setSelectedPublished([]);
+                      const newSearchParams = new URLSearchParams(
+                        searchParams.toString()
+                      );
+                      newSearchParams.delete("category");
+                      newSearchParams.delete("stock");
+                      newSearchParams.delete("published");
+                      newSearchParams.set("page", "1");
+                      router.push(`?${newSearchParams.toString()}`);
                     }}
                   >
                     Clear all filters
@@ -363,7 +403,16 @@ export default function Product() {
                     >
                       Cancel
                     </Button>
-                    <Button className="bg-[#1B6013]">Apply</Button>
+                    <Button
+                      className="bg-[#1B6013]"
+                      onClick={() =>
+                        document.dispatchEvent(
+                          new KeyboardEvent("keydown", { key: "Escape" })
+                        )
+                      }
+                    >
+                      Apply
+                    </Button>
                   </div>
                 </div>
               </SheetFooter>
@@ -372,118 +421,88 @@ export default function Product() {
         </div>
       </div>
 
-      {/* Table Section */}
-      <div className="w-full max-w-[1200px] mx-auto">
-        <Table className="border border-gray-300 rounded-lg shadow-[0px_1px_3px_0px_rgba(16,24,40,0.10)] overflow-hidden w-full">
+      <div className="border rounded-lg shadow-sm">
+        <Table>
           <TableHeader>
-            <TableRow className="bg-[#EAECF0]">
-              {[
-                "Product",
-                "Category",
-                "Unit Price",
-                "Stock Status",
-                "Published Status",
-              ].map((head) => (
-                <TableHead
-                  key={head}
-                  className="text-center px-6 py-3 font-medium text-gray-700"
-                >
-                  <div className="flex items-center justify-center gap-1">
-                    {head} <ArrowDown size={16} strokeWidth={0.7} />
-                  </div>
-                </TableHead>
-              ))}
-              <TableHead className="text-center px-6 py-3 font-medium text-gray-700"></TableHead>
+            <TableRow className="bg-gray-100">
+              <TableHead>Image</TableHead>
+              <TableHead>Product Name</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Price</TableHead>
+              <TableHead>Stock Status</TableHead>
+              <TableHead>Published</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
-
           <TableBody>
-            {paginatedProducts.map((product) => (
-              <TableRow key={product._id}>
-                <TableCell className="text-left px-6 py-4 flex gap-2 items-center">
-                  <Image
-                    src={product.images[0]}
-                    alt={product.name}
-                    width={40}
-                    height={40}
-                    className="rounded-[12px]"
-                  />
-                  {product.name}
+            {products.map((product) => (
+              <TableRow key={product.id}>
+                <TableCell>
+                  {product.images?.[0]?.url && (
+                    <Image
+                      src={product.images[0].url}
+                      alt={product.name}
+                      width={60}
+                      height={60}
+                      className="rounded-md object-cover"
+                    />
+                  )}
                 </TableCell>
-                <TableCell className="text-center px-6 py-4">
-                  <Badge className="bg-gray-100 text-gray-700 rounded-full">
-                    {product.category}
+                <TableCell className="font-medium">
+                  <Link
+                    href={`/admin/products/view/${product.id}`}
+                    className="hover:underline text-blue-600"
+                  >
+                    {product.name}
+                  </Link>
+                </TableCell>
+                <TableCell>
+                  {categoryNames[product.category_ids?.[0]] || "N/A"}
+                </TableCell>
+                <TableCell>{formatNaira(product.price)}</TableCell>
+                <TableCell>
+                  <Badge
+                    className={
+                      product.stock_status === "In stock"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-orange-100 text-orange-800"
+                    }
+                  >
+                    {product.stock_status || "N/A"}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-center px-6 py-4">
-                  {formatNaira(product.price)}
-                </TableCell>
-                <TableCell className="text-center px-6 py-4">
-                  <span
-                    className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
-                      product.stockStatus === "In Stock"
-                        ? "bg-green-50 text-green-700"
-                        : "bg-orange-50 text-orange-700"
-                    }`}
+                <TableCell>
+                  <Badge
+                    className={
+                      product.is_published
+                        ? "bg-green-100 text-green-800"
+                        : "bg-gray-100 text-gray-700"
+                    }
                   >
-                    {product.stockStatus}
-                  </span>
+                    {product.is_published ? "Published" : "Archived"}
+                  </Badge>
                 </TableCell>
-                <TableCell className="text-center px-6 py-4">
-                  <span className="inline-flex items-center gap-2">
-                    <span
-                      className={`h-2 w-2 rounded-full ${
-                        product.isPublished === true
-                          ? "bg-green-500"
-                          : "bg-gray-400"
-                      }`}
-                    ></span>
-                    <span
-                      className={
-                        product.isPublished === true
-                          ? "text-green-700"
-                          : "text-gray-600"
-                      }
-                    >
-                      {product.isPublished === true ? "Published" : "Archived"}
-                    </span>
-                  </span>
-                </TableCell>
-                <TableCell className="text-center px-6 py-4 flex gap-2 justify-center">
-                  <Link
-                    href={{
-                      pathname: "/admin/products/edit",
-                      query: { slug: product.slug },
-                    }}
-                  >
-                    <BiEdit
-                      className="text-gray-600 hover:text-gray-900 cursor-pointer"
-                      size={20}
-                    />
+                <TableCell className="flex items-center gap-2">
+                  <Link href={`/admin/products/edit/${product.id}`}>
+                    <Button variant="outline" size="icon">
+                      <BiEdit size={16} />
+                    </Button>
                   </Link>
-                  <button
-                    className="text-red-500 hover:text-red-700 ml-2"
-                    onClick={() => {
-                      setProductToDelete(product);
-                      setDeleteDialogOpen(true);
-                    }}
-                    title="Delete Product"
+                  <Link
+                    href={`/product/${product.slug || product.id}`}
+                    target="_blank"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={1.5}
-                      stroke="currentColor"
-                      className="w-5 h-5"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
+                    <Button variant="outline" size="icon">
+                      <Eye size={16} />
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handleDeleteClick(product)}
+                  >
+                    <Trash2 size={16} />
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -491,39 +510,36 @@ export default function Product() {
         </Table>
       </div>
 
-      {/* Pagination Section */}
-      <div className="flex justify-center mt-6">
-        <Pagination
+      <div className="mt-4 flex justify-center">
+        <PaginationBar
+          page={currentPage}
           totalPages={totalPages}
-          currentPage={currentPage}
-          onPageChange={handlePageChange}
+          urlParamName="page"
         />
       </div>
 
-      {/* Delete Confirmation Dialog */}
-      {deleteDialogOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 shadow-lg max-w-sm w-full">
-            <h2 className="text-lg font-semibold mb-4">Confirm Deletion</h2>
-            <p className="mb-6">
-              Are you sure you want to delete{" "}
-              <span className="font-bold">{productToDelete?.name}</span>? This
-              action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setDeleteDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button variant="destructive" onClick={handleDelete}>
-                Delete
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete the product "
+              {productToDelete?.name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { products } from "src/lib/data";
+import { createClient } from "@utils/supabase/server";
 import { Products } from "src/lib/validator";
 
 export const GET = async (request: NextRequest) => {
@@ -19,23 +19,43 @@ export const GET = async (request: NextRequest) => {
 
   let filteredProducts = [];
 
-  if (listType === "history") {
-    // Return only products in browsing history (matching productIds)
-    filteredProducts = products.filter((product: any) =>
-      productIds.includes(product._id)
-    );
+  const supabase = await createClient();
 
-    // Preserve the original order
-    filteredProducts.sort(
-      (a: any, b: any) => productIds.indexOf(a._id) - productIds.indexOf(b._id)
-    );
+  if (listType === "history") {
+    // Fetch products from Supabase matching productIds
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .in("id", productIds);
+
+    if (error) {
+      console.error("Error fetching browsing history products:", error);
+      return NextResponse.json([], { status: 500 });
+    }
+
+    filteredProducts = data || [];
+
+    // Preserve the original order if data was fetched
+    if (filteredProducts.length > 0) {
+      filteredProducts.sort(
+        (a: any, b: any) => productIds.indexOf(a.id) - productIds.indexOf(b.id)
+      );
+    }
   } else {
-    // Return related products from the same categories but exclude history
-    filteredProducts = products.filter(
-      (product: any) =>
-        product.category.some((cat: string) => categories.includes(cat)) &&
-        !productIds.includes(product._id)
-    );
+    // Fetch related products from the same categories from Supabase
+    // Excluding products already in history
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .overlaps("category_ids", categories)
+      .not("id", "in", `(${productIds.join(",")})`);
+
+    if (error) {
+      console.error("Error fetching related products:", error);
+      return NextResponse.json([], { status: 500 });
+    }
+
+    filteredProducts = data || [];
   }
 
   return NextResponse.json(filteredProducts);

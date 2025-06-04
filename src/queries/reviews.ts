@@ -384,7 +384,7 @@ export const useReviewsQuery = (productId: string, page: number = 1, userId?: st
   return useQuery({
     queryKey: reviewKeys.list(productId),
     queryFn: () => getReviews({ productId, page, userId }),
-    staleTime: 1000 * 60 * 5, 
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 };
 

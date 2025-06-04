@@ -36,7 +36,7 @@ interface AddItemPayload {
 
 interface UpdateCartItemPayload {
   productId: string;
-  selectedOption?: string;
+  selectedOption?: string | null;
   newOption?: string;
   quantity?: number;
   option?: {
@@ -53,7 +53,7 @@ interface UpdateItemPayload {
 
 interface RemoveItemPayload {
   productId: string;
-  selectedOption?: string;
+  selectedOption?: string | null;
 }
 
 const cartSlice = createSlice({
@@ -67,34 +67,28 @@ const cartSlice = createSlice({
     },
 
     addItem: (state, action: PayloadAction<AddItemPayload>) => {
-      const { item, quantity, requiresOption, selectedOption } = action.payload;
-
-      if (requiresOption && !selectedOption) {
-        console.warn("Option required but not selected");
-        return state;
-      }
-
-      // Check if item with same product AND same option already exists
-      const existItem = state.items.find(
-        (x) => x.product === item.product && x.selectedOption === selectedOption
+      const { item, quantity, selectedOption } = action.payload;
+      
+      const existingIndex = state.items.findIndex(
+        x => x.product === item.product && (x.selectedOption ?? '') === (selectedOption ?? '')
       );
 
-      if (existItem) {
-        // Update quantity if same product + same option
-        existItem.quantity += quantity;
+      if (existingIndex >= 0) {
+        state.items[existingIndex].quantity += quantity;
       } else {
-        // Add as new item if different option or first time
-        const newItem: OrderItem = {
+        state.items.push({
           ...item,
           quantity,
-          selectedOption: selectedOption || undefined,
+          selectedOption: selectedOption ?? undefined,
           options: item.options || [],
-        };
-        state.items.push(newItem);
+        });
       }
 
+      // Only calculate prices once at the end
       state.itemsPrice = calculateItemsPrice(state.items);
+      localStorage.setItem("cart", JSON.stringify(state));
     },
+
 
     updateCartItem: (state, action: PayloadAction<UpdateCartItemPayload>) => {
       const { productId, selectedOption, quantity } = action.payload;
@@ -107,7 +101,7 @@ const cartSlice = createSlice({
     
       const itemIndex = state.items.findIndex(
         item => item.product === productId && 
-               item.selectedOption === selectedOption
+               (item.selectedOption ?? '') === (selectedOption ?? '')
       );
     
       if (itemIndex === -1) {
@@ -125,24 +119,14 @@ const cartSlice = createSlice({
       localStorage.setItem("cart", JSON.stringify(state));
     },
 
-    updateItem: (state, action: PayloadAction<UpdateItemPayload>) => {
-      const { item, quantity } = action.payload;
-      const existItem = state.items.find((x) => x.product === item.product);
-      if (existItem) {
-        existItem.quantity = quantity;
-      }
-
-      state.itemsPrice = calculateItemsPrice(state.items);
-    },
-
     removeItem: (state, action: PayloadAction<RemoveItemPayload>) => {
       const { productId, selectedOption } = action.payload;
       state.items = state.items.filter(
         (x) =>
-          x.product !== productId ||
-          (selectedOption !== undefined && x.selectedOption !== selectedOption)
+          !(x.product === productId && (x.selectedOption ?? '') === (selectedOption ?? ''))
       );
       state.itemsPrice = calculateItemsPrice(state.items);
+      localStorage.setItem("cart", JSON.stringify(state));
     },
 
     clearCart: (state) => {
@@ -151,14 +135,17 @@ const cartSlice = createSlice({
       state.taxPrice = undefined;
       state.shippingPrice = undefined;
       state.totalPrice = 0;
+      localStorage.removeItem("cart");
     },
 
     setShippingAddress: (state, action: PayloadAction<ShippingAddress>) => {
       state.shippingAddress = action.payload;
+      localStorage.setItem("cart", JSON.stringify(state));
     },
 
     setDeliveryDateIndex: (state, action: PayloadAction<number>) => {
       state.deliveryDateIndex = action.payload;
+      localStorage.setItem("cart", JSON.stringify(state));
     },
   },
 });
@@ -166,7 +153,6 @@ const cartSlice = createSlice({
 export const {
   setCartState,
   addItem,
-  updateItem,
   updateCartItem,
   removeItem,
   clearCart,

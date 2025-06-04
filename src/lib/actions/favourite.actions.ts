@@ -1,10 +1,14 @@
 "use server";
 
 import { createClient } from "src/utils/supabase/server";
-import { revalidatePath } from "next/cache";
+import { Tables } from "src/utils/database.types"; // Import Tables for typing
+
+// Define explicit return types for success and failure scenarios
+export type FavoritesSuccess = { success: true; data: (Tables<'favorites'> & { products: Tables<'products'> | null })[]; error: null };
+export type FavoritesFailure = { success: false; data: null; error: string };
 
 // Add to favorites with error handling
-export async function addToFavorite(productId: string) {
+export async function addToFavorite(productId: string): Promise<{ success: true } | { success: false; error: string }> {
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -32,7 +36,6 @@ export async function addToFavorite(productId: string) {
 
     if (error) throw error;
 
-    revalidatePath('/account/favorites');
     return { success: true };
   } catch (error: any) {
     console.error('Add to favorite error:', error);
@@ -44,7 +47,7 @@ export async function addToFavorite(productId: string) {
 }
 
 // Remove from favorites with error handling
-export async function removeFromFavorite(productId: string) {
+export async function removeFromFavorite(productId: string): Promise<{ success: true } | { success: false; error: string }> {
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -65,7 +68,6 @@ export async function removeFromFavorite(productId: string) {
 
     if (error) throw error;
 
-    revalidatePath('/account/favorites');
     return { success: true };
   } catch (error: any) {
     console.error('Remove from favorite error:', error);
@@ -108,17 +110,16 @@ export async function getFavoritesCount() {
   return count || 0;
 }
 
-// Get all favorite product IDs for a user
-
 // Get favorites for the logged-in user
-export async function getFavourites() {
+export async function getFavourites(): Promise<FavoritesSuccess | FavoritesFailure> {
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return { 
       success: false, 
-      error: "You must be logged in to view favorites" 
+      error: "You must be logged in to view favorites",
+      data: null // Explicitly add data: null for failure case
     };
   }
 
@@ -126,7 +127,7 @@ export async function getFavourites() {
     // First get just the favorite records
     const { data: favorites, error } = await supabase
       .from('favorites')
-      .select('id, user_id, product_id, created_at')
+      .select('id, user_id, product_id, created_at, products(*)') // Explicitly select fields and join products
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 

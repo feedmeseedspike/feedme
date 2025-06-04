@@ -34,39 +34,54 @@ import {
   TableRow,
 } from "@components/ui/table";
 import { Badge } from "@components/ui/badge";
+import { getCategoryById, deleteCategory } from "../../../../../../lib/api";
+import { useToast } from "../../../../../../hooks/useToast";
 
 export default function ViewCategory({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { id } = params;
+  const { showToast } = useToast();
 
   const [category, setCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // In a real application, you would fetch the category from an API
-    // For now, we'll use the mock data
-    const foundCategory = categories.find((cat) => cat._id === id);
-
-    if (foundCategory) {
-      setCategory(foundCategory);
-    } else {
-      // Category not found, redirect back to list
-      router.push("/admin/categories");
+    async function fetchCategory() {
+      setLoading(true);
+      setError(null);
+      try {
+        const foundCategory = await getCategoryById(id);
+        if (foundCategory) {
+          setCategory(foundCategory);
+        } else {
+          setError("Category not found");
+        }
+      } catch (err: any) {
+        setError(err.message || "Failed to fetch category");
+      } finally {
+        setLoading(false);
+      }
     }
 
-    setLoading(false);
-  }, [id, router]);
+    if (id) {
+      fetchCategory();
+    }
+  }, [id]);
 
-  const handleDeleteConfirm = () => {
-    // Here you would implement the actual delete functionality
-    // For now, we'll just redirect back to the list
-    // console.log("Deleting category:", category?.title);
-    setDeleteDialogOpen(false);
-
-    // Simulate successful deletion
-    alert("Category deleted successfully!");
-    router.push("/admin/categories");
+  const handleDeleteConfirm = async () => {
+    if (category) {
+      try {
+        await deleteCategory(category.id);
+        showToast("Category deleted successfully!", "success");
+        router.push("/admin/categories");
+      } catch (err: any) {
+        showToast(err.message || "Failed to delete category", "error");
+      } finally {
+        setDeleteDialogOpen(false);
+      }
+    }
   };
 
   // Get products in this category
@@ -76,6 +91,10 @@ export default function ViewCategory({ params }: { params: { id: string } }) {
 
   if (loading) {
     return <div className="p-4">Loading...</div>;
+  }
+
+  if (error) {
+    return <div className="p-4 text-red-500">{error}</div>;
   }
 
   if (!category) {
@@ -100,7 +119,7 @@ export default function ViewCategory({ params }: { params: { id: string } }) {
           <p className="text-[#475467]">Category details</p>
         </div>
         <div className="flex gap-3">
-          <Link href={`/admin/categories/edit/${category._id}`}>
+          <Link href={`/admin/categories/edit/${category.id}`}>
             <Button variant="outline" className="flex items-center gap-2">
               <Edit size={16} />
               Edit
@@ -150,7 +169,7 @@ export default function ViewCategory({ params }: { params: { id: string } }) {
                 </TableHeader>
                 <TableBody>
                   {categoryProducts.map((product) => (
-                    <TableRow key={product._id}>
+                    <TableRow key={product.id}>
                       <TableCell>
                         <Image
                           src={product.images[0]}

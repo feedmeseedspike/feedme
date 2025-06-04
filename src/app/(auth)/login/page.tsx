@@ -6,6 +6,7 @@ import Link from "next/link";
 import { getUser } from "src/lib/actions/auth.actions";
 import { redirect } from "next/navigation";
 import { PreloadResource } from "../preload-resources";
+import { signinWithGoogle } from "@utils/google-action";
 
 export const metadata = { title: "Sign In" };
 
@@ -54,12 +55,17 @@ const Signin = async (props: {
         </div>
 
         <div className="flex flex-col gap-5">
-          <button className="rounded-lg w-full py-3 flex justify-center ring-1 ring-zinc-500 shadow-sm">
-            <p className="flex gap-2 items-end">
-              <FcGoogle className="text-2xl" />
-              <span className="font-semibold text-md">Google</span>
-            </p>
-          </button>
+          <form action={signinWithGoogle}>
+            <button
+              type="submit"
+              className="rounded-lg w-full py-3 flex justify-center ring-1 ring-zinc-500 shadow-sm"
+            >
+              <p className="flex gap-2 items-end">
+                <FcGoogle className="text-2xl" />
+                <span className="font-semibold text-md">Google</span>
+              </p>
+            </button>
+          </form>
           <div className="flex items-center gap-2">
             <span className="bg-[#EEF2FF] h-[2px] w-full"></span>
             <p className="whitespace-nowrap text-xs">
@@ -75,13 +81,14 @@ const Signin = async (props: {
 
       {/* Right Section (Image) */}
       <div className="hidden md:flex md:w-[40%] lg:w-[60%] h-screen">
-        <Image
+        <PreloadResource />
+        {/* <Image
           src="/loginBanner.jpeg"
           width={900}
           height={900}
           alt="loginbanner"
           className="w-full h-full object-cove"
-        />
+        /> */}
       </div>
     </main>
   );

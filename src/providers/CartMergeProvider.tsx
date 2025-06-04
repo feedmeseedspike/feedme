@@ -1,5 +1,5 @@
 "use client";
-import { useCartMergeOnLogin } from "src/hooks/useCartMergeOnLogin";
+import { useEffect } from "react";
 import { useUser } from "src/hooks/useUser";
 
 export default function CartMergeProvider({
@@ -8,9 +8,6 @@ export default function CartMergeProvider({
   children: React.ReactNode;
 }>) {
   const user = useUser();
-  useCartMergeOnLogin(user);
-
-  console.log("CartMergeProvider", user);
 
   return <>{children}</>;
 }

@@ -4,9 +4,19 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { formatError } from "src/lib/utils";
 import { createClient } from "src/utils/supabase/server";
+import { Tables } from "src/utils/database.types";
+
+export interface AuthSuccess<T> { success: true; data: T; }
+interface AuthFailure { success: false; error: { message: string } | string; }
+
+export type RegisterUserReturn = AuthSuccess<any> | AuthFailure;
+export type SignInUserReturn = AuthSuccess<any> | AuthFailure;
+export type SignOutUserReturn = { success: true };
+export type GetUserReturn = Tables<'users'> | null;
+export type UpdatePasswordReturn = AuthSuccess<any> | AuthFailure;
 
 // Sign Up
-export async function registerUser(userData: { name: string; email: string; password: string }) {
+export async function registerUser(userData: { name: string; email: string; password: string }): Promise<RegisterUserReturn> {
   const supabase = await createClient();
 
   try {
@@ -53,7 +63,7 @@ export async function registerUser(userData: { name: string; email: string; pass
 }
 
 // Sign In
-export async function signInUser(credentials: { email: string; password: string }) {
+export async function signInUser(credentials: { email: string; password: string }): Promise<SignInUserReturn> {
   const supabase = await createClient();
   try {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -77,7 +87,7 @@ export async function signInUser(credentials: { email: string; password: string 
 
 
 // Sign Out
-export async function signOutUser() {
+export async function signOutUser(): Promise<SignOutUserReturn> {
   const supabase = await createClient();
   try {
     await supabase.auth.signOut();
@@ -88,7 +98,7 @@ export async function signOutUser() {
 }
 
 // Get User Data (Persist Login)
-export async function getUser() {
+export async function getUser(): Promise<GetUserReturn> {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -110,7 +120,7 @@ export async function getUser() {
 
 // Request Password Reset
 // Direct Password Reset (without token)
-export async function updatePassword(currentPassword: string, newPassword: string) {
+export async function updatePassword(currentPassword: string, newPassword: string): Promise<UpdatePasswordReturn> {
   const supabase = await createClient();
   try {
     const { data, error } = await supabase.auth.updateUser({

@@ -5,6 +5,7 @@ export const getUserQuery = () => ({
   queryKey: ['user'],
   queryFn: async (): Promise<GetUserReturn> => {
     const user = await getUser();
+    // Ensure the returned user is in a consistent shape or handle null
     return user;
   },
 });
@@ -35,7 +36,7 @@ export const registerUserMutation = () => ({
           : 'Registration failed');
       throw new Error(errorMessage);
     }
-    return (result as AuthSuccess<any>).data; 
+    return (result as AuthSuccess<any>).data; // Explicitly cast after success check
   },
 });
 
@@ -43,11 +44,15 @@ export const signOutMutation = () => ({
   mutationFn: async (): Promise<SignOutUserReturn> => {
     const result: SignOutUserReturn = await signOutUser();
     if (!result.success) {
+       // Although signOutUser currently always returns success: true,
+       // we include this check for consistency and future-proofing.
        throw new Error('Sign out failed');
     }
     // signOutUser returns { success: true }, so we can return true
     return result; // Return the full result object including success: true
   },
+  // Optionally, add onSettled to invalidate the user query after sign out
+  // onSettled: () => queryClient.invalidateQueries({ queryKey: ['user'] }),
 });
 
 // Define a type for the update password variables
@@ -67,6 +72,6 @@ export const updatePasswordMutation = () => ({
           : 'Password update failed');
       throw new Error(errorMessage);
     }
-    return (result as AuthSuccess<any>).data;
+    return (result as AuthSuccess<any>).data; // Explicitly cast after success check
   },
 }); 

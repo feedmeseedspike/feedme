@@ -50,8 +50,13 @@ import Edit from "@components/icons/edit.svg";
 import Trash from "@components/icons/trash.svg";
 import { useToast } from "src/hooks/useToast";
 // @ts-ignore
-import { getCategories, addProduct } from "../../../../../lib/api";
-import { supabase } from "../../../../../lib/supabaseClient";
+import {
+  getCategories,
+  addProduct,
+  uploadProductImage,
+} from "../../../../../lib/api";
+// @ts-ignore
+// import { supabase } from "../../../../../lib/supabaseClient"; // Remove unused import
 
 const animatedComponents = makeAnimated();
 
@@ -177,6 +182,7 @@ export default function AddProduct() {
       selectedCategories: [],
       variation: "No",
       images: [],
+      options: [], // Initialize options
     },
   });
 
@@ -318,45 +324,62 @@ export default function AddProduct() {
     }
   };
   const onSubmit = async (data: ProductFormValues) => {
-    if (data.variation === "Yes" && options.length === 0) {
-      alert("At least one option is required when variation is 'Yes'");
-      return;
-    }
+    // console.log(data);
+    // return; // Keep for debugging form data if needed
+
     setLoading(true);
-    try {
-      // Check for duplicate product name (slug)
-      const slug = toSlug(data.productName);
-      const { data: existing, error: checkError } = await supabase
-        .from("products")
-        .select("id")
-        .eq("slug", slug)
-        .limit(1)
-        .single();
-      // Prepare product object for Supabase
-      const product = {
-        name: data.productName,
-        description: data.description,
-        slug,
-        price: data.price ? parseInt(data.price) : null,
-        stock_status: data.stockStatus,
-        category_ids: data.selectedCategories.map((cat) => cat.value),
-        images: [], // You may want to handle image upload to storage and save URLs here
-        // variation: data.variation,
-        options: data.variation === "Yes" ? options : [],
-      };
-      if (existing) {
-        setPendingProduct(product);
-        setDuplicateDialogOpen(true);
+
+    let uploadedImageUrls: string[] = [];
+    if (data.images && data.images.length > 0) {
+      try {
+        // Upload each image and collect URLs
+        for (const imageFile of data.images) {
+          const imageUrl = await uploadProductImage(
+            imageFile,
+            "product-images"
+          );
+          uploadedImageUrls.push(imageUrl);
+        }
+      } catch (err: any) {
+        showToast(err.message || "Failed to upload product images", "error");
         setLoading(false);
-        return;
+        return; // Stop submission if image upload fails
       }
-      await addProduct(product);
-      showToast("Product added successfully!", "success");
+    }
+
+    // Handle option images if applicable (assuming options.image is a File)
+    // If options.image is already a URL string, skip upload here.
+    // You might need a separate upload logic for option images if they are File objects.
+
+    const productData = {
+      name: data.productName,
+      description: data.description,
+      // Assuming category_ids is an array of strings in your Supabase products table
+      category_ids: data.selectedCategories.map((cat) => cat.value),
+      variation: data.variation === "Yes",
+      // Include price and stock status only if variation is 'No'
+      price: data.variation === "No" ? parseFloat(data.price || "0") : null,
+      stock_status: data.variation === "No" ? data.stockStatus : null,
+      images: uploadedImageUrls.map((url) => ({ url })), // Store image URLs as objects with url property
+      // Assuming options can be stored as JSONB or similar; adjust if using a separate table
+      options: data.variation === "Yes" ? data.options : [],
+      // Add other fields like vendor_id, is_published, etc. as per your Supabase schema
+      // vendor_id: '...', // Replace with actual vendor ID logic
+      is_published: true, // Defaulting to true, adjust as needed
+      slug: toSlug(data.productName), // Generate slug from product name
+    };
+
+    try {
+      await addProduct(productData);
+      showToast("Product created successfully!", "success");
+      form.reset(); // Reset the form on success
+      setOptions([]); // Clear options state
+      setImagePreviews([]); // Clear image previews
+      // Clear local storage draft after successful submission
       localStorage.removeItem("productDraft");
-      form.reset();
-      setOptions([]);
+      // router.push("/admin/products"); // Redirect to product list
     } catch (err: any) {
-      showToast(err.message || "Failed to add product", "error");
+      showToast(err.message || "Failed to create product", "error");
     } finally {
       setLoading(false);
     }

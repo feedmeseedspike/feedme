@@ -1,44 +1,19 @@
-// app/[tag]/page.tsx
-import { Metadata } from "next";
-import { notFound } from "next/navigation";
+"use client";
+
+import { useSearchParams, useParams } from "next/navigation";
 import Pagination from "@components/shared/pagination";
-import { getAllProducts } from "../../../lib/actions/product.actions";
 import ProductSortSelector from "@components/shared/product/product-sort-selector";
 import Container from "@components/shared/Container";
 import ProductdetailsCard from "@components/shared/product/productDetails-card";
-import Headertags from "@components/shared/header/Headertags";
 import { ProductSkeletonGrid } from "@components/shared/product/product-skeleton";
 import Image from "next/image";
-import { Suspense } from "react";
-
-const promoBanners: Record<
-  string,
-  {
-    title: string;
-    subtitle?: string;
-    imageUrl: string;
-    bgColor?: string;
-  }
-> = {
-  "black-friday": {
-    title: "Black Friday Mega Sale!",
-    subtitle: "Up to 70% OFF - Limited Time",
-    imageUrl: "/images/fruits.png",
-    bgColor: "#000000",
-  },
-  "todays-deal": {
-    title: "Today's Hot Deals",
-    subtitle: "Fresh discounts updated daily",
-    imageUrl: "/images/riverbite.png",
-    bgColor: "#1B6013",
-  },
-  "fresh-fruits": {
-    title: "100% Fresh Fruits",
-    subtitle: "Summer Special: 64% OFF",
-    imageUrl: "/images/fruits-banner.jpg",
-    bgColor: "#F0800F",
-  },
-};
+import { useQuery } from "@tanstack/react-query";
+import { getAllProducts } from "../../../lib/actions/product.actions";
+import CustomBreadcrumb from "@components/shared/breadcrumb";
+import {
+  usePromotionByTagQuery,
+  useProductsByTagQuery,
+} from "../../../queries/promotions";
 
 const sortOrders = [
   { value: "price-low-to-high", name: "Price: Low to high" },
@@ -47,77 +22,159 @@ const sortOrders = [
   { value: "best-selling", name: "Best selling" },
 ];
 
-const pageTitles: Record<string, string> = {
-  "new-arrival": "New Arrivals",
-  "todays-deal": "Today's Deals",
-  "black-friday": "Black Friday",
-  featured: "Featured Products",
-  "best-seller": "Best Selling Products",
-  recommended: "Recommended For You",
-  trending: "Trending Products",
-};
+const SPECIAL_TAGS = [
+  "new-arrival",
+  "best-seller",
+  "fresh-fruits",
+  "fresh-vegetables",
+];
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { tag: string };
-}): Promise<Metadata> {
-  const title = pageTitles[params.tag] || "Not Found";
-  return {
-    title: `${title}`,
-    description: `Browse our selection of ${title.toLowerCase()} at FeedMe.`,
-  };
-}
+export default function TagPage() {
+  const params = useParams();
+  const searchParams = useSearchParams();
 
-export default async function TagProductsPage({
-  params,
-  searchParams,
-}: {
-  params: { tag: string };
-  searchParams: { sort?: string; page?: string };
-}) {
-  const { sort = "best-selling", page = "1" } = searchParams;
-  const data = await getAllProducts({
-    tag: params.tag,
-    query: "all",
-    page: Number(page),
-    sort,
+  const tag = params.tag as string;
+  const sort = searchParams.get("sort") || "best-selling";
+  const page = Number(searchParams.get("page")) || 1;
+
+  const isSpecialTag = SPECIAL_TAGS.includes(tag);
+
+  // Fetch products - different query for special tags vs promotions
+  const {
+    data: specialTagProducts,
+    isLoading: isSpecialLoading,
+    error: specialError,
+  } = useQuery({
+    queryKey: ["tag-products", tag, page, sort],
+    queryFn: () => getAllProducts({ tag, page, sort }),
+    enabled: isSpecialTag,
   });
 
-  if (!data || data.totalProducts === 0) return notFound();
+  const {
+    data: promotionData,
+    isLoading: isPromotionLoading,
+    error: promotionError,
+  } = usePromotionByTagQuery(tag, {
+    enabled: !isSpecialTag,
+  });
 
-  const pageTitle =
-    pageTitles[params.tag] ||
-    params.tag
-      .split("-")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
+  const {
+    data: promotionProducts,
+    isLoading: isPromotionProductsLoading,
+    error: promotionProductsError,
+  } = useProductsByTagQuery(tag, page, sort, {
+    enabled: !isSpecialTag,
+  });
 
-  const promoBanner = promoBanners[params.tag];
-  return (
-    <main>
-      <Headertags />
+  // Determine which data to use
+  const productsToDisplay = isSpecialTag
+    ? specialTagProducts?.products || []
+    : promotionProducts?.products || [];
 
-      {promoBanner && (
-        <div
-          className="w-full aspect-[16/6] md:aspect-[16/4] relative overflow-hidden"
-          style={{ backgroundColor: promoBanner.bgColor }}
-        >
-          <div className="absolute inset-0">
+  const totalProducts = isSpecialTag
+    ? specialTagProducts?.totalProducts || 0
+    : promotionProducts?.totalCount || 0;
+
+  const totalPages = Math.ceil(totalProducts / 10);
+  const isLoading = isSpecialTag
+    ? isSpecialLoading
+    : isPromotionLoading || isPromotionProductsLoading;
+  const error = isSpecialTag
+    ? specialError
+    : promotionError || promotionProductsError;
+
+  if (isLoading) {
+    return (
+      <main>
+        <Container className="py-8">
+          <ProductSkeletonGrid count={10} />
+        </Container>
+      </main>
+    );
+  }
+
+  if (error) {
+    console.error("Error fetching data:", error);
+    return (
+      <div className="text-center py-10 text-red-600">
+        Error loading {isSpecialTag ? "products" : "promotion data"}.
+      </div>
+    );
+  }
+
+  if (!isSpecialTag && !promotionData) {
+    return <div className="text-center py-10">Promotion not found.</div>;
+  }
+
+  if (productsToDisplay.length === 0) {
+    return (
+      <main>
+        {!isSpecialTag && promotionData && (
+          <div
+            className="w-full aspect-[16/6] md:aspect-[16/4] relative overflow-hidden"
+            style={{
+              backgroundColor: promotionData.background_color || "#ffffff",
+            }}
+          >
             <Image
-              src={promoBanner.imageUrl}
-              alt={promoBanner.title}
+              src={promotionData.image_url || "/images/placeholder-banner.jpg"}
+              alt={promotionData.title || "Promotion banner"}
               fill
-              className="object-contain"
+              className="object-cover"
               priority
             />
           </div>
+        )}
+        <Container className="py-8 text-center">
+          <p>
+            No products found in this {isSpecialTag ? "category" : "promotion"}.
+          </p>
+        </Container>
+      </main>
+    );
+  }
+
+  const pageTitle = isSpecialTag
+    ? tag === "new-arrival"
+      ? "New Arrivals"
+      : tag === "best-seller"
+      ? "Best Sellers"
+      : tag === "fresh-fruits"
+      ? "Fresh Fruits"
+      : "Fresh Vegetables"
+    : promotionData?.title ||
+      tag
+        .split("-")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+
+  return (
+    <main>
+      {!isSpecialTag && promotionData && (
+        <div
+          className="w-full aspect-[16/6] md:aspect-[16/4] relative overflow-hidden mb-4"
+          style={{
+            backgroundColor: promotionData.background_color || "#ffffff",
+          }}
+        >
+          <Image
+            src={promotionData.image_url || "/images/placeholder-banner.jpg"}
+            alt={promotionData.title || "Promotion banner"}
+            fill
+            className="object-cover"
+            priority
+          />
         </div>
       )}
 
+      <div className="bg-white py-4">
+        <Container>
+          <CustomBreadcrumb />
+        </Container>
+      </div>
       <div className="py-2 px-4 md:border-b shadow-sm">
         <Container>
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center mt-2">
             <div className="flex items-center">
               <h1 className="text-[#1B6013] text-2xl md:text-3xl font-bold">
                 {pageTitle}
@@ -127,7 +184,7 @@ export default async function TagProductsPage({
               <ProductSortSelector
                 sortOrders={sortOrders}
                 sort={sort}
-                params={{ tag: params.tag, sort, page }}
+                params={{ tag, sort, page: String(page) }}
               />
             </div>
           </div>
@@ -136,15 +193,16 @@ export default async function TagProductsPage({
 
       <Container className="py-8">
         <div className="space-y-4">
-          <Suspense fallback={<ProductSkeletonGrid count={12} />}>
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-5">
-              {data.products.map((product) => (
-                <ProductdetailsCard key={product._id} product={product} />
-              ))}
-            </div>
-          </Suspense>
-          {data.totalPages > 1 && (
-            <Pagination page={page} totalPages={data.totalPages} />
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-5">
+            {productsToDisplay.map((product) => (
+              <ProductdetailsCard
+                key={product.id || (product as any)._id}
+                product={product}
+              />
+            ))}
+          </div>
+          {totalPages > 1 && (
+            <Pagination page={String(page)} totalPages={totalPages} />
           )}
         </div>
       </Container>

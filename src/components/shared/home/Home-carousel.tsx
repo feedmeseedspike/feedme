@@ -100,15 +100,13 @@ const Images = ({ imgIndex }: { imgIndex: number }) => {
             <Image
               src={imgSrc}
               alt={`Slide ${idx + 1}`}
-              width={900}
-              height={500}
+              width={1200}
+              height={800}
               priority
               quality={100}
               // fill
               // sizes="100vw"
               className="w-full md:h-full object-cover"
-
-
             />
           </motion.div>
         );

@@ -21,11 +21,18 @@ import { X } from "lucide-react";
 import Image from "next/image";
 import { categories } from "src/lib/data";
 import { Category } from "src/types/category";
+import {
+  getCategoryById,
+  updateCategory,
+  uploadImage,
+} from "../../../../../../lib/api"; // Import Supabase API functions
+import { useToast } from "../../../../../../hooks/useToast"; // Import useToast hook
 
 export default function EditCategory({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { id } = params;
-  
+  const { showToast } = useToast(); // Initialize useToast
+
   const [category, setCategory] = useState<Category | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -36,24 +43,36 @@ export default function EditCategory({ params }: { params: { id: string } }) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false); // State for submission loading
+  const [error, setError] = useState<string | null>(null); // State for errors
 
   useEffect(() => {
-    const foundCategory = categories.find(cat => cat._id === id);
-    
-    if (foundCategory) {
-      setCategory({ ...foundCategory, products: [] });
-      setTitle(foundCategory.title);
-      setDescription(foundCategory.description);
-      setTags(foundCategory.tags || []);
-      setKeynotes(foundCategory.keynotes || []);
-      setImagePreview(foundCategory.thumbnail.url);
-    } else {
-      // Category not found, redirect back to list
-      router.push("/admin/categories");
+    async function fetchCategory() {
+      setLoading(true);
+      try {
+        const foundCategory = await getCategoryById(id);
+        if (foundCategory) {
+          setCategory(foundCategory);
+          setTitle(foundCategory.title);
+          setDescription(foundCategory.description);
+          setTags(foundCategory.tags || []);
+          setKeynotes(foundCategory.keynotes || []);
+          setImagePreview(foundCategory.thumbnail?.url || null); // Use optional chaining
+        } else {
+          setError("Category not found"); // Keep error state for rendering
+        }
+      } catch (err: any) {
+        setError(err.message || "Failed to fetch category"); // Keep error state for rendering
+      } finally {
+        setLoading(false);
+      }
     }
-    
-    setLoading(false);
-  }, [id, router]);
+
+    if (id) {
+      fetchCategory();
+    }
+  }, [id]); // Depend on id
+
   const handleAddTag = () => {
     if (tag.trim() && !tags.includes(tag.trim())) {
       setTags([...tags, tag.trim()]);
@@ -88,49 +107,80 @@ export default function EditCategory({ params }: { params: { id: string } }) {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Here you would implement the actual API call to update the category
-    // For now, we'll just log the data and redirect
-    // console.log({
-      id,
-      title,
-      description,
-      tags,
-      keynotes,
-      imageFile
-    });
-    
-    // Simulate successful update
-    alert("Category updated successfully!");
-    router.push("/admin/categories");
+    setSubmitting(true);
+    setError(null); // Clear previous errors
+
+    let thumbnailUrl = category?.thumbnail?.url || null; // Keep existing thumbnail by default
+
+    if (imageFile) {
+      try {
+        thumbnailUrl = await uploadImage(imageFile, "category-images"); // Upload new image
+      } catch (err: any) {
+        // setError(err.message || "Failed to upload image"); // Remove setting error state here
+        showToast(err.message || "Failed to upload image", "error"); // Show error toast
+        setSubmitting(false);
+        return; // Stop submission if image upload fails
+      }
+    }
+
+    try {
+      const updatedData = {
+        title,
+        description,
+        tags,
+        keynotes,
+        thumbnail: thumbnailUrl ? { url: thumbnailUrl } : null, // Store thumbnail as an object with url
+      };
+      await updateCategory(id, updatedData);
+      showToast("Category updated successfully!", "success"); // Show success toast
+      router.push("/admin/categories");
+    } catch (err: any) {
+      // setError(err.message || "Failed to update category"); // Remove setting error state here
+      showToast(err.message || "Failed to update category", "error"); // Show error toast
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (loading) {
     return <div className="p-4">Loading...</div>;
   }
 
+  if (error && !category) {
+    // Display error if category not found on initial load
+    return <div className="p-4 text-red-500">{error}</div>;
+  }
+
   if (!category) {
+    // Should not happen if error is handled, but as a fallback
     return <div className="p-4">Category not found</div>;
   }
 
   return (
     <div className="p-4">
       <div className="mb-6">
-        <Link href="/admin/categories" className="flex items-center text-gray-600 hover:text-gray-900">
+        <Link
+          href="/admin/categories"
+          className="flex items-center text-gray-600 hover:text-gray-900"
+        >
           <ArrowLeft size={16} className="mr-2" />
           Back to Categories
         </Link>
       </div>
-
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-3xl font-semibold">Edit Category</h2>
           <p className="text-[#475467]">Update category details.</p>
         </div>
       </div>
-
+      {error && (
+        <div className="p-2 mb-4 text-red-700 bg-red-100 border border-red-200 rounded">
+          {error}
+        </div>
+      )}{" "}
+      {/* Display submission errors */}
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Basic Information */}
@@ -144,9 +194,9 @@ export default function EditCategory({ params }: { params: { id: string } }) {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="title">Category Title</Label>
-                <Input 
-                  id="title" 
-                  value={title} 
+                <Input
+                  id="title"
+                  value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g., Fruits, Vegetables, Spices"
                   required
@@ -154,9 +204,9 @@ export default function EditCategory({ params }: { params: { id: string } }) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
-                <Textarea 
-                  id="description" 
-                  value={description} 
+                <Textarea
+                  id="description"
+                  value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Describe this category..."
                   rows={4}
@@ -178,21 +228,23 @@ export default function EditCategory({ params }: { params: { id: string } }) {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="image">Thumbnail Image</Label>
-                <Input 
-                  id="image" 
-                  type="file" 
+                <Input
+                  id="image"
+                  type="file"
                   accept="image/*"
                   onChange={handleImageChange}
                 />
-                <p className="text-sm text-gray-500">Leave empty to keep the current image</p>
+                <p className="text-sm text-gray-500">
+                  Leave empty to keep the current image
+                </p>
               </div>
               {imagePreview && (
                 <div className="mt-4">
                   <p className="text-sm text-gray-500 mb-2">Current Image:</p>
                   <div className="relative w-40 h-40 border rounded-md overflow-hidden">
-                    <Image 
-                      src={imagePreview} 
-                      alt="Category preview" 
+                    <Image
+                      src={imagePreview}
+                      alt="Category preview"
                       fill
                       className="object-cover"
                     />
@@ -212,22 +264,18 @@ export default function EditCategory({ params }: { params: { id: string } }) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
-                <Input 
-                  value={tag} 
+                <Input
+                  value={tag}
                   onChange={(e) => setTag(e.target.value)}
                   placeholder="Add a tag"
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       e.preventDefault();
                       handleAddTag();
                     }
                   }}
                 />
-                <Button 
-                  type="button" 
-                  onClick={handleAddTag}
-                  variant="outline"
-                >
+                <Button type="button" onClick={handleAddTag} variant="outline">
                   Add
                 </Button>
               </div>
@@ -235,9 +283,9 @@ export default function EditCategory({ params }: { params: { id: string } }) {
                 {tags.map((t) => (
                   <Badge key={t} className="px-2 py-1 flex items-center gap-1">
                     {t}
-                    <X 
-                      size={14} 
-                      className="cursor-pointer" 
+                    <X
+                      size={14}
+                      className="cursor-pointer"
                       onClick={() => handleRemoveTag(t)}
                     />
                   </Badge>
@@ -256,19 +304,19 @@ export default function EditCategory({ params }: { params: { id: string } }) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
-                <Input 
-                  value={keynote} 
+                <Input
+                  value={keynote}
                   onChange={(e) => setKeynote(e.target.value)}
                   placeholder="Add a keynote"
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       e.preventDefault();
                       handleAddKeynote();
                     }
                   }}
                 />
-                <Button 
-                  type="button" 
+                <Button
+                  type="button"
                   onClick={handleAddKeynote}
                   variant="outline"
                 >
@@ -277,11 +325,14 @@ export default function EditCategory({ params }: { params: { id: string } }) {
               </div>
               <div className="flex flex-wrap gap-2 mt-2">
                 {keynotes.map((k) => (
-                  <Badge key={k} className="px-2 py-1 flex items-center gap-1 bg-blue-100 text-blue-800 hover:bg-blue-200">
+                  <Badge
+                    key={k}
+                    className="px-2 py-1 flex items-center gap-1 bg-blue-100 text-blue-800 hover:bg-blue-200"
+                  >
                     {k}
-                    <X 
-                      size={14} 
-                      className="cursor-pointer" 
+                    <X
+                      size={14}
+                      className="cursor-pointer"
                       onClick={() => handleRemoveKeynote(k)}
                     />
                   </Badge>
@@ -291,21 +342,22 @@ export default function EditCategory({ params }: { params: { id: string } }) {
           </Card>
         </div>
 
-        {/* Form Actions */}
-        <div className="mt-6 flex justify-end gap-4">
-          <Button 
-            type="button" 
+        <CardFooter className="flex justify-end gap-2 mt-6 p-0">
+          <Button
             variant="outline"
             onClick={() => router.push("/admin/categories")}
           >
             Cancel
           </Button>
-          <Button type="submit" className="bg-[#1B6013] text-white">
-            Update Category
+          <Button
+            type="submit"
+            className="bg-[#1B6013] text-white"
+            disabled={submitting}
+          >
+            {submitting ? "Saving..." : "Save Changes"}
           </Button>
-        </div>
+        </CardFooter>
       </form>
     </div>
   );
 }
-

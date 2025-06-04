@@ -35,11 +35,15 @@ export default function CategoryDetails({ category }: CategoryDetailsProps) {
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500">Created At</h3>
-            <p className="text-base">{formatDate(category.createdAt)}</p>
+            <p className="text-base">
+              {category.createdAt ? formatDate(category.created_at) : "N/A"}
+            </p>
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500">Last Updated</h3>
-            <p className="text-base">{formatDate(category.updatedAt)}</p>
+            <p className="text-base">
+              {category.updatedAt ? formatDate(category.updated_at) : "N/A"}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -51,14 +55,16 @@ export default function CategoryDetails({ category }: CategoryDetailsProps) {
         </CardHeader>
         <CardContent>
           <div className="relative w-full h-48 border rounded-md overflow-hidden">
-            <Image 
-              src={category.thumbnail.url} 
-              alt={category.title} 
+            <Image
+              src={category.thumbnail.url}
+              alt={category.title}
               fill
               className="object-contain"
             />
           </div>
-          <p className="mt-2 text-sm text-gray-500">Image ID: {category.thumbnail.public_id}</p>
+          <p className="mt-2 text-sm text-gray-500">
+            Image ID: {category.thumbnail.public_id}
+          </p>
         </CardContent>
       </Card>
 

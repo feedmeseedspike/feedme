@@ -17,6 +17,11 @@ import { RootState } from "src/store";
 import Link from "next/link";
 import { setSelectedOption } from "src/store/features/optionsSlice";
 import { useToast } from "src/hooks/useToast";
+import { useCartQuery } from "src/queries/cart";
+import { Button } from "@components/ui/button";
+import { ShoppingCart } from "lucide-react";
+import { useUser } from "src/hooks/useUser";
+import { useRouter } from "next/navigation";
 
 const datas = [
   {
@@ -61,14 +66,18 @@ export default function ProductDetailsClient({
       displayName: string;
       logo?: string;
     };
+    countInStock?: number | null;
   };
   cartItemId: string;
 }) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const dispatch = useDispatch();
   const { showToast } = useToast();
+  const { data: cartItems } = useCartQuery();
+  const user = useUser();
+  const router = useRouter();
 
-  const selectedOption = useSelector((state: RootState) => 
+  const selectedOption = useSelector((state: RootState) =>
     product._id ? state.options.selectedOptions[product._id] : undefined
   );
 
@@ -82,7 +91,7 @@ export default function ProductDetailsClient({
     }
 
     // Find the selected option
-    const option = product.options.find(opt => opt.name === selectedOption);
+    const option = product.options.find((opt) => opt.name === selectedOption);
 
     // Fallback to first option if selected option not found
     return option || product.options[0];
@@ -90,26 +99,49 @@ export default function ProductDetailsClient({
 
   // Set default option if none is selected
   useEffect(() => {
-    if (product._id && product.options && product.options.length > 0 && !selectedOption) {
-      dispatch(setSelectedOption({
-        productId: product._id,
-        option: product.options[0].name
-      }));
+    if (
+      product._id &&
+      product.options &&
+      product.options.length > 0 &&
+      !selectedOption
+    ) {
+      dispatch(
+        setSelectedOption({
+          productId: product._id,
+          option: product.options[0].name,
+        })
+      );
     }
   }, [product._id, product.options, selectedOption, dispatch]);
+
+  // Check if the current product is in cart
+  const isInCart = useMemo(() => {
+    if (!product._id || !cartItems) return false;
+    return cartItems.some(
+      (item) =>
+        item.product_id === product._id &&
+        JSON.stringify(item.option || null) ===
+          JSON.stringify(selectedOptionData || null)
+    );
+  }, [product._id, cartItems, selectedOptionData]);
 
   const handleImageSelect = (index: number) => {
     setSelectedImageIndex(index);
   };
 
-  const handleOptionChange = useCallback((value: string) => {
-    if (product._id) {
-      dispatch(setSelectedOption({
-        productId: product._id,
-        option: value
-      }));
-    }
-  }, [dispatch, product._id]);
+  const handleOptionChange = useCallback(
+    (value: string) => {
+      if (product._id) {
+        dispatch(
+          setSelectedOption({
+            productId: product._id,
+            option: value,
+          })
+        );
+      }
+    },
+    [dispatch, product._id]
+  );
 
   return (
     <div className="py-4 grid grid-cols-1 md:grid-cols-6 lg:grid-cols-8 gap-8 bg-white my-6 p-3">
@@ -174,7 +206,7 @@ export default function ProductDetailsClient({
 
       {/* Add to Cart Section */}
       <div className="col-span-1 md:col-span-6 lg:col-span-2  border border-[#DDD5DD] p-4 w-full h-fit">
-        <div className="flex gap-2 items-center">
+        {/* <div className="flex gap-2 items-center">
           <p className="text-sm text-gray-500">Sold by</p>
           <Link
             href={`/vendors/${product.vendor.id}`}
@@ -184,8 +216,8 @@ export default function ProductDetailsClient({
               <p className="text-xs text-gray-400">{product.vendor.shopId}</p>
             </div>
           </Link>
-        </div>
-        <Separator className="my-4" />
+        </div> */}
+        {/* <Separator className="my-4" /> */}
         <div className="flex flex-col gap-[5px]">
           {datas.map((data) => (
             <div className="" key={data.id}>
@@ -200,27 +232,36 @@ export default function ProductDetailsClient({
         <Separator className="mt-4 mb-2" />
         <AddToCart
           item={{
-            clientId: generateId(),
-            product: product._id || "",
+            id: product._id || "",
             name: product.name,
             slug: product.slug,
             category: product.category,
             price: selectedOptionData?.price ?? product.price,
-            quantity: 1,
-            image: product.images[0],
+            images: product.images,
+            countInStock: product.countInStock,
             options: product.options,
-            option: selectedOptionData ? {
-              name: selectedOptionData.name,
-              price: selectedOptionData.price,
-              image: selectedOptionData.image,
-            } : undefined,
+            option: selectedOptionData,
             selectedOption: selectedOptionData?.name,
-            // vendor: product.vendor.id,
-            // vendorDisplayName: product.vendor.displayName,
+          }}
+          onAuthRequired={() => {
+            showToast("Please log in to add items to cart", "error");
+            router.push(
+              `/login?callbackUrl=${encodeURIComponent(
+                window.location.pathname
+              )}`
+            );
           }}
         />
+        {isInCart && user && (
+          <Link href="/cart" className="w-full">
+            <Button className="w-full mt-4 bg-[#DDD5DD] hover:bg-[#DDD5DD]/90 text-black flex items-center gap-2">
+              {/* <ShoppingCart className="size-4" /> */}
+              View Cart
+            </Button>
+          </Link>
+        )}
         <div className="pt-[8px] w-full">
-          <ShareLike product={product} />
+          <ShareLike product={{ ...product, id: product._id }} />
         </div>
       </div>
     </div>

@@ -28,11 +28,14 @@ import {
   SheetFooter,
 } from "@components/ui/sheet";
 import { Checkbox } from "@components/ui/checkbox";
-import Pagination from "@components/admin/productPagination";
 import { BiEdit } from "react-icons/bi";
 import { Trash2 } from "lucide-react";
 import Link from "next/link";
-import { getCategories } from "../../../../lib/api";
+import {
+  getCategories,
+  countCategories,
+  deleteCategory,
+} from "../../../../lib/api";
 import Image from "next/image";
 import {
   Dialog,
@@ -44,11 +47,16 @@ import {
   DialogTrigger,
 } from "@components/ui/dialog";
 import { Category } from "src/types/category";
+import { useRouter, useSearchParams } from "next/navigation";
+import PaginationBar from "../../../../components/shared/pagination";
 
 export default function Categories() {
-  const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [search, setSearch] = useState(searchParams.get("search") || "");
+  const [selectedTags, setSelectedTags] = useState<string[]>(
+    searchParams.getAll("tags") || []
+  );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(
     null
@@ -56,52 +64,66 @@ export default function Categories() {
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [totalCategories, setTotalCategories] = useState(0);
+
+  const currentPage = Number(searchParams.get("page") || 1);
+  const ITEMS_PER_PAGE = 10; // Define items per page
 
   useEffect(() => {
     setLoading(true);
-    getCategories()
-      .then((data) => {
+    const currentSearch = searchParams.get("search") || "";
+    const currentTags = searchParams.getAll("tags") || [];
+    const currentPageNumber = Number(searchParams.get("page") || 1);
+
+    getCategories({
+      page: currentPageNumber,
+      limit: ITEMS_PER_PAGE,
+      search: currentSearch,
+      tags: currentTags,
+    })
+      .then(({ data, count }) => {
         setCategories(data || []);
+        setTotalCategories(count || 0);
         setLoading(false);
       })
       .catch((err) => {
         setError(err.message || "Failed to fetch categories");
         setLoading(false);
       });
-  }, []);
+  }, [searchParams]); // Depend on searchParams to refetch on changes
 
-  // Get unique tags from all categories
+  // Get unique tags from all categories (consider fetching these separately if needed)
+  // For now, assuming you have a way to get all possible tags
   const allTags = Array.from(
     new Set(categories.flatMap((category) => category.tags || []))
-  );
+  ); // This will only show tags from the current page's categories
 
-  // Filter categories based on search and selected tags
-  const filteredCategories = categories.filter(
-    (category) =>
-      (category.title || "").toLowerCase().includes(search.toLowerCase()) &&
-      (selectedTags.length === 0 ||
-        selectedTags.some((tag) => (category.tags || []).includes(tag)))
-  );
-
-  // Pagination logic
-  const ITEMS_PER_PAGE = 5;
-  const totalPages = Math.ceil(filteredCategories.length / ITEMS_PER_PAGE);
-  const paginatedCategories = filteredCategories.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
+  // Handle search input change
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newSearch = e.target.value;
+    setSearch(newSearch);
+    const newSearchParams = new URLSearchParams(searchParams.toString());
+    if (newSearch) {
+      newSearchParams.set("search", newSearch);
+    } else {
+      newSearchParams.delete("search");
+    }
+    newSearchParams.set("page", "1"); // Reset to page 1 on search
+    router.push(`?${newSearchParams.toString()}`);
   };
 
   // Toggle filter for tags
   const toggleFilter = (value: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(value)
-        ? prev.filter((item) => item !== value)
-        : [...prev, value]
-    );
+    const newSelectedTags = selectedTags.includes(value)
+      ? selectedTags.filter((item) => item !== value)
+      : [...selectedTags, value];
+    setSelectedTags(newSelectedTags);
+
+    const newSearchParams = new URLSearchParams(searchParams.toString());
+    newSearchParams.delete("tags");
+    newSelectedTags.forEach((tag) => newSearchParams.append("tags", tag));
+    newSearchParams.set("page", "1"); // Reset to page 1 on tag filter change
+    router.push(`?${newSearchParams.toString()}`);
   };
 
   const handleDeleteClick = (category: Category) => {
@@ -109,14 +131,41 @@ export default function Categories() {
     setDeleteDialogOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
-    // Here you would implement the actual delete functionality
-    // For now, we'll just close the dialog
-    // console.log("Deleting category:", categoryToDelete?.title);
+  const handleDeleteConfirm = async () => {
+    if (categoryToDelete) {
+      try {
+        await deleteCategory(categoryToDelete.id); // Call the deleteCategory API
+        alert("Category deleted successfully!");
+        // Refresh the data after successful deletion
+        const currentSearch = searchParams.get("search") || "";
+        const currentTags = searchParams.getAll("tags") || [];
+        const currentPageNumber = Number(searchParams.get("page") || 1);
+
+        // Refetch categories for the current page or adjust pagination
+        getCategories({
+          page: currentPageNumber,
+          limit: ITEMS_PER_PAGE,
+          search: currentSearch,
+          tags: currentTags,
+        })
+          .then(({ data, count }) => {
+            setCategories(data || []);
+            setTotalCategories(count || 0);
+            setLoading(false);
+          })
+          .catch((err) => {
+            setError(err.message || "Failed to fetch categories");
+            setLoading(false);
+          });
+      } catch (err: any) {
+        setError(err.message || "Failed to delete category");
+      }
+    }
     setDeleteDialogOpen(false);
     setCategoryToDelete(null);
-    // After successful deletion, you might want to refresh the data
   };
+
+  const totalPages = Math.ceil(totalCategories / ITEMS_PER_PAGE);
 
   if (loading) return <div className="p-4">Loading categories...</div>;
   if (error) return <div className="p-4 text-red-500">{error}</div>;
@@ -147,7 +196,7 @@ export default function Categories() {
             placeholder="Search for categories"
             className="w-full pl-9 pr-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-gray-300 shadow-[0px_1px_3px_0px_rgba(16,24,40,0.10)]"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={handleSearchChange} // Use the new handler
           />
         </div>
         <div className="flex items-center gap-3">
@@ -188,7 +237,7 @@ export default function Categories() {
                       id={tag}
                       className="size-4 !rounded-md border-[#D0D5DD]"
                       checked={selectedTags.includes(tag)}
-                      onCheckedChange={() => toggleFilter(tag)}
+                      onCheckedChange={() => toggleFilter(tag)} // Use the new handler
                     />
                     <label className="font-medium text-sm" htmlFor={tag}>
                       {tag}
@@ -201,7 +250,14 @@ export default function Categories() {
                   <div
                     className="text-[#B42318] cursor-pointer"
                     onClick={() => {
+                      // Clear all filters logic
                       setSelectedTags([]);
+                      const newSearchParams = new URLSearchParams(
+                        searchParams.toString()
+                      );
+                      newSearchParams.delete("tags");
+                      newSearchParams.set("page", "1"); // Reset to page 1
+                      router.push(`?${newSearchParams.toString()}`);
                     }}
                   >
                     Clear all filters
@@ -217,7 +273,17 @@ export default function Categories() {
                     >
                       Cancel
                     </Button>
-                    <Button className="bg-[#1B6013]">Apply</Button>
+                    {/* Apply button now just closes the sheet as filtering is instant */}
+                    <Button
+                      className="bg-[#1B6013]"
+                      onClick={() =>
+                        document.dispatchEvent(
+                          new KeyboardEvent("keydown", { key: "Escape" })
+                        )
+                      }
+                    >
+                      Apply
+                    </Button>
                   </div>
                 </div>
               </SheetFooter>
@@ -239,62 +305,55 @@ export default function Categories() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedCategories.map((category) => (
-              <TableRow key={category._id}>
+            {categories.map((category) => (
+              <TableRow key={category.id}>
+                {" "}
+                {/* Use category.id instead of _id */}
                 <TableCell>
-                  <Image
-                    src={category.thumbnail.url}
-                    alt={category.title}
-                    width={60}
-                    height={60}
-                    className="rounded-md object-cover"
-                  />
+                  {category.thumbnail?.url && (
+                    <Image
+                      src={category.thumbnail.url}
+                      alt={category.title}
+                      width={60}
+                      height={60}
+                      className="rounded-md object-cover"
+                    />
+                  )}
                 </TableCell>
-                <TableCell className="font-medium">
-                  <Link
-                    href={`/admin/categories/view/${category.id}`}
-                    className="hover:underline text-blue-600"
-                  >
-                    {category.title}
-                  </Link>
-                </TableCell>
-
-                <TableCell className="max-w-xs truncate">
-                  {category.description}
-                </TableCell>
+                <TableCell>{category.title}</TableCell>
+                <TableCell>{category.description}</TableCell>
                 <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {category.tags?.map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Link href={`/admin/categories/edit/${category.id}`}>
-                      <Button variant="ghost" size="icon">
-                        <BiEdit
-                          className="text-gray-600 hover:text-gray-900"
-                          size={20}
-                        />
-                      </Button>
-                    </Link>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteClick(category)}
+                  {(category.tags || []).map((tag: string) => (
+                    <span
+                      key={tag}
+                      className="inline-block bg-gray-200 rounded-full px-2 py-0.5 text-xs font-semibold text-gray-700 mr-2 mb-2"
                     >
-                      <Trash2
-                        className="text-red-500 hover:text-red-700"
-                        size={18}
-                      />
+                      {tag}
+                    </span>
+                  ))}
+                </TableCell>
+                <TableCell className="flex items-center gap-2">
+                  <Link href={`/admin/categories/view/${category.id}`}>
+                    {" "}
+                    {/* Use category.id */}
+                    <Button variant="outline" size="icon">
+                      <Eye size={16} />
                     </Button>
-                  </div>
+                  </Link>
+                  <Link href={`/admin/categories/edit/${category.id}`}>
+                    {" "}
+                    {/* Use category.id */}
+                    <Button variant="outline" size="icon">
+                      <BiEdit size={16} />
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handleDeleteClick(category)}
+                  >
+                    <Trash2 size={16} />
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -302,12 +361,12 @@ export default function Categories() {
         </Table>
       </div>
 
-      {/* Pagination Section */}
-      <div className="flex justify-center mt-6">
-        <Pagination
+      {/* Pagination Bar */}
+      <div className="mt-4 flex justify-center">
+        <PaginationBar
+          page={currentPage}
           totalPages={totalPages}
-          currentPage={currentPage}
-          onPageChange={handlePageChange}
+          urlParamName="page"
         />
       </div>
 

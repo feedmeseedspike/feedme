@@ -3,6 +3,7 @@
 import { createClient } from "src/utils/supabase/server";
 import { Tables, Json } from "src/utils/database.types";
 
+// Define ProductOption interface based on usage in add-to-cart.tsx
 export interface ProductOption {
   name: string;
   price: number;
@@ -10,11 +11,14 @@ export interface ProductOption {
   stockStatus?: string;
 }
 
-// Update CartItem type to use ProductOption for the option field
-export type CartItem = Tables<'cart_items'> & { products: Tables<'products'> | null } & { option: ProductOption | null };
+// Define a more explicit CartItem type including joined tables
+export type CartItem = Tables<'cart_items'> & {
+  products: Tables<'products'> | null; // Joined product data
+  bundles: { id: string; name: string; discount_percentage: number | null; } | null; // Joined bundle data with selected fields
+};
 
 export type GetCartSuccess = { success: true; data: CartItem[]; error: null };
-export type GetCartFailure = { success: false; data: null; error: string };
+export type GetCartFailure = { success: false; data: null, error: string };
 
 // Helper function to get or create a user's cart
 async function getUserCartId(userId: string) {
@@ -63,17 +67,24 @@ export async function getCart(): Promise<GetCartSuccess | GetCartFailure> {
 
     const { data, error } = await supabase
       .from('cart_items')
-      .select('*, products(*)') 
-      .eq('cart_id', cartId)
+      .select('*, products(*), bundles(id, name, discount_percentage)') // Select cart item fields and join with products and specific bundle fields
+      .eq('cart_id', cartId) // Use cart_id instead of user_id
       .order('created_at', { ascending: true });
 
     if (error) throw error;
 
-    // Map the fetched data to the CartItem type, ensuring the option field is correctly typed
+    // Map the fetched data to the CartItem type, explicitly ensuring correct structure
     const typedData: CartItem[] = (data || []).map(item => ({
-        ...item,
-        products: item.products, // products relationship is already correctly typed by Supabase generated types
-        option: item.option as ProductOption | null, // Explicitly cast Json to ProductOption | null
+      id: item.id,
+      product_id: item.product_id,
+      quantity: item.quantity,
+      price: item.price,
+      cart_id: item.cart_id,
+      created_at: item.created_at,
+      bundle_id: item.bundle_id,
+      products: item.products, // products relationship is already typed
+      bundles: item.bundles, // bundles relationship should now match the explicitly selected shape
+      option: item.option, // option is Json | null from Tables<'cart_items'>
     }));
 
     return { success: true, data: typedData, error: null };
@@ -88,11 +99,12 @@ export type UpdateCartItemsSuccess = { success: true };
 export type UpdateCartItemsFailure = { success: false; error: string };
 
 // Define the structure of the items array expected by the update_cart_items function
-interface ItemToUpdate {
+export interface ItemToUpdate {
   product_id: string;
   option: Json | null;
   quantity: number;
   price: number; // Assuming price is also sent in the update array
+  bundle_id?: string | null; // Add optional bundle_id
 }
 
 // Server action to update the entire cart using the update_cart_items function
@@ -173,10 +185,10 @@ export async function addToCart(productId: string, quantity: number, selectedOpt
       const { error: insertError } = await supabase
         .from('cart_items')
         .insert({
-          cart_id: cartId, 
+          cart_id: cartId, // Use cart_id
           product_id: productId,
           quantity: quantity,
-          option: selectedOption, 
+          option: selectedOption, // Store the selected option object or null
         });
 
       if (insertError) throw insertError;
@@ -212,7 +224,7 @@ export async function removeFromCart(cartItemId: string): Promise<RemoveFromCart
       .from('cart_items')
       .delete()
       .eq('id', cartItemId)
-      .eq('cart_id', cartId);
+      .eq('cart_id', cartId); // Use cart_id instead of user_id
 
     if (error) throw error;
 
@@ -251,7 +263,7 @@ export async function updateCartItemQuantity(cartItemId: string, quantity: numbe
       .from('cart_items')
       .update({ quantity: quantity })
       .eq('id', cartItemId)
-      .eq('cart_id', cartId); 
+      .eq('cart_id', cartId); // Use cart_id instead of user_id
 
     if (error) throw error;
 
@@ -284,7 +296,7 @@ export async function clearCart(): Promise<ClearCartSuccess | ClearCartFailure> 
     const { error } = await supabase
       .from('cart_items')
       .delete()
-      .eq('cart_id', cartId);
+      .eq('cart_id', cartId); // Use cart_id instead of user_id
 
     if (error) throw error;
 

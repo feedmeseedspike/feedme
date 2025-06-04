@@ -10,6 +10,9 @@ import { ToastProvider } from "src/hooks/useToast";
 import CartMergeProvider from "@providers/CartMergeProvider";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
+import { SupabaseAuthProvider } from "@components/supabase-auth-provider";
+import { ReactQueryClientProvider } from "@providers/ReactQueryClientProvider";
+import WhatsAppButton from "@components/WhatsAppButton";
 
 const proxima = localFont({
   src: [
@@ -80,17 +83,25 @@ export default async function RootLayout({
       <body className="font-custom">
         <NextTopLoader showSpinner={false} color="#F0800F" shadow="0" />
         <LocationProvider>
-          <ReduxProvider>
-            <ToastProvider>
-              <CartMergeProvider>
-                <CustomScrollbar>{children}</CustomScrollbar>
-              </CartMergeProvider>
-            </ToastProvider>
-            <Suspense fallback={null}>
-              <TawkToWidget />
-            </Suspense>
-          </ReduxProvider>
+          <ReactQueryClientProvider>
+            <ReduxProvider>
+              <ToastProvider>
+                <CartMergeProvider>
+                  <SupabaseAuthProvider>
+                    <CustomScrollbar>{children}</CustomScrollbar>
+                  </SupabaseAuthProvider>
+                </CartMergeProvider>
+              </ToastProvider>
+              {/* <Suspense fallback={null}>
+                <TawkToWidget />
+              </Suspense> */}
+            </ReduxProvider>
+          </ReactQueryClientProvider>
         </LocationProvider>
+        <WhatsAppButton
+          phoneNumber="+2348144602273"
+          message="Hello! I have a question about your products."
+        />
       </body>
     </html>
   );

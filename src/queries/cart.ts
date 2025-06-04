@@ -22,13 +22,13 @@ import {
   UpdateCartItemsFailure,
   updateCartItems,
   ProductOption,
+  ItemToUpdate,
 } from "src/lib/actions/cart.actions";
 
 // Import Tables and Json types from database.types.ts
 import { Tables, Json } from "src/utils/database.types";
 import { createClient } from "@utils/supabase/client";
 import { useEffect } from "react";
-import { showToast } from "src/lib/utils";
 
 // Query key for the cart
 export const cartQueryKey = ['cart'];
@@ -41,6 +41,8 @@ export const useCartQuery = () => {
       const result = await getCart();
       if (!result.success) {
         console.error('Failed to fetch cart:', result.error);
+        // Depending on desired behavior, you might throw an error
+        // or return an empty array. Returning empty array for a smooth UI.
         return []; 
       }
       return result.data;
@@ -56,9 +58,10 @@ export const useCartQuery = () => {
 // Define the structure of items for the update mutation
 export interface ItemToUpdateMutation {
   product_id: string;
-  option: ProductOption | null; 
+  option: Json | null; // Use Json | null to match server action
   quantity: number;
   price: number;
+  bundle_id?: string | null; // Add optional bundle_id
 }
 
 // Hook to update the entire cart
@@ -67,10 +70,15 @@ export const useUpdateCartMutation = () => {
   return useMutation<
     UpdateCartItemsSuccess | UpdateCartItemsFailure,
     Error,
-    ItemToUpdateMutation[],
+    ItemToUpdateMutation[], // Input type for mutate
     { previousCart: CartItem[] | undefined }
   >({
-    mutationFn: (items) => updateCartItems(items),
+    mutationFn: (items: ItemToUpdateMutation[]) => {
+      // Transform ItemToUpdateMutation[] to ItemToUpdate[] for the server action
+      // No transformation needed if ItemToUpdateMutation matches ItemToUpdate
+      const itemsForServer: ItemToUpdate[] = items as ItemToUpdate[];
+      return updateCartItems(items as ItemToUpdate[]); // Cast directly as types should now match
+    },
     onMutate: async (newItems) => {
       await queryClient.cancelQueries({ queryKey: cartQueryKey });
       const previousCart = queryClient.getQueryData<CartItem[]>(cartQueryKey);
@@ -79,17 +87,20 @@ export const useUpdateCartMutation = () => {
         id: 'temp-' + Math.random().toString(36).substr(2, 9),
         product_id: item.product_id || null,
         quantity: item.quantity,
-        option: item.option as ProductOption | null,
+        option: item.option as any, // Cast option to any for optimistic update to match expected Json structure
         price: item.price || null,
         cart_id: null,
         created_at: null,
         products: null,
+        bundle_id: item.bundle_id || null, // Include bundle_id
+        bundles: null, // Set bundles to null for optimistic update
       }));
 
       queryClient.setQueryData<CartItem[]>(cartQueryKey, optimisticCart);
       return { previousCart };
     },
     onSuccess: () => {
+      // Invalidate the cart query to refetch and get the correct state from the server
       queryClient.invalidateQueries({ queryKey: cartQueryKey });
     },
     onError: (error, variables, context) => {
@@ -102,6 +113,16 @@ export const useUpdateCartMutation = () => {
   });
 };
 
+// Hook to add an item to the cart
+// Keeping this old hook for now, will remove after full transition
+// export const useAddToCartMutation = () => { ... };
+
+// Hook to update cart item quantity
+// Keeping this old hook for now, will remove after full transition
+// export const useUpdateCartItemQuantityMutation = () => { ... };
+
+// Hook to remove an item from the cart
+// Keeping this old hook for now, will remove after full transition
 export const useRemoveFromCartMutation = () => {
   const queryClient = useQueryClient();
   // Mutation takes the cart item ID to remove
@@ -156,7 +177,8 @@ export const useClearCartMutation = () => {
       console.log('Cart cleared successfully, invalidating query.');
       // Invalidate the cart query to refetch and ensure consistency
       queryClient.invalidateQueries({ queryKey: cartQueryKey });
-      showToast('Cart cleared!', 'success');
+      // Optionally show a success toast
+      // showToast('Cart cleared!', 'success'); // Assuming showToast is available/imported
     },
     onError: (error, variables, context) => {
       console.error('Failed to clear cart, rolling back:', error);
@@ -164,7 +186,8 @@ export const useClearCartMutation = () => {
       if (context?.previousCart) {
         queryClient.setQueryData<CartItem[]>(cartQueryKey, context.previousCart);
       }
-      showToast(error.message || 'Failed to clear cart.', 'error'); 
+       // Optionally show an error toast
+      // showToast(error.message || 'Failed to clear cart.', 'error'); // Assuming showToast is available/imported
     },
   });
 };

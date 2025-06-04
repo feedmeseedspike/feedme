@@ -74,7 +74,7 @@ const ProductDetails = async (props: {
   searchParams: Promise<{ page: string; color: string; size: string }>;
 }) => {
   const searchParams = await props.searchParams;
-  const { page, color, size } = searchParams;
+  const { page } = searchParams;
 
   const params = await props.params;
   const { slug } = params;
@@ -85,17 +85,17 @@ const ProductDetails = async (props: {
   const cartItemId = generateId();
 
   const totalRatings = product.rating_distribution.reduce(
-    (acc, { count }) => acc + count,
+    (acc: number, { count }: { count: number }) => acc + count,
     0
   );
 
   const relatedProducts = await getRelatedProductsByCategory({
-    category: product.category_ids[0],
+    category: product.category_ids,
     productId: product.id,
     page: Number(page || "1"),
   });
 
-  // console.log(product.options);
+  // console.log(relatedProducts);
 
   const ProductJsonLd = ({
     product,

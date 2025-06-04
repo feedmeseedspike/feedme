@@ -18,6 +18,7 @@ import { Heart, Loader2 } from "lucide-react";
 import { createClient } from "@utils/supabase/client";
 import { Skeleton } from "@components/ui/skeleton";
 
+// Import Tanstack Query hooks
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getFavoritesQuery,
@@ -25,7 +26,9 @@ import {
 } from "src/queries/favorites";
 import { Tables } from "src/utils/database.types";
 
-type FavoriteProductDetails = Tables<"products">;
+// Define a type for the product details based on your database schema
+type FavoriteProductDetails = Tables<"products">; // Assuming 'products' table schema
+
 interface FavoritesContentProps {
   initialFavorites: FavoriteProductDetails[];
 }
@@ -35,8 +38,14 @@ const FavoritesContent: React.FC<FavoritesContentProps> = ({
 }) => {
   const { showToast } = useToast();
 
+  // We will now manage the state and mutations here.
+  // The initial data comes from the server component.
+  // We still need the mutation hooks for client-side interaction.
+
+  // Use mutation for removing a favorite directly from the list
   const removeFavoriteMutation = useRemoveFavoriteMutation();
 
+  // We can potentially manage the list state locally for immediate optimistic updates
   const [favoriteProducts, setFavoriteProducts] =
     useState<FavoriteProductDetails[]>(initialFavorites);
 
@@ -81,8 +90,10 @@ const FavoritesContent: React.FC<FavoritesContentProps> = ({
     }
   };
 
-  const isLoading = removeFavoriteMutation.isPending; 
+  const isLoading = removeFavoriteMutation.isPending; // Only track mutation loading here
 
+  // No explicit error display needed here if mutation onError handles toast
+  // The initial fetch error is handled by the server component.
 
   return (
     <>
@@ -195,6 +206,7 @@ const FavoritesContent: React.FC<FavoritesContentProps> = ({
 };
 
 function FavoritesLoadingSkeleton() {
+  // Skeleton component (you can customize this further)
   return (
     <div className="space-y-4">
       {[...Array(5)].map((_, i) => (

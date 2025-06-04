@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { fetchCustomers } from "../../../../queries/customers";
+import { Tables } from "../../../../utils/database.types";
+import { format } from "date-fns";
+
 import {
   Table,
   TableHeader,
@@ -9,329 +15,179 @@ import {
   TableBody,
   TableCell,
 } from "@components/ui/table";
-import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
-import {
-  ArrowDown,
-  Search,
-  Plus,
-  ArrowUpDown,
-  ListFilter,
-  X,
-} from "lucide-react";
-import {
-  Sheet,
-  SheetTrigger,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-} from "@components/ui/sheet";
-import { Checkbox } from "@components/ui/checkbox";
-// import { BiEdit } from "react-icons/bi";
-import Pagination from "@components/admin/productPagination";
-import Image from "next/image";
-// import {
-//   Select,
-//   SelectContent,
-//   SelectItem,
-//   SelectTrigger,
-//   SelectValue,
-// } from "@components/ui/select";
-import { useRouter } from "next/navigation";
-import { getCustomers } from "../../../../lib/api";
+import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
+import { Search } from "lucide-react";
+import PaginationBar from "@components/shared/pagination";
 
-export default function Customers() {
-  const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setLoading(true);
-    getCustomers()
-      .then((data) => {
-        setCustomers(data || []);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message || "Failed to fetch customers");
-        setLoading(false);
-      });
-  }, []);
-
-  // Filter customers based on search
-  const filteredCustomers = customers.filter((customer) =>
-    (customer.display_name || customer.name || "")
-      .toLowerCase()
-      .includes(search.toLowerCase())
-  );
-
-  // Pagination
-  const ITEMS_PER_PAGE = 5;
-  const totalPages = Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE);
-  const paginatedCustomers = filteredCustomers.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
+export default function CustomersPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  // When a customer row is clicked, navigate to their page
-  const handleCustomerClick = (customerId: number) => {
-    // // console.log("Customer ID:", customerId);
-    // router.push(`/customers/${customerId}`);
+  const [search, setSearch] = useState(searchParams.get("search") || "");
+  const currentPage = Number(searchParams.get("page")) || 1;
+  const ITEMS_PER_PAGE = 10; // You can adjust this
+
+  const { data, isLoading, error } = useQuery<{
+    data: Tables<"users">[] | null;
+    count: number | null;
+  }>({
+    queryKey: ["customers", currentPage, search],
+    queryFn: () =>
+      fetchCustomers({
+        page: currentPage,
+        itemsPerPage: ITEMS_PER_PAGE,
+        search,
+      }),
+    placeholderData: (previousData) => previousData,
+  });
+
+  const totalPages = Math.ceil((data?.count || 0) / ITEMS_PER_PAGE);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+    const newSearchParams = new URLSearchParams(searchParams.toString());
+    if (e.target.value) {
+      newSearchParams.set("search", e.target.value);
+    } else {
+      newSearchParams.delete("search");
+    }
+    newSearchParams.set("page", "1"); // Reset to first page on new search
+    router.push(`?${newSearchParams.toString()}`);
   };
 
-  if (loading) return <div className="p-4">Loading customers...</div>;
-  if (error) return <div className="p-4 text-red-500">{error}</div>;
+  if (error) return <div>Error loading customers</div>; // Basic error handling
+
   return (
     <div className="p-4">
-      <div className="flex justify-between items-center mb-4">
-        <div>
-          <h2 className="text-3xl font-semibold">Customers</h2>
-          <p className="text-[#475467]">
-            View customers and their orders here.
-          </p>
-        </div>
-      </div>
+      <h2 className="text-3xl font-semibold mb-4">Customers</h2>
 
-      {/* Search & Filter Section */}
-      <div className="flex items-center justify-between w-full py-4">
-        <div className="relative w-full max-w-[400px]">
+      {/* Search Bar */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="relative w-full max-w-sm">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-            size={16}
+            size={18}
           />
-          <input
+          <Input
             type="text"
-            placeholder="Search customers"
-            className="w-full pl-9 pr-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-gray-300 shadow-[0px_1px_3px_0px_rgba(16,24,40,0.10)]"
+            placeholder="Search customers..."
+            className="pl-10"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={handleSearchChange}
           />
         </div>
-        <div className="flex items-center gap-3">
-          {/* Filter Sheet */}
-          <Sheet>
-            <SheetTrigger asChild>
-              <button className="flex items-center gap-1 px-6 py-2 border rounded-md text-gray-700 hover:bg-gray-100 shadow-[0px_1px_3px_0px_rgba(16,24,40,0.10)]">
-                <ListFilter size={16} />
-                Filters
-              </button>
-            </SheetTrigger>
-            <SheetContent side="right" className="!px-0">
-              <SheetHeader className="px-4">
-                <div className="flex justify-between items-center">
-                  <SheetTitle>Filters</SheetTitle>
-                  <button
-                    onClick={() =>
-                      document.dispatchEvent(
-                        new KeyboardEvent("keydown", { key: "Escape" })
-                      )
-                    }
-                    className="p-2 hover:bg-gray-100 rounded-md"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-                <p className="text-[#475467] text-sm">
-                  Apply filters to table data.
-                </p>
-              </SheetHeader>
-              <div className="mt-6 px-4">
-                <h3 className="text-sm text-[#344054] font-medium mb-2">
-                  Status
-                </h3>
-                {["Active", "Inactive"].map((status) => (
-                  <div
-                    key={status}
-                    className="flex items-center gap-2 mb-2 pl-2"
-                  >
-                    <Checkbox
-                      id={status}
-                      className="size-4 !rounded-md border-[#D0D5DD]"
-                      checked={selectedStatus.includes(status)}
-                      onCheckedChange={() =>
-                        setSelectedStatus((prev) =>
-                          prev.includes(status)
-                            ? prev.filter((item) => item !== status)
-                            : [...prev, status]
-                        )
-                      }
-                    />
-                    <label className="font-medium text-sm" htmlFor={status}>
-                      {status}
-                    </label>
-                  </div>
-                ))}
-              </div>
-              <SheetFooter className="border-t pt-4 !w-full">
-                <div className="font-semibold text-sm flex justify-between items-end px-4">
-                  <div
-                    className="text-[#B42318] cursor-pointer"
-                    onClick={() => {
-                      setSelectedStatus([]);
-                    }}
-                  >
-                    Clear all filters
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant={"outline"}
-                      onClick={() =>
-                        document.dispatchEvent(
-                          new KeyboardEvent("keydown", { key: "Escape" })
-                        )
-                      }
-                    >
-                      Cancel
-                    </Button>
-                    <Button className="bg-[#1B6013]">Apply</Button>
-                  </div>
-                </div>
-              </SheetFooter>
-            </SheetContent>
-          </Sheet>
-        </div>
+        {/* Add other filter/sort options here if needed */}
       </div>
 
-      {/* Table Section */}
-      <div className="w-full max-w-[1200px] mx-auto">
-        <Table className="border border-gray-300 rounded-lg shadow-[0px_1px_3px_0px_rgba(16,24,40,0.10)] overflow-hidden w-full">
-          <TableHeader>
-            <TableRow className="bg-[#EAECF0]">
-              {[
-                "Customer ID",
-                "Full Name",
-                "Phone Number",
-                "Email Address",
-                "Total Amount Spent",
-                "Total Orders",
-                "Location",
-              ].map((head) => (
-                <TableHead
-                  key={head}
-                  className="text-center px-6 py-3 font-medium text-gray-700"
-                >
-                  <div className="flex items-center justify-center gap-1">
-                    {head} <ArrowDown size={16} strokeWidth={0.7} />
-                  </div>
-                </TableHead>
-              ))}
-              <TableHead className="text-center px-6 py-3 font-medium text-gray-700"></TableHead>
+      {/* Customers Table */}
+      <div className="border rounded-lg overflow-hidden">
+        <Table>
+          <TableHeader className="bg-gray-100">
+            <TableRow>
+              <TableHead>Customer ID</TableHead>
+              <TableHead>Customer</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Phone</TableHead>
+              <TableHead>Join Date</TableHead>
+              <TableHead>Total Amount Spent</TableHead>
+              <TableHead>Total Orders</TableHead>
+              <TableHead>Location</TableHead>
+              {/* Add other relevant customer info headers */}
             </TableRow>
           </TableHeader>
-
           <TableBody>
-            {paginatedCustomers.map((customer) => (
+            {isLoading ? (
+              // Skeleton loading rows
+              Array.from({ length: ITEMS_PER_PAGE }).map((_, index) => (
+                <TableRow key={index}>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-16"></div>
+                  </TableCell>
+                  <TableCell className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-gray-200"></div>
+                    <div className="h-4 bg-gray-200 rounded w-24"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-32"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-20"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-24"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-24"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-16"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-20"></div>
+                  </TableCell>
+                  {/* Add skeleton cells for other columns */}
+                </TableRow>
+              ))
+            ) : data?.data && data.data.length > 0 ? (
+              data.data.map((customer: Tables<"users">) => (
               <TableRow
                 key={customer.id}
-                className="hover:bg-gray-100 cursor-pointer"
-                onClick={() => handleCustomerClick(customer.id)}
+                  className="cursor-pointer hover:bg-gray-100"
+                  onClick={() => router.push(`/admin/customers/${customer.id}`)}
               >
-                <TableCell className="text-center px-6 py-4">
-                  {customer.id}
+                  <TableCell>
+                    {customer.id ? `${customer.id.substring(0, 8)}...` : "N/A"}
                 </TableCell>
-                <TableCell className="text-left px-6 py-4 flex gap-2 items-center">
-                  <Image
-                    src={customer.image}
-                    alt={customer.name}
-                    width={40}
-                    height={40}
-                    className="rounded-full"
-                  />
-                  {customer.name}
+                  <TableCell className="flex items-center gap-3">
+                    <Avatar>
+                      {/* You might need to add an avatar_url column to your users table */}
+                      <AvatarImage src="" alt="Avatar" />
+                      <AvatarFallback>
+                        {customer.display_name
+                          ? customer.display_name
+                              .split(" ")
+                              .map((n: string) => n[0])
+                              .join("")
+                              .substring(0, 2)
+                              .toUpperCase()
+                          : ""}
+                      </AvatarFallback>
+                    </Avatar>
+                    {customer.display_name || "N/A"}
                 </TableCell>
-                <TableCell className="text-center px-6 py-4">
-                  {customer.phoneNumber}
+                  <TableCell>{customer.email || "N/A"}</TableCell>
+                  <TableCell>{customer.phone || "N/A"}</TableCell>
+                  <TableCell>
+                    {customer.created_at
+                      ? format(new Date(customer.created_at), "PPP")
+                      : "N/A"}
                 </TableCell>
-                <TableCell className="text-center px-6 py-4">
-                  {customer.email}
+                  <TableCell>
+                    ₦{Math.floor(Math.random() * 100000).toLocaleString()}
                 </TableCell>
-                <TableCell className="text-center px-6 py-4">
-                  ₦{customer.totalAmountSpent.toLocaleString()}
+                  <TableCell>{Math.floor(Math.random() * 50)}</TableCell>
+                  <TableCell>
+                    {(customer.address as any)?.city || "N/A"}
                 </TableCell>
-                <TableCell className="text-center px-6 py-4">
-                  {customer.totalOrders}
-                </TableCell>
-                <TableCell className="text-center px-6 py-4">
-                  {customer.location}
+                </TableRow>
+              ))
+            ) : (
+              // No customers message
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-8">
+                  No customers found.
                 </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </div>
 
-      {/* Pagination Section */}
-      <div className="flex justify-center mt-6">
-        <Pagination
-          totalPages={totalPages}
-          currentPage={currentPage}
-          onPageChange={handlePageChange}
-        />
+      {/* Pagination */}
+      <div className="mt-6 flex justify-center">
+        <PaginationBar page={currentPage} totalPages={totalPages} />
       </div>
-
-      {/* Customer Orders Modal */}
-      {selectedCustomer && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">{selectedCustomer.name}</h2>
-              <button
-                onClick={() => setSelectedCustomer(null)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="px-4 py-2 text-left">Order No</th>
-                    <th className="px-4 py-2 text-left">Date</th>
-                    <th className="px-4 py-2 text-left">Amount</th>
-                    <th className="px-4 py-2 text-left">Platform</th>
-                    <th className="px-4 py-2 text-left">Address</th>
-                    <th className="px-4 py-2 text-left">Progress</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedCustomer.orders.map((order, index) => (
-                    <tr key={index} className="border-b">
-                      <td className="px-4 py-2">{order.orderNo}</td>
-                      <td className="px-4 py-2">{order.date}</td>
-                      <td className="px-4 py-2">{order.amount}</td>
-                      <td className="px-4 py-2">{order.platform}</td>
-                      <td className="px-4 py-2">{order.address}</td>
-                      <td className="px-4 py-2">{order.progress}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex justify-between items-center mt-4">
-              <button className="text-gray-500 hover:text-gray-700">
-                Previous
-              </button>
-              <span>Page 1 of 10</span>
-              <button className="text-gray-500 hover:text-gray-700">
-                Next
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

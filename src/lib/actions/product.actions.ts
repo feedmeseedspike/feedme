@@ -1,22 +1,24 @@
 import { getProducts, getCategories } from '../api';
-import { supabase } from '../supabaseClient';
+import { createClient } from '../../utils/supabase/client';
 
-export async function getAllCategories() {
-  const allCategories = await getCategories();
-  return allCategories;
-}
+const supabase = createClient();
 
-export async function getProductsForCard({ tag, limit = 4 }: { tag: string; limit?: number }) {
-  const allProducts = await getProducts();
-  return allProducts
-    .filter((product) => product.tags?.includes(tag) && product.is_published)
-    .slice(0, limit)
-    .map(({ name, slug, images }) => ({
-      name,
-      href: `/product/${slug}`,
-      image: images?.[0],
-    }));
-}
+// export async function getAllCategories() {
+//   const allCategories = await getCategories();
+//   return allCategories;
+// }
+
+// export async function getProductsForCard({ tag, limit = 4 }: { tag: string; limit?: number }) {
+//   const allProducts = await getProducts();
+//   return allProducts
+//     .filter((product) => product.tags?.includes(tag) && product.is_published)
+//     .slice(0, limit)
+//     .map(({ name, slug, images }) => ({
+//       name,
+//       href: `/product/${slug}`,
+//       image: images?.[0],
+//     }));
+// }
 
 export async function getTrendingProducts({ limit = 10 }: { limit?: number }) {
   const { data, error } = await supabase
@@ -117,6 +119,7 @@ export async function getAllProducts({
   rating?: string;
   sort?: string;
 }) {
+  console.log("getAllProducts parameters:", { query, limit, page, category, tag, price, rating, sort });
   let queryBuilder = supabase
     .from('products')
     .select('*')
@@ -156,8 +159,16 @@ export async function getAllProducts({
     queryBuilder = queryBuilder.order('id', { ascending: true });
   }
 
+  console.log("getAllProducts queryBuilder before execution:");
+  // Note: Logging the full queryBuilder object might be too verbose, 
+  // but this will at least show the state of chaining.
+  // For detailed query inspection, you might need to use Supabase client debug features if available or log constructed URL/params if the client allows.
+
   const { data, error } = await queryBuilder.range((page - 1) * limit, page * limit - 1);
-  if (error) throw error;
+  if (error) {
+    console.error("Error executing getAllProducts query:", error);
+    throw error; // Re-throw the error after logging
+  }
 
   return {
     products: data,

@@ -23,23 +23,27 @@ import { RootState } from "src/store";
 import { useToast } from "src/hooks/useToast";
 import { Heart, Plus, Minus, Trash2, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { createClient } from "src/utils/supabase/client";
+import { createClient } from "@utils/supabase/client";
 import { debounce } from "lodash";
-import {
-  addItem,
-  updateCartItem,
-  removeItem,
-} from "src/store/features/cartSlice";
-import { toggleFavorite } from "src/store/features/favoritesSlice";
-import { fetchFavorites } from "src/store/features/favoritesSlice";
 import { cn } from "src/lib/utils";
+import { useUser } from "src/hooks/useUser";
+import { useRouter } from "next/navigation";
 
-interface ProductOption {
-  name: string;
-  price: number;
-  image?: string;
-  stockStatus?: "In Stock" | "Out of Stock";
-}
+import { useQuery, useMutation } from "@tanstack/react-query";
+import {
+  getFavoritesQuery,
+  useAddFavoriteMutation,
+  useRemoveFavoriteMutation,
+} from "src/queries/favorites";
+import {
+  useCartQuery,
+  useUpdateCartMutation,
+  useRemoveFromCartMutation,
+  ItemToUpdateMutation,
+  cartQueryKey,
+} from "src/queries/cart";
+import { CartItem, ProductOption } from "src/lib/actions/cart.actions";
+// import { Json } from "../../../utils/database.types";
 
 interface ProductDetailsCardProps {
   product: IProductInput;
@@ -57,53 +61,33 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
   }) => {
     const dispatch = useDispatch();
     const { showToast } = useToast();
+    const user = useUser();
+    const router = useRouter();
+
+    // Tanstack Query for Cart
+    const { data: cartItems, isLoading: isLoadingCart } = useCartQuery();
+
+    // Tanstack Query for Favorites
+    const { data: favorites, isLoading: isLoadingFavorites } = useQuery(
+      getFavoritesQuery()
+    );
+    const isFavorited =
+      product.id && favorites ? favorites.includes(product.id) : false;
+
+    // Use mutations for adding/removing favorites
+    const addFavoriteMutation = useAddFavoriteMutation();
+    const removeFavoriteMutation = useRemoveFavoriteMutation();
+
+    // Combined loading state
+    const isLoading =
+      isLoadingFavorites ||
+      isLoadingCart ||
+      addFavoriteMutation.isPending ||
+      removeFavoriteMutation.isPending;
+
+    // Get selected option from Redux
     const selectedOption = useSelector((state: RootState) =>
       product.id ? state.options.selectedOptions[product.id] : undefined
-    );
-    const [quantity, setQuantity] = useState(1);
-    const [showQuantityControls, setShowQuantityControls] = useState(false);
-
-    // Get favorites state from Redux
-    const favorites = useSelector(
-      (state: RootState) => state.favorites.favorites
-    );
-    const isFavorited = product.id ? favorites.includes(product.id) : false;
-    const isLoading = useSelector(
-      (state: RootState) => state.favorites.isLoading
-    );
-
-    // Fetch favorites on mount
-    useEffect(() => {
-      dispatch(fetchFavorites());
-    }, [dispatch]);
-
-    // Handle favorite toggle
-    const handleToggleLike = useCallback(
-      async (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (!product.id) return;
-
-        try {
-          await dispatch(toggleFavorite(product.id));
-          showToast(
-            isFavorited
-              ? `${product.name} removed from favorites`
-              : `${product.name} added to favorites`,
-            isFavorited ? "info" : "success"
-          );
-        } catch (error: any) {
-          if (error.message === "You must be logged in to modify favorites") {
-            window.location.href = `/login?callbackUrl=${encodeURIComponent(
-              window.location.pathname
-            )}`;
-          } else {
-            showToast(error.message || "Failed to update favorites", "error");
-          }
-        }
-      },
-      [dispatch, product.id, product.name, isFavorited, showToast]
     );
 
     // Extract and sort product options
@@ -124,6 +108,126 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       return option || sortedOptions[0];
     }, [selectedOption, sortedOptions]);
 
+    // Find the item in the cart
+    const currentCartItem = useMemo(() => {
+      if (!cartItems) return undefined;
+      return cartItems.find((item) => {
+        return (
+          item.product_id === product.id &&
+          JSON.stringify(item.option || null) ===
+            JSON.stringify(selectedOptionData || null)
+      );
+      });
+    }, [cartItems, product.id, selectedOptionData]);
+
+    const [quantity, setQuantity] = useState(currentCartItem?.quantity || 1);
+    const [showQuantityControls, setShowQuantityControls] = useState(
+      !!currentCartItem
+    );
+
+    // Update local state when the item in the cart changes
+    useEffect(() => {
+      setQuantity(currentCartItem?.quantity || 1);
+      setShowQuantityControls(!!currentCartItem);
+    }, [currentCartItem]);
+
+    // Use cart mutations
+    const updateCartMutation = useUpdateCartMutation();
+    const removeCartItemMutation = useRemoveFromCartMutation();
+
+    // Handler to update quantity via mutation
+    const handleUpdateCartQuantity = useCallback(
+      async (newQuantity: number) => {
+        if (!product.id || !selectedOptionData) return;
+
+        if (!user) {
+          showToast("Please log in to add items to cart", "error");
+          router.push(
+            `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+          );
+          return;
+        }
+
+        const currentItems = cartItems || [];
+
+        const itemsForMutation: ItemToUpdateMutation[] = currentItems
+          .map((item: CartItem) => {
+            const isTargetItem =
+              item.product_id === product.id &&
+              JSON.stringify(item.option || null) ===
+                JSON.stringify(selectedOptionData || null);
+
+            return {
+              product_id: item.product_id || "",
+              option: item.option,
+              quantity: isTargetItem ? newQuantity : item.quantity,
+              price: item.option?.price ?? item.price ?? 0,
+            };
+          })
+          .filter((item) => item.quantity > 0);
+
+        const targetItemExistsInMutationArray = itemsForMutation.some(
+          (item) =>
+            item.product_id === product.id &&
+            JSON.stringify(item.option || null) ===
+              JSON.stringify(selectedOptionData || null)
+        );
+
+        if (newQuantity > 0 && !targetItemExistsInMutationArray) {
+          itemsForMutation.push({
+            product_id: product.id,
+            option: selectedOptionData as ProductOption,
+            quantity: newQuantity,
+            price: selectedOptionData.price ?? 0,
+          });
+        }
+
+        try {
+          await updateCartMutation.mutateAsync(itemsForMutation);
+        } catch (error: any) {
+          console.error("Failed to update cart item quantity:", error);
+          showToast("Failed to update cart.", "error");
+        }
+      },
+      [
+        product.id,
+        selectedOptionData,
+        cartItems,
+        updateCartMutation.mutateAsync,
+        showToast,
+        user,
+        router,
+      ]
+    );
+
+    // Handler to remove item via mutation
+    const handleRemoveFromCart = useCallback(async () => {
+      if (!currentCartItem?.id) return;
+
+      if (!user) {
+        showToast("Please log in to modify cart", "error");
+        router.push(
+          `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+        );
+        return;
+      }
+
+      try {
+        await removeCartItemMutation.mutateAsync(currentCartItem.id);
+        setShowQuantityControls(false);
+        setQuantity(1);
+      } catch (error: any) {
+        console.error("Failed to remove cart item:", error);
+        showToast("Failed to remove item from cart.", "error");
+        }
+    }, [
+      currentCartItem?.id,
+      removeCartItemMutation.mutateAsync,
+      showToast,
+      user,
+      router,
+    ]);
+
     const handleOptionChange = useCallback(
       (value: string) => {
         if (product.id) {
@@ -141,17 +245,84 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
     const handleAddToCartClick = (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
+
+      if (!user) {
+        showToast("Please log in to add items to cart", "error");
+        router.push(
+          `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+        );
+        return;
+      }
+
       setShowQuantityControls(true);
+      handleUpdateCartQuantity(1);
     };
 
     const handleQuantityChange = (newQuantity: number) => {
+      if (!user) {
+        showToast("Please log in to modify cart", "error");
+        router.push(
+          `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+        );
+        return;
+      }
+
       if (newQuantity < 1) {
-        setShowQuantityControls(false);
-        setQuantity(1);
+        handleRemoveFromCart();
       } else {
-        setQuantity(newQuantity);
+        handleUpdateCartQuantity(newQuantity);
       }
     };
+
+    // Handle favorite toggle
+    const handleToggleLike = useCallback(
+      async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!product.id) return;
+
+        if (!user) {
+          showToast("Please log in to add favorites", "error");
+          router.push(
+            `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+          );
+          return;
+        }
+
+        try {
+          if (isFavorited) {
+            await removeFavoriteMutation.mutateAsync(product.id);
+            showToast(`${product.name} removed from favorites`, "info");
+          } else {
+            await addFavoriteMutation.mutateAsync(product.id);
+            showToast(`${product.name} added to favorites`, "success");
+          }
+        } catch (error: any) {
+          console.error("Failed to update favorites:", error);
+          if (error.message?.includes("You must be logged in")) {
+            showToast("Please log in to modify favorites", "error");
+            router.push(
+              `/login?callbackUrl=${encodeURIComponent(
+                window.location.pathname
+              )}`
+            );
+          } else {
+            showToast(error.message || "Failed to update favorites", "error");
+          }
+        }
+      },
+      [
+        product.id,
+        product.name,
+        isFavorited,
+        addFavoriteMutation.mutateAsync,
+        removeFavoriteMutation.mutateAsync,
+        showToast,
+        user,
+        router,
+      ]
+    );
 
     const ProductImage = useMemo(() => {
       const discountPercent = Math.round(
@@ -162,61 +333,16 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
         selectedOptionData ||
         (sortedOptions.length > 0 ? sortedOptions[0] : null);
 
-      const cartItem = {
-        clientId: generateId(),
-        product: product.id || "",
-        countInStock: product.countInStock || 0,
-        name: product.name,
-        slug: product.slug,
-        price: currentOption?.price || product.price,
-        quantity: quantity,
-        image: product.images?.[0] || "",
-        options: sortedOptions.map((opt) => ({
-          name: opt.name,
-          price: opt.price,
-          image: typeof opt.image === "string" ? opt.image : undefined,
-          stockStatus: opt.stockStatus,
-        })),
-        selectedOption: currentOption?.name,
-        option: currentOption
-          ? {
-              name: currentOption.name,
-              price: currentOption.price,
-              image:
-                typeof currentOption.image === "string"
-                  ? currentOption.image
-                  : undefined,
-            }
-          : undefined,
-      };
-
-      const handleAddSuccess = () => {
-        showToast(
-          `${product.name}${
-            currentOption ? ` (${currentOption.name})` : ""
-          } added to cart!`,
-          "success"
-        );
-      };
-
-      const handleAddError = () => {
-        showToast(
-          `Failed to add ${product.name} to cart. Please try again.`,
-          "error"
-        );
-      };
-
-      const handleOutOfStock = () => {
-        showToast(`${product.name} is out of stock!`, "warning");
-      };
-
       return (
         <div className="relative">
           {/* Like button with animation */}
           <motion.button
             onClick={handleToggleLike}
             disabled={isLoading}
-            className="absolute top-2 right-2 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-gray-100 transition-colors shadow-md"
+            className={cn(
+              "absolute top-2 right-2 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-gray-100 transition-colors shadow-md",
+              isLoading && "opacity-50 cursor-not-allowed"
+            )}
             aria-label={
               isFavorited ? "Remove from favorites" : "Add to favorites"
             }
@@ -233,9 +359,10 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                 transition={{ duration: 0.3 }}
               >
                 <Heart
-                  className={`w-4 h-4 transition-colors ${
+                  className={cn(
+                    "w-4 h-4 transition-colors",
                     isFavorited ? "fill-red-600 text-red-600" : "text-gray-700"
-                  }`}
+                  )}
                 />
               </motion.div>
             )}
@@ -259,23 +386,9 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                       if (quantity === 1) {
                         setShowQuantityControls(false);
                         setQuantity(1);
-                        // Remove from cart when clicking trash at quantity 1
-                        dispatch(
-                          removeItem({
-                            productId: item.product,
-                            selectedOption: selectedOptionData?.name,
-                          })
-                        );
+                        handleRemoveFromCart();
                       } else {
                         handleQuantityChange(quantity - 1);
-                        // Update cart quantity when decreasing
-                        dispatch(
-                          updateCartItem({
-                            productId: item.product,
-                            selectedOption: selectedOptionData?.name,
-                            quantity: quantity - 1,
-                          })
-                        );
                       }
                     }}
                     className="p-1 rounded-full hover:bg-gray-100 transition-colors text-[#1B6013]"
@@ -298,14 +411,6 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                       e.stopPropagation();
                       const newQuantity = quantity + 1;
                       handleQuantityChange(newQuantity);
-                      // Update cart quantity when increasing
-                      dispatch(
-                        updateCartItem({
-                          productId: item.product,
-                          selectedOption: selectedOptionData?.name,
-                          quantity: newQuantity,
-                        })
-                      );
                     }}
                     className="p-1 rounded-full bg-[#1B6013]/70 backdrop-blur-sm shadow-md hover:bg-[#1B6013]/90 transition-colors"
                     aria-label="Increase quantity"
@@ -322,37 +427,8 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    // Show quantity controls
                     setShowQuantityControls(true);
-                    // Add to cart with quantity 1
-                    const cartItem = {
-                      clientId: generateId(),
-                      product: product.id || "",
-                      countInStock: product.countInStock || 0,
-                      name: product.name,
-                      slug: product.slug,
-                      price: selectedOptionData?.price || product.price,
-                      quantity: 1,
-                      image: product.images?.[0] || "",
-                      options: sortedOptions,
-                      selectedOption: selectedOptionData?.name,
-                      option: selectedOptionData
-                        ? {
-                            name: selectedOptionData.name,
-                            price: selectedOptionData.price,
-                            image: selectedOptionData.image,
-                          }
-                        : undefined,
-                    };
-                    dispatch(addItem({ item: cartItem, quantity: 1 }));
-                    showToast(
-                      `${product.name}${
-                        selectedOptionData
-                          ? ` (${selectedOptionData.name})`
-                          : ""
-                      } added to cart!`,
-                      "success"
-                    );
+                    handleUpdateCartQuantity(1);
                   }}
                   className="p-2 rounded-full bg-[#1B6013]/90 backdrop-blur-sm shadow-md hover:bg-[#1B6013] transition-colors"
                   aria-label="Add to cart"
@@ -365,12 +441,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
 
           {/* Product image */}
           <Link href={`/product/${product.slug}`} passHref>
-            <div className="relative h-[8rem] sm:h-[10rem] lg:h-[12rem] w-full overflow-hidden rounded-lg">
-              {product.list_price && product.list_price > product.price ? (
-                <div className="absolute top-1 left-1 bg-[#1B6013] rounded-tl-lg rounded-r-full px-4 py-[6px] text-white text-xs font-semibold tracking-wider z-10">
-                  {discountPercent}% Off
-                </div>
-              ) : null}
+            <div className="relative h-[10rem] lg:h-[12rem] w-full overflow-hidden rounded-lg">
               {product.images?.length > 1 ? (
                 <ImageHover
                   src={product.images[0]}

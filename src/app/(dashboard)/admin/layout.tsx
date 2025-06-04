@@ -16,8 +16,8 @@ import { AdminSidebar } from "@components/admin/adminSidebar";
 // const poppins = Poppins({ weight: [`100`, `200`, `300`, `400`, `500`, `600`, `700`, `800`, `900`] });
 
 const Dashboard = async ({ children }: { children: React.ReactNode }) => {
-  const userData = await getUser();
-  const user: UserData = userData?.data;
+  const user: UserData = await getUser();
+  console.log(user)
 
   return (
     <SidebarProvider>

@@ -13,18 +13,20 @@ import {
 import { usePathname } from "next/navigation";
 
 interface CustomBreadcrumbProps {
-  category?: string; // Add a prop to receive the product category
+  hideCategorySegment?: boolean; // Add this prop
 }
 
-const CustomBreadcrumb = ({ category }: CustomBreadcrumbProps) => {
-  const paths = usePathname() ?? ""; // Handle null or undefined paths
+const CustomBreadcrumb = ({ hideCategorySegment = false }: CustomBreadcrumbProps) => {
+  const paths = usePathname() ?? "";
   const pathNames = paths.split("/").filter((path) => path);
-  
-  // Check if we're on a product page
-  const isProductPage = pathNames[0] === "product";
+
+  // Filter out "category" if the prop is true
+  const displayPathNames = hideCategorySegment
+    ? pathNames.filter(name => name !== "category")
+    : pathNames;
 
   return (
-    <Breadcrumb className="mt-6">
+    <Breadcrumb className="">
       <BreadcrumbList>
         <BreadcrumbItem>
           <BreadcrumbLink asChild>
@@ -32,41 +34,30 @@ const CustomBreadcrumb = ({ category }: CustomBreadcrumbProps) => {
           </BreadcrumbLink>
         </BreadcrumbItem>
         
-        <BreadcrumbSeparator />
-        
-        {isProductPage && category ? (
+        {displayPathNames.length > 0 && (
           <>
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link href={`/category/${category}`}>{category}</Link>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
             <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{pathNames[1]}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </>
-        ) : (
-          // For other pages, show the regular path
-          pathNames.map((link, index) => {
-            const isLast = index === pathNames.length - 1;
-            const href = `/${pathNames.slice(0, index + 1).join("/")}`;
+            {displayPathNames.map((link, index) => {
+              const isLast = index === displayPathNames.length - 1;
+              // Build href with original path names (including "category" if present)
+              const href = `/${pathNames.slice(0, index + 1).join("/")}`;
 
-            return (
-              <React.Fragment key={index}>
-                <BreadcrumbItem>
-                  {isLast ? (
-                    <BreadcrumbPage>{link}</BreadcrumbPage>
-                  ) : (
-                    <BreadcrumbLink asChild>
-                      <Link href={href}>{link}</Link>
-                    </BreadcrumbLink>
-                  )}
-                </BreadcrumbItem>
-                {!isLast && <BreadcrumbSeparator />}
-              </React.Fragment>
-            );
-          })
+              return (
+                <React.Fragment key={index}>
+                  <BreadcrumbItem>
+                    {isLast ? (
+                      <BreadcrumbPage>{link}</BreadcrumbPage>
+                    ) : (
+                      <BreadcrumbLink asChild>
+                        <Link href={href}>{link}</Link>
+                      </BreadcrumbLink>
+                    )}
+                  </BreadcrumbItem>
+                  {!isLast && <BreadcrumbSeparator />}
+                </React.Fragment>
+              );
+            })}
+          </>
         )}
       </BreadcrumbList>
     </Breadcrumb>

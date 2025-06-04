@@ -31,7 +31,11 @@ interface AddOptionModalProps {
   onSubmit?: (data: OptionFormValues) => void;
 }
 
-export default function OptionModal({ isOpen, onClose, onSubmit }: AddOptionModalProps) {
+export default function OptionModal({
+  isOpen,
+  onClose,
+  onSubmit,
+}: AddOptionModalProps) {
   const {
     register,
     handleSubmit,
@@ -58,6 +62,7 @@ export default function OptionModal({ isOpen, onClose, onSubmit }: AddOptionModa
     if (image) {
       const formData = {
         ...data,
+        price: parseFloat(String(data.price)), // Ensure price is a number
         image,
       };
       if (onSubmit) onSubmit(formData);
@@ -85,7 +90,9 @@ export default function OptionModal({ isOpen, onClose, onSubmit }: AddOptionModa
               id="name"
               placeholder="Enter option name (e.g., 1kg, 500g)"
             />
-            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
+            {errors.name && (
+              <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
+            )}
           </div>
 
           {/* Price */}
@@ -99,16 +106,25 @@ export default function OptionModal({ isOpen, onClose, onSubmit }: AddOptionModa
               type="number"
               placeholder="₦ 00.00"
             />
-            {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price.message}</p>}
+            {errors.price && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.price.message}
+              </p>
+            )}
           </div>
 
           {/* Stock Status */}
           <div>
-            <label htmlFor="stockStatus" className="block text-sm font-medium mb-2">
+            <label
+              htmlFor="stockStatus"
+              className="block text-sm font-medium mb-2"
+            >
               Stock Status
             </label>
             <Select
-              onValueChange={(value: "In Stock" | "Out of Stock") => setValue("stockStatus", value)}
+              onValueChange={(value: "In Stock" | "Out of Stock") =>
+                setValue("stockStatus", value)
+              }
               defaultValue="In Stock"
             >
               <SelectTrigger className="w-full border p-4 rounded-lg">
@@ -134,7 +150,10 @@ export default function OptionModal({ isOpen, onClose, onSubmit }: AddOptionModa
                 className="hidden"
                 id="file-upload"
               />
-              <label htmlFor="file-upload" className="cursor-pointer text-center">
+              <label
+                htmlFor="file-upload"
+                className="cursor-pointer text-center"
+              >
                 {image ? (
                   <img
                     src={URL.createObjectURL(image)}
@@ -144,13 +163,19 @@ export default function OptionModal({ isOpen, onClose, onSubmit }: AddOptionModa
                 ) : (
                   <div className="flex flex-col items-center justify-center gap-2 py-2">
                     <CloudUpload />
-                    <p className="text-sm text-center">Click to upload or drag & drop</p>
+                    <p className="text-sm text-center">
+                      Click to upload or drag & drop
+                    </p>
                     <p className="text-sm">PNG or JPG</p>
                   </div>
                 )}
               </label>
             </div>
-            {errors.image && <p className="text-red-500 text-sm mt-1">{errors.image.message}</p>}
+            {errors.image && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.image.message}
+              </p>
+            )}
           </div>
 
           {/* Buttons */}

@@ -401,9 +401,6 @@ export async function deleteReview({
 
     if (deleteError) throw deleteError;
 
-    // Note: Supabase triggers or edge functions might be needed to
-    // update product's avg_rating and num_reviews after deletion.
-    // This action only handles deleting the review record itself.
 
     return { success: true, message: "Review deleted successfully" };
   } catch (error) {

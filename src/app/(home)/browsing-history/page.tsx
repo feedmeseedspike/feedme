@@ -8,16 +8,20 @@ import { cn } from "src/lib/utils";
 import Container from "@components/shared/Container";
 import ProductdetailsCard from "@components/shared/product/productDetails-card";
 import Headertags from "@components/shared/header/Headertags";
+import CustomBreadcrumb from "@components/shared/breadcrumb";
+import ProductCardSkeleton from "@components/shared/product/product-skeleton";
 
 export default function BrowsingHistoryPage() {
   const products = useSelector(
     (state: RootState) => state.browsingHistory.products
   );
   const [data, setData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
+        setIsLoading(true);
         const res = await fetch(
           `/api/products/browsing-history?type=history&ids=${products
             .map((product) => product.id)
@@ -28,6 +32,9 @@ export default function BrowsingHistoryPage() {
         setData(result);
       } catch (error) {
         console.error("Failed to fetch browsing history:", error);
+        setData([]);
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchProducts();
@@ -37,7 +44,11 @@ export default function BrowsingHistoryPage() {
 
   return (
     <main>
-      <Headertags />
+      <div className="bg-white py-4">
+        <Container className="">
+          <CustomBreadcrumb />
+        </Container>
+      </div>
       <div className="py-2 md:border-b shadow-sm">
         <Container>
           <div className="flex justify-between items-center">
@@ -52,12 +63,17 @@ export default function BrowsingHistoryPage() {
       <Container className="py-8">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {data.length === 0 && (
+            {isLoading ? (
+              Array.from({ length: 10 }).map((_, index) => (
+                <ProductCardSkeleton key={index} />
+              ))
+            ) : data.length === 0 ? (
               <div className="text-2xl font-semibold">No products found</div>
+            ) : (
+              data?.map((product: any) => (
+                <ProductdetailsCard key={product._id} product={product} />
+              ))
             )}
-            {data?.map((product: any) => (
-              <ProductdetailsCard key={product._id} product={product} />
-            ))}
           </div>
           {/* {data.totalPages > 1 && (
         <Pagination page={page} totalPages={data.totalPages} />

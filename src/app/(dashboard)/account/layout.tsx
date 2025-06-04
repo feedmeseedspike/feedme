@@ -4,7 +4,7 @@ import { getUser } from "src/lib/actions/auth.actions";
 import LogoutButton from "@components/shared/header/LogoutButton";
 import Sidebar from "@components/shared/account/sidebar";
 import { SidebarProvider, SidebarTrigger } from "@components/ui/sidebar";
-import { AppSidebar } from "@components/shared/account/app-sidebar";
+import  AppSidebar  from "@components/shared/account/app-sidebar";
 import { UserData } from "src/types";
 import Header from "@components/shared/header";
 import Footer from "@components/shared/footer";

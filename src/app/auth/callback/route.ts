@@ -1,12 +1,12 @@
-import { createClient } from '@/utils/supabase/server';
-import { users } from '@/utils/users';
+import { createClient } from '../../../utils/supabase/server';
+import { users } from '../../../utils/users';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
   try {
     const requestUrl = new URL(request.url);
     const code = requestUrl.searchParams.get('code');
-    const next = requestUrl.searchParams.get('next') || '/projects';
+    const next = requestUrl.searchParams.get('next') || '/';
 
     if (!code) {
       console.error('No code provided in callback');

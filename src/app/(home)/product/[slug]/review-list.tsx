@@ -34,13 +34,19 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronLeft, ChevronRight, StarIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { ReviewInputSchema } from "src/lib/validator";
 import { z } from "zod";
 import ReviewActions from "./ReviewActions";
-import { createUpdateReview, getReviews } from "src/lib/actions/review.action";
 import { useToast } from "src/hooks/useToast";
+import { useUser } from "src/hooks/useUser";
+import { useRouter } from "next/navigation";
+import {
+  useReviewsQuery,
+  useCreateUpdateReviewMutation,
+  ReviewQueryResult,
+} from "src/queries/reviews";
 
 type ReviewListProps = {
   avgRating?: number;
@@ -55,23 +61,17 @@ const reviewFormDefaultValues = {
 };
 
 // Define a character limit for truncated comments
-const COMMENT_TRUNCATE_LENGTH = 200; 
+const COMMENT_TRUNCATE_LENGTH = 200;
 
 const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
-  const [reviews, setReviews] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loadingReviews, setLoadingReviews] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  // State to hold any error that occurs during fetching
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  // State to keep track of expanded comments
   const [expandedComments, setExpandedComments] = useState<Set<string>>(
     new Set()
   );
-
   const { showToast } = useToast();
+  const router = useRouter();
+  const user = useUser();
 
   // Review form setup
   const form = useForm<z.infer<typeof ReviewInputSchema>>({
@@ -79,73 +79,17 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
     defaultValues: reviewFormDefaultValues,
   });
 
-  // Fetch reviews with pagination
-  const fetchReviews = async (page: number) => {
-    setLoadingReviews(true);
-    // Clear any previous error
-    setFetchError(null);
-    try {
-      const res = await getReviews({
-        productId: product.id,
-        userId: userId,
-        page,
-        limit: 5, // 5 reviews per page
-      });
+  // Use Tanstack Query hooks
+  const { data: reviewsData, isLoading: isLoadingReviews } = useReviewsQuery(
+    product.id,
+    currentPage,
+    userId
+  );
 
-      console.log(product);
-      console.log(res);
-
-      if (res && res.data) {
-        setReviews(res.data);
-        setTotalPages(res.totalPages);
-      } else if (res && res.message) {
-        setReviews([]); 
-        setTotalPages(0); 
-        setFetchError(res.message); 
-      } else {
-        // Fallback for unexpected response structures
-        setReviews([]);
-        setTotalPages(0);
-        setFetchError("Failed to load reviews: Unexpected response.");
-      }
-    } catch (error) {
-      console.error("Error fetching reviews:", error);
-      showToast("Failed to load reviews", "error");
-      setFetchError("Failed to load reviews. Please try again later.");
-    } finally {
-      setLoadingReviews(false);
-      setInitialLoading(false);
-    }
-  };
-
-  // Initial load and pagination effect
-  useEffect(() => {
-    if (!product.reviews) {
-      fetchReviews(currentPage);
-    } else {
-      const formattedInitialReviews = product.reviews.map((review: any) => ({
-        ...review,
-        id: review.id,
-        user:
-          review.users && review.users.length > 0
-            ? {
-                id: review.users[0].id,
-                name: review.users[0].display_name || "Anonymous",
-                avatar: review.users[0].avatar_url || null,
-              }
-            : null,
-        canEdit: review.canEdit,
-      }));
-      setReviews(formattedInitialReviews);
-      if (product.num_reviews) {
-        setTotalPages(Math.ceil(product.num_reviews / 5));
-      }
-      setInitialLoading(false);
-    }
-  }, [product.id, currentPage, product.reviews, product.num_reviews]);
+  const createUpdateReviewMutation = useCreateUpdateReviewMutation();
 
   // Find the current user's review if it exists
-  const currentUserReview = reviews.find(
+  const currentUserReview = reviewsData?.data.find(
     (review) => review.user?.id === userId
   );
 
@@ -155,23 +99,23 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
   ) => {
     if (!userId) {
       showToast("Please sign in to submit a review", "error");
+      router.push(
+        `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+      );
       return;
     }
 
-    // Form submission with optimistic updates
     setOpen(false);
 
     try {
-      console.log("UserId before createUpdateReview:", userId);
-      const res = await createUpdateReview({
+      const res = await createUpdateReviewMutation.mutateAsync({
         data: {
           product: product.id,
           title: values.title,
           comment: values.comment,
           rating: values.rating,
           isVerifiedPurchase: true,
-          // If updating, pass the existing review ID
-          reviewId: currentUserReview?.id, // Pass reviewId if editing
+          user: userId,
         },
         userId,
       });
@@ -179,8 +123,6 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
       if (!res.success) throw new Error(res.message);
 
       showToast(res.message || "Review submitted successfully", "success");
-      // Re-fetch reviews after successful submission/update
-      await fetchReviews(currentPage);
     } catch (error) {
       showToast(
         error instanceof Error ? error.message : "Failed to submit review",
@@ -191,7 +133,15 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
     }
   };
 
-  const handleOpenForm = async (review?: any) => {
+  const handleOpenForm = async (review?: ReviewQueryResult) => {
+    if (!userId) {
+      showToast("Please sign in to submit a review", "error");
+      router.push(
+        `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+      );
+      return;
+    }
+
     // If a review object is passed, it means we are editing
     if (review) {
       form.reset({
@@ -200,14 +150,14 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
         comment: review.comment,
         rating: review.rating,
         product: product.id,
-        user: userId!, 
-        isVerifiedPurchase: review.isVerifiedPurchase, 
+        user: userId,
+        isVerifiedPurchase: review.is_verified_purchase,
       });
     } else {
       // Reset to default for new review
       form.reset(reviewFormDefaultValues);
       form.setValue("product", product.id);
-      form.setValue("user", userId!);
+      form.setValue("user", userId);
       form.setValue("isVerifiedPurchase", true);
     }
     setOpen(true);
@@ -226,14 +176,11 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
     });
   };
 
-  console.log(product.reviews);
-  console.log(reviews);
-
   return (
     <div className="space-y-2">
       {/* Rating Summary Section */}
       <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
-        {reviews.length !== 0 &&
+        {reviewsData?.data.length !== 0 &&
           product.avg_rating !== undefined &&
           product.num_reviews !== undefined &&
           product.rating_distribution !== undefined && (
@@ -260,190 +207,14 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
       </div>
 
       {/* Review Content Section */}
-      <div className="md:grid grid-cols-9 gap-4">
-        {/* Left Column - Review Form */}
-        <div className="col-span-3">
-          <h3 className="font-semibold text-xl">Review this product</h3>
-          <p className="pt-3 h4-light">
-            Share your feedback and help create a better shopping experience for
-            everyone
-          </p>
-
-          {userId ? (
-            // If user is logged in
-            currentUserReview ? (
-              // If user has already reviewed, show Edit button
-              <Button
-                onClick={() => handleOpenForm(currentUserReview)} // Pass existing review to pre-fill form
-                variant="outline"
-                className="rounded-full w-fit px-10 py-3 mt-4"
-              >
-                Edit your review
-              </Button>
-            ) : (
-              // If user hasn't reviewed, show Write button
-              <Dialog open={open} onOpenChange={setOpen}>
-                <Button
-                  onClick={() => handleOpenForm()} // No review passed for new review
-                  variant="outline"
-                  className="rounded-full w-fit px-10 py-3 mt-4"
-                >
-                  Write a customer review
-                </Button>
-
-                <DialogContent className="sm:max-w-[425px] lg:max-w-[560px]">
-                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)}>
-                      <DialogHeader>
-                        <DialogTitle>Write a customer review</DialogTitle>
-                        <DialogDescription>
-                          Share your thoughts with other customers
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        <div className="flex flex-col gap-5">
-                          <FormField
-                            control={form.control}
-                            name="title"
-                            render={({ field }) => (
-                              <FormItem className="w-full">
-                                <FormLabel>Title</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Enter title" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={form.control}
-                            name="comment"
-                            render={({ field }) => (
-                              <FormItem className="w-full">
-                                <FormLabel>Comment</FormLabel>
-                                <FormControl>
-                                  <Textarea
-                                    placeholder="Enter comment"
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                        <div>
-                          <FormField
-                            control={form.control}
-                            name="rating"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Rating</FormLabel>
-                                <Select
-                                  onValueChange={(value) =>
-                                    field.onChange(Number(value))
-                                  }
-                                  value={field.value.toString()}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select a rating" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {Array.from({ length: 5 }).map(
-                                      (_, index) => (
-                                        <SelectItem
-                                          key={index}
-                                          value={(index + 1).toString()}
-                                        >
-                                          <div className="flex items-center gap-1">
-                                            {index + 1}{" "}
-                                            <StarIcon className="h-4 w-4" />
-                                          </div>
-                                        </SelectItem>
-                                      )
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                      </div>
-
-                      <DialogFooter>
-                        <Button
-                          type="submit"
-                          size="lg"
-                          disabled={form.formState.isSubmitting}
-                          className="bg-[#1B6013] hover:bg-[#1b6013f3] transition-all"
-                        >
-                          {form.formState.isSubmitting
-                            ? "Submitting..."
-                            : "Submit"}
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </Form>
-                </DialogContent>
-              </Dialog>
-            )
-          ) : (
-            <div>
-              Please{" "}
-              <Link
-                href={`/login?callbackUrl=/product/${product.slug}`}
-                className="highlight-link"
-              >
-                sign in
-              </Link>{" "}
-              to write a review
-            </div>
-          )}
-        </div>
-
-        {/* Right Column - Reviews List */}
-        <div className="col-span-6">
-          <div className="py-4">
-            <Select>
-              <SelectTrigger className="text-[11px] px-2 w-[133px] bg-[#F0F2F2] border-[#D5D9D9] border rounded-[7px]">
-                <SelectValue placeholder="Top reviews" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectLabel>Sort By</SelectLabel>
-                  <SelectItem value="top">Top Reviews</SelectItem>
-                  <SelectItem value="recent">Most Recent</SelectItem>
-                  <SelectItem value="positive">Positive First</SelectItem>
-                  <SelectItem value="critical">Critical First</SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Loading State */}
-          {initialLoading ? (
             <div className="space-y-4">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="p-4 border rounded-lg space-y-3">
-                  <div className="flex items-center space-x-3">
-                    <div className="h-10 w-10 rounded-full bg-gray-200 animate-pulse"></div>
-                    <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
-                  </div>
-                  <div className="h-4 w-full bg-gray-200 rounded animate-pulse"></div>
-                  <div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse"></div>
-                  <div className="h-4 w-1/2 bg-gray-200 rounded animate-pulse"></div>
-                </div>
-              ))}
-            </div>
-          ) : reviews.length === 0 ? (
-            <div>No reviews yet</div>
+        {isLoadingReviews ? (
+          <div className="text-center py-4">Loading reviews...</div>
+        ) : reviewsData?.data.length === 0 ? (
+          <div className="text-center py-4">No reviews yet</div>
           ) : (
             <>
-              {reviews.map((review) => {
+            {reviewsData?.data.map((review) => {
                 // Determine if comment should be truncated
                 const isCommentTooLong =
                   review.comment &&
@@ -456,11 +227,11 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
                       <Image
                         width={34}
                         height={34}
-                        src={review.users?.avatar_url || "/images/default.png"}
+                      src={review.user?.avatar_url || "/images/default.png"}
                         alt="User avatar"
                       />
                       <p className="text-[13px]">
-                        {review.users?.display_name || "Anonymous"}
+                      {review.user?.display_name || "Anonymous"}
                       </p>
                     </div>
                     <div className="flex gap-2 items-center max-w-full">
@@ -475,12 +246,13 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
                         day: "numeric",
                       })}
                     </p>
-                    {review.isVerifiedPurchase && (
+                  {review.is_verified_purchase && (
                       <p className="!text-[#12B76A] h6-light !font-bold">
                         Verified Purchase
                       </p>
                     )}
-                    <p className="text-[14px] leading-[20px] text-black max-w-full">
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-600">
                       {isCommentTooLong && !isExpanded
                         ? `${review.comment.substring(
                             0,
@@ -491,55 +263,182 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
                     {isCommentTooLong && (
                       <button
                         onClick={() => toggleCommentExpansion(review.id)}
-                        className="text-blue-600 hover:underline text-sm mt-1"
+                        className="text-sm text-blue-600 hover:underline mt-1"
                       >
-                        {isExpanded ? "See less" : "See more"}
+                        {isExpanded ? "Show less" : "Read more"}
                       </button>
                     )}
-                    <div className="flex  items-center gap-4 pt-3">
+                  </div>
+                  <div className="mt-4">
                       <ReviewActions
                         reviewId={review.id}
+                      initialHelpfulCount={review.helpful_count || 0}
                         userId={userId}
-                        initialHelpfulCount={review.helpfulCount ?? 0}
-                        canEdit={review.canEdit}
-                        initialIsHelpful={review.hasVoted}
+                        isOwner={review.canEdit}
+                      onEdit={() => handleOpenForm(review)}
                       />
                     </div>
                   </div>
                 );
               })}
 
-              {/* Pagination Controls */}
-              {reviews.length > 0 && totalPages > 1 && (
-                <div className="flex justify-between items-center mt-6">
+            {/* Pagination */}
+            {reviewsData?.totalPages && reviewsData.totalPages > 1 && (
+              <div className="flex justify-center items-center gap-4 mt-8">
                   <Button
                     variant="outline"
+                  size="sm"
                     onClick={() =>
                       setCurrentPage((prev) => Math.max(prev - 1, 1))
                     }
-                    disabled={currentPage === 1 || loadingReviews}
+                  disabled={currentPage === 1}
                   >
-                    <ChevronLeft className="h-4 w-4" /> Previous
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Previous
                   </Button>
-
                   <span className="text-sm">
-                    Page {currentPage} of {totalPages}
+                  Page {currentPage} of {reviewsData.totalPages}
                   </span>
-
                   <Button
                     variant="outline"
+                  size="sm"
                     onClick={() =>
-                      setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                    setCurrentPage((prev) =>
+                      Math.min(prev + 1, reviewsData.totalPages)
+                    )
                     }
-                    disabled={currentPage >= totalPages || loadingReviews}
+                  disabled={currentPage === reviewsData.totalPages}
                   >
-                    Next <ChevronRight className="h-4 w-4" />
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
                 </div>
               )}
             </>
           )}
+
+        {/* Review Form Dialog */}
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>
+                {currentUserReview ? "Edit Your Review" : "Write a Review"}
+              </DialogTitle>
+              <DialogDescription>
+                Share your experience with this product
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...form}>
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
+                <FormField
+                  control={form.control}
+                  name="rating"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Rating</FormLabel>
+                      <FormControl>
+                        <div className="flex gap-1">
+                          {[1, 2, 3, 4, 5].map((value) => (
+                            <button
+                              key={value}
+                              type="button"
+                              onClick={() => field.onChange(value)}
+                              className="focus:outline-none"
+                            >
+                              <StarIcon
+                                className={`h-6 w-6 ${
+                                  value <= field.value
+                                    ? "text-yellow-400 fill-yellow-400"
+                                    : "text-gray-300"
+                                }`}
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Title</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Summarize your experience"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="comment"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Review</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Tell us about your experience with this product"
+                          className="min-h-[100px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <DialogFooter>
+                  <Button
+                    type="submit"
+                    disabled={createUpdateReviewMutation.isPending}
+                  >
+                    {createUpdateReviewMutation.isPending ? (
+                      <>
+                        <span className="mr-2">Submitting...</span>
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      </>
+                    ) : (
+                      "Submit Review"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Write Review Button */}
+        {userId && !currentUserReview && (
+          <Button
+            onClick={() => handleOpenForm()}
+            variant="outline"
+            className="w-full mt-4"
+          >
+            Write a Review
+          </Button>
+        )}
+        {!userId && (
+          <div className="text-center mt-4">
+            <Link
+              href={`/login?callbackUrl=${encodeURIComponent(
+                window.location.pathname
+              )}`}
+              className="text-blue-600 hover:underline"
+            >
+              Sign in
+            </Link>{" "}
+            to write a review
         </div>
+        )}
       </div>
     </div>
   );

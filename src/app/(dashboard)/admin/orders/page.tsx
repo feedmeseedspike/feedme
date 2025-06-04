@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableHeader,
@@ -27,7 +27,6 @@ import {
   SheetFooter,
 } from "@components/ui/sheet";
 import { Checkbox } from "@components/ui/checkbox";
-import Pagination from "@components/admin/productPagination";
 import {
   Select,
   SelectContent,
@@ -36,87 +35,169 @@ import {
   SelectValue,
 } from "@components/ui/select";
 import { Avatar, AvatarFallback } from "@components/ui/avatar";
+import { createClient } from "@utils/supabase/client";
+import { formatNaira } from "src/lib/utils";
+import { useRouter, useSearchParams } from "next/navigation";
+import PaginationBar from "@components/shared/pagination";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchOrders } from "../../../../queries/orders";
+import { useToast } from "../../../../hooks/useToast";
 
-const orders = [
-  {
-    id: 1,
-    orderNo: "#0001",
-    date: "Nov 11 at 7:56pm",
-    customer: { name: "Bola Adeleke", phone: "09035857775" },
-    amount: "₦5,000.00",
-    location: "Ikeja, Lagos",
-    progress: "Order Confirmed",
-  },
-  {
-    id: 2,
-    orderNo: "#0002",
-    date: "Nov 12 at 8:30am",
-    customer: { name: "John Doe", phone: "08012345678" },
-    amount: "₦7,500.00",
-    location: "Victoria Island, Lagos",
-    progress: "Shipped",
-  },
-  {
-    id: 3,
-    orderNo: "#0003",
-    date: "Nov 13 at 12:15pm",
-    customer: { name: "Jane Smith", phone: "08123456789" },
-    amount: "₦10,000.00",
-    location: "Lekki, Lagos",
-    progress: "Delivered",
-  },
-  {
-    id: 4,
-    orderNo: "#0004",
-    date: "Nov 14 at 3:45pm",
-    customer: { name: "Michael Brown", phone: "07098765432" },
-    amount: "₦3,000.00",
-    location: "Surulere, Lagos",
-    progress: "Pending",
-  },
-  {
-    id: 5,
-    orderNo: "#0005",
-    date: "Nov 15 at 9:20am",
-    customer: { name: "Sarah Johnson", phone: "09087654321" },
-    amount: "₦6,000.00",
-    location: "Yaba, Lagos",
-    progress: "Cancelled",
-  },
-];
+// Assuming the structure of an order object from Supabase (copied from overview/page.tsx for type consistency)
+interface Order {
+  id: string;
+  user_id: string | null;
+  status: string | null;
+  total_amount: number | null;
+  voucher_id: string | null;
+  shipping_address: { city?: string; [key: string]: any } | null;
+  payment_method: string | null;
+  created_at: string;
+  updated_at: string | null;
+  payment_status: string | null;
+}
+
+// const orders = [
+//   {
+//     id: 1,
+//     orderNo: "#0001",
+//     date: "Nov 11 at 7:56pm",
+//     customer: { name: "Bola Adeleke", phone: "09035857775" },
+//     amount: "₦5,000.00",
+//     location: "Ikeja, Lagos",
+//     progress: "Order Confirmed",
+//   },
+//   {
+//     id: 2,
+//     orderNo: "#0002",
+//     date: "Nov 12 at 8:30am",
+//     customer: { name: "John Doe", phone: "08012345678" },
+//     amount: "₦7,500.00",
+//     location: "Victoria Island, Lagos",
+//     progress: "Shipped",
+//   },
+//   {
+//     id: 3,
+//     orderNo: "#0003",
+//     date: "Nov 13 at 12:15pm",
+//     customer: { name: "Jane Smith", phone: "08123456789" },
+//     amount: "₦10,000.00",
+//     location: "Lekki, Lagos",
+//     progress: "Delivered",
+//   },
+//   {
+//     id: 4,
+//     orderNo: "#0004",
+//     date: "Nov 14 at 3:45pm",
+//     customer: { name: "Michael Brown", phone: "07098765432" },
+//     amount: "₦3,000.00",
+//     location: "Surulere, Lagos",
+//     progress: "Pending",
+//   },
+//   {
+//     id: 5,
+//     orderNo: "#0005",
+//     date: "Nov 15 at 9:20am",
+//     customer: { name: "Sarah Johnson", phone: "09087654321" },
+//     amount: "₦6,000.00",
+//     location: "Yaba, Lagos",
+//     progress: "Cancelled",
+//   },
+// ];
 
 // Progress options for the Select component
-const progressOptions = [
-  "Pending",
-  "Order Confirmed",
-  "Shipped",
-  "Delivered",
-  "Cancelled",
-];
+const progressOptions = ["In transit", "order delivered", "order confirmed"];
+
+// Payment Status options for the Select component
+const paymentStatusOptions = ["Pending", "Paid", "Cancelled"];
 
 export default function Orders() {
   const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
   const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const currentPage = Number(searchParams.get("page")) || 1;
+  const { showToast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Fetch data from Supabase using Tanstack Query
+  const ITEMS_PER_PAGE = 5; // Define items per page
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["orders", currentPage, search, selectedStatus],
+    queryFn: () =>
+      fetchOrders({
+        page: currentPage,
+        itemsPerPage: ITEMS_PER_PAGE,
+        search: search,
+        status: selectedStatus,
+      }),
+    // Keep previous data while fetching new data
+    placeholderData: (previousData) => previousData,
+  });
+
+  // Function to update order status in Supabase
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: newStatus })
+      .eq("id", orderId);
+
+    if (error) {
+      console.error("Error updating order status:", error);
+      showToast("Failed to update order status.", "error");
+    } else {
+      console.log(`Order ${orderId} status updated to ${newStatus}`);
+      showToast("Order status updated successfully.", "success");
+      // Invalidate the orders query to refetch data
+      queryClient.invalidateQueries({
+        queryKey: ["orders", currentPage, search, selectedStatus] as const,
+      });
+    }
+  };
+
+  // Function to update payment status in Supabase
+  const updatePaymentStatus = async (orderId: string, newStatus: string) => {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("orders")
+      .update({ payment_status: newStatus })
+      .eq("id", orderId);
+
+    if (error) {
+      console.error("Error updating payment status:", error);
+      showToast("Failed to update payment status.", "error");
+    } else {
+      console.log(`Order ${orderId} payment status updated to ${newStatus}`);
+      showToast("Payment status updated successfully.", "success");
+      // Invalidate the orders query to refetch data
+      queryClient.invalidateQueries({
+        queryKey: ["orders", currentPage, search, selectedStatus] as const,
+      });
+    }
+  };
 
   // Filter orders based on search and selected status
-  const filteredOrders = orders.filter(
-    (order) =>
-      order.customer.name.toLowerCase().includes(search.toLowerCase()) &&
-      (selectedStatus.length === 0 || selectedStatus.includes(order.progress))
-  );
+  // const filteredOrders = supabaseOrders.filter(
+  //   (order) =>
+  //     // Filter by customer name (from display_name) or order ID, and status
+  //     (order.users?.display_name
+  //       ?.toLowerCase()
+  //       .includes(search.toLowerCase()) ||
+  //       order.id?.toLowerCase().includes(search.toLowerCase())) && // Search by customer name or order ID
+  //     (selectedStatus.length === 0 ||
+  //       (order.status && selectedStatus.includes(order.status)))
+  // );
 
   // Pagination logic
-  const ITEMS_PER_PAGE = 5;
-  const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
-  const paginatedOrders = filteredOrders.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  // const ITEMS_PER_PAGE = 5;
+  // const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
+  // const paginatedOrders = filteredOrders.slice(
+  //   (currentPage - 1) * ITEMS_PER_PAGE,
+  //   currentPage * ITEMS_PER_PAGE
+  // );
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
+  const totalPages = Math.ceil((data?.count || 0) / ITEMS_PER_PAGE);
 
   // Toggle filter for status
   const toggleFilter = (value: string) => {
@@ -239,60 +320,141 @@ export default function Orders() {
               <TableHead>Date</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>Amount</TableHead>
+              <TableHead>Payment Status</TableHead>
               <TableHead>Location</TableHead>
               <TableHead>Progress</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedOrders.map((order) => (
-              <TableRow key={order.id}>
-                <TableCell>{order.orderNo}</TableCell>
-                <TableCell>{order.date}</TableCell>
-                <TableCell className="flex items-center gap-2">
-                  <Avatar>
-                    <AvatarFallback>
-                      {order.customer.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium">{order.customer.name}</p>
-                    <p className="text-sm text-gray-500">
-                      {order.customer.phone}
-                    </p>
-                  </div>
-                </TableCell>
-                <TableCell>{order.amount}</TableCell>
-                <TableCell>{order.location}</TableCell>
-                <TableCell>
-                  <Select defaultValue={order.progress}>
-                    <SelectTrigger className="w-40">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="!border !border-gray-300">
-                      {progressOptions.map((option) => (
-                        <SelectItem key={option} value={option} >
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+            {isLoading ? (
+              // Skeleton loading rows
+              Array.from({ length: ITEMS_PER_PAGE }).map((_, index) => (
+                <TableRow key={index}>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-16"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-24"></div>
+                  </TableCell>
+                  <TableCell className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-gray-200"></div>
+                    <div>
+                      <div className="h-4 bg-gray-200 rounded w-20 mb-1"></div>
+                      <div className="h-4 bg-gray-200 rounded w-16"></div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-12"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-20"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-24"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-24"></div>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : data?.data && data.data.length > 0 ? (
+              data.data.map((order) => (
+                <TableRow key={order.id}>
+                  <TableCell>{order.id?.substring(0, 8) || "N/A"}</TableCell>
+                  <TableCell>
+                    {order.created_at
+                      ? new Date(order.created_at).toLocaleString()
+                      : "N/A"}
+                  </TableCell>
+                  {/* Display customer information from separately fetched user data */}
+                  <TableCell className="flex items-center gap-2">
+                    <Avatar>
+                      <AvatarFallback>
+                        {order.users?.display_name
+                          ? order.users.display_name
+                              .split(" ")
+                              .map((n: string) => n[0]) // Explicitly type 'n' as string
+                              .join("")
+                              .substring(0, 2)
+                              .toUpperCase()
+                          : ""}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">
+                        {order.users?.display_name || "Unknown User"}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {order.users?.phone || "N/A"}
+                      </p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {order.total_amount
+                      ? `${formatNaira(order.total_amount)}`
+                      : "₦0.00"}
+                  </TableCell>
+                  {/* Payment Status Dropdown */}
+                  <TableCell>
+                    <Select
+                      value={order.payment_status || "Unknown Status"} // Use order.payment_status as the value
+                      onValueChange={(newValue) =>
+                        updatePaymentStatus(order.id, newValue)
+                      }
+                    >
+                      <SelectTrigger className="w-[150px]">
+                        <SelectValue placeholder="Select Payment Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {paymentStatusOptions.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {status}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    {order.shipping_address?.city || "Unknown Location"}
+                  </TableCell>
+
+                  {/* Progress Dropdown */}
+                  <TableCell>
+                    <Select
+                      value={order.status || "Unknown Status"} // Use order.status as the value
+                      onValueChange={(newValue) =>
+                        updateOrderStatus(order.id, newValue)
+                      }
+                    >
+                      <SelectTrigger className="w-[150px]">
+                        <SelectValue placeholder="Select Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {progressOptions.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {status}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              // No orders message
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8">
+                  No orders found.
                 </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </div>
 
       {/* Pagination Section */}
       <div className="flex justify-center mt-6">
-        <Pagination
-          totalPages={totalPages}
-          currentPage={currentPage}
-          onPageChange={handlePageChange}
-        />
+        <PaginationBar totalPages={totalPages} page={currentPage} />
       </div>
     </div>
   );

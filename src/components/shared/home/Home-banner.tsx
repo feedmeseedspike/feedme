@@ -18,6 +18,12 @@ const banners = [
     tag: "fresh-fruits",
     active: true,
   },
+  // {
+  //   id: 3,
+  //   imageUrl: "/placeholder-bundle-banner.png", // Replace with actual bundle banner image
+  //   tag: "bundles",
+  //   active: true,
+  // },
 ];
 
 const Banner = () => {
@@ -39,7 +45,7 @@ const Banner = () => {
                 src={banner.imageUrl}
                 alt={`${banner.tag} banner`}
                 width={445}
-                height={250}
+                height={700}
                 className="w-full h-full"
               />
             </Link>

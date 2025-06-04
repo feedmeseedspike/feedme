@@ -36,6 +36,7 @@ interface AppSidebarProps {
 }
 
 export function AdminSidebar({ user }: AppSidebarProps) {
+  console.log("user here", user)
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -108,11 +109,11 @@ export function AdminSidebar({ user }: AppSidebarProps) {
         <div className="flex gap-2">
           <div className="flex gap-2 items-center">
             <Avatar>
-              <AvatarImage src={user?.avatar.url} />
-              <AvatarFallback>{user?.name[0]}</AvatarFallback>
+              <AvatarImage src={user?.avatar_url} />
+              <AvatarFallback>{user?.display_name[0]}</AvatarFallback>
             </Avatar>
             <div>
-              <h3 className="font-medium text-lg text-black">{user?.name}</h3>
+              <h3 className="font-medium text-lg text-black">{user?.display_name}</h3>
               <p className="truncate text-[14px]">{user?.email}</p>
             </div>
           </div>

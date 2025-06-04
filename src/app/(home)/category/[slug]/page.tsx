@@ -4,7 +4,6 @@ import { Suspense } from "react";
 
 import Pagination from "@components/shared/pagination";
 import {
-  getAllCategories,
   getAllProducts,
   getAllTags,
 } from "../../../../lib/actions/product.actions";
@@ -13,10 +12,11 @@ import { getFilterUrl, toSlug } from "../../../../lib/utils";
 
 import Container from "@components/shared/Container";
 import ProductdetailsCard from "@components/shared/product/productDetails-card";
-import Headertags from "@components/shared/header/Headertags";
+// import Headertags from "@components/shared/header/Headertags";
 import { ProductSkeletonGrid } from "@components/shared/product/product-skeleton";
 import CustomBreadcrumb from "@components/shared/breadcrumb";
 import ErrorBoundary from "@components/shared/ErrorBoundary";
+import { getAllCategories } from "src/lib/api";
 
 const sortOrders = [
   { value: "price-low-to-high", name: "Price: Low to high" },
@@ -127,7 +127,6 @@ export default async function CategoryPage({
   const categorySlug = params.slug;
   const { sort = "best-selling", page = "1" } = searchParams;
 
-  // Fetch categories and find the matching one
   const allCategories = await getAllCategories();
   const categoryObj = allCategories.find(
     (c) => toSlug(c.title).toLowerCase() === categorySlug.toLowerCase()
@@ -136,7 +135,11 @@ export default async function CategoryPage({
   if (!categoryObj) {
     return (
       <main>
-        <Headertags />
+         <div className="bg-white py-4">
+          <Container>
+          <CustomBreadcrumb hideCategorySegment={true} />
+          </Container>
+        </div>
         <Container className="py-8">
           <div className="text-2xl md:text-3xl font-semibold text-center">
             Category not found
@@ -158,9 +161,12 @@ export default async function CategoryPage({
 
   return (
     <main>
-      <Headertags />
-      {/* <CustomBreadcrumb /> */}
-      <div className="py-2 md:border-b shadow-sm">
+      <div className="md:border-b shadow-sm">
+        <div className="bg-white py-4">
+          <Container>
+          <CustomBreadcrumb hideCategorySegment={true} />
+          </Container>
+        </div>
         <Container>
           <div className="flex justify-between items-center">
             <div className="flex items-center">

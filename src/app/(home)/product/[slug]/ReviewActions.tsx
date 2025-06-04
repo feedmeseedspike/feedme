@@ -3,7 +3,14 @@
 import { useState } from "react";
 import { useToast } from "src/hooks/useToast";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Loader2, ThumbsUp, Flag, Trash2, Edit } from "lucide-react";
+import {
+  CheckCircle2,
+  Loader2,
+  ThumbsUp,
+  Flag,
+  Edit,
+  Trash2,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +34,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@components/ui/form";
+import {
+  useAddHelpfulVoteMutation,
+  useRemoveHelpfulVoteMutation,
+  useAddReportMutation,
+} from "src/queries/reviews";
 
 const reportReasons = [
   { value: "off_topic", label: "Off topic - Not about the product" },
@@ -37,43 +49,54 @@ const reportReasons = [
 
 const reportFormSchema = z.object({
   reason: z.string().min(1, "Please select a reason"),
-  details: z.string().max(500, "Details must be less than 500 characters").optional(),
+  details: z
+    .string()
+    .max(500, "Details must be less than 500 characters")
+    .optional(),
 });
 
 type ReportFormValues = z.infer<typeof reportFormSchema>;
 
-type ReviewActionsProps = {
+interface ReviewActionsProps {
   reviewId: string;
-  userId?: string;
+  userId: string | undefined;
   initialHelpfulCount?: number;
-  canEdit?: boolean;
+  isOwner?: boolean;
   onEdit?: () => void;
-  onDelete?: () => void;
+  onDelete?: () => Promise<void>;
   initialIsHelpful?: boolean;
-};
+  isPending?: boolean;
+}
 
 export default function ReviewActions({
   reviewId,
   userId,
   initialHelpfulCount = 0,
-  canEdit = false,
+  isOwner = false,
   onEdit,
   onDelete,
   initialIsHelpful = false,
+  isPending = false,
 }: ReviewActionsProps) {
   const { showToast } = useToast();
   const router = useRouter();
-
   const [state, setState] = useState({
     helpfulCount: initialHelpfulCount,
     isHelpful: initialIsHelpful,
     isReported: false,
-    isSubmittingHelpful: false,
+    isSubmittingVote: false,
     isSubmittingReport: false,
+    isDeleting: false,
     hasInteracted: false,
   });
 
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  // Use Tanstack Query mutations
+  const addHelpfulVoteMutation = useAddHelpfulVoteMutation();
+  const removeHelpfulVoteMutation = useRemoveHelpfulVoteMutation();
+  const addReportMutation = useAddReportMutation();
 
   const reportForm = useForm<ReportFormValues>({
     resolver: zodResolver(reportFormSchema),
@@ -86,65 +109,81 @@ export default function ReviewActions({
   const handleHelpfulClick = async () => {
     if (!userId) {
       showToast("Please sign in to vote", "error");
-      router.push("/login");
+      router.push(
+        `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+      );
       return;
     }
 
-    setState(prev => ({ ...prev, isSubmittingHelpful: true }));
+    setState((prev) => ({ ...prev, isSubmittingVote: true }));
 
     try {
       if (state.isHelpful) {
-        // Optimistic update
-        setState(prev => ({
+        const res = await removeHelpfulVoteMutation.mutateAsync({
+          reviewId,
+          userId,
+        });
+
+        if (!res.success) throw new Error(res.message);
+
+        setState((prev) => ({
           ...prev,
           helpfulCount: prev.helpfulCount - 1,
           isHelpful: false,
         }));
-
-        // TODO: Call remove helpful vote API
       } else {
-        // Optimistic update
-        setState(prev => ({
+        const res = await addHelpfulVoteMutation.mutateAsync({
+          reviewId,
+          userId,
+        });
+
+        if (!res.success) throw new Error(res.message);
+
+        setState((prev) => ({
           ...prev,
           helpfulCount: prev.helpfulCount + 1,
           isHelpful: true,
         }));
-
       }
-
-      setState(prev => ({ ...prev, hasInteracted: true }));
+      setState((prev) => ({ ...prev, hasInteracted: true }));
     } catch (error) {
-      // Rollback optimistic update
-      setState(prev => ({
-        ...prev,
-        helpfulCount: state.isHelpful ? prev.helpfulCount + 1 : prev.helpfulCount - 1,
-        isHelpful: !state.isHelpful,
-      }));
-
       showToast(
         error instanceof Error ? error.message : "Failed to update vote",
         "error"
       );
     } finally {
-      setState(prev => ({ ...prev, isSubmittingHelpful: false }));
+      setState((prev) => ({ ...prev, isSubmittingVote: false }));
     }
   };
 
   const handleReportSubmit: SubmitHandler<ReportFormValues> = async (data) => {
     if (!userId) {
       showToast("Please sign in to report", "error");
-      router.push("/login");
+      router.push(
+        `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+      );
       return;
     }
 
-    setState(prev => ({ ...prev, isSubmittingReport: true }));
+    setState((prev) => ({ ...prev, isSubmittingReport: true }));
 
     try {
-      const reasonText = reportReasons.find(r => r.value === data.reason)?.label || data.reason;
-      const fullReason = data.details ? `${reasonText}: ${data.details}` : reasonText;
+      const reasonText =
+        reportReasons.find((r) => r.value === data.reason)?.label ||
+        data.reason;
+      const fullReason = data.details
+        ? `${reasonText}: ${data.details}`
+        : reasonText;
 
-      
-      setState(prev => ({ ...prev, isReported: true }));
+      const res = await addReportMutation.mutateAsync({
+        reviewId,
+        userId,
+        reason: fullReason,
+      });
+
+      if (!res.success) throw new Error(res.message);
+
+      setState((prev) => ({ ...prev, isReported: true }));
       setIsReportDialogOpen(false);
       reportForm.reset();
       showToast("Report submitted. Thank you!", "success");
@@ -154,166 +193,217 @@ export default function ReviewActions({
         "error"
       );
     } finally {
-      setState(prev => ({ ...prev, isSubmittingReport: false }));
+      setState((prev) => ({ ...prev, isSubmittingReport: false }));
     }
   };
 
+  if (isPending) {
+    return (
+      <div className="flex items-center gap-4 pt-3">
+        <div className="text-sm text-gray-500 italic">
+          Your review is pending approval
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex items-center gap-4 pt-3">
-      {/* Helpful Button */}
-      {!canEdit && (
-        <button
-          onClick={handleHelpfulClick}
-          disabled={state.isSubmittingHelpful || state.hasInteracted}
-          className={`flex items-center gap-1 text-sm px-3 py-1 rounded-full border transition-colors ${
-            state.isHelpful
-              ? "bg-green-50 border-green-200 text-green-600"
-              : "border-gray-200 text-gray-600 hover:border-green-200 hover:text-green-600"
-          } ${
-            state.isSubmittingHelpful ? "opacity-70 cursor-not-allowed" : ""
-          }`}
-        >
-          {state.isSubmittingHelpful ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : state.hasInteracted ? (
-            <span className="flex items-center gap-1">
-              <CheckCircle2 className="h-4 w-4" />
-              Thank you
-            </span>
-          ) : (
-            <span className="flex items-center gap-1">
-              <ThumbsUp className="h-4 w-4" />
-              Helpful
-            </span>
-          )}
-        </button>
-      )}
-
-      {/* Report Button */}
-      {!canEdit && (
-        <button
-          onClick={() => setIsReportDialogOpen(true)}
-          disabled={state.isReported}
-          className={`flex items-center gap-1 text-sm px-3 py-1 rounded-full border transition-colors ${
-            state.isReported
-              ? "bg-gray-50 border-gray-200 text-gray-500"
-              : "border-gray-200 text-gray-600 hover:border-red-200 hover:text-red-600"
-          }`}
-        >
-          <Flag className="h-4 w-4" />
-          {state.isReported ? "Reported" : "Report"}
-        </button>
-      )}
-
-      {/* Edit Button (only for owner) */}
-      {canEdit && onEdit && (
-        <button
-          onClick={onEdit}
-          className="flex items-center gap-1 text-sm px-3 py-1 rounded-full border border-gray-200 text-gray-600 hover:border-blue-200 hover:text-blue-600"
-        >
-          <Edit className="h-4 w-4" />
-          Edit
-        </button>
-      )}
-
-      {/* Delete Button (only for owner) */}
-      {canEdit && onDelete && (
-        <button
-          onClick={onDelete}
-          className="flex items-center gap-1 text-sm px-3 py-1 rounded-full border border-gray-200 text-gray-600 hover:border-red-200 hover:text-red-600"
-        >
-          <Trash2 className="h-4 w-4" />
-          Delete
-        </button>
-      )}
-
+    <>
       {/* Helpful Count */}
       {state.helpfulCount > 0 && (
         <span className="text-sm text-gray-500">
-          {state.helpfulCount} {state.helpfulCount === 1 ? "person" : "people"} found this helpful
+          {state.helpfulCount} {state.helpfulCount === 1 ? "person" : "people"}{" "}
+          found this helpful
         </span>
       )}
+      <div className="flex items-center gap-4 pt-3">
+        {/* Helpful Button - Only show if not owner */}
+        {!isOwner && (
+          <button
+            onClick={handleHelpfulClick}
+            disabled={state.isSubmittingVote || state.hasInteracted}
+            className={`flex items-center gap-1 text-sm px-3 py-1 rounded-full border transition-colors ${
+              state.isHelpful
+                ? "bg-green-50 border-green-200 text-green-600"
+                : "border-gray-200 text-gray-600 hover:border-green-200 hover:text-green-600"
+            } ${state.isSubmittingVote ? "opacity-70 cursor-not-allowed" : ""}`}
+          >
+            {state.isSubmittingVote ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : state.hasInteracted ? (
+              <span className="flex items-center gap-1">
+                <CheckCircle2 className="h-4 w-4" />
+                Thank you
+              </span>
+            ) : (
+              <span className="flex items-center gap-1">
+                <ThumbsUp className="h-4 w-4" />
+                Helpful
+              </span>
+            )}
+          </button>
+        )}
 
-      {/* Report Dialog */}
-      <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Report this review</DialogTitle>
-            <DialogDescription>
-              Please tell us why you're reporting this review.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <Form {...reportForm}>
-            <form onSubmit={reportForm.handleSubmit(handleReportSubmit)} className="space-y-4">
-              <FormField
-                control={reportForm.control}
-                name="reason"
-                render={({ field }) => (
-                  <FormItem className="space-y-3">
-                    <FormLabel>Reason</FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        className="flex flex-col space-y-2"
-                      >
-                        {reportReasons.map((reason) => (
-                          <FormItem key={reason.value} className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value={reason.value} />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              {reason.label}
-                            </FormLabel>
-                          </FormItem>
-                        ))}
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+        {/* Report Button - Only show if not owner */}
+        {!isOwner && (
+          <button
+            onClick={() => setIsReportDialogOpen(true)}
+            disabled={state.isReported}
+            className={`flex items-center gap-1 text-sm px-3 py-1 rounded-full border transition-colors ${
+              state.isReported
+                ? "bg-gray-50 border-gray-200 text-gray-500"
+                : "border-gray-200 text-gray-600 hover:border-red-200 hover:text-red-600"
+            }`}
+          >
+            <Flag className="h-4 w-4" />
+            {state.isReported ? "Reported" : "Report"}
+          </button>
+        )}
 
-              <FormField
-                control={reportForm.control}
-                name="details"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Additional details (optional)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Please provide more details..."
-                        className="resize-none"
-                        rows={3}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant="outline">Cancel</Button>
-                </DialogClose>
-                <Button
-                  type="submit"
-                  disabled={state.isSubmittingReport}
-                  className="bg-red-600 hover:bg-red-700"
+        {/* Edit and Delete Buttons (only for owner) */}
+        {isOwner && (
+          <div className="flex items-center gap-2">
+            {onEdit && (
+              <button
+                onClick={onEdit}
+                className="flex items-center gap-1 text-sm px-3 py-1 rounded-full border border-gray-200 text-gray-600 hover:border-blue-200 hover:text-blue-600"
+              >
+                <Edit className="h-4 w-4" />
+                Edit
+              </button>
+            )}
+            {onDelete && (
+              <>
+                <button
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  className="flex items-center gap-1 text-sm px-3 py-1 rounded-full border border-gray-200 text-gray-600 hover:border-red-200 hover:text-red-600"
                 >
-                  {state.isSubmittingReport ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Submit Report"
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </button>
+
+                <Dialog
+                  open={isDeleteDialogOpen}
+                  onOpenChange={setIsDeleteDialogOpen}
+                >
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Delete Review</DialogTitle>
+                      <DialogDescription>
+                        Are you sure you want to delete this review? This action
+                        cannot be undone.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <DialogClose asChild>
+                        <Button variant="outline">Cancel</Button>
+                      </DialogClose>
+                      <Button
+                        variant="destructive"
+                        onClick={onDelete}
+                        disabled={state.isDeleting}
+                      >
+                        {state.isDeleting ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          "Delete"
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Report Dialog */}
+        <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Report this review</DialogTitle>
+              <DialogDescription>
+                Please tell us why you're reporting this review.
+              </DialogDescription>
+            </DialogHeader>
+
+            <Form {...reportForm}>
+              <form
+                onSubmit={reportForm.handleSubmit(handleReportSubmit)}
+                className="space-y-4"
+              >
+                <FormField
+                  control={reportForm.control}
+                  name="reason"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <FormLabel>Reason</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          className="flex flex-col space-y-2"
+                        >
+                          {reportReasons.map((reason) => (
+                            <FormItem
+                              key={reason.value}
+                              className="flex items-center space-x-3 space-y-0"
+                            >
+                              <FormControl>
+                                <RadioGroupItem value={reason.value} />
+                              </FormControl>
+                              <FormLabel className="font-normal">
+                                {reason.label}
+                              </FormLabel>
+                            </FormItem>
+                          ))}
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-    </div>
+                />
+
+                <FormField
+                  control={reportForm.control}
+                  name="details"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Additional details (optional)</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Please provide more details..."
+                          className="resize-none"
+                          rows={3}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="outline">Cancel</Button>
+                  </DialogClose>
+                  <Button
+                    type="submit"
+                    disabled={state.isSubmittingReport}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    {state.isSubmittingReport ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Submit Report"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </>
   );
 }

@@ -24,7 +24,7 @@ const LogoutButton = ({ showText = true }: LogoutButtonProps) => {
       onClick={handleLogout}
       className="cursor-pointer flex items-center gap-2 w-fit text-left px-2 pb-2"
     >
-      <LogOut className="w-5 h-5 text-gray-600" />
+      <LogOut className="w-5 h-5 " />
       {showText && <span>Logout</span>}
     </button>
   );

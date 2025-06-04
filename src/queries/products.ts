@@ -1,4 +1,5 @@
 import { TypedSupabaseClient } from '../utils/types'
+import { Tables } from "@utils/database.types";
 
 export async function getAllProducts(client: TypedSupabaseClient, {
   query,
@@ -75,11 +76,46 @@ export function getProductsByTagQuery(client: TypedSupabaseClient, tag: string, 
   let query = client
     .from('products')
     .select('*')
-    .contains('tags', [tag]);
+    .eq('is_published', true);
+
+  if (tag === 'new-arrival') {
+    query = query.order('created_at', { ascending: false });
+  } else if (tag === 'best-seller') {
+    query = query.order('num_sales', { ascending: false });
+  } else {
+    query = query.contains('tags', [tag]);
+  }
 
   if (limit) {
     query = query.limit(limit);
   }
 
   return query;
+}
+
+interface FetchProductsForBundleModalParams {
+  search?: string;
+}
+
+export async function fetchProductsForBundleModal(client: TypedSupabaseClient, { search = '' }: FetchProductsForBundleModalParams): Promise<Tables<'products'>[] | null> {
+  let queryBuilder = client
+    .from('products')
+    .select('*')
+    .eq('is_published', true);
+
+  if (search) {
+    queryBuilder = queryBuilder.ilike('name', `%{search}%`);
+  }
+
+  // Limit results to a reasonable number for the modal to avoid fetching too much data
+  queryBuilder = queryBuilder.limit(50); // Adjust limit as needed
+
+  const { data, error } = await queryBuilder;
+
+  if (error) {
+    console.error('Error fetching products for bundle modal:', error);
+    throw error;
+  }
+
+  return data;
 }

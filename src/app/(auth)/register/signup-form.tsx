@@ -22,6 +22,7 @@ import { isRedirectError } from "next/dist/client/components/redirect";
 import { registerUser } from "src/lib/actions/auth.actions";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@utils/supabase/client";
 
 const signUpDefaultValues =
   process.env.NODE_ENV === "development"
@@ -55,30 +56,46 @@ export default function CredentialsSignUpForm() {
 
   const { showToast } = useToast();
 
-const onSubmit = async (data: IUserSignUp) => {
-  const { name, email, password } = data;
-  setLoading(true);
-  try {
-    const res = await registerUser({ name, email, password });
-    console.log(res)
-    
-    if (!res.success) {
-      showToast(res.error?.message || "Something went wrong", "error");
-      return;
+  const onSubmit = async (data: IUserSignUp) => {
+    const { name, email, password } = data;
+    setLoading(true);
+    const supabase = createClient(); // Get Supabase client instance
+    try {
+      const { data: signUpData, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            // Optional: include name in user metadata
+            name,
+          },
+        },
+      });
+
+      if (error) {
+        showToast(error.message, "error");
+        return;
+      }
+
+      // Check if user requires email confirmation
+      if (signUpData.user && !signUpData.user.confirmed_at) {
+        showToast(
+          "Registration successful! Please check your email to confirm your account.",
+          "success"
+        );
+      } else {
+        showToast("Registration successful!", "success");
+      }
+
+      router.push(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+    } catch (error: any) {
+      // This catch block might be less relevant with supabase.auth.signUp handling errors,
+      // but keep it for unexpected issues.
+      showToast(error?.message || "Registration failed", "error");
+    } finally {
+      setLoading(false);
     }
-    
-    // OR Option 2: Show success message before redirecting to login
-    showToast("Registration successful! Please login", "success");
-    router.push(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
-    
-  } catch (error: any) {
-    if (isRedirectError(error)) throw error;
-    // Show the actual error message if available
-    showToast(error?.message || "Registration failed", "error");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <Form {...form}>

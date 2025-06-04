@@ -3,7 +3,7 @@ import Pagination from "@components/shared/pagination";
 import ProductCard from "@components/shared/product/product-card";
 import { Button } from "@components/ui/button";
 import {
-  getAllCategories,
+  // getAllCategories,
   getAllProducts,
   getAllTags,
   getRelatedProductsByCategory,
@@ -26,6 +26,7 @@ import { Suspense } from "react";
 import { ProductSkeletonGrid } from "@components/shared/product/product-skeleton";
 import PriceRangeSlider from "@components/shared/product/price-range-slider";
 import ProductSlider from "@components/shared/product/product-slider";
+import { getAllCategories } from "src/lib/api";
 
 const sortOrders = [
   { value: "price-low-to-high", name: "Price: Low to high" },

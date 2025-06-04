@@ -71,7 +71,7 @@ export type VendorReference = z.infer<typeof VendorReferenceSchema>;
 export const OptionSchema = z.object({
   name: z.string().min(1, "Option name is required"),
   price: z
-    .number({
+    .coerce.number({
       invalid_type_error: "Price must be a number",
       required_error: "Price is required",
     })
@@ -149,7 +149,7 @@ export type OrderItem = z.infer<typeof OrderItemSchema>;
 // Product Schemas
 // ======================
 export const ProductInputSchema = z.object({
-  id: z.string().optional(),
+  id: z.string(),
   name: z.string().min(3, "Name must be at least 3 characters"),
   slug: z.string().min(3, "Slug must be at least 3 characters"),
   category: array(z.string()),

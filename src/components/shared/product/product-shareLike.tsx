@@ -17,13 +17,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@radix-ui/react-popover";
-import React, { useState, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "src/store";
+import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
-  toggleFavorite,
-  fetchFavorites,
-} from "src/store/features/favoritesSlice";
+  getFavoritesQuery,
+  useAddFavoriteMutation,
+  useRemoveFavoriteMutation,
+} from "src/queries/favorites";
 
 const ShareLike = ({ product }: { product: any }) => {
   const pathname = usePathname();
@@ -31,36 +31,45 @@ const ShareLike = ({ product }: { product: any }) => {
     `${process.env.NEXT_PUBLIC_SITE_URL}${pathname}`
   );
   const [open, setOpen] = useState(false);
-  const dispatch = useDispatch();
 
-  // Get favorites state from Redux
-  const favorites = useSelector(
-    (state: RootState) => state.favorites.favorites
+  // Use useQuery to fetch favorites
+  const { data: favorites, isLoading: isLoadingFavorites } = useQuery(
+    getFavoritesQuery()
   );
-  const isLoading = useSelector(
-    (state: RootState) => state.favorites.isLoading
-  );
-  const isFavorited = product.id ? favorites.includes(product.id) : false;
+  console.log("Favorites data in ShareLike:", favorites);
+  const isFavorited =
+    product.id && favorites ? favorites.includes(product.id) : false;
 
-  // Fetch favorites on mount
-  useEffect(() => {
-    dispatch(fetchFavorites());
-  }, [dispatch]);
+  // Use mutations for adding/removing favorites
+  const addFavoriteMutation = useAddFavoriteMutation();
+  const removeFavoriteMutation = useRemoveFavoriteMutation();
+
+  const isLoading =
+    isLoadingFavorites ||
+    addFavoriteMutation.isPending ||
+    removeFavoriteMutation.isPending;
 
   // Handle favorite toggle
   const handleToggleLike = React.useCallback(
     async (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
+      console.log(
+        "Toggle like clicked for product:",
+        product.id,
+        "isFavorited initially:",
+        isFavorited
+      );
       if (!product.id) return;
 
       try {
-        await dispatch(toggleFavorite(product.id));
-        toast[isFavorited ? "info" : "success"](
-          `${product.name} ${
-            isFavorited ? "removed from" : "added to"
-          } wishlist`
-        );
+        if (isFavorited) {
+          await removeFavoriteMutation.mutateAsync(product.id);
+          toast.info(`${product.name} removed from wishlist`);
+        } else {
+          await addFavoriteMutation.mutateAsync(product.id);
+          toast.success(`${product.name} added to wishlist`);
+        }
       } catch (error: any) {
         if (error.message === "You must be logged in to modify favorites") {
           window.location.href = `/login?callbackUrl=${encodeURIComponent(
@@ -71,7 +80,12 @@ const ShareLike = ({ product }: { product: any }) => {
         }
       }
     },
-    [dispatch, product.id, pathname, isFavorited]
+    [
+      product.id,
+      isFavorited,
+      addFavoriteMutation.mutateAsync,
+      removeFavoriteMutation.mutateAsync,
+    ]
   );
 
   // Handle share functionality
@@ -129,7 +143,7 @@ const ShareLike = ({ product }: { product: any }) => {
             <span className="ml-2">Share</span>
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-[200px] p-4">
+        <PopoverContent className="w-[200px] bg-white p-4">
           <div className="flex flex-col gap-2">
             <button
               onClick={() => handleShare("copy")}

@@ -31,7 +31,7 @@ const ProductCard = ({
     </Link>
   );
   const ProductDetails = () => (
-    <div className="flex flex-col space-y-">
+    <div className="flex flex-col space-y-1">
       <Link
         href={`/product/${product.slug}`}
         className="overflow-hidden h4-bold text-ellipsis"
@@ -45,7 +45,7 @@ const ProductCard = ({
   );
 
   return (
-    <div className="flex flex-col mb-4 md:pb-8">
+    <div className="flex flex-col mb-4 md:pb-8 gap-2">
       <ProductImage />
       {!hideDetails && (
         <>

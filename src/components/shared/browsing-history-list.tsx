@@ -72,13 +72,13 @@ export default function BrowsingHistoryList({
     return (
       <>
         {/* Related Products Section */}
-        <div className={cn("bg-white rounded-[8px] p-4 mb-4", className)}>
+        {/* <div className={cn("bg-white rounded-[8px] p-4 mb-4", className)}>
           <ProductList
             title="Related to items you've viewed"
             type="related"
             href="/recommended"
           />
-        </div>
+        </div> */}
 
         {/* Browsing History Section */}
         <div className={cn("bg-white rounded-[8px] p-4", className)}>

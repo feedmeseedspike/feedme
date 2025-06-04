@@ -76,6 +76,24 @@ const nextConfig = {
       },
       {
         protocol: "https",
+        hostname: "encrypted-tbn0.gstatic.com",
+        port: "",
+        pathname: "**/*",
+      },
+      {
+        protocol: "https",
+        hostname: "media.istockphoto.com",
+        port: "",
+        pathname: "**/*",
+      },
+      {
+        protocol: "https",
+        hostname: "penguinui.s3.amazonaws.com",
+        port: "",
+        pathname: "**/*",
+      },
+      {
+        protocol: "https",
         hostname: "placehold.co",
         port: "",
         pathname: "**/*",
@@ -83,6 +101,12 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "picsum.photos",
+        port: "",
+        pathname: "**/*",
+      },
+      {
+        protocol: "https",
+        hostname: "qafbcposwxopeoiuwyji.supabase.co",
         port: "",
         pathname: "**/*",
       },

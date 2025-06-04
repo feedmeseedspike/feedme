@@ -17,10 +17,11 @@ import { IUserSignIn } from "../../../types/index";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { UserSignInSchema } from "../../../lib/validator";
 import { isRedirectError } from "next/dist/client/components/redirect";
-import { signInUser } from "src/lib/actions/auth.actions";
 import Link from "next/link";
 import { useToast } from "src/hooks/useToast";
 import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
+import { signInMutation } from "src/queries/auth";
 
 const signInDefaultValues =
   process.env.NODE_ENV === "development"
@@ -36,7 +37,6 @@ const signInDefaultValues =
 export default function CredentialsSignInForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
-  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { showToast } = useToast();
   const router = useRouter();
@@ -48,28 +48,24 @@ export default function CredentialsSignInForm() {
 
   const { control, handleSubmit } = form;
 
+  const { mutateAsync, isLoading, error } = useMutation(signInMutation());
+
   const onSubmit = async (data: IUserSignIn) => {
-    setLoading(true);
     try {
-      const user = await signInUser({
+      await mutateAsync({
         email: data.email,
         password: data.password,
       });
-      // Show success toast
       showToast("Successfully signed in!", "success");
       router.push(callbackUrl);
-    } catch (error) {
-      // console.log(error);
+    } catch (error: any) {
       if (isRedirectError(error)) {
         throw error;
       }
-      // Show error toast
       showToast(
-        "Invalid credentials. Please check your email and password.",
+        error?.message || "An unexpected error occurred during sign in.",
         "error"
       );
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -131,9 +127,9 @@ export default function CredentialsSignInForm() {
             <Button
               className="w-full py-4 text-base bg-[#E0E0E0] text-zinc-600 ring-1 ring-zinc-400 font-semibold hover:bg-[#1B6013] transition-all ease-in-out hover:text-white hover:duration-500 flex items-center justify-center gap-2"
               type="submit"
-              disabled={loading}
+              disabled={isLoading}
             >
-              {loading && <Loader2 className="w-5 h-5 animate-spin" />}
+              {isLoading && <Loader2 className="w-5 h-5 animate-spin" />}
               Sign In
             </Button>
           </div>
