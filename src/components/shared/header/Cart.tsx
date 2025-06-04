@@ -30,7 +30,7 @@ import {
   usePrefetchCart,
   useCartSubscription,
 } from "src/queries/cart";
-import { CartItem, ProductOption } from "src/lib/actions/cart.actions";
+import { CartItem } from "src/lib/actions/cart.actions";
 import { formatNaira } from "src/lib/utils";
 import { Input } from "@components/ui/input";
 import Link from "next/link";
@@ -51,10 +51,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
   useCartSubscription(); // Subscribe to cart changes
 
   // Ensure items is always an array, even if cartItems is null or undefined initially
-  const items: CartItem[] = useMemo(
-    () => (cartItems || []) as CartItem[],
-    [cartItems]
-  ); // Explicitly type items as CartItem[]
+  const items: CartItem[] = useMemo(() => cartItems || [], [cartItems]); // Explicitly type items as CartItem[]
   // console.log("items here", items);
 
   // Group cart items by product and option for display
@@ -140,10 +137,9 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
           const itemsForMutation: ItemToUpdateMutation[] = items
             .map((cartItem) => {
               const priceToUse =
-                (cartItem.option as ProductOption | null)?.price !==
-                  undefined &&
-                (cartItem.option as ProductOption | null)?.price !== null
-                  ? (cartItem.option as ProductOption | null)?.price
+                cartItem.option?.price !== undefined &&
+                cartItem.option.price !== null
+                  ? cartItem.option.price
                   : cartItem.price || 0;
 
               return {
@@ -154,7 +150,6 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
                     ? newQuantity
                     : cartItem.quantity,
                 price: priceToUse,
-                bundle_id: cartItem.bundle_id, // Include bundle_id
               };
             })
             .filter((item) => item.quantity > 0);
@@ -185,29 +180,15 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
 
   const subtotal = useMemo(
     () =>
-      items.reduce((acc, item) => {
-        const itemPrice =
-          (item.option as ProductOption | null)?.price !== undefined &&
-          (item.option as ProductOption | null)?.price !== null
-            ? (item.option as ProductOption | null)?.price
-            : item.price || 0;
-
-        let priceToUse = itemPrice;
-
-        // Check if the item belongs to a bundle and get the bundle discount
-        if (
-          item.bundle_id &&
-          item.bundles &&
-          item.bundles.discount_percentage !== null &&
-          item.bundles.discount_percentage !== undefined
-        ) {
-          const discountPercentage = item.bundles.discount_percentage;
-          // Apply the discount
-          priceToUse = itemPrice * (1 - discountPercentage / 100);
-        }
-
-        return acc + priceToUse * item.quantity;
-      }, 0), // Add initial value 0
+      items.reduce(
+        (acc, item) =>
+          acc +
+          ((item.option?.price !== undefined && item.option.price !== null
+            ? item.option.price
+            : item.price) || 0) *
+            item.quantity,
+        0
+      ), // Add initial value 0
     [items]
   );
 
@@ -291,7 +272,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
                               width={64}
                               height={64}
                               src={
-                                (item.option as ProductOption | null)?.image ||
+                                item.option?.image ||
                                 item.products?.images?.[0] ||
                                 "/placeholder.png"
                               }
@@ -302,9 +283,9 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
                           <div className="flex flex-col gap-[6px] w-full">
                             <div className="flex justify-between">
                               {/* Product name is displayed above, here we can show option name */}
-                              {(item.option as ProductOption | null)?.name && (
+                              {item.option?.name && (
                                 <p className="h6-light !text-[14px]">
-                                  {(item.option as ProductOption | null)?.name}
+                                  {item.option.name}
                                 </p>
                               )}
                               <Trash2Icon
@@ -318,14 +299,12 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
                             <div className="flex justify-between items-center">
                               <p className="text-[#101828] font-bold">
                                 {formatNaira(
-                                  ((item.option as ProductOption | null)
-                                    ?.price !== undefined &&
-                                  (item.option as ProductOption | null)
-                                    ?.price !== null
-                                    ? (item.option as ProductOption | null)
-                                        ?.price
+                                  (item.option?.price !== undefined &&
+                                  item.option.price !== null
+                                    ? item.option.price
                                     : item.price) || 0
-                                )}
+                                )}{" "}
+                                {/* Use option price if available */}
                               </p>
                               <div className="flex items-center gap-2 sm:gap-4">
                                 <Button

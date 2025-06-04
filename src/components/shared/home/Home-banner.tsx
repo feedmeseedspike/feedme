@@ -18,12 +18,6 @@ const banners = [
     tag: "fresh-fruits",
     active: true,
   },
-  // {
-  //   id: 3,
-  //   imageUrl: "/placeholder-bundle-banner.png", // Replace with actual bundle banner image
-  //   tag: "bundles",
-  //   active: true,
-  // },
 ];
 
 const Banner = () => {

@@ -215,6 +215,24 @@ export async function uploadProductImage(file: File, bucketName: string = 'produ
   return publicUrlData.publicUrl;
 }
 
+export async function uploadOptionImage(file: File, bucketName: string = 'option-images') {
+  const fileExt = file.name.split('.').pop();
+  const filePath = `${Date.now()}.${fileExt}`;
+
+  const { data, error } = await supabase.storage
+    .from(bucketName)
+    .upload(filePath, file);
+
+  if (error) throw error;
+
+  // Get the public URL
+  const { data: publicUrlData } = supabase.storage
+    .from(bucketName)
+    .getPublicUrl(filePath);
+
+  return publicUrlData.publicUrl;
+}
+
 // Add a placeholder function for fetching a customer by ID
 export async function getCustomerById(customerId: number) {
   console.warn(`Fetching customer (user with role 'buyer') with ID: ${customerId}`);

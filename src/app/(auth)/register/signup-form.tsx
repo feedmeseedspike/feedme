@@ -73,22 +73,27 @@ export default function CredentialsSignUpForm() {
       });
 
       if (error) {
+        console.error("Supabase signup error:", error);
         showToast(error.message, "error");
+        setLoading(false); // Ensure loading is set to false on error
         return;
       }
 
+      console.log("Supabase signup successful:", signUpData);
+
       // Check if user requires email confirmation
-      if (signUpData.user && !signUpData.user.confirmed_at) {
-        showToast(
-          "Registration successful! Please check your email to confirm your account.",
-          "success"
-        );
-      } else {
-        showToast("Registration successful!", "success");
-      }
+      // if (signUpData.user && !signUpData.user.confirmed_at) {
+      //   showToast(
+      //     "Registration successful! Please check your email to confirm your account.",
+      //     "success"
+      //   );
+      // } else {
+      showToast("Registration successful!", "success");
+      // }
 
       router.push(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
     } catch (error: any) {
+      console.error("Catch block error during signup:", error);
       // This catch block might be less relevant with supabase.auth.signUp handling errors,
       // but keep it for unexpected issues.
       showToast(error?.message || "Registration failed", "error");

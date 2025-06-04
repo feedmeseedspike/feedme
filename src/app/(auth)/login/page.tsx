@@ -5,10 +5,31 @@ import CredentialsSignInForm from "src/app/(auth)/login/credentials-login-form";
 import Link from "next/link";
 import { getUser } from "src/lib/actions/auth.actions";
 import { redirect } from "next/navigation";
-import { PreloadResource } from "../preload-resources";
+import { PreloadResource, ReviewSlide } from "../preload-resources";
 import { signinWithGoogle } from "@utils/google-action";
 
 export const metadata = { title: "Sign In" };
+
+const reviews: ReviewSlide[] = [
+  {
+    imgSrc: "/loginBanner.jpeg",
+    review:
+      "Absolutely love this store! Fast shipping and the products are top quality. Will shop again!",
+    customer: "Emily R.",
+  },
+  {
+    imgSrc: "/loginBanner.jpeg",
+    review:
+      "Customer service was so helpful and my order arrived earlier than expected. Highly recommend!",
+    customer: "James T.",
+  },
+  {
+    imgSrc: "/loginBanner.jpeg",
+    review:
+      "Great selection and amazing prices. The checkout process was super easy, too!",
+    customer: "Priya S.",
+  },
+];
 
 const Signin = async (props: {
   searchParams: Promise<{
@@ -81,14 +102,7 @@ const Signin = async (props: {
 
       {/* Right Section (Image) */}
       <div className="hidden md:flex md:w-[40%] lg:w-[60%] h-screen">
-        <PreloadResource />
-        {/* <Image
-          src="/loginBanner.jpeg"
-          width={900}
-          height={900}
-          alt="loginbanner"
-          className="w-full h-full object-cove"
-        /> */}
+        <PreloadResource slides={reviews} />
       </div>
     </main>
   );

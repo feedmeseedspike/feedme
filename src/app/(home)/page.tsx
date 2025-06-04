@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import Banner from "@components/shared/home/Home-banner";
 // import { HomeCarousel } from "@components/shared/home/Home-carousel";
 import TopCategories from "@components/shared/home/TopCategories";
@@ -123,7 +125,7 @@ export default async function Home() {
                 <ProductSlider
                   title={"Fresh Fruits"}
                   href="/fresh-fruits"
-                  tag="fresh-fruits" 
+                  tag="fresh-fruits"
                   limit={10}
                 />
               </Suspense>
@@ -133,7 +135,7 @@ export default async function Home() {
                 <ProductSlider
                   title={"Fresh Vegetables"}
                   href="/fresh-vegetables"
-                  tag="fresh-vegetables" 
+                  tag="fresh-vegetables"
                 />
               </Suspense>
 

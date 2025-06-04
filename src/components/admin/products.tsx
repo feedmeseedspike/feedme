@@ -51,6 +51,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@components/ui/dialog";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Product() {
   const router = useRouter();
@@ -68,9 +69,6 @@ export default function Product() {
     searchParams.getAll("published") || []
   );
   const [showAllCategories, setShowAllCategories] = useState(false);
-  const [products, setProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<any>(null);
   const [totalProducts, setTotalProducts] = useState(0);
@@ -81,57 +79,57 @@ export default function Product() {
   const currentPage = Number(searchParams.get("page") || 1);
   const ITEMS_PER_PAGE = 10;
 
-  useEffect(() => {
-    setLoading(true);
-    const currentSearch = searchParams.get("search") || "";
-    const currentCategories = searchParams.getAll("category") || [];
-    const currentStock = searchParams.getAll("stock") || [];
-    const currentPublished = searchParams.getAll("published") || [];
-    const currentPageNumber = Number(searchParams.get("page") || 1);
-
-    const categoryFilter =
-      currentCategories.length > 0 ? currentCategories[0] : "";
-
-    const fetchProductsAndCategories = async () => {
-      try {
-        const { data, count } = await getProducts({
-          page: currentPageNumber,
-          limit: ITEMS_PER_PAGE,
-          search: currentSearch,
-          category: categoryFilter,
-        });
-        setProducts(data || []);
-        setTotalProducts(count || 0);
-        setLoading(false);
-
-        // Fetch category names for each product
-        const categoryIds = data
-          ?.map((p: any) => p.category_ids?.[0])
-          .filter(Boolean);
-        if (categoryIds && categoryIds.length > 0) {
-          const uniqueCategoryIds = [...new Set(categoryIds)];
-          const fetchedCategoryNames: Record<string, string> = {};
-          const fetchPromises = uniqueCategoryIds.map(async (id) => {
-            try {
-              const category = await getCategoryById(id);
-              if (category) {
-                fetchedCategoryNames[id] = category.title;
-              }
-            } catch (error) {
-              console.error(`Failed to fetch category with ID ${id}:`, error);
+  // Use TanStack Query for products
+  const {
+    data: productsData,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: [
+      "products",
+      currentPage,
+      search,
+      selectedCategories,
+      selectedStock,
+      selectedPublished,
+    ],
+    queryFn: async () => {
+      const categoryFilter =
+        selectedCategories.length > 0 ? selectedCategories[0] : "";
+      const { data, count } = await getProducts({
+        page: currentPage,
+        limit: ITEMS_PER_PAGE,
+        search,
+        category: categoryFilter,
+      });
+      setTotalProducts(count || 0);
+      // Fetch category names for each product
+      const categoryIds = data
+        ?.map((p: any) => p.category_ids?.[0])
+        .filter(Boolean);
+      if (categoryIds && categoryIds.length > 0) {
+        const uniqueCategoryIds = [...new Set(categoryIds)];
+        const fetchedCategoryNames: Record<string, string> = {};
+        const fetchPromises = uniqueCategoryIds.map(async (id) => {
+          try {
+            const category = await getCategoryById(id);
+            if (category) {
+              fetchedCategoryNames[id] = category.title;
             }
-          });
-          await Promise.all(fetchPromises);
-          setCategoryNames((prev) => ({ ...prev, ...fetchedCategoryNames }));
-        }
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch products");
-        setLoading(false);
+          } catch (error) {
+            console.error(`Failed to fetch category with ID ${id}:`, error);
+          }
+        });
+        await Promise.all(fetchPromises);
+        setCategoryNames((prev) => ({ ...prev, ...fetchedCategoryNames }));
       }
-    };
+      return data || [];
+    },
+    placeholderData: (prev) => prev,
+  });
 
-    fetchProductsAndCategories();
-  }, [searchParams]);
+  const products = productsData || [];
 
   const categories = [
     "Pepper",
@@ -186,36 +184,10 @@ export default function Product() {
 
   const handleDeleteConfirm = async () => {
     if (!productToDelete) return;
-    console.log("Confirming deletion for product:", productToDelete);
     try {
       await deleteProduct(productToDelete.id);
       showToast("Product deleted successfully!", "success");
-
-      // Refetch products after deletion
-      console.log("Refetching products after deletion...");
-      const currentSearch = searchParams.get("search") || "";
-      const currentCategories = searchParams.getAll("category") || [];
-      const currentStock = searchParams.getAll("stock") || [];
-      const currentPublished = searchParams.getAll("published") || [];
-      const currentPageNumber = Number(searchParams.get("page") || 1);
-      const categoryFilter =
-        currentCategories.length > 0 ? currentCategories[0] : "";
-
-      getProducts({
-        page: currentPageNumber,
-        limit: ITEMS_PER_PAGE,
-        search: currentSearch,
-        category: categoryFilter,
-      })
-        .then(({ data, count }) => {
-          setProducts(data || []);
-          setTotalProducts(count || 0);
-          setLoading(false);
-        })
-        .catch((err) => {
-          setError(err.message || "Failed to fetch products");
-          setLoading(false);
-        });
+      await refetch();
     } catch (err: any) {
       showToast(err.message || "Failed to delete product", "error");
     }
@@ -225,8 +197,12 @@ export default function Product() {
 
   const totalPages = Math.ceil(totalProducts / ITEMS_PER_PAGE);
 
-  if (loading) return <div className="p-4">Loading products...</div>;
-  if (error) return <div className="p-4 text-red-500">{error}</div>;
+  if (error)
+    return (
+      <div className="p-4 text-red-500">
+        {(error as any).message || "Failed to fetch products"}
+      </div>
+    );
 
   return (
     <div className="p-4">
@@ -435,77 +411,111 @@ export default function Product() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {products.map((product) => (
-              <TableRow key={product.id}>
-                <TableCell>
-                  {product.images?.[0]?.url && (
-                    <Image
-                      src={product.images[0].url}
-                      alt={product.name}
-                      width={60}
-                      height={60}
-                      className="rounded-md object-cover"
-                    />
-                  )}
-                </TableCell>
-                <TableCell className="font-medium">
-                  <Link
-                    href={`/admin/products/view/${product.id}`}
-                    className="hover:underline text-blue-600"
-                  >
-                    {product.name}
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  {categoryNames[product.category_ids?.[0]] || "N/A"}
-                </TableCell>
-                <TableCell>{formatNaira(product.price)}</TableCell>
-                <TableCell>
-                  <Badge
-                    className={
-                      product.stock_status === "In stock"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-orange-100 text-orange-800"
-                    }
-                  >
-                    {product.stock_status || "N/A"}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    className={
-                      product.is_published
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-700"
-                    }
-                  >
-                    {product.is_published ? "Published" : "Archived"}
-                  </Badge>
-                </TableCell>
-                <TableCell className="flex items-center gap-2">
-                  <Link href={`/admin/products/edit/${product.id}`}>
-                    <Button variant="outline" size="icon">
-                      <BiEdit size={16} />
+            {isLoading ? (
+              Array.from({ length: ITEMS_PER_PAGE }).map((_, idx) => (
+                <TableRow key={idx}>
+                  <TableCell>
+                    <div className="h-10 w-10 rounded bg-gray-200"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-24"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-20"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-16"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-16"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-16"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-5 w-5 rounded bg-gray-200 ml-auto"></div>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : products && products.length > 0 ? (
+              products.map((product) => (
+                <TableRow key={product.id}>
+                  <TableCell>
+                    {product.images?.[0] && (
+                      <Image
+                        src={product.images[0]}
+                        alt={product.name}
+                        width={60}
+                        height={60}
+                        className="rounded-md object-cover"
+                      />
+                    )}
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    <Link
+                      href={`/admin/products/view/${product.id}`}
+                      className="hover:underline text-blue-600"
+                    >
+                      {product.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell>
+                    {categoryNames[product.category_ids?.[0]] || "N/A"}
+                  </TableCell>
+                  <TableCell>{formatNaira(product.price)}</TableCell>
+                  <TableCell>
+                    <Badge
+                      className={
+                        product.stock_status === "In stock"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-orange-100 text-orange-800"
+                      }
+                    >
+                      {product.stock_status || "N/A"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      className={
+                        product.is_published
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-700"
+                      }
+                    >
+                      {product.is_published ? "Published" : "Archived"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="flex items-center gap-2">
+                    <Link href={`/admin/products/edit/${product.id}`}>
+                      <Button variant="outline" size="icon">
+                        <BiEdit size={16} />
+                      </Button>
+                    </Link>
+                    <Link
+                      href={`/product/${product.slug || product.id}`}
+                      target="_blank"
+                    >
+                      <Button variant="outline" size="icon">
+                        <Eye size={16} />
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleDeleteClick(product)}
+                    >
+                      <Trash2 size={16} />
                     </Button>
-                  </Link>
-                  <Link
-                    href={`/product/${product.slug || product.id}`}
-                    target="_blank"
-                  >
-                    <Button variant="outline" size="icon">
-                      <Eye size={16} />
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handleDeleteClick(product)}
-                  >
-                    <Trash2 size={16} />
-                  </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8">
+                  No products found.
                 </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </div>

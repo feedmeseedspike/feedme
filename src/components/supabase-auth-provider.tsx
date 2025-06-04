@@ -35,7 +35,7 @@ export function SupabaseAuthProvider({
     const { data } = supabase.auth.onAuthStateChange(
       (event: AuthChangeEvent, session: Session | null) => {
         setSession(session);
-        if (event === "SIGNED_IN") {
+        if (event === "SIGNED_IN" && session) {
           // Check if there's a 'code' parameter in the URL after sign-in
           const currentUrl = new URL(window.location.href);
           if (currentUrl.searchParams.has("code")) {
@@ -77,3 +77,4 @@ export const useSupabaseSession = () => {
   }
   return context.session;
 };
+

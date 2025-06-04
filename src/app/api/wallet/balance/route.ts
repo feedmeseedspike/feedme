@@ -12,7 +12,7 @@ export const GET = authMiddleware(async (request: Request, user_id: string) => {
     if (walletError || !wallet) {
       return NextResponse.json(
         { message: "Wallet not found" },
-        { status: 201 }
+        { status: 404 }
       );
     }
 

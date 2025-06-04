@@ -22,7 +22,6 @@ import {
   UpdateCartItemsFailure,
   updateCartItems,
   ProductOption,
-  ItemToUpdate,
 } from "src/lib/actions/cart.actions";
 
 // Import Tables and Json types from database.types.ts
@@ -58,10 +57,9 @@ export const useCartQuery = () => {
 // Define the structure of items for the update mutation
 export interface ItemToUpdateMutation {
   product_id: string;
-  option: Json | null; // Use Json | null to match server action
+  option: ProductOption | null; // Change from Json to ProductOption
   quantity: number;
   price: number;
-  bundle_id?: string | null; // Add optional bundle_id
 }
 
 // Hook to update the entire cart
@@ -70,15 +68,10 @@ export const useUpdateCartMutation = () => {
   return useMutation<
     UpdateCartItemsSuccess | UpdateCartItemsFailure,
     Error,
-    ItemToUpdateMutation[], // Input type for mutate
+    ItemToUpdateMutation[],
     { previousCart: CartItem[] | undefined }
   >({
-    mutationFn: (items: ItemToUpdateMutation[]) => {
-      // Transform ItemToUpdateMutation[] to ItemToUpdate[] for the server action
-      // No transformation needed if ItemToUpdateMutation matches ItemToUpdate
-      const itemsForServer: ItemToUpdate[] = items as ItemToUpdate[];
-      return updateCartItems(items as ItemToUpdate[]); // Cast directly as types should now match
-    },
+    mutationFn: (items) => updateCartItems(items),
     onMutate: async (newItems) => {
       await queryClient.cancelQueries({ queryKey: cartQueryKey });
       const previousCart = queryClient.getQueryData<CartItem[]>(cartQueryKey);
@@ -87,13 +80,11 @@ export const useUpdateCartMutation = () => {
         id: 'temp-' + Math.random().toString(36).substr(2, 9),
         product_id: item.product_id || null,
         quantity: item.quantity,
-        option: item.option as any, // Cast option to any for optimistic update to match expected Json structure
+        option: item.option as ProductOption | null,
         price: item.price || null,
         cart_id: null,
         created_at: null,
         products: null,
-        bundle_id: item.bundle_id || null, // Include bundle_id
-        bundles: null, // Set bundles to null for optimistic update
       }));
 
       queryClient.setQueryData<CartItem[]>(cartQueryKey, optimisticCart);

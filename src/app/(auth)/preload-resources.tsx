@@ -3,33 +3,13 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 
-const slides = [
-  {
-    imgSrc: "/loginBanner.jpeg",
-    imgAlt:
-      "Vibrant abstract painting with swirling blue and light pink hues on a canvas.",
-    title: "Front end developers",
-    description:
-      "The architects of the digital world, constantly battling against their mortal enemy – browser compatibility.",
-  },
-  {
-    imgSrc: "/loginBanner.jpeg",
-    imgAlt:
-      "Vibrant abstract painting with swirling red, yellow, and pink hues on a canvas.",
-    title: "Back end developers",
-    description:
-      "Because not all superheroes wear capes, some wear headphones and stare at terminal screens",
-  },
-  {
-    imgSrc: "/loginBanner.jpeg",
-    imgAlt:
-      "Vibrant abstract painting with swirling blue and purple hues on a canvas.",
-    title: "Full stack developers",
-    description: 'Where "burnout" is just a fancy term for "Tuesday".',
-  },
-];
+export type ReviewSlide = {
+  imgSrc: string;
+  review: string;
+  customer: string;
+};
 
-export const PreloadResource = () => {
+export const PreloadResource = ({ slides }: { slides: ReviewSlide[] }) => {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(1);
   const [isPaused, setIsPaused] = useState(false);
   const autoplayIntervalTime = 4000;
@@ -44,7 +24,7 @@ export const PreloadResource = () => {
     }
 
     return () => clearInterval(interval);
-  }, [isPaused]);
+  }, [isPaused, slides.length]);
 
   const handlePrevious = () => {
     setCurrentSlideIndex((prev) => (prev > 1 ? prev - 1 : slides.length));
@@ -69,19 +49,18 @@ export const PreloadResource = () => {
               currentSlideIndex === index + 1 ? "opacity-100" : "opacity-0"
             }`}
           >
-            {/* Title and description */}
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-end gap-2 bg-gradient-to-t from-neutral-950/85 to-transparent px-16 py-12 text-center">
-              <h3 className="w-full lg:w-[80%] text-balance text-2xl lg:text-3xl font-bold text-white">
-                {slide.title}
-              </h3>
-              <p className="lg:w-1/2 w-full text-pretty text-sm text-neutral-300">
-                {slide.description}
+            {/* Review and customer name */}
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-end gap-4 bg-gradient-to-t from-neutral-950/85 to-transparent px-16 py-12 text-center">
+              <p className="lg:w-1/2 w-full text-pretty text-lg text-neutral-100 italic">
+                “{slide.review}”
               </p>
+              <span className="text-neutral-300 text-sm font-semibold">
+                - {slide.customer}
+              </span>
             </div>
-
             <Image
               src={slide.imgSrc}
-              alt={slide.imgAlt}
+              alt="Customer review background"
               fill
               className="object-cover"
               priority={index === 0}

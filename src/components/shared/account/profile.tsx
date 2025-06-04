@@ -108,7 +108,7 @@ const Profile = ({ user }: AppSidebarProps) => {
     <div className="min-h-screen p-4 md:p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header Card */}
-        <Card className="overflow-hidden border-0 shadow-lg bg-[#1B6013]">
+        {/* <Card className="overflow-hidden border-0 shadow-lg bg-[#1B6013]">
           <CardContent className="p-6 md:p-8">
             <div className="flex flex-col md:flex-row items-center gap-6">
               <div className="relative group">
@@ -150,7 +150,7 @@ const Profile = ({ user }: AppSidebarProps) => {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Profile Form Card */}
         <Card className="border-0 shadow-lg">

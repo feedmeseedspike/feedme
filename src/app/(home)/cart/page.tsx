@@ -162,28 +162,15 @@ const CartPage = () => {
 
   const subtotal = useMemo(
     () =>
-      items.reduce((acc, item) => {
-        const itemPrice =
-          item.option?.price !== undefined && item.option.price !== null
+      items.reduce(
+        (acc, item) =>
+          acc +
+          ((item.option?.price !== undefined && item.option.price !== null
             ? item.option.price
-            : item.price || 0;
-
-        let priceToUse = itemPrice;
-
-        // Check if the item belongs to a bundle and get the bundle discount
-        if (
-          item.bundle_id &&
-          item.bundles &&
-          item.bundles.discount_percentage !== null &&
-          item.bundles.discount_percentage !== undefined
-        ) {
-          const discountPercentage = item.bundles.discount_percentage;
-          // Apply the discount
-          priceToUse = itemPrice * (1 - discountPercentage / 100);
-        }
-
-        return acc + priceToUse * item.quantity;
-      }, 0),
+            : item.price) || 0) *
+            item.quantity,
+        0
+      ),
     [items]
   );
 
@@ -261,68 +248,64 @@ const CartPage = () => {
                                   "/placeholder.png"
                                 }
                                 alt={item.products?.name || "Product image"}
-                                width={64}
-                                height={64}
-                                className="object-cover rounded-md"
+                                fill
+                                className="object-cover rounded-lg"
                               />
                             </Link>
-                            <div className="flex-1">
-                              <p className="font-semibold">
-                                {item.products?.name}
-                                {/* Display bundle info if item belongs to a bundle */}
-                                {item.bundle_id && item.bundles ? (
-                                  <Badge variant="secondary" className="ml-2">
-                                    Part of &quot;{item.bundles.name}&quot; (
-                                    {item.bundles.discount_percentage}% off)
-                                  </Badge>
-                                ) : null}
-                              </p>
-                              {/* Display selected option details if any */}
-                              {item.option?.name && (
-                                <p className="text-sm text-gray-600">
-                                  {item.option.name}
-                                </p>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {/* Display price, applying bundle discount if applicable */}
-                              <p className="font-semibold">
-                                {(() => {
-                                  const itemPrice =
-                                    item.option?.price !== undefined &&
+
+                            <div className="flex-grow flex justify-between items-center">
+                              <div className="flex flex-col">
+                                {item.option?.name && (
+                                  <p className="font-medium text-lg">
+                                    {item.option.name}
+                                  </p>
+                                )}
+
+                                <div className="text-sm font-semibold mt-1">
+                                  {formatNaira(
+                                    (item.option?.price !== undefined &&
                                     item.option.price !== null
                                       ? item.option.price
-                                      : item.price || 0;
+                                      : item.price) || 0
+                                  )}
+                                </div>
+                              </div>
 
-                                  let priceToDisplay = itemPrice;
-
-                                  if (
-                                    item.bundle_id &&
-                                    item.bundles &&
-                                    item.bundles.discount_percentage !== null &&
-                                    item.bundles.discount_percentage !==
-                                      undefined
-                                  ) {
-                                    const discountPercentage =
-                                      item.bundles.discount_percentage;
-                                    priceToDisplay =
-                                      itemPrice *
-                                      (1 - discountPercentage / 100);
-                                  }
-
-                                  return formatNaira(
-                                    priceToDisplay * item.quantity
-                                  );
-                                })()}
-                              </p>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="rounded-full p-1 size-7"
-                                onClick={() => handleRemoveItem(item)}
-                              >
-                                <Trash2Icon className="h-4 w-4" />
-                              </Button>
+                              <div className="flex gap-2 items-center">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="size-8 rounded-full border p-3 border-gray-600"
+                                  onClick={() => handleRemoveItem(item)}
+                                >
+                                  <Trash2Icon className="h-4 w-4" />
+                                </Button>
+                                <div className="flex items-center rounded-full border border-gray-300">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-8 !border-none !bg-transparent !shadow-transparent"
+                                    onClick={() =>
+                                      handleQuantityChange(item, false)
+                                    }
+                                  >
+                                    <AiOutlineMinus className="size-2" />
+                                  </Button>
+                                  <span className="w-6 text-center">
+                                    {item.quantity}
+                                  </span>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-8 !border-none !bg-transparent !shadow-transparent"
+                                    onClick={() =>
+                                      handleQuantityChange(item, true)
+                                    }
+                                  >
+                                    <AiOutlinePlus className="size-2" />
+                                  </Button>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         )
