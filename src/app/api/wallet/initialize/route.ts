@@ -33,7 +33,7 @@ export const POST = authMiddleware(
       }
 
       // Initialize Paystack transaction
-      const callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/payment-callback`;
+      const callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL!}/account/wallet/success`;
       const transactionData = await paystack.initializeTransaction({
         email,
         amount,
