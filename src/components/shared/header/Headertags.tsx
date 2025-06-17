@@ -1,32 +1,86 @@
 "use client";
 
-import Container from '@components/shared/Container';
-import Link from 'next/link';
-import React, { useState } from 'react';
-import { headerMenus } from 'src/lib/data';
-import { motion } from "framer-motion";
+import Container from "@components/shared/Container";
+import Link from "next/link";
+import React from "react";
+import { headerMenus } from "src/lib/data";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@components/ui/dropdown-menu";
+import { ChevronDown, Menu } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { getAllCategoriesQuery } from "src/queries/categories";
+import { createClient } from "src/utils/supabase/client";
+import { toSlug } from "src/lib/utils";
+
+interface Category {
+  id: string;
+  title: string;
+}
 
 const Headertags = () => {
+  const supabase = createClient();
+  const {
+    data: categories,
+    isLoading,
+    error,
+  } = useQuery<Category[]>({
+    queryKey: ["allCategories"],
+    queryFn: async () => {
+      const { data, error } = await getAllCategoriesQuery(supabase).select(
+        "id, title"
+      );
+      if (error) throw error;
+      return data as Category[];
+    },
+    staleTime: Infinity,
+  });
+
   return (
     <div className="bg-white">
       <Container>
         <div className="py-2 flex items-center gap-x-2 whitespace-nowrap scrollbar-hide w-full">
+          {/* Categories Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger className="flex items-center gap-1 text-sm h-7 rounded-md hover:bg-gray-100 transition-colors cursor-pointer">
+              <Menu className="h-4 w-4" />
+              Categories
+              {/* <ChevronDown className="h-4 w-4 text-gray-500" /> */}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-48 bg-white shadow-lg rounded-md p-1">
+              {isLoading && (
+                <DropdownMenuItem>Loading categories...</DropdownMenuItem>
+              )}
+              {error && (
+                <DropdownMenuItem className="text-red-500">
+                  Error loading categories
+                </DropdownMenuItem>
+              )}
+              {categories?.map((category) => (
+                <Link
+                  href={`/category/${toSlug(category.title)}`}
+                  key={category.id}
+                >
+                  <DropdownMenuItem className="cursor-pointer hover:bg-gray-50 py-2 px-3 text-sm rounded-sm">
+                    {category.title}
+                  </DropdownMenuItem>
+                </Link>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <div className="border-l h-7 rounded" />
-          <div className="flex items-center text-[14px] gap-3 overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide w-full">
+          <div className="flex items-center text-[14px] gap-3 overflow-x-auto whitespace-nowrap scrollbar-hide w-full overflow-visible">
             {headerMenus.map((menu) => (
               <Link
                 href={menu.href}
                 key={menu.href}
-                className="header-button !p-2 relative group"
+                className="relative inline-block after:content-[''] after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:origin-bottom-right after:scale-x-0 after:bg-[#1B6013] after:transition-transform after:duration-300 after:ease-[cubic-bezier(0.65_0.05_0.36_1)] hover:after:origin-bottom-left hover:after:scale-x-100"
               >
                 {menu.name}
-                <motion.span
-                  initial={{ scaleX: 0 }}
-                  whileHover={{ scaleX: 1 }}
-                  className="absolute -bottom-1 left-0 right-0 h-0.5 origin-left bg-red-900"
-                  style={{ transformOrigin: 'left center' }}
-                  transition={{ duration: 0.3, ease: "easeOut" }}
-                />
               </Link>
             ))}
           </div>

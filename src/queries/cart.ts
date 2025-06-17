@@ -39,10 +39,8 @@ export const useCartQuery = () => {
     queryFn: async () => {
       const result = await getCart();
       if (!result.success) {
-        console.error('Failed to fetch cart:', result.error);
-        // Depending on desired behavior, you might throw an error
-        // or return an empty array. Returning empty array for a smooth UI.
-        return []; 
+        console.error('useCartQuery: Failed to fetch cart:', result.error);
+        return [];
       }
       return result.data;
     },
@@ -56,10 +54,11 @@ export const useCartQuery = () => {
 
 // Define the structure of items for the update mutation
 export interface ItemToUpdateMutation {
-  product_id: string;
-  option: ProductOption | null; // Change from Json to ProductOption
+  product_id?: string | null; // Make optional and allow null
+  bundle_id?: string | null; // Add optional bundle_id
+  option?: Json | null; // Changed to Json | null (removed undefined possibility)
   quantity: number;
-  price: number;
+  price?: number | null; // Make optional
 }
 
 // Hook to update the entire cart
@@ -71,31 +70,43 @@ export const useUpdateCartMutation = () => {
     ItemToUpdateMutation[],
     { previousCart: CartItem[] | undefined }
   >({
-    mutationFn: (items) => updateCartItems(items),
+    mutationFn: (items) => {
+      return updateCartItems(items);
+    },
     onMutate: async (newItems) => {
       await queryClient.cancelQueries({ queryKey: cartQueryKey });
       const previousCart = queryClient.getQueryData<CartItem[]>(cartQueryKey);
 
-      const optimisticCart = newItems.map((item: ItemToUpdateMutation): CartItem => ({
+      const optimisticNewItems: CartItem[] = newItems.map((item: ItemToUpdateMutation): CartItem => ({
         id: 'temp-' + Math.random().toString(36).substr(2, 9),
         product_id: item.product_id || null,
+        bundle_id: item.bundle_id || null,
         quantity: item.quantity,
-        option: item.option as ProductOption | null,
+        option: item.option === undefined ? null : item.option,
         price: item.price || null,
         cart_id: null,
         created_at: null,
-        products: null,
+        products: previousCart?.find(p => p.product_id === item.product_id)?.products || null,
+        bundles: previousCart?.find(b => b.bundle_id === item.bundle_id)?.bundles || null,
       }));
 
-      queryClient.setQueryData<CartItem[]>(cartQueryKey, optimisticCart);
+      // Merge new items with previous cart, avoiding duplicates for existing product/bundle combinations
+      const updatedCart = (previousCart || []).filter(existingItem => 
+        !optimisticNewItems.some(newItem => 
+          (newItem.product_id && newItem.product_id === existingItem.product_id && JSON.stringify(newItem.option) === JSON.stringify(existingItem.option)) ||
+          (newItem.bundle_id && newItem.bundle_id === existingItem.bundle_id)
+        )
+      ).concat(optimisticNewItems);
+
+      queryClient.setQueryData<CartItem[]>(cartQueryKey, updatedCart);
       return { previousCart };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       // Invalidate the cart query to refetch and get the correct state from the server
       queryClient.invalidateQueries({ queryKey: cartQueryKey });
     },
     onError: (error, variables, context) => {
-      console.error('Failed to update cart, rolling back:', error);
+      console.error('useUpdateCartMutation: Failed to update cart, rolling back:', error);
       // Rollback to the previous state on error
       if (context?.previousCart) {
         queryClient.setQueryData<CartItem[]>(cartQueryKey, context.previousCart);

@@ -18,7 +18,6 @@ const calculateItemsPrice = (items: OrderItem[]) => {
 const initialState: Cart = {
   items: [],
   itemsPrice: 0,
-  taxPrice: undefined,
   shippingPrice: undefined,
   totalPrice: 0,
   paymentMethod: undefined,
@@ -132,7 +131,6 @@ const cartSlice = createSlice({
     clearCart: (state) => {
       state.items = [];
       state.itemsPrice = 0;
-      state.taxPrice = undefined;
       state.shippingPrice = undefined;
       state.totalPrice = 0;
       localStorage.removeItem("cart");

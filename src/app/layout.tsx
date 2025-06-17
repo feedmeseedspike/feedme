@@ -10,9 +10,20 @@ import { ToastProvider } from "src/hooks/useToast";
 import CartMergeProvider from "@providers/CartMergeProvider";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
-import { SupabaseAuthProvider } from "@components/supabase-auth-provider";
+import { SupabaseAuthProvider } from "../components/supabase-auth-provider";
 import { ReactQueryClientProvider } from "@providers/ReactQueryClientProvider";
-import WhatsAppButton from "@components/WhatsAppButton";
+import { createClient as createServerSupabaseClient } from "@utils/supabase/server";
+import { User, Session } from "@supabase/supabase-js";
+import { PathnameProvider } from "@components/shared/pathname-provider";
+import { getReferralStatus } from "@/queries/referrals";
+
+const DynamicReferralBanner = dynamic(
+  () => import("@components/shared/ReferralBanner"),
+  {
+    ssr: false,
+    loading: () => null,
+  }
+);
 
 const proxima = localFont({
   src: [
@@ -32,10 +43,10 @@ const proxima = localFont({
 const inter = Inter({ subsets: ["latin"] });
 
 // Lazy load non-critical components
-const TawkToWidget = dynamic(() => import("@components/shared/TawkToWidget"), {
-  ssr: false,
-  loading: () => null,
-});
+// const TawkToWidget = dynamic(() => import("@components/shared/TawkToWidget"), {
+//   ssr: false,
+//   loading: () => null,
+// });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://feedme.seedspikeafrica.com/"),
@@ -78,6 +89,64 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const supabase = createServerSupabaseClient();
+
+  const { data: userData, error: authError } = await supabase.auth.getUser();
+  const { data: sessionData, error: sessionError } =
+    await supabase.auth.getSession();
+
+  const authenticatedUser: User | null = userData.user;
+  const authenticatedSession: Session | null = sessionData.session || null;
+
+  let user = null;
+  let session = authenticatedSession;
+  let hasReferralStatus = false;
+
+  if (authenticatedUser) {
+    const { data: userProfile, error: profileError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", authenticatedUser.id)
+      .single();
+
+    if (profileError) {
+      console.error(
+        "RootLayout: Error fetching user profile on server:",
+        profileError
+      );
+    } else {
+      user = userProfile;
+    }
+
+    // Fetch referral status
+    const { data: referralData, message: referralMessage } =
+      await getReferralStatus();
+    if (referralData) {
+      hasReferralStatus = true;
+    }
+  }
+
+  if (authError) {
+    console.error(
+      "RootLayout: Error fetching authenticated user/session on server:",
+      authError
+    );
+    console.log(
+      "RootLayout: Auth error details:",
+      authError.message,
+      authError.stack
+    );
+    session = null;
+    user = null;
+  } else if (sessionError) {
+    console.error(
+      "RootLayout: Error fetching session on server:",
+      sessionError
+    );
+
+    session = null;
+  }
+
   return (
     <html lang="en" className={proxima.variable}>
       <body className="font-custom">
@@ -87,8 +156,15 @@ export default async function RootLayout({
             <ReduxProvider>
               <ToastProvider>
                 <CartMergeProvider>
-                  <SupabaseAuthProvider>
-                    <CustomScrollbar>{children}</CustomScrollbar>
+                  <SupabaseAuthProvider
+                    initialSession={session}
+                    initialUser={user}
+                  >
+                    <CustomScrollbar>
+                      <PathnameProvider hasReferralStatus={hasReferralStatus}>
+                        {children}
+                      </PathnameProvider>
+                    </CustomScrollbar>
                   </SupabaseAuthProvider>
                 </CartMergeProvider>
               </ToastProvider>
@@ -98,10 +174,6 @@ export default async function RootLayout({
             </ReduxProvider>
           </ReactQueryClientProvider>
         </LocationProvider>
-        <WhatsAppButton
-          phoneNumber="+2348144602273"
-          message="Hello! I have a question about your products."
-        />
       </body>
     </html>
   );

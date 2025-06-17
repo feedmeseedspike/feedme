@@ -4,11 +4,15 @@ import { Suspense } from "react";
 
 import Pagination from "@components/shared/pagination";
 import {
-  getAllProducts,
+  getProductsServer,
   getAllTags,
 } from "../../../../lib/actions/product.actions";
 import ProductSortSelector from "@components/shared/product/product-sort-selector";
-import { getFilterUrl, toSlug } from "../../../../lib/utils";
+import {
+  getFilterUrl,
+  toSlug,
+  mapSupabaseProductToIProductInput,
+} from "../../../../lib/utils";
 
 import Container from "@components/shared/Container";
 import ProductdetailsCard from "@components/shared/product/productDetails-card";
@@ -17,6 +21,9 @@ import { ProductSkeletonGrid } from "@components/shared/product/product-skeleton
 import CustomBreadcrumb from "@components/shared/breadcrumb";
 import ErrorBoundary from "@components/shared/ErrorBoundary";
 import { getAllCategories } from "src/lib/api";
+import { Tables } from "../../../../utils/database.types"; // Corrected import path
+
+type Product = Tables<"products">;
 
 const sortOrders = [
   { value: "price-low-to-high", name: "Price: Low to high" },
@@ -74,13 +81,15 @@ async function CategoryContent({
   categoryName,
   sort,
   page,
+  allCategories, // Added allCategories prop
 }: {
   categoryId: string;
   categoryName: string;
   sort: string;
   page: string;
+  allCategories: any[]; // Assuming CategoryData[] type
 }) {
-  const data = await getAllProducts({
+  const data = await getProductsServer({
     category: categoryId,
     page: Number(page),
     sort,
@@ -99,8 +108,14 @@ async function CategoryContent({
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-5">
-          {data.products.map((product) => (
-            <ProductdetailsCard key={product._id} product={product} />
+          {data.products.map((product: Product) => (
+            <ProductdetailsCard
+              key={product.id}
+              product={mapSupabaseProductToIProductInput(
+                product,
+                allCategories
+              )}
+            />
           ))}
         </div>
       )}
@@ -135,9 +150,9 @@ export default async function CategoryPage({
   if (!categoryObj) {
     return (
       <main>
-         <div className="bg-white py-4">
+        <div className="bg-white py-4">
           <Container>
-          <CustomBreadcrumb hideCategorySegment={true} />
+            <CustomBreadcrumb hideCategorySegment={true} />
           </Container>
         </div>
         <Container className="py-8">
@@ -164,7 +179,7 @@ export default async function CategoryPage({
       <div className="md:border-b shadow-sm">
         <div className="bg-white py-4">
           <Container>
-          <CustomBreadcrumb hideCategorySegment={true} />
+            <CustomBreadcrumb hideCategorySegment={true} />
           </Container>
         </div>
         <Container>
@@ -195,6 +210,7 @@ export default async function CategoryPage({
               categoryName={categoryName}
               sort={sort}
               page={page}
+              allCategories={allCategories}
             />
           </Suspense>
         </ErrorBoundary>

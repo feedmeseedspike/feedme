@@ -11,6 +11,7 @@ import {
   UserSignUpSchema,
 } from '../lib/validator'
 import { z } from 'zod'
+import { CartItem } from 'src/lib/actions/cart.actions'
 
 export type IReviewInput = z.infer<typeof ReviewInputSchema>
 export type IReviewDetails = IReviewInput & {
@@ -20,7 +21,9 @@ export type IReviewDetails = IReviewInput & {
     name: string
   }
 }
-export type IProductInput = z.infer<typeof ProductInputSchema>
+export type IProductInput = z.infer<typeof ProductInputSchema> & {
+  bundleId?: string;
+}
 export type OrderItem = z.infer<typeof OrderItemSchema>
 export type Options = z.infer<typeof OptionSchema>
 export type Cart = z.infer<typeof CartSchema>
@@ -74,5 +77,23 @@ export type PublicUserData = {
   status: string;
   address: string | null;
   created_at: string;
+  birthday: string | null;
+  favorite_fruit: string | null;
 };
+
+export interface Purchase {
+  id: string;
+  userId: string;
+  cartItems: CartItem[];
+  shippingAddress: ShippingAddress;
+  totalAmount: number;
+  totalAmountPaid: number;
+  deliveryFee: number;
+  local_government: string;
+  voucherCode?: string;
+  paymentMethod: string;
+  transactionId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 

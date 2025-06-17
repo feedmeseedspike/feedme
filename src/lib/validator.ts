@@ -80,15 +80,16 @@ export const OptionSchema = z.object({
     required_error: "Stock status is required",
   }).optional(),
   image: z.union([
-    z.instanceof(File, { message: "Image is required" })
+    z.instanceof(File, { message: "Image must be a File" })
       .refine((file) => file.size <= 5 * 1024 * 1024, {
         message: "Image must be less than 5MB",
       })
       .refine((file) => file.type.startsWith("image/"), {
         message: "Only image files are allowed",
       }),
-    z.string().url("Invalid image URL")
-  ]),
+    z.string().url("Invalid image URL"),
+    z.null() // Allow null
+  ]).optional(), // Make the image field optional
 });
 
 export type OptionType = z.infer<typeof OptionSchema>;
@@ -120,9 +121,9 @@ export const OrderItemSchema = z.object({
 });
 
 export const ShippingAddressSchema = z.object({
-  fullName: z.string().min(2, "Full name must be at least 2 characters"),
-  street: z.string().min(5, "Street address must be at least 5 characters"),
-  location: z.string().min(1, "Please select a location"),
+  fullName: z.string().trim().min(2, "Full name must be at least 2 characters"),
+  street: z.string().trim().min(5, "Street address must be at least 5 characters"),
+  location: z.string().trim().min(1, "Please select a location"),
   phone: z.string().regex(/^\+?[1-9]\d{1,14}$/, "Please enter a valid phone number"),
 });
 
@@ -134,7 +135,6 @@ export const CartSchema = z.object({
     .array(OrderItemSchema)
     .min(1, 'Order must contain at least one item'),
   itemsPrice: z.number(),
-  taxPrice: z.optional(z.number()),
   shippingPrice: z.optional(z.number()),
   totalPrice: z.number(),
   paymentMethod: z.optional(z.string()),
@@ -154,15 +154,19 @@ export const ProductInputSchema = z.object({
   slug: z.string().min(3, "Slug must be at least 3 characters"),
   category: array(z.string()),
   images: z
-    .array(z.string().url("Invalid image URL"))
-    .min(1, "At least one image is required"),
+    .array(z.union([
+        z.string(),
+        z.object({ url: z.string() })
+    ]))
+    .min(0, "Images field must be an array") // Allow empty array initially
+    .optional(), // Allow the entire images field to be optional
   tags: z.array(z.string()).default([]),
   is_published: z.boolean(),
   price: Price("Price"),
   list_price: Price("List price"),
   stockStatus: z.any().optional(),
   brand: z.string().min(1, "Brand is required"),
-  vendor: VendorReferenceSchema, // Standardized vendor reference
+  vendor: VendorReferenceSchema.optional(), // Make vendor optional
   avg_rating: z.coerce.number().min(0).max(5, "Rating must be between 0 and 5"),
   num_reviews: z.coerce
     .number()
@@ -197,9 +201,9 @@ const UserName = z
 const Email = z.string().min(1, 'Email is required').email('Email is invalid');
 const Password = z.string().min(3, 'Password must be at least 3 characters');
 
-const UserRole = z.enum(['customer', 'vendor', 'admin'], {
+const UserRole = z.enum(['customer', 'vendor', 'admin', 'buyer', 'seller'], {
   required_error: 'Role is required',
-  invalid_type_error: 'Role must be either customer, vendor, or admin',
+  invalid_type_error: 'Role must be either customer, vendor, admin, buyer, or seller',
 });
 
 const AddressSchema = z.object({
@@ -244,6 +248,7 @@ export const UserSignInSchema = z.object({
 
 export const UserSignUpSchema = UserSignInSchema.extend({
   name: UserName,
+  referralCode: z.string().optional(),
   confirmPassword: Password,
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -258,46 +263,56 @@ export const UserNameSchema = z.object({
 // Review Schema
 // ======================
 export const ReviewInputSchema = z.object({
-  product: z.string().min(1, "Product ID is required"),
-  user: z.string().min(1, "User ID is required"),
-  title: z.string()
-    .min(3, "Title must be at least 3 characters")
-    .max(100, "Title cannot exceed 100 characters"),
-  comment: z.string()
-    .min(10, "Comment must be at least 10 characters")
-    .max(1000, "Comment cannot exceed 1000 characters"),
-  rating: z.number()
-    .min(1, "Rating must be at least 1")
-    .max(5, "Rating cannot exceed 5"),
-  isVerifiedPurchase: z.boolean().default(true),
-  helpfulCount: z.number().default(0).optional(),
-  reports: z.array(z.string()).default([]).optional()
+  product: z.string(),
+  title: z.string().min(1, "Title is required").max(100, "Title must be less than 100 characters"),
+  comment: z.string().min(1, "Comment is required").max(1000, "Comment must be less than 1000 characters"),
+  rating: z.number().min(1, "Rating is required").max(5, "Rating must be between 1 and 5"),
+  isVerifiedPurchase: z.boolean().optional(),
+  image_urls: z.array(z.string().url("Invalid image URL")).max(3, "You can upload a maximum of 3 images").nullable().optional(),
 });
+
 // ======================
 // User 
 // ======================
 export const UserProfileSchema = z.object({
-  display_name: z.string()
-    .min(2, "Name must be at least 2 characters")
-    .max(50, "Name cannot exceed 50 characters"),
-  phone: z.string()
-    .regex(/^[0-9]{10,15}$/, "Phone number must be 10-15 digits")
-    .optional()
-    .or(z.literal("")),
-  address: z.string()
-    .max(100, "Address cannot exceed 100 characters")
-    .optional()
-    .or(z.literal("")),
-  role: z.enum(["buyer", "seller", "admin"]),
-  avatar: z.instanceof(File)
-    .refine(file => file.size <= 5_000_000, "File size must be less than 5MB")
-    .refine(
-      file => ["image/jpeg", "image/png", "image/webp"].includes(file.type),
-      "Only .jpg, .png, and .webp formats are supported"
-    )
-    .optional()
-    .or(z.literal("")),
+  display_name: z.string().min(1, { message: "Display name is required" }),
+  role: UserRole.optional(),
+  avatar: z
+    .union([
+      z
+        .instanceof(File, { message: "Avatar must be a File" })
+        .refine((file) => file.size <= 2 * 1024 * 1024, {
+          message: "Image must be less than 2MB",
+        })
+        .refine((file) => file.type.startsWith("image/"), {
+          message: "Only image files are allowed",
+        }),
+      z.string().url("Invalid image URL"),
+      z.string().length(0), // Allow empty string for removal
+    ])
+    .nullable()
+    .optional(),
+  birthday: z.union([z.string().length(0), z.string().datetime()]).nullable().optional().transform(e => e === "" ? null : e),
+  favorite_fruit: z.string().optional(),
 });
+
+// ======================
+// Address Schemas
+// ======================
+export const UserAddressSchema = z.object({
+  label: z.string().optional(),
+  street: z.string().min(1, "Street address is required"),
+  city: z.string().min(1, "City is required"),
+  state: z.string().min(1, "State is required"),
+  zip: z.string().min(1, "Zip code is required"),
+  country: z.string().min(1, "Country is required"),
+  phone: z.string().min(1, "Phone number is required"),
+});
+
+export type UserAddress = z.infer<typeof UserAddressSchema>;
+
+// Define a type for address objects that include the database ID
+export type AddressWithId = UserAddress & { id: string };
 
 // ======================
 // Type Exports

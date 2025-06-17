@@ -31,7 +31,6 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "../../ui/sidebar";
-import { Card, CardContent } from "../../ui/card";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Separator } from "../../ui/separator";
@@ -41,6 +40,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
 import LogoutButton from "@components/shared/header/LogoutButton";
+import { useQuery } from "@tanstack/react-query";
+import { fetchPendingOrdersCount } from "src/queries/orders";
 
 interface AppSidebarProps {
   user: UserData;
@@ -48,6 +49,13 @@ interface AppSidebarProps {
 
 export default function AppSidebar({ user }: AppSidebarProps) {
   const pathname = usePathname();
+
+  const { data: pendingOrdersCount = 0 } = useQuery({
+    queryKey: ["pendingOrdersCount"],
+    queryFn: fetchPendingOrdersCount,
+    enabled: user?.role === "admin",
+    refetchInterval: 30 * 1000, // Refetch every 30 seconds
+  });
 
   // Define routes based on user role with categories
   const getRoutesByRole = (role: string) => {
@@ -66,7 +74,6 @@ export default function AppSidebar({ user }: AppSidebarProps) {
               url: "/account/order",
               icon: ShoppingBag,
               description: "Track your orders",
-              badge: "3",
             },
             {
               title: "Wallet",
@@ -122,7 +129,6 @@ export default function AppSidebar({ user }: AppSidebarProps) {
               url: "/account/orders",
               icon: ShoppingBag,
               description: "Customer orders",
-              badge: "12",
             },
           ],
           secondary: [
@@ -166,7 +172,8 @@ export default function AppSidebar({ user }: AppSidebarProps) {
               url: "/admin/orders",
               icon: ShoppingBag,
               description: "Order management",
-              badge: "24",
+              badge:
+                pendingOrdersCount > 0 ? String(pendingOrdersCount) : undefined,
             },
           ],
           secondary: [
@@ -215,54 +222,11 @@ export default function AppSidebar({ user }: AppSidebarProps) {
   const roleBadge = getRoleBadge(user?.role || "buyer");
 
   return (
-    <Sidebar className="border-r-0 bg-gradient-to-b from-gray-50 to-white">
-      <SidebarHeader className="p-6 pb-4">
-        {/* <div className="flex items-center gap-3 mb-4">
-          <div className="relative">
-            <Image 
-              src={Circles} 
-              alt="circles" 
-              width={32} 
-              height={32} 
-              className="drop-shadow-sm"
-            />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-800">Dashboard</h2>
-            <p className="text-sm text-gray-500">Welcome back!</p>
-          </div>
-        </div> */}
+    <Sidebar className="">
 
-        {/* User Profile Card */}
-        <Card className="bg-[#1B6013] border-0 text-white">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <Avatar className="ring-2 ring-white/20">
-                <AvatarImage src={user?.avatar_url} />
-                <AvatarFallback className="bg-white/20 text-white">
-                  {user?.display_name?.[0] || "U"}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="font-semibold truncate">{user?.display_name}</p>
-                  <Badge className={`${roleBadge.color} text-xs`}>
-                    {roleBadge.label}
-                  </Badge>
-                </div>
-                <p className="text-xs text-white/80 truncate">{user?.email}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </SidebarHeader>
-
-      <SidebarContent className="px-4">
+      <SidebarContent className="!p-0">
         {/* Main Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            Main Menu
-          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
               {routes.main.map((item) => {
@@ -272,23 +236,23 @@ export default function AppSidebar({ user }: AppSidebarProps) {
                     <SidebarMenuButton asChild>
                       <Link
                         href={item.url}
-                        className={`group relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                        className={`group relative flex items-center gap-3 px-4 py-4 rounded-md transition-all duration-200 ${
                           isActive
-                            ? "bg-[#1B6013] text-white shadow-lg shadow-green-500/25"
+                            ? "bg-gray-100 text-[#1B6013]"
                             : "hover:bg-gray-100 text-gray-700 hover:text-gray-900"
                         }`}
                       >
                         <div
                           className={`p-1 rounded-lg ${
                             isActive
-                              ? "bg-white/20"
+                              ? "bg-white"
                               : "bg-gray-100 group-hover:bg-white"
                           }`}
                         >
                           <item.icon
                             className={`w-4 h-4 ${
                               isActive
-                                ? "text-white"
+                                ? "text-[#1B6013]"
                                 : "text-gray-600 group-hover:text-[#1B6013]"
                             }`}
                           />
@@ -298,10 +262,10 @@ export default function AppSidebar({ user }: AppSidebarProps) {
                             <span className="font-medium">{item.title}</span>
                             {item.badge && (
                               <Badge
-                                variant={isActive ? "secondary" : "default"}
+                                variant={isActive ? "default" : "default"}
                                 className={`text-xs ${
                                   isActive
-                                    ? "bg-white/20 text-white"
+                                    ? "bg-[#1B6013]/20 text-[#1B6013]"
                                     : "bg-red-100 text-red-600"
                                 }`}
                               >
@@ -309,18 +273,11 @@ export default function AppSidebar({ user }: AppSidebarProps) {
                               </Badge>
                             )}
                           </div>
-                          <p
-                            className={`text-xs truncate ${
-                              isActive ? "text-white/80" : "text-gray-500"
-                            }`}
-                          >
-                            {item.description}
-                          </p>
                         </div>
                         <ChevronRight
                           className={`w-4 h-4 transition-transform ${
                             isActive
-                              ? "text-white/60 rotate-90"
+                              ? "text-[#1B6013]/60 rotate-90"
                               : "text-gray-400 group-hover:text-gray-600 group-hover:translate-x-1"
                           }`}
                         />
@@ -333,13 +290,10 @@ export default function AppSidebar({ user }: AppSidebarProps) {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <Separator className="my-4" />
+        <Separator className="my-" />
 
         {/* Secondary Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            Settings & More
-          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
               {routes.secondary.map((item) => {
@@ -351,14 +305,14 @@ export default function AppSidebar({ user }: AppSidebarProps) {
                         href={item.url}
                         className={`group flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 ${
                           isActive
-                            ? "bg-[#1B6013] text-white"
+                            ? "bg-gray-100 text-[#1B6013]"
                             : "hover:bg-gray-100 text-gray-600 hover:text-gray-900"
                         }`}
                       >
                         <item.icon
                           className={`w-4 h-4 ${
                             isActive
-                              ? "text-white"
+                              ? "text-[#1B6013]"
                               : "text-gray-500 group-hover:text-[#1B6013]"
                           }`}
                         />
@@ -366,13 +320,6 @@ export default function AppSidebar({ user }: AppSidebarProps) {
                           <span className="text-sm font-medium">
                             {item.title}
                           </span>
-                          <p
-                            className={`text-xs truncate ${
-                              isActive ? "text-white/80" : "text-gray-400"
-                            }`}
-                          >
-                            {item.description}
-                          </p>
                         </div>
                       </Link>
                     </SidebarMenuButton>
@@ -382,40 +329,12 @@ export default function AppSidebar({ user }: AppSidebarProps) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-      </SidebarContent>
-
-      <SidebarFooter className="p-4 border-t bg-gray-50/50">
-        <div className="space-y-3">
-          {/* Stats Card for non-buyers */}
-          {user?.role !== "buyer" && (
-            <Card className="bg-white border-gray-200">
-              <CardContent className="p-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">
-                    {user?.role === "seller" ? "Total Sales" : "Active Users"}
-                  </span>
-                  <span className="font-bold text-[#1B6013]">
-                    {user?.role === "seller" ? "₦125,000" : "1,234"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
-                  <span>This month</span>
-                  <span className="text-green-600">+12%</span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
+        <Separator className="my-" />
+        
           {/* Logout Button */}
           <LogoutButton />
+      </SidebarContent>
 
-          {/* Version Info */}
-          <div className="text-center">
-            <p className="text-xs text-gray-400">FeedMe v2.0</p>
-          </div>
-        </div>
-      </SidebarFooter>
     </Sidebar>
   );
 }

@@ -5,9 +5,11 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { createClient } from "@utils/supabase/client";
 import { Session, AuthChangeEvent } from "@supabase/supabase-js";
 import { useQueryClient } from "@tanstack/react-query";
+import { Tables } from "src/utils/database.types";
 
 interface SupabaseContextType {
   session: Session | null;
+  user: Tables<"users"> | null;
 }
 
 const SupabaseContext = createContext<SupabaseContextType | undefined>(
@@ -16,53 +18,118 @@ const SupabaseContext = createContext<SupabaseContextType | undefined>(
 
 export function SupabaseAuthProvider({
   children,
+  initialSession,
+  initialUser,
 }: {
   children: React.ReactNode;
+  initialSession: Session | null;
+  initialUser: Tables<"users"> | null;
 }) {
   const router = useRouter();
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<Session | null>(initialSession);
+  const [user, setUser] = useState<Tables<"users"> | null>(initialUser);
   const supabase = createClient();
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    supabase.auth
-      .getSession()
-      .then(({ data }: { data: { session: Session | null } }) => {
-        setSession(data.session);
-      });
+    // If initialSession is NOT provided, fetch authenticated user and session client-side
+    if (initialSession === undefined) {
+      const fetchUserAndSession = async () => {
+        const {
+          data: { user: authenticatedUser, session: authenticatedSession },
+          error: authError,
+        } = await supabase.auth.getUser();
 
-    // Get the data object which contains the subscription
-    const { data } = supabase.auth.onAuthStateChange(
-      (event: AuthChangeEvent, session: Session | null) => {
-        setSession(session);
-        if (event === "SIGNED_IN" && session) {
-          // Check if there's a 'code' parameter in the URL after sign-in
-          const currentUrl = new URL(window.location.href);
-          if (currentUrl.searchParams.has("code")) {
-            // Remove the 'code' parameter and replace the URL in the browser history
-            currentUrl.searchParams.delete("code");
-            router.replace(currentUrl.toString());
+        if (authError) {
+          console.error(
+            "SupabaseAuthProvider: Error fetching initial authenticated user/session:",
+            authError
+          );
+          setSession(null);
+          setUser(null);
+          return;
+        }
+
+        setSession(authenticatedSession);
+
+        if (authenticatedUser) {
+          const { data: userProfile, error: profileError } = await supabase
+            .from("users")
+            .select("*")
+            .eq("id", authenticatedUser.id)
+            .single();
+
+          if (profileError) {
+            console.error(
+              "SupabaseAuthProvider: Error fetching initial user profile:",
+              profileError
+            );
+            setUser(null);
+          } else {
+            setUser(userProfile);
           }
-          // Invalidate the user query instead of refreshing the page
-          queryClient.invalidateQueries({ queryKey: ["user"] });
-        } else if (event === "SIGNED_OUT") {
-          // Invalidate the user query instead of refreshing the page
+        } else {
+          setUser(null);
+        }
+      };
+      fetchUserAndSession();
+    }
+
+    const { data } = supabase.auth.onAuthStateChange(
+      async (event: AuthChangeEvent, newSession: Session | null) => {
+        // Always use getUser() for authenticated user data after an auth change
+        const {
+          data: { user: authenticatedUser, session: authenticatedSession },
+          error: authError,
+        } = await supabase.auth.getUser();
+
+        if (authError) {
+          console.error(
+            "SupabaseAuthProvider: Error fetching authenticated user/session on auth change:",
+            authError
+          );
+          setSession(null);
+          setUser(null);
+          return;
+        }
+
+        setSession(authenticatedSession);
+
+        if (authenticatedUser) {
+          const { data: userProfile, error: profileError } = await supabase
+            .from("users")
+            .select("*")
+            .eq("id", authenticatedUser.id)
+            .single();
+
+          if (profileError) {
+            console.error(
+              "SupabaseAuthProvider: Error fetching user profile on auth change:",
+              profileError
+            );
+            setUser(null);
+          } else {
+            setUser(userProfile);
+          }
+        } else {
+          setUser(null);
+        }
+
+        if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
           queryClient.invalidateQueries({ queryKey: ["user"] });
         }
       }
     );
 
-    // Destructure the subscription from the data object
     const { subscription } = data;
 
     return () => {
-      // Call unsubscribe on the subscription object
       subscription.unsubscribe();
     };
-  }, [router, supabase, queryClient]);
+  }, [router, supabase, queryClient, initialSession]);
 
   return (
-    <SupabaseContext.Provider value={{ session }}>
+    <SupabaseContext.Provider value={{ session, user }}>
       {children}
     </SupabaseContext.Provider>
   );
@@ -71,10 +138,15 @@ export function SupabaseAuthProvider({
 export const useSupabaseSession = () => {
   const context = useContext(SupabaseContext);
   if (context === undefined) {
-    throw new Error(
-      "useSupabaseSession must be used within a SupabaseAuthProvider"
-    );
+    return null;
   }
   return context.session;
 };
 
+export const useSupabaseUser = () => {
+  const context = useContext(SupabaseContext);
+  if (context === undefined) {
+    return null;
+  }
+  return context.user;
+};

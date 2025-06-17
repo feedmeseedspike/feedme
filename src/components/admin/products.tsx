@@ -35,11 +35,7 @@ import { BiEdit } from "react-icons/bi";
 import PaginationBar from "../shared/pagination";
 import { Separator } from "@components/ui/separator";
 import Link from "next/link";
-import {
-  getProducts,
-  deleteProduct,
-  getCategoryById,
-} from "../../../src/lib/api";
+import { getProducts, deleteProduct } from "../../../src/lib/api";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "../../../src/hooks/useToast";
@@ -52,11 +48,14 @@ import {
   DialogTitle,
 } from "@components/ui/dialog";
 import { useQuery } from "@tanstack/react-query";
+import { createClient } from "src/utils/supabase/client";
+import { getCategoryById } from "src/queries/categories";
 
 export default function Product() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
+  const supabase = createClient();
 
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
@@ -100,7 +99,7 @@ export default function Product() {
       const { data, count } = await getProducts({
         page: currentPage,
         limit: ITEMS_PER_PAGE,
-        search,
+        search: search,
         category: categoryFilter,
       });
       setTotalProducts(count || 0);
@@ -113,7 +112,7 @@ export default function Product() {
         const fetchedCategoryNames: Record<string, string> = {};
         const fetchPromises = uniqueCategoryIds.map(async (id) => {
           try {
-            const category = await getCategoryById(id);
+            const category = await getCategoryById(supabase, id);
             if (category) {
               fetchedCategoryNames[id] = category.title;
             }
@@ -440,27 +439,46 @@ export default function Product() {
             ) : products && products.length > 0 ? (
               products.map((product) => (
                 <TableRow key={product.id}>
-                  <TableCell>
+                  <TableCell className="">
                     {product.images?.[0] && (
-                      <Image
-                        src={product.images[0]}
-                        alt={product.name}
-                        width={60}
-                        height={60}
-                        className="rounded-md object-cover"
-                      />
+                      <div className="w-[60px] h-[60px] relative rounded-md overflow-hidden">
+                        <Image
+                          src={
+                            typeof product.images[0] === "string"
+                              ? product.images[0]
+                              : (() => {
+                                  try {
+                                    const parsed = JSON.parse(
+                                      product.images[0]
+                                    );
+                                    return (
+                                      parsed.url || "/placeholder-product.png"
+                                    );
+                                  } catch (e) {
+                                    console.error(
+                                      "Failed to parse image URL JSON:",
+                                      product.images[0],
+                                      e
+                                    );
+                                    return "/placeholder-product.png";
+                                  }
+                                })()
+                          }
+                          alt={product.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
                     )}
                   </TableCell>
-                  <TableCell className="font-medium">
-                    <Link
-                      href={`/admin/products/view/${product.id}`}
-                      className="hover:underline text-blue-600"
-                    >
-                      {product.name}
-                    </Link>
+                  <TableCell className="font-medium cursor-pointer hover:bg-gray-50">
+                    <div className="">{product.name}</div>
                   </TableCell>
                   <TableCell>
-                    {categoryNames[product.category_ids?.[0]] || "N/A"}
+                    {(product.category_ids &&
+                      product.category_ids.length > 0 &&
+                      categoryNames[product.category_ids[0]]) ||
+                      "N/A"}
                   </TableCell>
                   <TableCell>{formatNaira(product.price)}</TableCell>
                   <TableCell>
@@ -489,14 +507,6 @@ export default function Product() {
                     <Link href={`/admin/products/edit/${product.id}`}>
                       <Button variant="outline" size="icon">
                         <BiEdit size={16} />
-                      </Button>
-                    </Link>
-                    <Link
-                      href={`/product/${product.slug || product.id}`}
-                      target="_blank"
-                    >
-                      <Button variant="outline" size="icon">
-                        <Eye size={16} />
                       </Button>
                     </Link>
                     <Button

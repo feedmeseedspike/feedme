@@ -10,7 +10,7 @@ import React, {
 } from "react";
 import { Search, SearchX } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { getAllProducts } from "../../../lib/actions/product.actions";
+import { getProductsServer } from "../../../lib/actions/product.actions";
 import { toast } from "sonner";
 import { debounce } from "lodash";
 import { IProductInput } from "src/types";
@@ -45,7 +45,7 @@ const SearchFilter = () => {
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await getAllProducts({
+      const response = await getProductsServer({
         query: "",
         page: 1,
         limit: 50,

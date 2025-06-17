@@ -17,7 +17,7 @@ import { AdminSidebar } from "@components/admin/adminSidebar";
 
 const Dashboard = async ({ children }: { children: React.ReactNode }) => {
   const user: UserData = await getUser();
-  console.log(user)
+  // console.log(user)
 
   return (
     <SidebarProvider>

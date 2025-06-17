@@ -2,6 +2,29 @@ import { ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 import qs from 'query-string'
+import { OptionType } from "./validator";
+import { IProductInput } from "../types";
+import { Tables } from "../utils/database.types";
+import CustomBreadcrumb from "@components/shared/breadcrumb";
+import Link from "next/link";
+import { Badge } from "@components/ui/badge";
+import { useToast } from "src/hooks/useToast";
+import { useMemo, useCallback } from "react";
+import {
+  useCartQuery,
+  useUpdateCartMutation,
+  useRemoveFromCartMutation,
+  ItemToUpdateMutation,
+} from "src/queries/cart";
+import { CartItem } from "src/lib/actions/cart.actions";
+import { useUser } from "src/hooks/useUser";
+import {
+  getUsersPurchasedProductIds,
+  getAllProducts,
+} from "src/queries/products";
+import { createClient } from "@utils/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import ProductSlider from "@components/shared/product/product-slider";
 
 export function formUrlQuery({
   params,
@@ -172,4 +195,71 @@ export function showToast(message: string, type: 'success' | 'error' | 'info' | 
       // toast(message); // Uncomment if using a toast library
   }
 }
+
+export interface CategoryData {
+  id: string;
+  title: string;
+  thumbnail: { url: string; public_id?: string } | null;
+}
+
+export const mapSupabaseProductToIProductInput = (
+  supabaseProduct: Tables<'products'>,
+  allCategories: CategoryData[]
+): IProductInput => {
+  // Ensure category is an array of IDs, as expected by the filter
+  const categories = (supabaseProduct.category_ids || []) as string[];
+
+  return {
+    id: supabaseProduct.id || '',
+    name: supabaseProduct.name || '',
+    slug: supabaseProduct.slug || '',
+    description: supabaseProduct.description || '',
+    price: supabaseProduct.price || 0,
+    list_price: supabaseProduct.list_price || 0,
+    brand: supabaseProduct.brand || '',
+    avg_rating: supabaseProduct.avg_rating || 0,
+    num_reviews: supabaseProduct.num_reviews || 0,
+    numSales: supabaseProduct.num_sales || 0,
+    countInStock: supabaseProduct.count_in_stock || 0,
+    is_published: supabaseProduct.is_published || false,
+    category: categories, // Now contains IDs
+    tags: supabaseProduct.tags || [],
+    images: supabaseProduct.images || [],
+    options: (supabaseProduct.options as OptionType[] || []),
+    ratingDistribution: (supabaseProduct.rating_distribution as { rating: number; count: number }[] || []),
+    stockStatus: supabaseProduct.stock_status || 'In Stock',
+    vendor: undefined,
+    reviews: [],
+    colors: [],
+  };
+};
+
+export const mapSupabaseBundleToIProductInput = (
+  supabaseBundle: Tables<'bundles'>
+): IProductInput => {
+  return {
+    id: supabaseBundle.id || '',
+    name: supabaseBundle.name || '',
+    slug: supabaseBundle.name?.toLowerCase().replace(/ /g, '-') || '', // Assuming slug can be derived from name
+    description: "", // Bundles do not have a direct description field in your DB schema, providing a default empty string.
+    price: supabaseBundle.price || 0,
+    list_price: supabaseBundle.price || 0, // Assuming list_price is same as price for bundles
+    brand: '', // Bundles might not have a brand, or you can set a default
+    avg_rating: 0, // Bundles might not have direct ratings
+    num_reviews: 0, // Bundles might not have direct reviews
+    numSales: 0, // Bundles might not have direct sales count
+    countInStock: supabaseBundle.stock_status === 'in_stock' ? 9999 : 0, // Derive countInStock from stock_status, assuming a large number if in stock
+    is_published: supabaseBundle.published_status === 'published',
+    category: [], // Bundles might not have categories directly
+    tags: [], // Bundles might not have tags directly
+    images: supabaseBundle.thumbnail_url ? [supabaseBundle.thumbnail_url] : [], // Use thumbnail as main image
+    options: [], // Bundles typically don't have options like products
+    ratingDistribution: [],
+    stockStatus: supabaseBundle.stock_status || 'In Stock',
+    vendor: undefined,
+    reviews: [],
+    colors: [],
+    bundleId: supabaseBundle.id, // Crucially, set the bundleId here
+  };
+};
   

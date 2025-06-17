@@ -116,10 +116,27 @@ export async function updateProduct(id: string, product: any) {
 
 export async function deleteProduct(id: string) {
   console.log("Attempting to delete product with ID:", id);
-  const { error } = await supabase.from('products').delete().eq('id', id);
-  if (error) {
-    console.error("Error deleting product:", error);
-    throw error;
+
+  // First, delete dependent records in the 'favorites' table
+  console.log("Attempting to delete related favorites for product ID:", id);
+  const { error: deleteFavoritesError } = await supabase
+    .from('favorites')
+    .delete()
+    .eq('product_id', id);
+
+  if (deleteFavoritesError) {
+    console.error("Error deleting related favorites:", deleteFavoritesError);
+    // Decide how to handle this error. Throwing it will stop the product deletion.
+    throw deleteFavoritesError;
+  }
+  console.log("Related favorites deleted successfully for product ID:", id);
+
+  // Then, delete the product from the 'products' table
+  console.log("Attempting to delete product from products table with ID:", id);
+  const { error: deleteProductError } = await supabase.from('products').delete().eq('id', id);
+  if (deleteProductError) {
+    console.error("Error deleting product:", deleteProductError);
+    throw deleteProductError;
   }
   console.log("Product deleted successfully with ID:", id);
   return true;
@@ -234,7 +251,7 @@ export async function uploadOptionImage(file: File, bucketName: string = 'option
 }
 
 // Add a placeholder function for fetching a customer by ID
-export async function getCustomerById(customerId: number) {
+export async function getCustomerById(customerId: string) {
   console.warn(`Fetching customer (user with role 'buyer') with ID: ${customerId}`);
   // Fetch from the 'users' table where id matches and role is 'buyer'
   const { data, error } = await supabase

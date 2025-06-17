@@ -408,7 +408,7 @@ const ProductGridCard = ({
   <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
     <div className="relative">
       <div className="aspect-square relative overflow-hidden rounded-t-lg">
-        <Image
+        <img
           src={product.images?.[0] || "/placeholder-product.jpg"}
           alt={product.name}
           fill
@@ -521,7 +521,7 @@ const ProductListCard = ({
     <CardContent className="p-3 sm:p-4 md:p-6">
       <div className="flex gap-3 sm:gap-4 md:gap-6">
         <div className="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-lg overflow-hidden flex-shrink-0">
-          <Image
+          <img
             src={product.images?.[0] || "/placeholder-product.jpg"}
             alt={product.name}
             fill

@@ -48,7 +48,6 @@
   }
 }
 
-
 /* Apply to filled paths */
 .animate-fill-draw {
   animation: fill-draw 0.6s ease-out forwards;
@@ -96,7 +95,6 @@
   display: none;
 }
 
-
 @layer base {
   html {
     font-family: var(--font-proxima), "Poppins";
@@ -106,8 +104,7 @@
   /* body[style*="overflow: hidden"] {
     overflow: auto !important;
   } */
-  
-  
+
   :root {
     --background: 0 0% 100%;
     --foreground: 0 0% 3.9%;
@@ -169,7 +166,6 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
 
-   
           /* COLORS */
       /* Gray */
       --gray-25: #f9fafb;
@@ -183,7 +179,7 @@
       --gray-700: #27272a;
       --gray-800: #18181b;
       --gray-900: #09090b;
-    
+
       /* Primary */
       --primary-25: #fcfaff;
       --primary-50: #f2f8f1;
@@ -196,7 +192,7 @@
       --primary-700: #284625;
       --primary-800: #1a2f18;
       --primary-900: #0d170c;
-    
+
       /* Secondary */
       --secondary-25: #fcfaff;
       --secondary-50: #f9f5ff;
@@ -209,7 +205,7 @@
       --secondary-700: #6941c6;
       --secondary-800: #53389e;
       --secondary-900: #42307d;
-    
+
       /* Error */
       --error-25: #fff8fa;
       --error-50: #fef3f2;
@@ -232,8 +228,6 @@
       --sidebar-ring: 217.2 91.2% 59.8%;
     }
 
-
-
 @layer utilities {
   .highlight-link a,
   a.highlight-link {
@@ -243,7 +237,7 @@
   .badge {
     @apply text-[#B54708] text-xs font-semibold bg-[#FFFAEB] py-1 px-2 rounded-[16px] flex items-center
   }
-  
+
   .h2-bold {
     @apply font-proxima font-bold text-lg sm:text-2xl;
     /* HK Grotesk */
@@ -278,18 +272,18 @@
     50% { transform: translateX(5px); }
     75% { transform: translateX(-5px); }
   }
-  
+
   .animate-shake {
     animation: shake 0.5s ease-in-out;
   } */
-  
+
 }
 /* absolute right-3 top-1/2 transform -translate-y-1/2  */
+  .theme {
+    --animate-shimmer-slide: shimmer-slide var(--speed) ease-in-out infinite alternate;
+    --animate-spin-around: spin-around calc(var(--speed) * 2) infinite linear;
   }
-
-
-
-
+  }
 
 @layer base {
   * {
@@ -300,16 +294,6 @@
   }
 }
 
-
-
-
-
-
-
-
-
-
-
 @layer base {
   * {
     @apply border-border;
@@ -319,3 +303,24 @@
   }
 }
 
+@theme inline {
+  @keyframes shimmer-slide {
+  to {
+    transform: translate(calc(100cqw - 100%), 0);
+    }
+  }
+  @keyframes spin-around {
+  0% {
+    transform: translateZ(0) rotate(0);
+    }
+  15%, 35% {
+    transform: translateZ(0) rotate(90deg);
+    }
+  65%, 85% {
+    transform: translateZ(0) rotate(270deg);
+    }
+  100% {
+    transform: translateZ(0) rotate(360deg);
+    }
+  }
+}

@@ -47,6 +47,7 @@ import { Skeleton } from "@components/ui/skeleton";
 import { useToast } from "src/hooks/useToast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Tables } from "src/utils/database.types";
+import PaginationBar from "@components/shared/pagination";
 
 type Transaction = Tables<"transactions">;
 
@@ -61,12 +62,17 @@ export default function WalletPage() {
   const [paymentMethod, setPaymentMethod] = useState("");
 
   const session = useSupabaseSession();
+  // console.log(session)
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
 
   const verificationAttempted = useRef(false);
+
+  // Get current page from search params, default to 1
+  const currentPage = Number(searchParams.get("page") || "1");
+  const pageSize = 10; // Define page size
 
   // console.log("WalletPage component rendering.");
   // console.log("Initial session:", session);
@@ -76,11 +82,17 @@ export default function WalletPage() {
     isLoading: isLoadingBalance,
     error: errorBalance,
   } = useWalletBalanceQuery(session?.user?.id || "");
+
+  console.log(walletBalance);
   const {
-    data: transactions,
+    data: transactionsData,
     isLoading: isLoadingTransactions,
     error: errorTransactions,
-  } = useTransactionsQuery(session?.user?.id || "");
+  } = useTransactionsQuery(session?.user?.id || "", currentPage, pageSize);
+
+  const transactions = transactionsData?.data || [];
+  const totalTransactions = transactionsData?.count || 0;
+  const totalPages = Math.ceil(totalTransactions / pageSize);
 
   const addFundsMutation = useAddFundsMutation();
 
@@ -158,8 +170,6 @@ export default function WalletPage() {
       };
 
       verifyPayment(reference);
-    } else if (!reference) {
-      verificationAttempted.current = false;
     }
   }, [searchParams, session, router, queryClient, showToast]);
 
@@ -307,10 +317,10 @@ export default function WalletPage() {
                   ) : (
                     "Error loading balance."
                   )
-                ) : walletBalance !== null ? (
+                ) : walletBalance !== null && walletBalance !== undefined ? (
                   formatNaira(walletBalance)
                 ) : (
-                  "N/A"
+                  "No wallet found. Please create a wallet."
                 )}
               </p>
               <p className="text-white/80 text-sm">Available Balance</p>
@@ -341,39 +351,6 @@ export default function WalletPage() {
                         onChange={(e) => setAmount(e.target.value)}
                         className="mt-1"
                       />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">
-                        Payment Method
-                      </label>
-                      <Select
-                        value={paymentMethod}
-                        onValueChange={setPaymentMethod}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Select payment method" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="bank_transfer">
-                            <div className="flex items-center gap-2">
-                              <CreditCard className="w-4 h-4" />
-                              Bank Transfer
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="card">
-                            <div className="flex items-center gap-2">
-                              <CreditCard className="w-4 h-4" />
-                              Debit/Credit Card
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="ussd">
-                            <div className="flex items-center gap-2">
-                              <Smartphone className="w-4 h-4" />
-                              USSD
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
                   </div>
                   <DialogFooter>
@@ -508,6 +485,12 @@ export default function WalletPage() {
             )}
           </div>
         </CardContent>
+        {/* Add PaginationBar here */}
+        {!isLoadingTransactions && totalPages > 1 && (
+          <div className="p-4">
+            <PaginationBar page={currentPage} totalPages={totalPages} />
+          </div>
+        )}
       </Card>
 
       {/* Transaction Detail Modal */}

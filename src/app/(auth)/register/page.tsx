@@ -36,16 +36,22 @@ const reviews: ReviewSlide[] = [
 
 export default async function SignUpPage(props: {
   searchParams: Promise<{
-    callbackUrl: string;
+    callbackUrl?: string;
+    referral_code?: string;
   }>;
 }) {
   const searchParams = await props.searchParams;
-  const { callbackUrl } = searchParams;
+  const { callbackUrl, referral_code } = searchParams;
 
   const user = await getUser();
   if (user) {
-    return redirect(callbackUrl);
+    return redirect(callbackUrl || "/account");
   }
+
+  const handleGoogleSignIn = async () => {
+    "use server";
+    await signinWithGoogle(referral_code);
+  };
 
   return (
     <main className="h-screen flex gap-6">
@@ -61,7 +67,9 @@ export default async function SignUpPage(props: {
             <p className="font-semibold text-lg">
               Have an account?
               <Link
-                href={`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`}
+                href={`/login?callbackUrl=${encodeURIComponent(
+                  callbackUrl || "/"
+                )}`}
                 className="text-blue-600 ml-1 relative group"
               >
                 <span>Log in now</span>
@@ -73,7 +81,7 @@ export default async function SignUpPage(props: {
         </div>
 
         <div className="flex flex-col gap-5">
-          <form action={signinWithGoogle}>
+          <form action={handleGoogleSignIn}>
             <button
               type="submit"
               className="rounded-lg w-full py-3 flex justify-center ring-1 ring-zinc-500 shadow-sm"

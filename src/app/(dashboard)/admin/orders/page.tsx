@@ -42,19 +42,26 @@ import PaginationBar from "@components/shared/pagination";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchOrders } from "../../../../queries/orders";
 import { useToast } from "../../../../hooks/useToast";
+import { Database } from "../../../../utils/database.types";
 
 // Assuming the structure of an order object from Supabase (copied from overview/page.tsx for type consistency)
 interface Order {
   id: string;
   user_id: string | null;
-  status: string | null;
+  status:
+    | "In transit"
+    | "order delivered"
+    | "order confirmed"
+    | "Cancelled"
+    | null;
   total_amount: number | null;
   voucher_id: string | null;
-  shipping_address: { city?: string; [key: string]: any } | null;
+  shipping_address: { city?: string | null; [key: string]: any } | null;
   payment_method: string | null;
   created_at: string;
   updated_at: string | null;
-  payment_status: string | null;
+  payment_status: "Pending" | "Paid" | "Cancelled" | null;
+  users: { display_name: string | null } | null;
 }
 
 // const orders = [
@@ -106,14 +113,20 @@ interface Order {
 // ];
 
 // Progress options for the Select component
-const progressOptions = ["In transit", "order delivered", "order confirmed"];
+const progressOptions: Database["public"]["Enums"]["order_status_enum"][] = [
+  "In transit",
+  "order delivered",
+  "order confirmed",
+];
 
 // Payment Status options for the Select component
 const paymentStatusOptions = ["Pending", "Paid", "Cancelled"];
 
 export default function Orders() {
   const [search, setSearch] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState<
+    Database["public"]["Enums"]["order_status_enum"][]
+  >([]);
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentPage = Number(searchParams.get("page")) || 1;
@@ -140,14 +153,14 @@ export default function Orders() {
     const supabase = createClient();
     const { error } = await supabase
       .from("orders")
-      .update({ status: newStatus })
+      .update({ status: newStatus as Order["status"] })
       .eq("id", orderId);
 
     if (error) {
       console.error("Error updating order status:", error);
       showToast("Failed to update order status.", "error");
     } else {
-      console.log(`Order ${orderId} status updated to ${newStatus}`);
+      // console.log(`Order ${orderId} status updated to ${newStatus}`);
       showToast("Order status updated successfully.", "success");
       // Invalidate the orders query to refetch data
       queryClient.invalidateQueries({
@@ -161,14 +174,14 @@ export default function Orders() {
     const supabase = createClient();
     const { error } = await supabase
       .from("orders")
-      .update({ payment_status: newStatus })
+      .update({ payment_status: newStatus as Order["payment_status"] })
       .eq("id", orderId);
 
     if (error) {
       console.error("Error updating payment status:", error);
       showToast("Failed to update payment status.", "error");
     } else {
-      console.log(`Order ${orderId} payment status updated to ${newStatus}`);
+      // console.log(`Order ${orderId} payment status updated to ${newStatus}`);
       showToast("Payment status updated successfully.", "success");
       // Invalidate the orders query to refetch data
       queryClient.invalidateQueries({
@@ -201,10 +214,16 @@ export default function Orders() {
 
   // Toggle filter for status
   const toggleFilter = (value: string) => {
-    setSelectedStatus((prev) =>
-      prev.includes(value)
-        ? prev.filter((item) => item !== value)
-        : [...prev, value]
+    // Handle status toggle
+    setSelectedStatus(
+      (prev): Database["public"]["Enums"]["order_status_enum"][] => {
+        // Explicitly type the return value of the callback
+        const statusValue =
+          value as Database["public"]["Enums"]["order_status_enum"]; // Cast value to the enum type
+        return prev.includes(statusValue)
+          ? prev.filter((item) => item !== statusValue)
+          : [...prev, statusValue];
+      }
     );
   };
 
@@ -264,22 +283,26 @@ export default function Orders() {
                 <h3 className="text-sm text-[#344054] font-medium mb-2">
                   Status
                 </h3>
-                {progressOptions.map((status) => (
-                  <div
-                    key={status}
-                    className="flex items-center gap-2 mb-2 pl-2"
-                  >
-                    <Checkbox
-                      id={status}
-                      className="size-4 !rounded-md border-[#D0D5DD]"
-                      checked={selectedStatus.includes(status)}
-                      onCheckedChange={() => toggleFilter(status)}
-                    />
-                    <label className="font-medium text-sm" htmlFor={status}>
-                      {status}
-                    </label>
-                  </div>
-                ))}
+                {progressOptions.map((status) => {
+                  const statusValue =
+                    status as Database["public"]["Enums"]["order_status_enum"]; // Cast status string to enum type
+                  return (
+                    <div
+                      key={status}
+                      className="flex items-center gap-2 mb-2 pl-2"
+                    >
+                      <Checkbox
+                        id={status}
+                        className="size-4 !rounded-md border-[#D0D5DD]"
+                        checked={selectedStatus.includes(statusValue)} // Use the casted value
+                        onCheckedChange={() => toggleFilter(status)} // toggleFilter already handles casting internally
+                      />
+                      <label className="font-medium text-sm" htmlFor={status}>
+                        {status}
+                      </label>
+                    </div>
+                  );
+                })}
               </div>
               <SheetFooter className="border-t pt-4 !w-full">
                 <div className="font-semibold text-sm flex justify-between items-end px-4">
@@ -373,7 +396,7 @@ export default function Orders() {
                         {order.users?.display_name
                           ? order.users.display_name
                               .split(" ")
-                              .map((n: string) => n[0]) // Explicitly type 'n' as string
+                              .map((n: string) => n[0])
                               .join("")
                               .substring(0, 2)
                               .toUpperCase()
@@ -383,9 +406,6 @@ export default function Orders() {
                     <div>
                       <p className="font-medium">
                         {order.users?.display_name || "Unknown User"}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {order.users?.phone || "N/A"}
                       </p>
                     </div>
                   </TableCell>
@@ -397,7 +417,7 @@ export default function Orders() {
                   {/* Payment Status Dropdown */}
                   <TableCell>
                     <Select
-                      value={order.payment_status || "Unknown Status"} // Use order.payment_status as the value
+                      value={order.payment_status || "Unknown Status"}
                       onValueChange={(newValue) =>
                         updatePaymentStatus(order.id, newValue)
                       }
@@ -415,7 +435,11 @@ export default function Orders() {
                     </Select>
                   </TableCell>
                   <TableCell>
-                    {order.shipping_address?.city || "Unknown Location"}
+                    {typeof order.shipping_address === "object" &&
+                    !Array.isArray(order.shipping_address) &&
+                    typeof order.shipping_address?.city === "string"
+                      ? order.shipping_address.city
+                      : "Unknown Location"}
                   </TableCell>
 
                   {/* Progress Dropdown */}

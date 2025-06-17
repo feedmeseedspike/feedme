@@ -16,15 +16,34 @@ const ProductCard = ({
   hideBorder?: boolean;
   hideAddToCart?: boolean;
 }) => {
+  // console.log(product);
   const ProductImage = () => (
     <Link href={`/product/${product.slug}`}>
       <div className="relative h-[100px] w-[120px] md:h-[135px] md:w-[160px]">
         <div className="relative w-full h-full bg-[#F2F4F7] overflow-hidden rounded-[8px]">
           <Image
-            src={product.images[0]}
+            src={
+              product.images && product.images.length > 0 && product.images[0]
+                ? typeof product.images[0] === "string"
+                  ? product.images[0]
+                  : (() => {
+                      try {
+                        const parsed = JSON.parse(product.images[0]);
+                        return parsed.url || "/placeholder-product.png"; // Use placeholder if URL is empty after parsing
+                      } catch (e) {
+                        console.error(
+                          "Failed to parse image URL JSON in product-card:",
+                          product.images[0],
+                          e
+                        );
+                        return "/placeholder-product.png"; // Return placeholder on parse error
+                      }
+                    })()
+                : "/placeholder-product.png" // Use placeholder if no images
+            }
             alt={product.name}
             fill
-            className="object-cover"
+            className="w-full h-full object-cover"
           />
         </div>
       </div>
@@ -39,7 +58,14 @@ const ProductCard = ({
         {product.name}
       </Link>
       <span className="text-[14px] text-[#1B6013]">
-        From {formatNaira(product.options[0].price) || product.price}{" "}
+        {product.options &&
+        product.options.length > 0 &&
+        product.options[0]?.price !== null &&
+        product.options[0]?.price !== undefined
+          ? `From ${formatNaira(product.options[0].price)}`
+          : product.price !== null && product.price !== undefined
+          ? formatNaira(product.price)
+          : "Price N/A"}
       </span>
     </div>
   );

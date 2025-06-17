@@ -106,8 +106,8 @@ export default function BuildNewBundlePage() {
   });
 
   const onSubmit = (data: BuildBundleFormValues) => {
-    console.log("Form data submitted:", data);
-    console.log("Bundle Products:", bundleProducts);
+    // console.log("Form data submitted:", data);
+    // console.log("Bundle Products:", bundleProducts);
 
     if (bundleProducts.length === 0) {
       showToast("Please add at least one product to the bundle.", "error");

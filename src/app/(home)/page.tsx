@@ -1,5 +1,3 @@
-export const dynamic = "force-dynamic";
-
 import Banner from "@components/shared/home/Home-banner";
 // import { HomeCarousel } from "@components/shared/home/Home-carousel";
 import TopCategories from "@components/shared/home/TopCategories";
@@ -18,48 +16,256 @@ import {
 } from "@tanstack/react-query";
 import { prefetchQuery } from "@supabase-cache-helpers/postgrest-react-query";
 
-import useSupabaseServer from "src/utils/supabase/server";
+import { createClient } from "src/utils/supabase/server";
 import { cookies } from "next/headers";
 
 import { getAllCategoriesQuery } from "src/queries/categories";
 import {
   getProductsByTagQuery,
-  // getFreshFruitsQuery,
-  // getFreshVegetablesQuery,
-  // getTrendingProductsQuery,
+  getUsersPurchasedProductIds,
 } from "src/queries/products";
+import { mapSupabaseProductToIProductInput, CategoryData } from "src/lib/utils";
+import { IProductInput } from "src/types";
+import { Tables } from "src/utils/database.types";
 
 export default async function Home() {
   const queryClient = new QueryClient();
   const cookieStore = cookies();
-  const supabase = useSupabaseServer(cookieStore);
+  const supabase = await createClient();
 
   await Promise.all([
-    // Keep getUser for now if not using Supabase Auth hooks
-    // getUser(),
-    prefetchQuery(queryClient, getAllCategoriesQuery(supabase)),
-    prefetchQuery(queryClient, getProductsByTagQuery(supabase, "todays-deal")),
-    prefetchQuery(queryClient, getProductsByTagQuery(supabase, "best-seller")),
-    prefetchQuery(queryClient, getProductsByTagQuery(supabase, "new-arrival")),
-    prefetchQuery(queryClient, getProductsByTagQuery(supabase, "featured")),
-    prefetchQuery(queryClient, getProductsByTagQuery(supabase, "recommended")),
-    // prefetchQuery(queryClient, getProductsByTagQuery(supabase, "fresh-fruits")),
-    // prefetchQuery(queryClient, getProductsByTagQuery(supabase, "trending")),
-    // prefetchQuery(
-    //   queryClient,
-    //   getProductsByTagQuery(supabase, "fresh-vegetables")
-    // ),
-    // prefetchQuery(queryClient, getTrendingProductsQuery(supabase, 10)),
-    // prefetchQuery(queryClient, getFreshFruitsQuery(supabase, 10)),
-    // prefetchQuery(queryClient, getFreshVegetablesQuery(supabase, 10)),
+    queryClient.prefetchQuery({
+      queryKey: ["categories"],
+      queryFn: async () => {
+        const { data, error } = await getAllCategoriesQuery(supabase).select(
+          "*"
+        );
+        if (error) throw error;
+        return data.map((category) => {
+          let thumbnailData: { url: string; public_id?: string } | null = null;
+          if (category.thumbnail) {
+            if (
+              typeof category.thumbnail === "object" &&
+              category.thumbnail !== null &&
+              "url" in category.thumbnail &&
+              typeof (category.thumbnail as any).url === "string"
+            ) {
+              thumbnailData = {
+                url: (category.thumbnail as any).url,
+                public_id: (category.thumbnail as any).public_id,
+              };
+            } else if (typeof category.thumbnail === "string") {
+              thumbnailData = { url: category.thumbnail };
+            }
+          }
+          return {
+            ...category,
+            thumbnail: thumbnailData,
+          };
+        });
+      },
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ["products", { tag: "todays-deal", limit: 10 }],
+      queryFn: async () => {
+        const { data, error } = await getProductsByTagQuery(
+          supabase,
+          "todays-deal",
+          10
+        ).select("*");
+        if (error) throw error;
+        return data;
+      },
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ["products", { tag: "best-seller", limit: 10 }],
+      queryFn: async () => {
+        const { data, error } = await getProductsByTagQuery(
+          supabase,
+          "best-seller",
+          10
+        ).select("*");
+        if (error) throw error;
+        return data;
+      },
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ["products", { tag: "new-arrival", limit: 10 }],
+      queryFn: async () => {
+        const { data, error } = await getProductsByTagQuery(
+          supabase,
+          "new-arrival",
+          10
+        ).select("*");
+        if (error) throw error;
+        return data;
+      },
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ["products", { tag: "featured", limit: 10 }],
+      queryFn: async () => {
+        const { data, error } = await getProductsByTagQuery(
+          supabase,
+          "featured",
+          10
+        ).select("*");
+        if (error) throw error;
+        return data;
+      },
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ["products", { tag: "recommended", limit: 10 }],
+      queryFn: async () => {
+        const { data, error } = await getProductsByTagQuery(
+          supabase,
+          "recommended",
+          10
+        ).select("*");
+        if (error) throw error;
+        return data;
+      },
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ["products", { tag: "trending", limit: 10 }],
+      queryFn: async () => {
+        const { data, error } = await getProductsByTagQuery(
+          supabase,
+          "trending",
+          10
+        ).select("*");
+        if (error) throw error;
+        return data;
+      },
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ["products", { tag: "fresh-fruits", limit: 10 }],
+      queryFn: async () => {
+        const { data, error } = await getProductsByTagQuery(
+          supabase,
+          "fresh-fruits",
+          10
+        ).select("*");
+        if (error) throw error;
+        return data;
+      },
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ["products", { tag: "fresh-vegetables", limit: 10 }],
+      queryFn: async () => {
+        const { data, error } = await getProductsByTagQuery(
+          supabase,
+          "fresh-vegetables",
+          10
+        ).select("*");
+        if (error) throw error;
+        return data;
+      },
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ["sideBanners"],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from("banners")
+          .select("*")
+          .eq("type", "side")
+          .order("order", { ascending: true });
+        if (error) throw error;
+        return data || [];
+      },
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ["carouselBanners"],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from("banners")
+          .select("*, bundles(*)")
+          .eq("type", "carousel")
+          .eq("active", true)
+          .order("order", { ascending: true });
+        if (error) throw error;
+        return data || [];
+      },
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ["promotions", undefined],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from("promotions")
+          .select("*")
+          .eq("is_active", true);
+        if (error) throw error;
+        return data || [];
+      },
+    }),
   ]);
 
-  // Fetch user separately if not using TanStack Query for it
+  let { data: rawCategories, error: allCategoriesError } =
+    await getAllCategoriesQuery(supabase).select("*");
+
+  let allCategories: CategoryData[] | null = null;
+  if (rawCategories) {
+    allCategories = rawCategories.map((category) => {
+      let thumbnailData: { url: string; public_id?: string } | null = null;
+      if (category.thumbnail) {
+        if (
+          typeof category.thumbnail === "object" &&
+          category.thumbnail !== null &&
+          "url" in category.thumbnail &&
+          typeof (category.thumbnail as any).url === "string"
+        ) {
+          thumbnailData = {
+            url: (category.thumbnail as any).url,
+            public_id: (category.thumbnail as any).public_id,
+          };
+        } else if (typeof category.thumbnail === "string") {
+          thumbnailData = { url: category.thumbnail };
+        }
+      }
+      return {
+        ...category,
+        thumbnail: thumbnailData,
+      };
+    });
+  }
+
+  if (allCategoriesError) {
+    console.error(
+      "Server - Error fetching allCategories directly:",
+      allCategoriesError
+    );
+  }
+
+  const { data: bestSellerProducts, error: bestSellerProductsError } =
+    await getProductsByTagQuery(supabase, "best-seller");
+  if (bestSellerProductsError) {
+    console.error(
+      "Server - Error fetching bestSellerProducts directly:",
+      bestSellerProductsError
+    );
+  }
+
   const user = await getUser();
+  console.log(user);
+
+  let purchasedProductIds: string[] = [];
+  if (user?.id) {
+    purchasedProductIds = await getUsersPurchasedProductIds(supabase, user.id);
+  }
+
+  let recommendedProducts: IProductInput[] = [];
+  if (bestSellerProducts && allCategories) {
+    const filteredAndMappedProducts = bestSellerProducts
+      .filter((product) => !purchasedProductIds.includes(product.id || ""))
+      .map((product) =>
+        mapSupabaseProductToIProductInput(product, allCategories)
+      );
+    recommendedProducts = filteredAndMappedProducts.slice(0, 10);
+  }
+
+  const dehydratedState = dehydrate(queryClient);
 
   return (
-    // Wrap your content with HydrationBoundary
-    <HydrationBoundary state={dehydrate(queryClient)}>
+    <HydrationBoundary state={dehydratedState}>
       <main className="">
         <Headertags />
         <div className="bg-[#F9FAFB]">
@@ -82,6 +288,16 @@ export default async function Home() {
             </Suspense>
 
             <div className="flex flex-col gap-6">
+              {recommendedProducts.length > 0 && (
+                <Suspense fallback={<ProductSliderSkeleton />}>
+                  <ProductSlider
+                    title={"Recommended for You"}
+                    products={recommendedProducts}
+                    hideDetails={false}
+                  />
+                </Suspense>
+              )}
+
               <Suspense fallback={<ProductSliderSkeleton />}>
                 <ProductSlider
                   title={"New Arrivals"}
@@ -120,7 +336,6 @@ export default async function Home() {
                 />
               </Suspense>
 
-              {/* Fresh Fruits - Assuming ProductSlider uses useQuery now */}
               <Suspense fallback={<ProductSliderSkeleton />}>
                 <ProductSlider
                   title={"Fresh Fruits"}
@@ -130,18 +345,14 @@ export default async function Home() {
                 />
               </Suspense>
 
-              {/* Fresh Vegetables - Assuming ProductSlider uses useQuery now */}
               <Suspense fallback={<ProductSliderSkeleton />}>
                 <ProductSlider
                   title={"Fresh Vegetables"}
                   href="/fresh-vegetables"
                   tag="fresh-vegetables"
+                  limit={10}
                 />
               </Suspense>
-
-              {/* <Suspense fallback={<ProductSliderSkeleton />}>
-                <BrowsingHistoryList className="mt-10" />
-              </Suspense> */}
             </div>
           </Container>
         </div>

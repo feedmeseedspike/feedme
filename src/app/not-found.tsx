@@ -14,7 +14,7 @@ export const metadata = {
 const NotFound = () => {
   return (
     <>
-    <Header />
+    {/* <Header /> */}
     <Headertags />
       <section className="flex justify-center items-center bg-white">
         <Image
@@ -25,7 +25,7 @@ const NotFound = () => {
           className="max-w-full"
         />
       </section>
-      <Footer />
+      {/* <Footer /> */}
     </>
   );
 };

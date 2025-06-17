@@ -28,16 +28,23 @@ export interface Customer {
   id: string;
   display_name: string | null; // Used for name
   email: string | null;
-  phone: string | null; // Used for phoneNumber
+  // The 'phone' is now fetched from the related addresses table
+  // phone: string | null; // Removed direct phone field
   created_at: string | null; // Used for join date
+  avatar_url: string | null; // Added based on Tables<'users'>
+  role: string | null; // Added based on Tables<'users'>
+  status: string | null; // Added based on Tables<'users'>
+
+  // Include the related addresses, which should be an array
+  addresses: Array<{ phone: string | null; city: string | null }> | null; // Define structure of related addresses
 
   // Additional fields that might be needed in the UI (optional or require separate fetching/calculation)
   name?: string; // Can use display_name
-  phoneNumber?: string; // Can use phone
+  phoneNumber?: string; // Can be derived from addresses
   totalAmountSpent?: number; // Requires aggregation query
   totalOrders?: number; // Requires counting orders
-  location?: string; // Requires address data, potentially from another table or joined
-  image?: string; // Requires avatar_url if available in users table
+  location?: string; // Can be derived from addresses
+  image?: string; // Can use avatar_url
 
   // Assuming the user data structure from Supabase will include an orders array or can be joined/fetched separately
   // If orders are not directly on the user object, you'll need to adjust this interface and fetching logic.

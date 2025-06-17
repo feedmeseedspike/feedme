@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchBundles, createBundle } from "../../../../queries/bundles";
+import {
+  fetchBundles,
+  createBundle,
+  deleteBundle,
+} from "../../../../queries/bundles";
 import { Tables } from "../../../../utils/database.types";
 import { format } from "date-fns";
 import {
@@ -21,6 +25,7 @@ import {
   ListFilter,
   SlidersHorizontal,
   Edit,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@components/ui/button";
 import PaginationBar from "@components/shared/pagination";
@@ -28,6 +33,15 @@ import Image from "next/image";
 import Link from "next/link";
 import BundleModal from "@components/admin/addBundlesModal";
 import { useToast } from "../../../../hooks/useToast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@components/ui/dialog";
 
 export default function BundlesPage() {
   const router = useRouter();
@@ -40,11 +54,13 @@ export default function BundlesPage() {
   const [isNewBundleModalOpen, setIsNewBundleModalOpen] = useState(false);
   const { showToast } = useToast();
 
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [bundleToDeleteId, setBundleToDeleteId] = useState<string | null>(null);
+
   const { data, isLoading, error } = useQuery<{
     data: Tables<"bundles">[] | null;
     count: number | null;
   }>({
-    // Add type argument here
     queryKey: ["bundles", currentPage, search],
     queryFn: () =>
       fetchBundles({
@@ -55,18 +71,28 @@ export default function BundlesPage() {
     placeholderData: (previousData) => previousData,
   });
 
-  // Mutation for creating a new bundle
   const createBundleMutation = useMutation({
     mutationFn: createBundle,
     onSuccess: () => {
       showToast("Bundle created successfully.", "success");
       setIsNewBundleModalOpen(false);
-      // Invalidate the bundles query to refetch data after creation
       queryClient.invalidateQueries({ queryKey: ["bundles"] as const });
     },
     onError: (error) => {
       console.error("Error creating bundle:", error);
       showToast("Failed to create bundle.", "error");
+    },
+  });
+
+  const deleteBundleMutation = useMutation({
+    mutationFn: deleteBundle,
+    onSuccess: () => {
+      showToast("Bundle deleted successfully.", "success");
+      queryClient.invalidateQueries({ queryKey: ["bundles"] as const });
+    },
+    onError: (error) => {
+      console.error("Error deleting bundle:", error);
+      showToast("Failed to delete bundle.", "error");
     },
   });
 
@@ -80,11 +106,10 @@ export default function BundlesPage() {
     } else {
       newSearchParams.delete("search");
     }
-    newSearchParams.set("page", "1"); // Reset to first page on new search
+    newSearchParams.set("page", "1");
     router.push(`?${newSearchParams.toString()}`);
   };
 
-  // Placeholder functions for sort and filter
   const handleSortClick = () => {
     console.log("Sort clicked");
   };
@@ -93,7 +118,7 @@ export default function BundlesPage() {
     console.log("Filter clicked");
   };
 
-  if (error) return <div>Error loading bundles</div>; // Basic error handling
+  if (error) return <div>Error loading bundles</div>;
 
   return (
     <div className="p-4">
@@ -109,7 +134,6 @@ export default function BundlesPage() {
         </Link>
       </div>
 
-      {/* Search, Sort, and Filter */}
       <div className="flex items-center justify-between w-full py-4">
         <div className="relative w-full max-w-sm">
           <Search
@@ -142,7 +166,6 @@ export default function BundlesPage() {
         </div>
       </div>
 
-      {/* Bundles Table */}
       <div className="border rounded-lg overflow-hidden">
         <Table>
           <TableHeader className="bg-gray-100">
@@ -151,13 +174,12 @@ export default function BundlesPage() {
               <TableHead>Price</TableHead>
               <TableHead>Stock Status</TableHead>
               <TableHead>Published Status</TableHead>
-              <TableHead className="text-right w-[60px]"></TableHead>{" "}
-              {/* Column for Edit icon */}
+              <TableHead className="text-right w-[60px]"></TableHead>
+              <TableHead className="text-right w-[60px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              // Skeleton loading rows
               Array.from({ length: ITEMS_PER_PAGE }).map((_, index) => (
                 <TableRow key={index}>
                   <TableCell className="flex items-center gap-3">
@@ -176,6 +198,9 @@ export default function BundlesPage() {
                   <TableCell className="text-right">
                     <div className="h-5 w-5 rounded bg-gray-200 ml-auto"></div>
                   </TableCell>
+                  <TableCell className="text-right">
+                    <div className="h-5 w-5 rounded bg-gray-200 ml-auto"></div>
+                  </TableCell>
                 </TableRow>
               ))
             ) : data?.data && data.data.length > 0 ? (
@@ -185,11 +210,11 @@ export default function BundlesPage() {
                     <Image
                       src={
                         bundle.thumbnail_url || "https://placehold.co/40x40/png"
-                      } // Use placeholder if no image
+                      }
                       alt={bundle.name || "Bundle image"}
                       width={50}
                       height={50}
-                      className="rounded"
+                      className="rounded max-w-[25px] h-[5vh] md:h-[8vh] md:max-w-[50px]"
                       style={{ objectFit: "cover" }}
                     />
                     {bundle.name}
@@ -199,7 +224,7 @@ export default function BundlesPage() {
                   </TableCell>
                   <TableCell>
                     <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
                         bundle.stock_status === "in_stock"
                           ? "bg-green-100 text-green-800"
                           : "bg-red-100 text-red-800"
@@ -221,13 +246,63 @@ export default function BundlesPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <Link href={`/admin/bundles/${bundle.id}/edit`}>
-                      {" "}
-                      {/* Link to bundle details page */}
                       <Edit
                         size={16}
                         className="text-gray-500 hover:text-gray-700"
                       />
                     </Link>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Dialog
+                      open={
+                        isDeleteDialogOpen && bundleToDeleteId === bundle.id
+                      }
+                      onOpenChange={(open) => {
+                        setIsDeleteDialogOpen(open);
+                        if (!open) {
+                          setBundleToDeleteId(null);
+                        }
+                      }}
+                    >
+                      <DialogTrigger asChild>
+                        <Trash2
+                          size={16}
+                          className="text-red-500 hover:text-red-700 cursor-pointer"
+                          onClick={() => {
+                            setBundleToDeleteId(bundle.id);
+                            setIsDeleteDialogOpen(true);
+                          }}
+                        />
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Are you absolutely sure?</DialogTitle>
+                          <DialogDescription>
+                            This action cannot be undone. This will permanently
+                            delete the bundle and remove its data from our
+                            servers.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                          <Button
+                            variant="outline"
+                            onClick={() => setIsDeleteDialogOpen(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              if (bundleToDeleteId) {
+                                deleteBundleMutation.mutate(bundleToDeleteId);
+                              }
+                              setIsDeleteDialogOpen(false);
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   </TableCell>
                 </TableRow>
               ))
@@ -242,7 +317,6 @@ export default function BundlesPage() {
         </Table>
       </div>
 
-      {/* Pagination */}
       <div className="mt-6 flex justify-center">
         <PaginationBar page={currentPage} totalPages={totalPages} />
       </div>

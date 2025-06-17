@@ -12,7 +12,9 @@ export const useWalletBalanceQuery = (userId: string) => {
         .from("wallets")
         .select("balance")
         .eq("user_id", userId)
-        .single();
+        .maybeSingle();
+
+        console.log("Wallet balance query data:", data, error);
 
       if (error) throw error;
       return data?.balance || 0;
@@ -22,18 +24,22 @@ export const useWalletBalanceQuery = (userId: string) => {
 };
 
 // Transactions query
-export const useTransactionsQuery = (userId: string) => {
+export const useTransactionsQuery = (userId: string, page: number = 1, pageSize: number = 10) => {
+  const start = (page - 1) * pageSize;
+  const end = start + pageSize - 1;
+
   return useQuery({
-    queryKey: ["wallet", "transactions", userId],
+    queryKey: ["wallet", "transactions", userId, page, pageSize],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error, count } = await supabase
         .from("transactions")
-        .select("*")
+        .select("*", { count: "exact" })
         .eq("user_id", userId)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .range(start, end);
 
       if (error) throw error;
-      return data || [];
+      return { data: data || [], count: count || 0 };
     },
     enabled: !!userId,
   });
@@ -51,9 +57,12 @@ export const useAddFundsMutation = () => {
       email: string;
       amount: number;
     }) => {
-      const { data } = await supabase.auth.getSession();
-      const token = data?.session?.access_token;
-      if (!token) throw new Error("No access token found");
+      const { data: { session }, error: authError } = await supabase.auth.getUser();
+      const token = session?.access_token;
+      if (authError || !token) {
+        console.error("Add Funds Error: No authenticated session found", authError);
+        throw new Error("Authentication required to add funds");
+      }
       const res = await fetch("/api/wallet/initialize", {
         method: "POST",
         headers: {
@@ -95,9 +104,12 @@ export const useWithdrawFundsMutation = () => {
       bank_code: string;
       recipient_name: string;
     }) => {
-      const { data } = await supabase.auth.getSession();
-      const token = data?.session?.access_token;
-      if (!token) throw new Error("No access token found");
+      const { data: { session }, error: authError } = await supabase.auth.getUser();
+      const token = session?.access_token;
+      if (authError || !token) {
+        console.error("Withdraw Funds Error: No authenticated session found", authError);
+        throw new Error("Authentication required to withdraw funds");
+      }
       const res = await fetch("/api/wallet/transfer", {
         method: "POST",
         headers: {

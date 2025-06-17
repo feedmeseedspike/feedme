@@ -332,4 +332,19 @@ export const updateBundleWithProducts = async (data: UpdateBundleData) => {
   }
 
   return bundleData; // Return the updated bundle data
-}; 
+};
+
+// Function to delete a bundle by ID
+export async function deleteBundle(bundleId: string): Promise<void> {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from('bundles')
+    .delete()
+    .eq('id', bundleId);
+
+  if (error) {
+    console.error('Error deleting bundle:', error);
+    throw error; // Propagate the error
+  }
+} 

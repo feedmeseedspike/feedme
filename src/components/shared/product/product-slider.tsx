@@ -43,6 +43,13 @@ export default function ProductSlider({
   const queryFn = React.useCallback(async () => {
     if (!tag) return null;
 
+    console.log(
+      "ProductSlider: Executing queryFn for tag:",
+      tag,
+      "limit:",
+      limit
+    );
+
     let queryBuilder;
     queryBuilder = getProductsByTagQuery(supabase, tag, limit);
 
@@ -69,6 +76,15 @@ export default function ProductSlider({
     queryKey: queryKey,
     queryFn: queryFn,
     enabled: !!tag,
+  });
+
+  console.log("ProductSlider: useQuery state", {
+    title,
+    tag,
+    fetchedProducts,
+    isLoading,
+    fetchedError,
+    productsProp: products,
   });
 
   if (isLoading && !products) {
@@ -107,7 +123,7 @@ export default function ProductSlider({
         {href && (
           <Link
             href={href}
-            className="flex gap-1 items-center text-[#F0800F] whitespace-nowrap"
+            className="flex md:gap-1 items-center text-[#F0800F] whitespace-nowrap"
           >
             <p>See More</p>
             <ChevronRight className="size-[14px]" />
