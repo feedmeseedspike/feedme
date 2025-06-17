@@ -30,6 +30,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@components/ui/form";
 import {
   Table,
@@ -105,14 +106,16 @@ const productSchema = z
       )
       .optional(), // Make optional
     options: z.array(OptionSchema).optional(),
+    is_published: z.boolean().default(false),
   })
   .superRefine((data, ctx) => {
-    if (data.variation === "Yes") {
+    // If variation is "Yes", options are required
+    if (data.options && data.options.length > 0) {
       if (!data.options || data.options.length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "At least one option is required when variation is 'Yes'",
           path: ["options"],
+          message: "At least one option is required when variation is 'Yes'",
         });
       }
     } else {
@@ -120,22 +123,23 @@ const productSchema = z
       if (!data.price) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Price is required when variation is 'No'",
           path: ["price"],
+          message: "Price is required when product has no variations",
         });
       }
       if (!data.stockStatus) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Stock status is required when variation is 'No'",
           path: ["stockStatus"],
+          message: "Stock status is required when product has no variations",
         });
       }
       if (!data.images || data.images.length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "At least one image is required when variation is 'No'",
           path: ["images"],
+          message:
+            "At least one image is required when product has no variations",
         });
       }
     }
@@ -158,11 +162,11 @@ export default function AddProduct() {
   useEffect(() => {
     // console.log(getCategories());
     setLoadingCategories(true);
-    getCategories()
-      .then((data: any[]) => {
-        // console.log(data);
+    getCategories({})
+      .then((response) => {
+        // console.log(response);
         setCategories(
-          (data || []).map((cat: any) => ({
+          (response?.data || []).map((cat: any) => ({
             label: cat.title,
             value: cat.id,
           }))
@@ -183,6 +187,7 @@ export default function AddProduct() {
       variation: "No",
       images: [],
       options: [], // Initialize options
+      is_published: true,
     },
   });
 
@@ -237,6 +242,7 @@ export default function AddProduct() {
         );
         form.setValue("variation", draftData.variation);
         form.setValue("images", files);
+        form.setValue("is_published", draftData.is_published);
       });
     }
   }, [form, categories]);
@@ -308,6 +314,7 @@ export default function AddProduct() {
       ),
       images: base64ProductImages,
       variation: data.variation,
+      is_published: data.is_published,
     };
 
     localStorage.setItem("productDraft", JSON.stringify(productState));
@@ -332,14 +339,11 @@ export default function AddProduct() {
     let uploadedImageUrls: string[] = [];
     if (data.images && data.images.length > 0) {
       try {
-        // Upload each image and collect URLs
-        for (const imageFile of data.images) {
-          const imageUrl = await uploadProductImage(
-            imageFile,
-            "product-images"
-          );
-          uploadedImageUrls.push(imageUrl);
-        }
+        // Upload each image in parallel and collect URLs
+        const uploadPromises = data.images.map((imageFile) =>
+          uploadProductImage(imageFile, "product-images")
+        );
+        uploadedImageUrls = await Promise.all(uploadPromises);
       } catch (err: any) {
         showToast(err.message || "Failed to upload product images", "error");
         setLoading(false);
@@ -351,22 +355,20 @@ export default function AddProduct() {
     // If options.image is already a URL string, skip upload here.
     // You might need a separate upload logic for option images if they are File objects.
 
+    // Determine if the product has variations based on the options array
+    const hasVariations = data.options && data.options.length > 0;
+
     const productData = {
       name: data.productName,
+      slug: toSlug(data.productName),
       description: data.description,
-      // Assuming category_ids is an array of strings in your Supabase products table
-      category_ids: data.selectedCategories.map((cat) => cat.value),
-      variation: data.variation === "Yes",
-      // Include price and stock status only if variation is 'No'
-      price: data.variation === "No" ? parseFloat(data.price || "0") : null,
-      stock_status: data.variation === "No" ? data.stockStatus : null,
+      price: hasVariations ? null : parseFloat(data.price || "0"),
+      stock_status: hasVariations ? null : data.stockStatus,
       images: uploadedImageUrls.map((url) => ({ url })), // Store image URLs as objects with url property
-      // Assuming options can be stored as JSONB or similar; adjust if using a separate table
-      options: data.variation === "Yes" ? data.options : [],
-      // Add other fields like vendor_id, is_published, etc. as per your Supabase schema
-      // vendor_id: '...', // Replace with actual vendor ID logic
-      is_published: true, // Defaulting to true, adjust as needed
-      slug: toSlug(data.productName), // Generate slug from product name
+      is_published: data.is_published,
+      category_ids: data.selectedCategories.map((cat) => cat.value),
+      options: hasVariations ? data.options : [],
+      vendor_id: auth.user?.id, // Assuming vendor_id is the user's ID
     };
 
     try {
@@ -500,17 +502,21 @@ export default function AddProduct() {
                     value={field.value}
                     className="flex gap-6 mt-1 col-span-7"
                   >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="No" id="no" />
-                      <label htmlFor="no">No</label>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="Yes" id="variation-yes" />
+                      <Label htmlFor="variation-yes">Yes</Label>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="Yes" id="yes" />
-                      <label htmlFor="yes">Yes</label>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="No" id="variation-no" />
+                      <Label htmlFor="variation-no">No</Label>
                     </div>
                   </RadioGroup>
+                  <FormDescription>
+                    Does this product have different variations like size or
+                    color?
+                  </FormDescription>
+                  <FormMessage />
                 </FormControl>
-                <FormMessage className="col-span-7 col-start-3" />
               </FormItem>
             )}
           />

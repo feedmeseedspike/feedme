@@ -22,6 +22,7 @@ import {
 } from "src/queries/cart";
 import { useToast } from "src/hooks/useToast";
 import { Tables } from "@utils/database.types";
+import { CartItem } from "src/lib/actions/cart.actions";
 
 export default function BundleDetailPage() {
   // All hooks must be called unconditionally at the top level
@@ -42,18 +43,64 @@ export default function BundleDetailPage() {
   });
 
   const handleAddToCart = () => {
-    if (!bundle || !bundle.products) return;
+    if (!bundle) return;
 
-    const itemsToAdd: ItemToUpdateMutation[] = bundle.products.map(
-      (product: Tables<"products">) => ({
-        product_id: product.id,
+    const currentCart = queryClient.getQueryData<CartItem[]>(cartQueryKey);
+    let updatedCartItems: ItemToUpdateMutation[] = [];
+
+    let bundleExistsInCart = false;
+
+    if (currentCart) {
+      updatedCartItems = currentCart
+        .map((item) => {
+          if (item.bundle_id === bundle.id) {
+            bundleExistsInCart = true;
+            return {
+              bundle_id: item.bundle_id,
+              quantity: item.quantity + 1, // Increment quantity if bundle already exists
+              price: item.price || 0, // Keep existing price or use default
+              product_id: null, // Ensure product_id is null for bundles
+            };
+          } else if (item.product_id) {
+            // Include existing product items in the updated cart
+            return {
+              product_id: item.product_id,
+              quantity: item.quantity,
+              option:
+                item.option === undefined ||
+                item.option === null ||
+                (typeof item.option === "object" &&
+                  Object.keys(item.option).length === 0)
+                  ? null
+                  : item.option, // Explicitly handle undefined or empty object to null
+              price: item.price || 0, // Keep existing price or use default
+              bundle_id: null, // Ensure bundle_id is null for products
+            };
+          }
+          return item; // Return item as is if it's neither product nor bundle for some reason
+        })
+        .filter((item) => item !== undefined) as ItemToUpdateMutation[]; // Filter out any undefined and cast
+    }
+
+    if (!bundleExistsInCart) {
+      // If the bundle doesn't exist in the cart, add it as a new item
+      updatedCartItems.push({
+        bundle_id: bundle.id,
+        product_id: null,
         quantity: 1,
-        option: null,
-        price: product.price || 0,
-      })
-    );
+        price: bundle.price || 0,
+      });
+    }
 
-    updateCartMutation.mutate(itemsToAdd);
+    updateCartMutation.mutate(updatedCartItems, {
+      onSuccess: () => {
+        showToast("Bundle added to cart!", "success");
+      },
+      onError: (err) => {
+        console.error("Failed to add bundle to cart:", err);
+        showToast("Failed to add bundle to cart.", "error");
+      },
+    });
   };
 
   // Conditional returns must come after all hooks

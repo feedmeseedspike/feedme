@@ -5,16 +5,18 @@ import { revalidatePath } from "next/cache";
 import { UserProfileSchema } from "../../lib/validator";
 
 export async function updateUserInfo(currentState: any, formData: FormData) {
+ 
+
   const supabase = await createClient();
 
   try {
     // Validate form data
     const validatedFields = UserProfileSchema.safeParse({
       display_name: formData.get("display_name"),
-      phone: formData.get("phone"),
-      address: formData.get("address"),
       role: formData.get("role"),
       avatar: formData.get("avatar"),
+      birthday: formData.get("birthday"),
+      favorite_fruit: formData.get("favorite_fruit"),
     });
 
     if (!validatedFields.success) {
@@ -26,52 +28,75 @@ export async function updateUserInfo(currentState: any, formData: FormData) {
     }
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
+   
     if (authError || !user) throw new Error("Not authenticated");
 
     let avatarUrl = null;
 
-    if (
-      validatedFields.data.avatar &&
-      validatedFields.data.avatar instanceof File &&
-      validatedFields.data.avatar.size > 0
-    ) {
-      const fileExt = validatedFields.data.avatar.name.split(".").pop();
+    // Handle avatar upload if it's a File
+    const avatarFile = formData.get("avatar");
+    if (avatarFile instanceof File && avatarFile.size > 0) {
+      const fileExt = avatarFile.name.split(".").pop();
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
       const filePath = `avatars/${fileName}`;
 
+      // Upload the file to Supabase storage
       const { error: uploadError } = await supabase.storage
         .from("user-avatars")
-        .upload(filePath, validatedFields.data.avatar, {
+        .upload(filePath, avatarFile, {
           cacheControl: "3600",
-          upsert: false,
+          upsert: true,
         });
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
+      // Get public URL for the uploaded file
+      const { data: publicUrlData } = supabase.storage
         .from("user-avatars")
         .getPublicUrl(filePath);
 
-      avatarUrl = publicUrl;
+      avatarUrl = publicUrlData.publicUrl;
+    } else if (typeof avatarFile === 'string' && avatarFile === '') {
+      // If an empty string is explicitly sent, set avatarUrl to null to remove it
+      avatarUrl = null;
+    } else if (typeof avatarFile === 'string') {
+      // If it's a non-empty string, assume it's an existing URL and keep it
+      avatarUrl = avatarFile;
     }
 
-    const { error: updateError } = await supabase
+    // Determine the birthday value to send to Supabase
+    let birthdayForDb = validatedFields.data.birthday;
+    if (birthdayForDb === "") {
+        birthdayForDb = null;
+    }
+
+
+    // Update user data in the database
+    const updateData = {
+      display_name: validatedFields.data.display_name,
+      role: validatedFields.data.role,
+      ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
+      birthday: birthdayForDb,
+      favorite_fruit: validatedFields.data.favorite_fruit,
+    };
+
+    const updateResult = await supabase
       .from("users")
-      .update({
-        display_name: validatedFields.data.display_name,
-        phone: validatedFields.data.phone || null,
-        address: validatedFields.data.address || null,
-        role: validatedFields.data.role,
-        ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
-      })
+      .update(updateData)
       .eq("id", user.id);
 
-    if (updateError) throw updateError;
 
-    revalidatePath("/account");
+    if (updateResult.error) {
+      throw new Error(updateResult.error.message);
+    }
 
-    return { success: true, avatarUrl, errors: null };
+    return { 
+      success: true, 
+      message: "Profile updated successfully",
+      avatarUrl 
+    };
   } catch (error: any) {
+    console.error("Error in updateUserInfo:", error);
     return {
       success: false,
       message: error.message || "Something went wrong",
@@ -80,8 +105,7 @@ export async function updateUserInfo(currentState: any, formData: FormData) {
   }
 }
 
-// Action to fetch a single customer (user with role 'buyer') by ID
-// Accept customerId as string, assuming it's a UUID
+
 export async function getCustomerByIdAction(customerId: string) {
   console.warn(`Fetching customer (user with role 'buyer') with ID: ${customerId}`);
   const supabase = await createClient();

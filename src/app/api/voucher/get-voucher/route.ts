@@ -1,0 +1,71 @@
+import { NextResponse } from 'next/server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import { Database } from 'src/utils/database.types'; 
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const code = searchParams.get('code');
+  const totalAmountParam = searchParams.get('totalAmount');
+
+  if (!code) {
+    return NextResponse.json({ success: false, error: 'Voucher code is missing.' }, { status: 400 });
+  }
+
+  if (!totalAmountParam) {
+    return NextResponse.json({ success: false, error: 'Total order amount is missing.' }, { status: 400 });
+  }
+
+  const totalAmount = parseFloat(totalAmountParam);
+  if (isNaN(totalAmount) || totalAmount < 0) {
+    return NextResponse.json({ success: false, error: 'Invalid total order amount.' }, { status: 400 });
+  }
+
+  // Initialize Supabase client for the route handler
+  const supabase = createRouteHandlerClient<Database>({ cookies });
+
+  try {
+    const { data: voucher, error } = await supabase
+      .from('vouchers')
+      .select('code, discount_type, discount_value, is_active, max_uses, used_count, valid_from, valid_to, min_order_amount')
+      .eq('code', code)
+      .single();
+
+    if (error || !voucher) {
+      return NextResponse.json({ success: false, error: 'Invalid or expired voucher.' }, { status: 404 });
+    }
+
+    // Detailed validation:
+    if (!voucher.is_active) {
+      return NextResponse.json({ success: false, error: 'Voucher is not active.' }, { status: 400 });
+    }
+
+    const now = new Date();
+    if (voucher.valid_from && new Date(voucher.valid_from) > now) {
+      return NextResponse.json({ success: false, error: 'Voucher is not yet valid.' }, { status: 400 });
+    }
+    if (voucher.valid_to && new Date(voucher.valid_to) < now) {
+      return NextResponse.json({ success: false, error: 'Voucher has expired.' }, { status: 400 });
+    }
+
+    if (voucher.max_uses !== null && (voucher.used_count || 0) >= voucher.max_uses) {
+      return NextResponse.json({ success: false, error: 'Voucher has reached its usage limit.' }, { status: 400 });
+    }
+
+    if (voucher.min_order_amount !== null && totalAmount < voucher.min_order_amount) {
+      return NextResponse.json({ success: false, error: `Order total must be at least ${voucher.min_order_amount} to use this voucher.` }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: true, data: {
+      code: voucher.code,
+      discountType: voucher.discount_type,
+      discountValue: voucher.discount_value,
+      isActive: voucher.is_active, 
+      usageLimit: voucher.max_uses === null ? null : voucher.max_uses - (voucher.used_count || 0), 
+    } }, { status: 200 });
+
+  } catch (error: any) {
+    console.error('Error fetching voucher:', error);
+    return NextResponse.json({ success: false, error: 'An internal server error occurred.' }, { status: 500 });
+  }
+} 

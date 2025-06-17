@@ -9,6 +9,14 @@ import {
 import { Customer, Order } from "../../../../../types/customer";
 import { Tables } from "../../../../../utils/database.types";
 import { format } from "date-fns";
+import {
+  Calendar as CalendarIcon,
+  Apple,
+  User,
+  Mail,
+  Phone,
+  MapPin,
+} from "lucide-react";
 
 import {
   Table,
@@ -29,9 +37,30 @@ import {
 } from "@components/ui/select";
 import { createClient } from "@utils/supabase/client";
 import { useToast } from "../../../../../hooks/useToast";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import Link from "next/link";
 import { Separator } from "@components/ui/separator";
+import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
+import { Button } from "@components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@components/ui/popover";
+import { Calendar } from "@components/ui/calendar";
+import { cn } from "../../../../../lib/utils";
+
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@components/ui/form";
 
 // Progress options from the orders page (should match order_status_enum)
 const progressOptions = [
@@ -51,6 +80,57 @@ export default function CustomerDetailsPage() {
     isLoading: isCustomerLoading,
     error: customerError,
   } = useCustomer(customerId);
+
+  // Define schema for form validation
+  const CustomerDetailsSchema = z.object({
+    display_name: z.string().optional(),
+    birthday: z.string().optional().nullable(),
+    favorite_fruit: z.string().optional().nullable(),
+  });
+
+  type CustomerDetailsFormData = z.infer<typeof CustomerDetailsSchema>;
+
+  const form = useForm<CustomerDetailsFormData>({
+    resolver: zodResolver(CustomerDetailsSchema),
+    defaultValues: {
+      display_name: customer?.display_name || "",
+      birthday: customer?.birthday
+        ? format(new Date(customer.birthday), "yyyy-MM-dd")
+        : "",
+      favorite_fruit: customer?.favorite_fruit || "",
+    },
+  });
+
+  // Mutation for updating customer details
+  const updateCustomerMutation = useMutation({
+    mutationFn: async (data: CustomerDetailsFormData) => {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("users")
+        .update({
+          display_name: data.display_name,
+          birthday: data.birthday,
+          favorite_fruit: data.favorite_fruit,
+        })
+        .eq("id", customerId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      showToast("Customer details updated successfully.", "success");
+      queryClient.invalidateQueries({
+        queryKey: ["customers", "detail", customerId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+    },
+    onError: (error) => {
+      showToast(`Failed to update customer details: ${error.message}`, "error");
+    },
+  });
+
+  const onSubmit = (data: CustomerDetailsFormData) => {
+    updateCustomerMutation.mutate(data);
+  };
 
   // Fetch customer orders using the hook
   const {
@@ -110,6 +190,169 @@ export default function CustomerDetailsPage() {
           {customer?.display_name || "N/A"}
         </h1>
       )}
+
+      {/* Customer Details Form */}
+      <Card className="border-0 shadow-lg mb-6">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            <User className="w-6 h-6 text-[#1B6013]" />
+            Customer Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Display Name */}
+                <FormField
+                  control={form.control}
+                  name="display_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
+                        <User className="w-4 h-4 text-[#1B6013]" />
+                        Full Name
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Enter full name"
+                          className="h-10 border-gray-200 focus:border-[#1B6013] focus:ring-[#1B6013]/20 rounded-md"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {/* Email (Read-only) */}
+                <FormItem>
+                  <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-[#1B6013]" />
+                    Email Address
+                  </FormLabel>
+                  <Input
+                    value={customer?.email || "N/A"}
+                    readOnly
+                    className="h-10 bg-gray-50 border-gray-200 text-gray-600 rounded-md cursor-not-allowed"
+                  />
+                </FormItem>
+                {/* Birthday Field */}
+                <FormField
+                  control={form.control}
+                  name="birthday"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
+                        <CalendarIcon className="w-4 h-4 text-[#1B6013]" />
+                        Birthday
+                      </FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {field.value ? (
+                                format(new Date(field.value), "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={
+                              field.value ? new Date(field.value) : undefined
+                            }
+                            onSelect={(date) =>
+                              field.onChange(
+                                date ? format(date, "yyyy-MM-dd") : ""
+                              )
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {/* Favorite Fruit Field */}
+                <FormField
+                  control={form.control}
+                  name="favorite_fruit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
+                        <Apple className="w-4 h-4 text-[#1B6013]" />
+                        Favorite Fruit
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="e.g., Apple, Banana"
+                          className="h-10 border-gray-200 focus:border-[#1B6013] focus:ring-[#1B6013]/20 rounded-md"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Phone (Read-only from addresses) */}
+                <FormItem>
+                  <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-[#1B6013]" />
+                    Phone
+                  </FormLabel>
+                  <Input
+                    value={
+                      customer?.addresses && customer.addresses.length > 0
+                        ? customer.addresses[0]?.phone || "N/A"
+                        : "N/A"
+                    }
+                    readOnly
+                    className="h-10 bg-gray-50 border-gray-200 text-gray-600 rounded-md cursor-not-allowed"
+                  />
+                </FormItem>
+                {/* Location (Read-only from addresses) */}
+                <FormItem>
+                  <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-[#1B6013]" />
+                    Location
+                  </FormLabel>
+                  <Input
+                    value={
+                      customer?.addresses && customer.addresses.length > 0
+                        ? customer.addresses[0]?.city || "N/A"
+                        : "N/A"
+                    }
+                    readOnly
+                    className="h-10 bg-gray-50 border-gray-200 text-gray-600 rounded-md cursor-not-allowed"
+                  />
+                </FormItem>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full py-2 text-lg font-semibold bg-[#1B6013] text-white hover:bg-[#1B6013]/90 transition-colors rounded-md"
+                disabled={updateCustomerMutation.isPending}
+              >
+                {updateCustomerMutation.isPending
+                  ? "Updating..."
+                  : "Update Details"}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
 
       {/* Orders Section */}
       <div className="">

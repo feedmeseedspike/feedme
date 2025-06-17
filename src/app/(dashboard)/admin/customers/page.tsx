@@ -4,8 +4,10 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { fetchCustomers } from "../../../../queries/customers";
+import { useToast } from "../../../../hooks/useToast";
 import { Tables } from "../../../../utils/database.types";
 import { format } from "date-fns";
+import { FetchedCustomerData } from "../../../../queries/customers";
 
 import {
   Table,
@@ -26,10 +28,10 @@ export default function CustomersPage() {
 
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const currentPage = Number(searchParams.get("page")) || 1;
-  const ITEMS_PER_PAGE = 10; // You can adjust this
+  const ITEMS_PER_PAGE = 10;
 
   const { data, isLoading, error } = useQuery<{
-    data: Tables<"users">[] | null;
+    data: FetchedCustomerData[] | null;
     count: number | null;
   }>({
     queryKey: ["customers", currentPage, search],
@@ -37,7 +39,7 @@ export default function CustomersPage() {
       fetchCustomers({
         page: currentPage,
         itemsPerPage: ITEMS_PER_PAGE,
-        search,
+        search: search || undefined,
       }),
     placeholderData: (previousData) => previousData,
   });
@@ -56,7 +58,7 @@ export default function CustomersPage() {
     router.push(`?${newSearchParams.toString()}`);
   };
 
-  if (error) return <div>Error loading customers</div>; // Basic error handling
+  if (error) return <div>Error loading customers</div>;
 
   return (
     <div className="p-4">
@@ -77,7 +79,6 @@ export default function CustomersPage() {
             onChange={handleSearchChange}
           />
         </div>
-        {/* Add other filter/sort options here if needed */}
       </div>
 
       {/* Customers Table */}
@@ -93,7 +94,8 @@ export default function CustomersPage() {
               <TableHead>Total Amount Spent</TableHead>
               <TableHead>Total Orders</TableHead>
               <TableHead>Location</TableHead>
-              {/* Add other relevant customer info headers */}
+              <TableHead>Birthday</TableHead>
+              <TableHead>Favorite Fruit</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -126,23 +128,30 @@ export default function CustomersPage() {
                   <TableCell>
                     <div className="h-4 bg-gray-200 rounded w-20"></div>
                   </TableCell>
-                  {/* Add skeleton cells for other columns */}
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-20"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 bg-gray-200 rounded w-20"></div>
+                  </TableCell>
                 </TableRow>
               ))
             ) : data?.data && data.data.length > 0 ? (
-              data.data.map((customer: Tables<"users">) => (
-              <TableRow
-                key={customer.id}
+              data.data.map((customer: FetchedCustomerData) => (
+                <TableRow
+                  key={customer.id}
                   className="cursor-pointer hover:bg-gray-100"
                   onClick={() => router.push(`/admin/customers/${customer.id}`)}
-              >
+                >
                   <TableCell>
                     {customer.id ? `${customer.id.substring(0, 8)}...` : "N/A"}
-                </TableCell>
+                  </TableCell>
                   <TableCell className="flex items-center gap-3">
                     <Avatar>
-                      {/* You might need to add an avatar_url column to your users table */}
-                      <AvatarImage src="" alt="Avatar" />
+                      <AvatarImage
+                        src={customer.avatar_url || ""}
+                        alt="Avatar"
+                      />
                       <AvatarFallback>
                         {customer.display_name
                           ? customer.display_name
@@ -155,27 +164,45 @@ export default function CustomersPage() {
                       </AvatarFallback>
                     </Avatar>
                     {customer.display_name || "N/A"}
-                </TableCell>
+                  </TableCell>
                   <TableCell>{customer.email || "N/A"}</TableCell>
-                  <TableCell>{customer.phone || "N/A"}</TableCell>
+                  <TableCell>
+                    {/* Display phone from the first address if available */}
+                    {customer.addresses &&
+                    customer.addresses.length > 0 &&
+                    customer.addresses[0]?.phone
+                      ? customer.addresses[0].phone
+                      : "N/A"}
+                  </TableCell>
                   <TableCell>
                     {customer.created_at
                       ? format(new Date(customer.created_at), "PPP")
                       : "N/A"}
-                </TableCell>
+                  </TableCell>
                   <TableCell>
                     ₦{Math.floor(Math.random() * 100000).toLocaleString()}
-                </TableCell>
+                  </TableCell>
                   <TableCell>{Math.floor(Math.random() * 50)}</TableCell>
                   <TableCell>
-                    {(customer.address as any)?.city || "N/A"}
-                </TableCell>
+                    {/* Display city from the first address if available */}
+                    {customer.addresses &&
+                    customer.addresses.length > 0 &&
+                    customer.addresses[0]?.city
+                      ? customer.addresses[0].city
+                      : "N/A"}
+                  </TableCell>
+                  <TableCell>
+                    {customer.birthday
+                      ? format(new Date(customer.birthday), "PPP")
+                      : "N/A"}
+                  </TableCell>
+                  <TableCell>{customer.favorite_fruit || "N/A"}</TableCell>
                 </TableRow>
               ))
             ) : (
               // No customers message
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
+                <TableCell colSpan={10} className="text-center py-8">
                   No customers found.
                 </TableCell>
               </TableRow>

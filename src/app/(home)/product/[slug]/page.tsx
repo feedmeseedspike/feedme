@@ -7,7 +7,7 @@ import ProductGalleryWrapper from "@components/shared/product/gallery-wrapper";
 import Container from "@components/shared/Container";
 import RatingSummary from "@components/shared/product/rating-summary";
 import { Separator } from "@components/ui/separator";
-import { formatNaira, generateId } from "src/lib/utils";
+import { formatNaira, generateId, toSlug } from "src/lib/utils";
 import ReviewList from "src/app/(home)/product/[slug]/review-list";
 import AddToCart from "@components/shared/product/add-to-cart";
 import FastDelivery from "@components/icons/fastDelivery.svg";
@@ -26,6 +26,18 @@ import Options from "../options";
 import ProductSlider from "@components/shared/product/product-slider";
 import Image from "next/image";
 import ProductDetailsClient from "@components/shared/product/product-details-client";
+import Link from "next/link";
+import { getAllCategoriesQuery } from "src/queries/categories";
+import { createClient } from "src/utils/supabase/server";
+import { Tables } from "src/utils/database.types";
+import {
+  getAlsoViewedProducts,
+  getAlsoBoughtProducts,
+} from "src/queries/products";
+import { IProductInput } from "src/types";
+import { mapSupabaseProductToIProductInput, CategoryData } from "src/lib/utils";
+
+type ProductType = Tables<"products">;
 
 export async function generateMetadata({
   params,
@@ -42,15 +54,14 @@ export async function generateMetadata({
       return {
         title: product.name,
         description: `${
-          product.description || product.description.substring(0, 160)
+          product.description || ""
         } Buy fresh and premium-quality ${
           product.name
         } online at FeedMe Nigeria today. Enjoy competitive prices in Naira, swift delivery, and the convenience of cash on delivery. Shop now and bring nature's goodness to your kitchen!`,
         openGraph: {
           title: product.name,
-          description:
-            product.description || product.description.substring(0, 160),
-          images: product.images[0] || "/logo.png",
+          description: product.description || "",
+          images: product.images?.[0] || "/logo.png",
         },
       };
     }
@@ -80,22 +91,73 @@ const ProductDetails = async (props: {
   const { slug } = params;
 
   const user = await getUser();
-  const product = await getProductBySlug(slug);
-  // console.log(product);
-  const cartItemId = generateId();
+  const product: ProductType = await getProductBySlug(slug);
 
-  const totalRatings = product.rating_distribution.reduce(
-    (acc: number, { count }: { count: number }) => acc + count,
-    0
+  if (!product) {
+    return (
+      <section>
+        <Container>
+          <h1 className="h2-bold text-center">Product Not Found</h1>
+          <p className="text-center">
+            The product you are looking for does not exist or has been removed.
+          </p>
+        </Container>
+      </section>
+    );
+  }
+
+  const supabase = await createClient();
+  const { data: categoriesData } = await getAllCategoriesQuery(supabase).select(
+    "id, title"
   );
 
+  const productCategory = categoriesData?.find(
+    (cat) => cat.id === product.category_ids?.[0]
+  );
+
+  const cartItemId = generateId();
+
+  const totalRatings = (
+    (product.rating_distribution as Array<{ count: number }>) || []
+  ).reduce((acc: number, { count }: { count: number }) => acc + count, 0);
+
   const relatedProducts = await getRelatedProductsByCategory({
-    category: product.category_ids,
+    category: product.category_ids?.[0] || "",
     productId: product.id,
     page: Number(page || "1"),
   });
 
-  // console.log(relatedProducts);
+  let alsoViewedProducts: IProductInput[] = [];
+  try {
+    const rawAlsoViewedProducts = await getAlsoViewedProducts(
+      supabase,
+      product.id
+    );
+    if (rawAlsoViewedProducts) {
+      alsoViewedProducts = rawAlsoViewedProducts.map((p) =>
+        mapSupabaseProductToIProductInput(p, categoriesData as CategoryData[])
+      );
+    }
+    console.log("Also Viewed Products:", alsoViewedProducts);
+  } catch (error) {
+    console.error("Error fetching also viewed products:", error);
+  }
+
+  let alsoBoughtProducts: IProductInput[] = [];
+  try {
+    const rawAlsoBoughtProducts = await getAlsoBoughtProducts(
+      supabase,
+      product.id
+    );
+    if (rawAlsoBoughtProducts) {
+      alsoBoughtProducts = rawAlsoBoughtProducts.map((p) =>
+        mapSupabaseProductToIProductInput(p, categoriesData as CategoryData[])
+      );
+    }
+    console.log("Also Bought Products:", alsoBoughtProducts);
+  } catch (error) {
+    console.error("Error fetching also bought products:", error);
+  }
 
   const ProductJsonLd = ({
     product,
@@ -121,7 +183,7 @@ const ProductDetails = async (props: {
             "@context": "https://schema.org/",
             "@type": "Product",
             name: product.name,
-            image: product.images[0],
+            image: product.images?.[0],
             description: product.description,
             brand: {
               "@type": "Brand",
@@ -133,7 +195,7 @@ const ProductDetails = async (props: {
               priceCurrency: "NGN",
               price: product.price,
               availability:
-                product.countInStock > 0
+                (product.countInStock ?? 0) > 0
                   ? "https://schema.org/InStock"
                   : "https://schema.org/OutOfStock",
               seller: {
@@ -157,27 +219,43 @@ const ProductDetails = async (props: {
   return (
     <section>
       <Container>
+        {/* {productCategory && (
+          <div className="mb-4 text-sm text-gray-500">
+            <Link href={`/categories`} className="hover:underline">
+              Categories
+            </Link>
+            <span className="mx-2">/</span>
+            <Link
+              href={`/category/${toSlug(productCategory.title)}`}
+              className="hover:underline"
+            >
+              {productCategory.title}
+            </Link>
+            <span className="mx-2">/</span>
+            <span>{product.name}</span>
+          </div>
+        )} */}
         <AddToBrowsingHistory
           id={product.id!}
-          category={product.category_ids}
+          category={product.category_ids || []}
         />
         <ProductDetailsClient
           product={{
             _id: product.id,
             name: product.name,
-            images: product.images,
-            avgRating: product.avg_rating,
-            numReviews: product.num_reviews,
-            ratingDistribution: product.rating_distribution,
-            options: product.options,
+            images: product.images || [],
+            avgRating: product.avg_rating || 0,
+            numReviews: product.num_reviews || 0,
+            ratingDistribution: product.rating_distribution || [],
+            options: (product.options as any) || [],
             slug: product.slug,
-            category: product.category_ids[0],
-            price: product.price,
+            category: product.category_ids?.[0] || "",
+            price: product.price || 0,
             vendor: {
-              id: product.vendor_id,
-              shopId: product.vendor_shopId,
-              displayName: product.vendor_displayName,
-              logo: product.vendor_logo,
+              id: product.vendor_id || "",
+              shopId: (product as any).vendor_shopId || "",
+              displayName: (product as any).vendor_displayName || "",
+              logo: (product as any).vendor_logo || "",
             },
           }}
           cartItemId={cartItemId}
@@ -186,9 +264,9 @@ const ProductDetails = async (props: {
         {/* Product Description and Reviews */}
         <div className="bg-white my-6 p-3">
           <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="item-1">
+            <AccordionItem value="item-1" className="!border-none">
               <AccordionTrigger>Product Description</AccordionTrigger>
-              <AccordionContent>{product.description}</AccordionContent>
+              <AccordionContent>{product.description || ""}</AccordionContent>
             </AccordionItem>
           </Accordion>
         </div>
@@ -199,12 +277,28 @@ const ProductDetails = async (props: {
           </h2>
           <ReviewList userId={user?.id} product={product} />
         </section>
-        <section className="mt-10">
+        {/* <section className="mt-10">
           <ProductSlider
-            products={relatedProducts.data}
+            products={relatedProducts.data || []}
             title={"You may also like"}
           />
-        </section>
+        </section> */}
+        {alsoViewedProducts.length > 0 && (
+          <section className="mt-10">
+            <ProductSlider
+              products={alsoViewedProducts}
+              title={"Customers who viewed this item also viewed"}
+            />
+          </section>
+        )}
+        {alsoBoughtProducts.length > 0 && (
+          <section className="mt-10">
+            <ProductSlider
+              products={alsoBoughtProducts}
+              title={"Customers who bought this item also bought"}
+            />
+          </section>
+        )}
         <section>
           <BrowsingHistoryList className="mt-10" />
         </section>

@@ -1,11 +1,28 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import Container from "./Container";
-import { TiSocialTwitter, TiSocialFacebook, TiSocialLinkedin } from "react-icons/ti";
+import {
+  TiSocialTwitter,
+  TiSocialFacebook,
+  TiSocialLinkedin,
+} from "react-icons/ti";
 import { SlSocialInstagram } from "react-icons/sl";
 import Waitlist from "@components/shared/WaitList";
 import { ContactModal } from "@components/shared/ContactModal";
+import { TypedSupabaseClient } from "src/utils/types";
+import { getAllCategoriesQuery } from "src/queries/categories";
+import { createClient } from "src/utils/supabase/client";
+import { toSlug } from "src/lib/utils";
+// import { Tables } from "@utils/database.types";
+
+type CategoryListItem = {
+  id: string;
+  title: string;
+  thumbnail: string | object | null; // thumbnail can be object (Json) or string (url)
+};
 
 const footerData = [
   {
@@ -35,18 +52,43 @@ const footerData = [
   {
     title: "Legal",
     links: [{ name: "Privacy Policy", href: "/return-policy" }],
-  }
+  },
 ];
 
 const Icons = [
   { href: "https://x.com/Seedspike15427", icon: <TiSocialTwitter /> },
-  { href: "https://www.facebook.com/profile.php?id=100093243737297&mibextid=ZbWKwL", icon: <TiSocialFacebook /> },
-  { href: "https://www.linkedin.com/company/seedspike/", icon: <TiSocialLinkedin /> },
-  { href: "https://www.instagram.com/seedspikeafrica/profilecard/?igsh=MTE4OW5zY2RjYnprYQ==", icon: <SlSocialInstagram /> },
+  {
+    href: "https://www.facebook.com/profile.php?id=100093243737297&mibextid=ZbWKwL",
+    icon: <TiSocialFacebook />,
+  },
+  {
+    href: "https://www.linkedin.com/company/seedspike/",
+    icon: <TiSocialLinkedin />,
+  },
+  {
+    href: "https://www.instagram.com/seedspikeafrica/profilecard/?igsh=MTE4OW5zY2RjYnprYQ==",
+    icon: <SlSocialInstagram />,
+  },
 ];
 
-const Footer = async () => {
+const Footer = () => {
   const year = new Date().getFullYear();
+  const [categories, setCategories] = useState<CategoryListItem[]>([]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    const fetchCategories = async () => {
+      const { data, error } = await getAllCategoriesQuery(supabase).select(
+        "id, title, thumbnail"
+      );
+      if (error) {
+        console.error("Error fetching categories:", error);
+      } else {
+        setCategories(data || []);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   return (
     <>
@@ -72,9 +114,20 @@ const Footer = async () => {
               <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 {/* Categories Section */}
                 <div>
-                  <h3 className="font-bold mb-4 uppercase text-black text-sm">Categories</h3>
+                  <h3 className="font-bold mb-4 uppercase text-black text-sm">
+                    Categories
+                  </h3>
                   <ul className="space-y-2">
-                    {/* Categories list */}
+                    {categories.map((category) => (
+                      <li key={category.id} className="text-sm">
+                        <Link
+                          href={`/category/${toSlug(category?.title)}`}
+                          className="hover:underline hover:underline-offset-2"
+                        >
+                          {category.title}
+                        </Link>
+                      </li>
+                    ))}
                   </ul>
                   <Link href="/categories">
                     <button className="mt-4 text-orange-600 hover:underline">
@@ -84,7 +137,9 @@ const Footer = async () => {
                 </div>
                 {footerData.map((section, index) => (
                   <div key={index}>
-                    <h3 className="font-semibold text-[#101828] mb-4 uppercase text-sm">{section.title}</h3>
+                    <h3 className="font-semibold text-[#101828] mb-4 uppercase text-sm">
+                      {section.title}
+                    </h3>
                     <ul className="space-y-2">
                       {section.links.map((link, linkIndex) => (
                         <li key={linkIndex} className="text-sm">
@@ -113,11 +168,11 @@ const Footer = async () => {
             <p>&copy; {year} Seedspike. All rights reserved.</p>
             <div className="flex gap-3">
               {Icons.map((icon) => (
-                <a 
-                  href={icon.href} 
-                  target="_blank" 
-                  rel="noreferrer"  
-                  key={icon.href} 
+                <a
+                  href={icon.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  key={icon.href}
                   className="text-2xl hover:text-green-600 hover:transition-colors hover:ease-in-out"
                 >
                   {icon.icon}

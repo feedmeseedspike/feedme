@@ -16,6 +16,7 @@ interface ReviewQueryResult {
   is_verified_purchase: boolean;
   helpful_count: number;
   reports: any[];
+  image_urls: string[] | null;
   created_at: string;
   updated_at: string;
   user_id: string;
@@ -37,6 +38,7 @@ export async function createUpdateReview({
     comment: string;
     rating: number;
     isVerifiedPurchase: boolean;
+    image_urls: string[] | null;
     reviewId?: string;
   };
   userId: string;
@@ -81,6 +83,7 @@ export async function createUpdateReview({
           comment: data.comment,
           rating: data.rating,
           is_verified_purchase: data.isVerifiedPurchase,
+          image_urls: data.image_urls,
           updated_at: new Date().toISOString(),
         })
         .eq("id", existingReview.id);
@@ -103,6 +106,7 @@ export async function createUpdateReview({
           comment: data.comment,
           rating: data.rating,
           is_verified_purchase: data.isVerifiedPurchase,
+          image_urls: data.image_urls,
           helpful_count: 0,
           reports: [],
         }]);
@@ -162,6 +166,7 @@ export async function getReviews({
         is_verified_purchase,
         helpful_count,
         reports,
+        image_urls,
         created_at,
         updated_at,
         user_id,

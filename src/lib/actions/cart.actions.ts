@@ -5,14 +5,18 @@ import { Tables, Json } from "src/utils/database.types";
 
 // Define ProductOption interface based on usage in add-to-cart.tsx
 export interface ProductOption {
-  name: string;
-  price: number;
+  name?: string;
+  price?: number;
   image?: string;
   stockStatus?: string;
 }
 
-// Update CartItem type to use ProductOption for the option field
-export type CartItem = Tables<'cart_items'> & { products: Tables<'products'> | null } & { option: ProductOption | null };
+// Update CartItem type to include both product and bundle relationships
+export type CartItem = Tables<'cart_items'> &
+  {
+    products: Tables<'products'> | null;
+    bundles: Tables<'bundles'> | null; // Add bundles relationship
+  };
 
 export type GetCartSuccess = { success: true; data: CartItem[]; error: null };
 export type GetCartFailure = { success: false; data: null; error: string };
@@ -39,7 +43,9 @@ async function getUserCartId(userId: string) {
       .select('id')
       .single();
 
-    if (insertError) throw insertError;
+    if (insertError) {
+      throw insertError;
+    }
     cart = newCart;
   }
 
@@ -64,23 +70,25 @@ export async function getCart(): Promise<GetCartSuccess | GetCartFailure> {
 
     const { data, error } = await supabase
       .from('cart_items')
-      .select('*, products(*)') // Select cart item fields and join with products
+      .select('*, products(*), bundles(*)') // Select cart item fields and join with products and bundles
       .eq('cart_id', cartId) // Use cart_id instead of user_id
       .order('created_at', { ascending: true });
 
-    if (error) throw error;
+    if (error) {
+      throw error;
+    }
 
     // Map the fetched data to the CartItem type, ensuring the option field is correctly typed
     const typedData: CartItem[] = (data || []).map(item => ({
         ...item,
-        products: item.products, // products relationship is already correctly typed by Supabase generated types
-        option: item.option as ProductOption | null, // Explicitly cast Json to ProductOption | null
+        products: item.products,
+        bundles: item.bundles, // Map bundles data
     }));
 
     return { success: true, data: typedData, error: null };
 
   } catch (error: any) {
-    console.error('Error fetching cart:', error);
+    console.error('getCart: Error fetching cart:', error);
     return { success: false, data: null, error: error.message || "Failed to fetch cart" };
   }
 }
@@ -90,10 +98,11 @@ export type UpdateCartItemsFailure = { success: false; error: string };
 
 // Define the structure of the items array expected by the update_cart_items function
 interface ItemToUpdate {
-  product_id: string;
-  option: Json | null;
+  product_id?: string | null;
+  bundle_id?: string | null;
+  option?: Json | null;
   quantity: number;
-  price: number; // Assuming price is also sent in the update array
+  price?: number | null;
 }
 
 // Server action to update the entire cart using the update_cart_items function
@@ -131,56 +140,125 @@ export type AddToCartSuccess = { success: true };
 export type AddToCartFailure = { success: false; error: string };
 
 // Server action to add an item to the cart
-export async function addToCart(productId: string, quantity: number, selectedOption?: Tables<'products'>['options'] | null): Promise<AddToCartSuccess | AddToCartFailure> {
+export async function addToCart(
+  productId: string | null,
+  quantity: number,
+  selectedOption?: Tables<"products">['options'] | null,
+  bundleId?: string | null
+): Promise<AddToCartSuccess | AddToCartFailure> {
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) {
-     return { 
-      success: false, 
-      error: "You must be logged in to add items to cart (anonymous cart coming soon)" 
+     return {
+      success: false,
+      error: "You must be logged in to add items to cart (anonymous cart coming soon)"
     }; // Handle unauthenticated cart later
   }
 
   try {
     const cartId = await getUserCartId(user.id);
 
-    // Fetch potential existing items for this product in the cart
-    const { data: existingItems, error: fetchError } = await supabase
-      .from('cart_items')
-      .select('id, quantity, option') // Select the option column
-      .eq('cart_id', cartId)
-      .eq('product_id', productId);
-
-    if (fetchError) throw fetchError;
-
-    // Find the existing item with the exact same option JSON structure
-    const existingItem = existingItems?.find(
-      (cartItem) =>
-        JSON.stringify(cartItem.option || null) === JSON.stringify(selectedOption || null)
-    );
-
-    if (existingItem) {
-      // If item exists, update the quantity
-      const { error: updateError } = await supabase
+    if (bundleId) {
+      // Handle adding a bundle to cart
+      const { data: existingBundleItem, error: fetchError } = await supabase
         .from('cart_items')
-        .update({ quantity: existingItem.quantity + quantity })
-        .eq('id', existingItem.id);
+        .select('id, quantity')
+        .eq('cart_id', cartId)
+        .eq('bundle_id', bundleId)
+        .single();
 
-      if (updateError) throw updateError;
+      if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
 
+      if (existingBundleItem) {
+        // If bundle item exists, update its quantity
+        const { error: updateError } = await supabase
+          .from('cart_items')
+          .update({ quantity: existingBundleItem.quantity + quantity })
+          .eq('id', existingBundleItem.id);
+
+        if (updateError) throw updateError;
+
+      } else {
+        // Fetch bundle details to get price and other info for the cart item
+        const { data: bundleData, error: bundleFetchError } = await supabase
+          .from('bundles')
+          .select('id, name, price')
+          .eq('id', bundleId)
+          .single();
+
+        if (bundleFetchError) throw bundleFetchError;
+        if (!bundleData) throw new Error("Bundle not found.");
+
+        // Insert new bundle item into cart_items
+        const { error: insertError } = await supabase
+          .from('cart_items')
+          .insert({
+            cart_id: cartId,
+            bundle_id: bundleId,
+            quantity: quantity,
+            price: bundleData.price, // Use bundle's price
+            product_id: null, // No product_id for bundle items
+          });
+
+        if (insertError) throw insertError;
+      }
+    } else if (productId) {
+      // Fetch product details to get its base price and available options
+      const { data: productData, error: productFetchError } = await supabase
+        .from('products')
+        .select('id, price, options') // Select price and options
+        .eq('id', productId)
+        .single();
+
+      if (productFetchError) throw productFetchError;
+      if (!productData) throw new Error("Product not found.");
+
+      const { data: existingItems, error: fetchError } = await supabase
+        .from('cart_items')
+        .select('id, quantity, option') // Select option to compare
+        .eq('cart_id', cartId)
+        .eq('product_id', productId)
+        .is('bundle_id', null); // Ensure it's not a bundle item
+
+      if (fetchError) throw fetchError;
+
+      // Find the existing item with the exact same option JSON structure
+      const existingItem = existingItems?.find(
+        (cartItem) =>
+          JSON.stringify(cartItem.option || null) === JSON.stringify(selectedOption || null)
+      );
+
+      // Determine the price to use: option price if available, otherwise product base price
+      const itemPrice = (selectedOption as unknown as ProductOption | null)?.price ?? productData.price;
+
+      if (existingItem) {
+        // If product item exists, update the quantity and potentially the option/price if they changed (though option comparison should prevent this for now)
+        const { error: updateError } = await supabase
+          .from('cart_items')
+          .update({ quantity: existingItem.quantity + quantity, price: itemPrice, option: selectedOption as Json || null })
+          .eq('id', existingItem.id);
+
+        if (updateError) throw updateError;
+
+      } else {
+        // If product item does not exist, insert a new item
+        const { error: insertError } = await supabase
+          .from('cart_items')
+          .insert({
+            cart_id: cartId,
+            product_id: productId,
+            quantity: quantity,
+            bundle_id: null, // Explicitly null for product items
+            option: selectedOption as Json || null, // Store the selected option, or null if none
+            price: itemPrice, // Store the calculated price
+          });
+
+        if (insertError) throw insertError;
+      }
     } else {
-      // If item does not exist, insert a new item
-      const { error: insertError } = await supabase
-        .from('cart_items')
-        .insert({
-          cart_id: cartId, // Use cart_id
-          product_id: productId,
-          quantity: quantity,
-          option: selectedOption, // Store the selected option object or null
-        });
-
-      if (insertError) throw insertError;
+      // Neither productId nor bundleId was provided
+      return { success: false, error: "No product or bundle ID provided." };
     }
 
     return { success: true };

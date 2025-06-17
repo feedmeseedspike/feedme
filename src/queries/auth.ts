@@ -72,6 +72,6 @@ export const updatePasswordMutation = () => ({
           : 'Password update failed');
       throw new Error(errorMessage);
     }
-    return (result as AuthSuccess<any>).data; // Explicitly cast after success check
+    return (result as AuthSuccess<any>).data; 
   },
 }); 

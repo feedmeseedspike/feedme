@@ -6,7 +6,7 @@ import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { useState } from "react";
 import Image from "next/image";
-import { Trash2, Plus, Upload } from "lucide-react";
+import { Trash2, Plus, Upload, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,7 +16,6 @@ import {
   DialogTitle,
 } from "@components/ui/dialog";
 
-// Import necessary hooks and types
 import {
   usePromotionsQuery,
   useCreatePromotionMutation,
@@ -25,6 +24,10 @@ import {
 } from "../../../queries/promotions";
 import { Database } from "src/utils/database.types"; // Assuming this path is now correct
 import { z } from "zod";
+import { createClient } from "@utils/supabase/client";
+import { v4 as uuidv4 } from "uuid";
+import { useToast } from "../../../hooks/useToast";
+
 
 // Reuse the same schema as PromoCardsManager, but default is_featured_on_homepage to false
 const promotionFormSchema = z.object({
@@ -71,9 +74,11 @@ const promotionFormSchema = z.object({
 
 type Promotion = Database["public"]["Tables"]["promotions"]["Row"];
 type PromotionInsert = Database["public"]["Tables"]["promotions"]["Insert"];
+type PromotionUpdate = Database["public"]["Tables"]["promotions"]["Update"];
 type PromotionFormData = z.infer<typeof promotionFormSchema>;
 
 export default function TagBannersManager() {
+  const supabase = createClient();
   // Use the query hook to fetch promotions, filtered for non-featured ones
   const {
     data: promotions,
@@ -123,6 +128,10 @@ export default function TagBannersManager() {
     is_featured_on_homepage: false, // Default to false for this manager
   });
   const [formErrors, setFormErrors] = useState<z.ZodIssue[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const { showToast } = useToast();
+
 
   // Function to handle input changes
   const handleInputChange = (
@@ -138,7 +147,27 @@ export default function TagBannersManager() {
   // Handle form save (Add/Edit)
   const handleSave = async () => {
     setFormErrors([]); // Clear previous errors
-    const validationResult = promotionFormSchema.safeParse(newPromoFormData);
+
+    // Handle image upload if a new file is selected
+    let imageUrl = newPromoFormData.image_url;
+    if (selectedFile) {
+      try {
+        imageUrl = await uploadImage(selectedFile);
+      } catch (error: any) {
+        // Assuming useToast is available, otherwise console.error
+        console.error(`Image upload failed: ${error.message}`);
+        return; // Stop the save process if upload fails
+      }
+    } else if (!imageUrl && !editingBanner?.id) {
+      // For new banners, if no file selected and no existing image, prevent saving
+      console.error("Please select an image file for the new banner.");
+      return;
+    }
+
+    const validationResult = promotionFormSchema.safeParse({
+      ...newPromoFormData,
+      image_url: imageUrl, // Use the uploaded image URL or existing one
+    });
 
     if (!validationResult.success) {
       setFormErrors(validationResult.error.issues);
@@ -148,8 +177,11 @@ export default function TagBannersManager() {
     const validatedData = validationResult.data;
 
     // Convert Date to ISO string if necessary for database
-    const dataToSave = {
+    const dataToSave: PromotionUpdate = {
       ...validatedData,
+      // Ensure ID is included for update
+      ...(editingBanner?.id && { id: editingBanner.id }),
+      image_url: imageUrl, // Ensure image_url is included in dataToSave
       countdown_end_time:
         validatedData.countdown_end_time instanceof Date
           ? validatedData.countdown_end_time.toISOString()
@@ -158,46 +190,64 @@ export default function TagBannersManager() {
 
     if (editingBanner?.id) {
       // Update existing promotion
-      updatePromotion(
-        {
-          id: editingBanner.id,
-          ...dataToSave,
-        } as Database["public"]["Tables"]["promotions"]["Update"], // Cast to update type
-        {
-          onSuccess: () => {
-            // showToast("Banner updated successfully!", "success"); // Uncomment if useToast is used
-            closeDialog();
-          },
-          onError: (err) => {
-            console.error("Error updating banner:", err);
-            // showToast(`Failed to update banner: ${err.message}`, "error"); // Uncomment if useToast is used
-          },
-        }
-      );
+      updatePromotion(dataToSave, {
+        onSuccess: () => {
+          showToast("Banner updated successfully!", "success");
+          closeDialog();
+        },
+        onError: (err) => {
+          console.error("Error updating banner:", err);
+          showToast(`Failed to update banner: ${err.message}`, "error"); 
+        },
+      });
     } else {
       // Create new promotion
       createPromotion(
         {
           ...dataToSave,
           is_featured_on_homepage: false,
-        } as Database["public"]["Tables"]["promotions"]["Insert"], // Ensure false for this manager
+        } as PromotionInsert,
         {
           onSuccess: () => {
-            // showToast("Banner added successfully!", "success"); // Uncomment if useToast is used
+            showToast("Banner added successfully!", "success");
             closeDialog();
           },
           onError: (err) => {
             console.error("Error adding banner:", err);
-            // showToast("Failed to add banner: " + err.message, "error"); // Uncomment if useToast is used
+            showToast("Failed to add banner: " + err.message, "error"); 
           },
         }
       );
     }
   };
 
+  const uploadImage = async (file: File) => {
+    setUploading(true);
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${uuidv4()}.${fileExt}`;
+    const filePath = `promotions/${fileName}`; 
+
+    const { data, error } = await supabase.storage
+      .from("promotions") 
+      .upload(filePath, file);
+
+    setUploading(false);
+
+    if (error) {
+      throw error;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from("promotions")
+      .getPublicUrl(filePath);
+
+    return publicUrlData.publicUrl;
+  };
+
   // Function to open Add/Edit dialog
   const openDialog = (banner: Partial<Promotion> | null = null) => {
     setFormErrors([]); // Clear errors
+    setSelectedFile(null); // Clear selected file when opening dialog
     if (!banner) {
       // Add mode
       setNewPromoFormData({
@@ -271,15 +321,36 @@ export default function TagBannersManager() {
   // Function to handle the actual deletion
   const handleDelete = () => {
     if (promoToDelete) {
+      // Optional: Get the image_url before deleting the promotion to delete the file
+      const { image_url: imageUrlToDelete } = promoToDelete;
+
       deletePromotion(promoToDelete.id.toString(), {
         // Use delete mutation
-        onSuccess: () => {
-          // showToast("Banner deleted successfully!", "success"); // Uncomment if useToast is used
+        onSuccess: async () => {
+          // Attempt to delete the image from storage if it exists
+          if (imageUrlToDelete) {
+            const urlParts = imageUrlToDelete.split("/");
+            const fileName = urlParts[urlParts.length - 1];
+            const filePath = `promotions/${fileName}`;
+
+            const { error: deleteFileError } = await supabase.storage
+              .from("promotions")
+              .remove([filePath]);
+
+            if (deleteFileError) {
+              console.error(
+                "Error deleting promotion image from storage:",
+                deleteFileError
+              );
+              // Log the error but don't prevent promotion deletion success
+            }
+          }
+          showToast("Banner deleted successfully!", "success"); 
           closeDeleteDialog();
         },
         onError: (err) => {
           console.error("Error deleting banner:", err);
-          // showToast(`Failed to delete banner: ${err.message}`, "error"); // Uncomment if useToast is used
+          showToast(`Failed to delete banner: ${err.message}`, "error"); 
           closeDeleteDialog();
         },
       });
@@ -293,7 +364,7 @@ export default function TagBannersManager() {
 
   // Handle loading and error states
   if (isLoading) {
-    return <div>Loading tag banners...</div>; // Or a skeleton
+    return <div>Loading tag banners...</div>; 
   }
 
   if (error) {
@@ -316,8 +387,8 @@ export default function TagBannersManager() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {promotionList.map((promo) => (
           <Card key={promo.id} className="overflow-hidden">
-            <div 
-              className="h-40 relative" 
+            <div
+              className="h-40 relative"
               style={{ backgroundColor: promo.background_color || "#ffffff" }}
             >
               <Image
@@ -336,13 +407,13 @@ export default function TagBannersManager() {
               <p className="text-sm">
                 Status: {promo.is_active ? "Active" : "Inactive"}
               </p>
-              
+
               <div className="flex justify-end gap-2 mt-4">
                 <Button variant="outline" onClick={() => openDialog(promo)}>
                   Edit
                 </Button>
-                <Button 
-                  variant="destructive" 
+                <Button
+                  variant="destructive"
                   onClick={() => openDeleteDialog(promo)}
                   disabled={isDeleting}
                 >
@@ -382,7 +453,7 @@ export default function TagBannersManager() {
                 </p>
               )}
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="tag">Tag (URL path)</Label>
               <Input
@@ -398,7 +469,7 @@ export default function TagBannersManager() {
                 </p>
               )}
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="discount_text">Subtitle (Discount Text)</Label>
               <Input
@@ -408,10 +479,10 @@ export default function TagBannersManager() {
                 onChange={handleInputChange}
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="background_color">Background Color</Label>
-              <Input 
+              <Input
                 id="background_color"
                 name="background_color"
                 type="text"
@@ -419,7 +490,7 @@ export default function TagBannersManager() {
                 onChange={handleInputChange}
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="image_url">Image URL</Label>
               <Input
@@ -427,8 +498,48 @@ export default function TagBannersManager() {
                 name="image_url"
                 value={newPromoFormData.image_url ?? ""}
                 onChange={handleInputChange}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="image">Banner Image</Label>
+              <Input
+                id="image"
+                name="image"
+                type="file"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    setSelectedFile(e.target.files[0]);
+                  } else {
+                    setSelectedFile(null);
+                  }
+                }}
+                disabled={isCreating || isUpdating || uploading}
+                accept="image/*"
+              />
+
+              {(selectedFile || newPromoFormData.image_url) && (
+                <div className="relative h-32 w-full mt-2 border rounded-md overflow-hidden bg-gray-100 flex items-center justify-center">
+                  {uploading ? (
+                    <Loader2 className="size-8 animate-spin text-gray-500" />
+                  ) : selectedFile ? (
+                    <Image
+                      src={URL.createObjectURL(selectedFile)}
+                      alt="Selected image preview"
+                      fill
+                      className="object-contain"
                     />
-                  </div>
+                  ) : newPromoFormData.image_url ? (
+                    <Image
+                      src={newPromoFormData.image_url}
+                      alt="Existing banner image"
+                      fill
+                      className="object-contain"
+                    />
+                  ) : null}
+                </div>
+              )}
+            </div>
 
             <div className="flex items-center space-x-2">
               <Label htmlFor="is_active">Is Active</Label>
@@ -442,12 +553,15 @@ export default function TagBannersManager() {
               />
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={isCreating || isUpdating}>
+            <Button
+              onClick={handleSave}
+              disabled={isCreating || isUpdating || uploading}
+            >
               {isCreating || isUpdating
                 ? "Saving..."
                 : editingBanner?.id
@@ -492,7 +606,7 @@ export default function TagBannersManager() {
           {deleteError && (
             <div className="text-red-600 mt-2">
               Error deleting: {deleteError.message}
-      </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>

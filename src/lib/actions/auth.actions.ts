@@ -16,7 +16,7 @@ export type GetUserReturn = Tables<'users'> | null;
 export type UpdatePasswordReturn = AuthSuccess<any> | AuthFailure;
 
 // Sign Up
-export async function registerUser(userData: { name: string; email: string; password: string }): Promise<RegisterUserReturn> {
+export async function registerUser(userData: { name: string; email: string; password: string; avatar_url?: string }): Promise<RegisterUserReturn> {
   const supabase = await createClient();
 
   try {
@@ -40,7 +40,7 @@ export async function registerUser(userData: { name: string; email: string; pass
       email: userData.email,
       password: userData.password,
       options: {
-        data: { display_name: userData.name, name: userData.name },
+        data: { display_name: userData.name, name: userData.name, avatar_url: userData.avatar_url },
         emailRedirectTo: process.env.NEXT_PUBLIC_SITE_URL + "/auth/callback",
       },
     });
@@ -78,9 +78,14 @@ export async function signInUser(credentials: { email: string; password: string 
     if (data.session?.refresh_token) {
       cookies().set("refreshToken", data.session.refresh_token, { httpOnly: true });
     }
-    console.log(data)
     return { success: true, data };
   } catch (error: any) {
+    if (
+      error.message &&
+      error.message.toLowerCase().includes('invalid login credentials')
+    ) {
+      return { success: false, error: { message: 'Incorrect email or password.' } };
+    }
     return { success: false, error: formatError(error.message) };
   }
 }

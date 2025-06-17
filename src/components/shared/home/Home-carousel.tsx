@@ -3,8 +3,21 @@
 import React, { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { motion, useMotionValue } from "framer-motion";
 import Image from "next/image";
+import { useQuery } from "@tanstack/react-query";
+import { createClient } from "@utils/supabase/client";
+import { Tables } from "src/utils/database.types";
+import { Skeleton } from "@components/ui/skeleton";
+import Link from "next/link";
 
-const imgs = ["/banners/banner1.jpg", "/banners/banner2.png"];
+type Banner = Tables<"banners"> & {
+  bundles?: Tables<"bundles"> | null;
+};
+
+type BannerWithBundle = Tables<"banners"> & {
+  bundles: Tables<"bundles">;
+};
+
+// const imgs = ["/banners/banner1.jpg", "/banners/banner2.png"];
 
 const ONE_SECOND = 1000;
 const AUTO_DELAY = ONE_SECOND * 10;
@@ -18,6 +31,33 @@ const SPRING_OPTIONS = {
 };
 
 export const HomeCarousel = () => {
+  const supabase = createClient();
+  const { data: carouselBanners, isLoading: isLoadingCarousel } = useQuery<
+    Banner[]
+  >({
+    queryKey: ["carouselBanners"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("banners")
+        .select("*, bundles(*)")
+        .eq("type", "carousel")
+        .eq("active", true)
+        .order("order", { ascending: true });
+      if (error) throw error;
+      return (
+        (data as (Tables<"banners"> & {
+          bundles?: Tables<"bundles"> | null;
+        })[]) || []
+      );
+    },
+    staleTime: 1000 * 60 * 10,
+  });
+
+  console.log("HomeCarousel: useQuery state", {
+    carouselBanners,
+    isLoadingCarousel,
+  });
+
   const [imgIndex, setImgIndex] = useState(0);
   const [hasMounted, setHasMounted] = useState(false);
 
@@ -25,17 +65,18 @@ export const HomeCarousel = () => {
 
   useEffect(() => {
     setHasMounted(true);
+    console.log("HomeCarousel: hasMounted set to true");
   }, []);
 
   useEffect(() => {
-    if (!hasMounted) return;
+    if (!hasMounted || !carouselBanners || carouselBanners.length === 0) return;
 
     const intervalRef = setInterval(() => {
       const x = dragX.get();
 
       if (x === 0) {
         setImgIndex((pv) => {
-          if (pv === imgs.length - 1) {
+          if (pv === (carouselBanners?.length || 0) - 1) {
             return 0;
           }
           return pv + 1;
@@ -44,22 +85,40 @@ export const HomeCarousel = () => {
     }, AUTO_DELAY);
 
     return () => clearInterval(intervalRef);
-  }, [hasMounted]);
+  }, [hasMounted, dragX, carouselBanners]); 
 
   const onDragEnd = () => {
     const x = dragX.get();
 
-    if (x <= -DRAG_BUFFER && imgIndex < imgs.length - 1) {
+    if (!carouselBanners) return;
+
+    if (x <= -DRAG_BUFFER && imgIndex < (carouselBanners?.length || 0) - 1) {
       setImgIndex((pv) => pv + 1);
     } else if (x >= DRAG_BUFFER && imgIndex > 0) {
       setImgIndex((pv) => pv - 1);
     }
   };
 
-  if (!hasMounted) return null;
+  useEffect(() => {
+    // Reset index if banners change or become empty
+    if (!carouselBanners || (carouselBanners?.length || 0) <= imgIndex) {
+      setImgIndex(0);
+    }
+  }, [carouselBanners, imgIndex]);
+
+  if (!hasMounted || isLoadingCarousel)
+    return <Skeleton className="w-full h-64 md:h-96 bg-gray-200" />;
+  if (!carouselBanners || carouselBanners.length === 0)
+    return <p>No carousel banners available.</p>;
+
+  console.log(
+    "HomeCarousel: Rendering with banners.",
+    carouselBanners.length,
+    "banners."
+  );
 
   return (
-    <div className="relative bg-whit w-full overflow-hidden">
+    <div className="relative bg-white w-full overflow-hidden">
       <motion.div
         drag="x"
         dragConstraints={{
@@ -76,39 +135,63 @@ export const HomeCarousel = () => {
         onDragEnd={onDragEnd}
         className="flex "
       >
-        <Images imgIndex={imgIndex} />
+        <Images carouselBanners={carouselBanners} imgIndex={imgIndex} />
       </motion.div>
 
-      <Dots imgIndex={imgIndex} setImgIndex={setImgIndex} />
+      <Dots
+        imgIndex={imgIndex}
+        setImgIndex={setImgIndex}
+        totalDots={carouselBanners.length}
+      />
     </div>
   );
 };
 
-const Images = ({ imgIndex }: { imgIndex: number }) => {
+const Images = ({
+  carouselBanners,
+  imgIndex,
+}: {
+  carouselBanners: BannerWithBundle[];
+  imgIndex: number;
+}) => {
   return (
     <>
-      {imgs.map((imgSrc, idx) => {
+      {carouselBanners.map((banner, idx) => {
+        const linkHref = banner.bundle_id
+          ? `/bundles/${banner.bundle_id}`
+          : `/${banner.tag}`;
+
+        const altText = banner.bundle_id
+          ? `${banner.bundles?.name || "Bundle"} banner`
+          : `${banner.tag || "Carousel"} banner`;
+
+        const imageUrl = banner.bundle_id
+          ? banner.bundles?.thumbnail_url || "https://placehold.co/1200x600/png"
+          : banner.image_url;
+
         return (
-          <motion.div
-            key={idx}
-            animate={{
-              scale: imgIndex === idx ? 0.95 : 0.85,
-            }}
-            transition={SPRING_OPTIONS}
-            className="relative w-full shrink-0 overflow-hidden"
+          <Link
+            href={linkHref}
+            key={banner.id}
+            className="relative w-full max-w-[1200px] aspect-[70/35] md:aspect-[70/30] shrink-0 overflow-hidden hover:opacity-90 transition-opacity"
           >
-            <Image
-              src={imgSrc}
-              alt={`Slide ${idx + 1}`}
-              width={1200}
-              height={800}
-              priority
-              quality={100}
-              // fill
-              // sizes="100vw"
-              className="w-full md:h-full object-cover"
-            />
-          </motion.div>
+            <motion.div
+              // animate={{
+              //   scale: imgIndex === idx ? 0.95 : 0.85,
+              // }}
+              transition={SPRING_OPTIONS}
+              className="w-full h-full"
+            >
+              <Image
+                src={imageUrl}
+                alt={altText}
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 1200px"
+                priority={idx === imgIndex}
+                className="object-cover w-full h-full"
+              />
+            </motion.div>
+          </Link>
         );
       })}
     </>
@@ -118,23 +201,27 @@ const Images = ({ imgIndex }: { imgIndex: number }) => {
 const Dots = ({
   imgIndex,
   setImgIndex,
+  totalDots,
 }: {
   imgIndex: number;
   setImgIndex: Dispatch<SetStateAction<number>>;
+  totalDots: number;
 }) => {
   return (
     <div className="mt-4 flex w-full justify-center gap-2">
-      {imgs.map((_, idx) => {
-        return (
-          <button
-            key={idx}
-            onClick={() => setImgIndex(idx)}
-            className={`size-[6px] md:size-[10px] rounded-full transition-colors ${
-              idx === imgIndex ? "bg-[#D8D8D8]" : "bg-[#4A4A4A]"
-            }`}
-          />
-        );
-      })}
+      {Array(totalDots)
+        .fill(0)
+        .map((_, idx) => {
+          return (
+            <button
+              key={idx}
+              onClick={() => setImgIndex(idx)}
+              className={`size-[6px] md:size-[10px] rounded-full transition-colors ${
+                idx === imgIndex ? "bg-[#D8D8D8]" : "bg-[#4A4A4A]"
+              }`}
+            />
+          );
+        })}
     </div>
   );
 };

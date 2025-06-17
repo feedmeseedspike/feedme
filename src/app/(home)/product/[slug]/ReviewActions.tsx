@@ -63,7 +63,7 @@ interface ReviewActionsProps {
   initialHelpfulCount?: number;
   isOwner?: boolean;
   onEdit?: () => void;
-  onDelete?: () => Promise<void>;
+  onDelete?: () => void;
   initialIsHelpful?: boolean;
   isPending?: boolean;
 }
@@ -87,7 +87,6 @@ export default function ReviewActions({
     isSubmittingVote: false,
     isSubmittingReport: false,
     isDeleting: false,
-    hasInteracted: false,
   });
 
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
@@ -119,12 +118,10 @@ export default function ReviewActions({
 
     try {
       if (state.isHelpful) {
-        const res = await removeHelpfulVoteMutation.mutateAsync({
+        await removeHelpfulVoteMutation.mutateAsync({
           reviewId,
           userId,
         });
-
-        if (!res.success) throw new Error(res.message);
 
         setState((prev) => ({
           ...prev,
@@ -132,12 +129,10 @@ export default function ReviewActions({
           isHelpful: false,
         }));
       } else {
-        const res = await addHelpfulVoteMutation.mutateAsync({
+        await addHelpfulVoteMutation.mutateAsync({
           reviewId,
           userId,
         });
-
-        if (!res.success) throw new Error(res.message);
 
         setState((prev) => ({
           ...prev,
@@ -145,7 +140,6 @@ export default function ReviewActions({
           isHelpful: true,
         }));
       }
-      setState((prev) => ({ ...prev, hasInteracted: true }));
     } catch (error) {
       showToast(
         error instanceof Error ? error.message : "Failed to update vote",
@@ -221,8 +215,8 @@ export default function ReviewActions({
         {!isOwner && (
           <button
             onClick={handleHelpfulClick}
-            disabled={state.isSubmittingVote || state.hasInteracted}
-            className={`flex items-center gap-1 text-sm px-3 py-1 rounded-full border transition-colors ${
+            disabled={state.isSubmittingVote}
+            className={`flex items-center gap-1 text-sm px-3 py-1  transition-colors ${
               state.isHelpful
                 ? "bg-green-50 border-green-200 text-green-600"
                 : "border-gray-200 text-gray-600 hover:border-green-200 hover:text-green-600"
@@ -230,10 +224,10 @@ export default function ReviewActions({
           >
             {state.isSubmittingVote ? (
               <Loader2 className="h-4 w-4 animate-spin" />
-            ) : state.hasInteracted ? (
+            ) : state.isHelpful ? (
               <span className="flex items-center gap-1">
                 <CheckCircle2 className="h-4 w-4" />
-                Thank you
+                Helpful
               </span>
             ) : (
               <span className="flex items-center gap-1">
@@ -249,7 +243,7 @@ export default function ReviewActions({
           <button
             onClick={() => setIsReportDialogOpen(true)}
             disabled={state.isReported}
-            className={`flex items-center gap-1 text-sm px-3 py-1 rounded-full border transition-colors ${
+            className={`flex items-center gap-1 text-sm px-3 py-1 transition-colors ${
               state.isReported
                 ? "bg-gray-50 border-gray-200 text-gray-500"
                 : "border-gray-200 text-gray-600 hover:border-red-200 hover:text-red-600"
@@ -266,7 +260,7 @@ export default function ReviewActions({
             {onEdit && (
               <button
                 onClick={onEdit}
-                className="flex items-center gap-1 text-sm px-3 py-1 rounded-full border border-gray-200 text-gray-600 hover:border-blue-200 hover:text-blue-600"
+                className="flex items-center gap-1 text-sm px-3 py-1 border-gray-200 text-gray-600 hover:border-blue-200 hover:text-blue-600"
               >
                 <Edit className="h-4 w-4" />
                 Edit
@@ -276,7 +270,7 @@ export default function ReviewActions({
               <>
                 <button
                   onClick={() => setIsDeleteDialogOpen(true)}
-                  className="flex items-center gap-1 text-sm px-3 py-1 rounded-full border border-gray-200 text-gray-600 hover:border-red-200 hover:text-red-600"
+                  className="flex items-center gap-1 text-sm px-3 py-1 border-gray-200 text-gray-600 hover:border-red-200 hover:text-red-600"
                 >
                   <Trash2 className="h-4 w-4" />
                   Delete
@@ -323,7 +317,7 @@ export default function ReviewActions({
             <DialogHeader>
               <DialogTitle>Report this review</DialogTitle>
               <DialogDescription>
-                Please tell us why you're reporting this review.
+                Please tell us why you&apos;re reporting this review.
               </DialogDescription>
             </DialogHeader>
 

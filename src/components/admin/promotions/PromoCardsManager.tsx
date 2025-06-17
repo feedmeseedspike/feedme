@@ -6,7 +6,7 @@ import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { useState } from "react";
 import Image from "next/image";
-import { Trash2, Plus, Upload } from "lucide-react";
+import { Trash2, Plus, Upload, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -49,8 +49,9 @@ import {
 } from "../../../queries/promotions";
 import { Database } from "src/utils/database.types";
 import { z } from "zod";
+import { createClient } from "@utils/supabase/client";
+import { v4 as uuidv4 } from "uuid";
 
-// const initialPromos = [
 //   {
 //     id: 1,
 //     title: "Riverbite Discount",
@@ -83,6 +84,7 @@ import { z } from "zod";
 
 type Promotion = Database["public"]["Tables"]["promotions"]["Row"];
 type PromotionInsert = Database["public"]["Tables"]["promotions"]["Insert"];
+type PromotionUpdate = Database["public"]["Tables"]["promotions"]["Update"];
 
 // Define Zod schema for the promotion form data
 const promotionFormSchema = z.object({
@@ -93,8 +95,8 @@ const promotionFormSchema = z.object({
     .regex(/^[a-z0-9-]+$/, {
       message: "Tag must be lowercase, alphanumeric, and can include hyphens.",
     }), // Basic tag format validation
-  discount_text: z.string().optional().nullable(), // Allow null or undefined from DB
-  background_color: z.string().optional().nullable(), // Allow null or undefined from DB
+  discount_text: z.string().optional().nullable(),
+  background_color: z.string().optional().nullable(), 
   image_url: z.string().optional().nullable(), // Allow null or undefined from DB
   is_active: z.boolean().default(true).optional(),
   old_price: z
@@ -130,6 +132,7 @@ const promotionFormSchema = z.object({
 type PromotionFormData = z.infer<typeof promotionFormSchema>;
 
 export default function PromoCardsManager() {
+  const supabase = createClient(); // Initialize Supabase client here
   // Use the query hook to fetch promotions, filtered for featured ones
   const {
     data: promotions,
@@ -171,13 +174,11 @@ export default function PromoCardsManager() {
     error: removeProductError,
   } = useRemoveProductFromPromotionMutation();
 
-  // Use the toast hook
   const { showToast } = useToast();
 
-  // const [promos, setPromos] = useState(initialPromos); // Remove local state for promos
   const [editingPromo, setEditingPromo] = useState<Partial<Promotion> | null>(
     null
-  ); // Use Partial<Promotion>
+  ); 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   // State for delete confirmation modal
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -202,6 +203,8 @@ export default function PromoCardsManager() {
   });
 
   const [formErrors, setFormErrors] = useState<z.ZodIssue[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   // State for product search query
   const [productSearchQuery, setProductSearchQuery] = useState("");
 
@@ -222,6 +225,29 @@ export default function PromoCardsManager() {
     error: linkedProductsError,
     refetch: refetchLinkedProducts,
   } = useLinkedProductsForPromotionQuery(editingPromo?.id);
+
+  const uploadImage = async (file: File) => {
+    setUploading(true);
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${uuidv4()}.${fileExt}`;
+    const filePath = `promotions/${fileName}`; 
+
+    const { data, error } = await supabase.storage
+      .from("promotions") 
+      .upload(filePath, file);
+
+    setUploading(false);
+
+    if (error) {
+      throw error;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from("promotions")
+      .getPublicUrl(filePath);
+
+    return publicUrlData.publicUrl;
+  };
 
   // Handle adding a product to a promotion
   const handleAddProduct = (productId: string) => {
@@ -281,8 +307,26 @@ export default function PromoCardsManager() {
   const handleSave = async () => {
     setFormErrors([]); // Clear previous errors
 
-    // Zod validation will preprocess the date string from the input into a Date object or null/undefined
-    const validationResult = promotionFormSchema.safeParse(newPromoFormData);
+    // Handle image upload if a new file is selected
+    let imageUrl = newPromoFormData.image_url;
+    if (selectedFile) {
+      try {
+        imageUrl = await uploadImage(selectedFile);
+      } catch (error: any) {
+        showToast(`Image upload failed: ${error.message}`, "error");
+        console.error("Upload error:", error);
+        return; // Stop the save process if upload fails
+      }
+    } else if (!imageUrl && !editingPromo?.id) {
+      // For new promotions, if no file selected and no existing image, prevent saving
+      showToast("Please select an image file for the new promotion.", "error");
+      return;
+    }
+
+    const validationResult = promotionFormSchema.safeParse({
+      ...newPromoFormData,
+      image_url: imageUrl, // Use the uploaded image URL or existing one
+    });
 
     if (!validationResult.success) {
       // Validation failed, set errors
@@ -297,8 +341,10 @@ export default function PromoCardsManager() {
     // Determine if we are adding or editing
     if (editingPromo?.id) {
       // Prepare data for update, converting Date to ISO string if necessary
-      const dataToUpdate = {
+      const dataToUpdate: PromotionUpdate = {
         ...validatedData,
+        id: editingPromo.id,
+        image_url: imageUrl, // Ensure image_url is included in update
         // Convert Date object to ISO string for Supabase timestampz
         countdown_end_time:
           validatedData.countdown_end_time instanceof Date
@@ -307,39 +353,40 @@ export default function PromoCardsManager() {
       };
 
       // Handle edit logic here using the update mutation
-      updatePromotion(
-        {
-          id: editingPromo.id, // Include the ID for update
-          ...dataToUpdate, // Use the prepared data with ISO string date
-        },
-        {
-          onSuccess: () => {
-            showToast("Promo updated successfully!", "success");
-            closeDialog();
-          },
-          onError: (err) => {
-            console.error("Error updating promo:", err);
-            showToast(`Failed to update promo: ${err.message}`, "error");
-          },
-        }
-      );
-    } else {
-      // Handle add logic using the mutation
-      createPromotion(validatedData as PromotionInsert, {
+      updatePromotion(dataToUpdate, {
         onSuccess: () => {
-          showToast("Promo added successfully!", "success"); // Use toast
+          showToast("Promo updated successfully!", "success");
           closeDialog();
         },
         onError: (err) => {
-          console.error("Error adding promo:", err);
-          showToast("Failed to add promo: " + err.message, "error"); // Use toast
+          console.error("Error updating promo:", err);
+          showToast(`Failed to update promo: ${err.message}`, "error");
         },
       });
+    } else {
+      // Handle add logic using the mutation
+      createPromotion(
+        {
+          ...validatedData,
+          image_url: imageUrl, // Ensure image_url is included for new promotion
+        } as PromotionInsert,
+        {
+          onSuccess: () => {
+            showToast("Promo added successfully!", "success"); // Use toast
+            closeDialog();
+          },
+          onError: (err) => {
+            console.error("Error adding promo:", err);
+            showToast("Failed to add promo: " + err.message, "error"); // Use toast
+          },
+        }
+      );
     }
   };
 
   const openDialog = (promo: Partial<Promotion> | null = null) => {
     setFormErrors([]); // Clear errors when opening dialog
+    setSelectedFile(null); // Clear selected file when opening dialog
 
     // When opening dialog for adding, clear the form data
     if (!promo) {
@@ -414,11 +461,31 @@ export default function PromoCardsManager() {
   // Function to handle the actual deletion
   const handleDelete = () => {
     if (promoToDelete) {
+      // Optional: Get the image_url before deleting the promotion to delete the file
+      const { image_url: imageUrlToDelete } = promoToDelete;
+
       deletePromotion(promoToDelete.id.toString(), {
-        // Use the delete mutation
-        onSuccess: () => {
+        onSuccess: async () => {
+          // Attempt to delete the image from storage if it exists
+          if (imageUrlToDelete) {
+            const urlParts = imageUrlToDelete.split("/");
+            const fileName = urlParts[urlParts.length - 1];
+            const filePath = `promotions/${fileName}`;
+
+            const { error: deleteFileError } = await supabase.storage
+              .from("promotions")
+              .remove([filePath]);
+
+            if (deleteFileError) {
+              console.error(
+                "Error deleting promotion image from storage:",
+                deleteFileError
+              );
+              // Log the error but don't prevent promotion deletion success
+            }
+          }
           showToast(
-            `Promo &quot;${promoToDelete.title}&quot; deleted successfully!`,
+            `Promo "${promoToDelete.title}" deleted successfully!`,
             "success"
           );
           closeDeleteDialog();
@@ -464,8 +531,8 @@ export default function PromoCardsManager() {
         {/* Map over the data from the query */}
         {promotionList.map((promo) => (
           <Card key={promo.id} className="overflow-hidden">
-            <div 
-              className="h-40 relative" 
+            <div
+              className="h-40 relative"
               style={{ backgroundColor: promo.background_color || "#ffffff" }} // Use background_color from DB
             >
               <Image
@@ -497,14 +564,14 @@ export default function PromoCardsManager() {
                 <p className="text-sm">Has countdown timer</p>
               )}
               <p className="text-sm">Tag: {promo.tag}</p>
-              
+
               <div className="flex justify-end gap-2 mt-4">
                 {/* Keep Edit/Delete placeholders for now */}
                 <Button variant="outline" onClick={() => openDialog(promo)}>
                   Edit
                 </Button>
-                <Button 
-                  variant="destructive" 
+                <Button
+                  variant="destructive"
                   onClick={() => {
                     // Open the delete confirmation modal
                     openDeleteDialog(promo);
@@ -629,25 +696,54 @@ export default function PromoCardsManager() {
                 />
               </div>
 
-            <div className="space-y-2">
+              <div className="space-y-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Label htmlFor="image_url">Image URL</Label>
+                    <Label htmlFor="image">Promotion Image</Label>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>The URL of the image for the promotional card.</p>
+                    <p>The image for the promotional card.</p>
                   </TooltipContent>
                 </Tooltip>
                 <Input
-                  id="image_url"
-                  name="image_url" // Add name attribute
-                  value={newPromoFormData.image_url ?? ""} // Use nullish coalescing
-                  onChange={handleInputChange}
+                  id="image"
+                  name="image"
+                  type="file"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setSelectedFile(e.target.files[0]);
+                    } else {
+                      setSelectedFile(null);
+                    }
+                  }}
+                  disabled={isCreating || isUpdating || uploading}
+                  accept="image/*"
                 />
-                {/* You might want a more robust image upload solution here */}
-            </div>
-            
-            <div className="space-y-2">
+
+                {(selectedFile || newPromoFormData.image_url) && (
+                  <div className="relative h-32 w-full mt-2 border rounded-md overflow-hidden bg-gray-100 flex items-center justify-center">
+                    {uploading ? (
+                      <Loader2 className="size-8 animate-spin text-gray-500" />
+                    ) : selectedFile ? (
+                      <Image
+                        src={URL.createObjectURL(selectedFile)}
+                        alt="Selected image preview"
+                        fill
+                        className="object-contain"
+                      />
+                    ) : newPromoFormData.image_url ? (
+                      <Image
+                        src={newPromoFormData.image_url}
+                        alt="Existing promotion image"
+                        fill
+                        className="object-contain"
+                      />
+                    ) : null}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Label htmlFor="old_price">Old Price</Label>
@@ -669,9 +765,9 @@ export default function PromoCardsManager() {
                     {findFormError("old_price")?.message}
                   </p>
                 )}
-            </div>
-            
-            <div className="space-y-2">
+              </div>
+
+              <div className="space-y-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Label htmlFor="new_price">New Price</Label>
@@ -693,9 +789,9 @@ export default function PromoCardsManager() {
                     {findFormError("new_price")?.message}
                   </p>
                 )}
-            </div>
-            
-            <div className="space-y-2">
+              </div>
+
+              <div className="space-y-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Label htmlFor="extra_discount_text">
@@ -709,15 +805,15 @@ export default function PromoCardsManager() {
                     </p>
                   </TooltipContent>
                 </Tooltip>
-              <Input 
+                <Input
                   id="extra_discount_text"
                   name="extra_discount_text"
                   value={newPromoFormData.extra_discount_text ?? ""} // Use nullish coalescing
                   onChange={handleInputChange}
-              />
-            </div>
-            
-            <div className="space-y-2">
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Label htmlFor="countdown_end_time">
@@ -896,8 +992,8 @@ export default function PromoCardsManager() {
                             </div>
                           )
                         )}
-                  </div>
-                ) : (
+                      </div>
+                    ) : (
                       <p className="text-gray-500 text-sm">
                         No products linked to this promotion yet.
                       </p>
@@ -912,7 +1008,7 @@ export default function PromoCardsManager() {
               Cancel
             </Button>
             {/* Use isCreating to disable the button during submission */}
-            <Button onClick={handleSave} disabled={isCreating}>
+            <Button onClick={handleSave} disabled={isCreating || uploading}>
               {isCreating
                 ? "Saving..."
                 : editingPromo?.id

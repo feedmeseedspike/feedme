@@ -17,9 +17,10 @@ import {
 import { ArrowLeft, Trash2Icon } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { AiOutlineMinus, AiOutlinePlus } from "react-icons/ai";
 import { useUser } from "src/hooks/useUser";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useCartQuery,
   useUpdateCartMutation,
@@ -28,58 +29,258 @@ import {
   cartQueryKey,
   ItemToUpdateMutation,
   usePrefetchCart,
-  useCartSubscription,
 } from "src/queries/cart";
 import { CartItem } from "src/lib/actions/cart.actions";
 import { formatNaira } from "src/lib/utils";
 import { Input } from "@components/ui/input";
 import Link from "next/link";
+import { useToast } from "src/hooks/useToast";
+import { useVoucherValidationMutation } from "src/queries/vouchers";
+
+// Explicitly define ProductOption here to resolve 'Cannot find name' errors
+interface ProductOption {
+  name: string;
+  price: number;
+  image?: string;
+  stockStatus?: string;
+}
 
 // Define a more specific type for grouped items
 interface GroupedCartItem {
-  product: CartItem["products"];
+  product?: CartItem["products"];
+  bundle?: CartItem["bundles"];
   options: Record<string, CartItem>;
 }
+
+// New component for displaying a grouped product/bundle and its options
+interface CartProductGroupDisplayProps {
+  productGroup: GroupedCartItem;
+  productId: string;
+  handleRemoveItem: (itemToRemove: CartItem) => Promise<void>;
+  handleQuantityChange: (
+    itemToUpdate: CartItem,
+    increment: boolean
+  ) => Promise<void>;
+}
+
+const CartProductGroupDisplay = React.memo(
+  ({
+    productId,
+    productGroup,
+    handleRemoveItem,
+    handleQuantityChange,
+  }: CartProductGroupDisplayProps) => {
+    return (
+      <div key={productId} className="flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+          {productGroup.product?.name || productGroup.bundle?.name ? (
+            <p className="h6-bold text-lg">
+              {productGroup.product?.name || productGroup.bundle?.name}
+            </p>
+          ) : (
+            <div className="h-6 w-32 bg-gray-200 animate-pulse rounded" />
+          )}
+        </div>
+        {Object.entries(productGroup.options).map(
+          ([optionKey, item]: [string, CartItem]) => (
+            <CartItemDisplay
+              key={item.id}
+              item={item}
+              handleRemoveItem={handleRemoveItem}
+              handleQuantityChange={handleQuantityChange}
+            />
+          )
+        )}
+      </div>
+    );
+  }
+);
+
+CartProductGroupDisplay.displayName = "CartProductGroupDisplay";
+
+// New component for individual cart items
+interface CartItemDisplayProps {
+  item: CartItem;
+  handleRemoveItem: (itemToRemove: CartItem) => Promise<void>;
+  handleQuantityChange: (
+    itemToUpdate: CartItem,
+    increment: boolean
+  ) => Promise<void>;
+}
+
+const CartItemDisplay = React.memo(
+  ({ item, handleRemoveItem, handleQuantityChange }: CartItemDisplayProps) => {
+    const productOption = item.option as ProductOption | null;
+
+    return (
+      <React.Fragment>
+        <div className="flex items-center gap-3 sm:gap-4 overflow-y-visible">
+          <Link href={`/product/${item.products?.slug}`}>
+            <Image
+              width={64}
+              height={64}
+              src={
+                productOption?.image ||
+                item.products?.images?.[0] ||
+                item.bundles?.thumbnail_url ||
+                "/placeholder.png"
+              }
+              alt={item.products?.name || item.bundles?.name || "Product image"}
+              className="h-[64px] rounded-[5px] border-[0.31px] border-[#DDD5DD] object-contain"
+            />
+          </Link>
+          <div className="flex flex-col gap-[6px] w-full">
+            <div className="flex justify-between">
+              {productOption?.name && (
+                <p className="h6-light !text-[14px]">{productOption.name}</p>
+              )}
+              <Trash2Icon
+                className="size-4 cursor-pointer"
+                onClick={() => handleRemoveItem(item as CartItem)}
+                aria-label="Remove item"
+              />
+            </div>
+            <div className="flex justify-between items-center">
+              <p className="text-[#101828] font-bold">
+                {formatNaira(
+                  (productOption?.price !== undefined &&
+                  productOption?.price !== null
+                    ? productOption.price
+                    : item.price) || 0
+                )}{" "}
+              </p>
+              <div className="flex items-center gap-2 sm:gap-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-[9px] bg-[#D0D5DD] rounded-[4px] p-3 text-white"
+                  onClick={() => handleQuantityChange(item as CartItem, false)}
+                >
+                  <AiOutlineMinus />
+                </Button>
+                <span>{item.quantity}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-[9px] bg-[#1B6013] rounded-[4px] p-3 text-white"
+                  onClick={() => handleQuantityChange(item as CartItem, true)}
+                >
+                  <AiOutlinePlus />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <Separator />
+      </React.Fragment>
+    );
+  }
+);
+
+CartItemDisplay.displayName = "CartItemDisplay";
 
 const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
   const router = useRouter();
   const { data: cartItems, isLoading, isError, error } = useCartQuery();
-  // console.log("cartItems here", cartItems);
   const user = useUser();
-  // console.log("userId here", userId);
   const prefetchCart = usePrefetchCart();
-  useCartSubscription(); // Subscribe to cart changes
+  const queryClient = useQueryClient();
 
-  // Ensure items is always an array, even if cartItems is null or undefined initially
-  const items: CartItem[] = useMemo(() => cartItems || [], [cartItems]); // Explicitly type items as CartItem[]
-  // console.log("items here", items);
+  const items: CartItem[] = useMemo(() => cartItems || [], [cartItems]);
 
-  // Group cart items by product and option for display
+  const subtotal = useMemo(
+    () =>
+      items.reduce(
+        (acc, item) =>
+          acc +
+          (((item.option as ProductOption | null)?.price !== undefined &&
+          (item.option as ProductOption | null)?.price !== null
+            ? (item.option as ProductOption | null)?.price
+            : item.price) || 0) *
+            item.quantity,
+        0
+      ),
+    [items]
+  );
+
+  // State for voucher
+  const [voucherCode, setVoucherCode] = useState("");
+  const [voucherDiscount, setVoucherDiscount] = useState(0);
+  const [isVoucherValid, setIsVoucherValid] = useState(false);
+  const [isVoucherPending, startVoucherTransition] = useTransition();
+  const { showToast } = useToast();
+  const { mutateAsync: validateVoucherMutation } =
+    useVoucherValidationMutation();
+
+  const handleVoucherValidation = useCallback(async () => {
+    if (!voucherCode) {
+      showToast("Please enter a voucher code.", "error");
+      return;
+    }
+
+    startVoucherTransition(async () => {
+      try {
+        const result = await validateVoucherMutation({
+          code: voucherCode,
+          totalAmount: subtotal,
+        });
+        if (result.success && result.data) {
+          const { discountType, discountValue } = result.data;
+          setIsVoucherValid(true);
+          const discount =
+            discountType === "percentage"
+              ? (discountValue / 100) * subtotal
+              : discountValue;
+          setVoucherDiscount(discount);
+          showToast("Voucher applied successfully!", "success");
+        } else {
+          setIsVoucherValid(false);
+          setVoucherDiscount(0);
+          showToast(result.error || "Voucher validation failed.", "error");
+        }
+      } catch (error: any) {
+        setIsVoucherValid(false);
+        setVoucherDiscount(0);
+        console.error("Error caught in handleVoucherValidation:", error);
+        showToast(
+          error.message || "An error occurred while validating the voucher.",
+          "error"
+        );
+      }
+    });
+  }, [voucherCode, subtotal, showToast, validateVoucherMutation]);
+
   const groupedItems = useMemo(() => {
     return items.reduce(
       (acc: Record<string, GroupedCartItem>, item: CartItem) => {
-        const productId = item.product_id;
-        if (!productId) return acc; // Skip items without a product_id
-
-        if (!acc[productId]) {
-          acc[productId] = {
-            product: item.products, // Store product details here
-            options: {}, // Nested object to group by option
-          };
+        let key: string;
+        if (item.product_id) {
+          key = `product-${item.product_id}`;
+          if (!acc[key]) {
+            acc[key] = {
+              product: item.products,
+              options: {},
+            };
+          }
+          const optionKey = item.option
+            ? JSON.stringify(item.option)
+            : "no-option";
+          acc[key].options[optionKey] = item;
+        } else if (item.bundle_id) {
+          key = `bundle-${item.bundle_id}`;
+          if (!acc[key]) {
+            acc[key] = {
+              bundle: item.bundles,
+              options: {},
+            };
+          }
+          // For bundles, use a consistent key for options as there isn't a product option
+          acc[key].options["bundle-item"] = item;
         }
-
-        // Use a unique key for the option, e.g., JSON stringify the option object or use a combination of product ID and option details
-        const optionKey = item.option
-          ? JSON.stringify(item.option)
-          : "no-option";
-
-        // Add the current cart item to the options grouping
-        acc[productId].options[optionKey] = item;
-
         return acc;
       },
       {}
-    ); // Initialize with an empty object, type asserted by the accumulator
+    );
   }, [items]);
 
   const updateCartMutation = useUpdateCartMutation();
@@ -95,12 +296,9 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
       try {
         if (itemToRemove.id) {
           await removeCartItemMutation.mutateAsync(itemToRemove.id);
-          // showToast('Item removed!', 'info');
         }
-        // Remove Supabase sync logic
       } catch (error: any) {
         console.error("Failed to remove item:", error);
-        // Handle error (e.g., show a toast)
       }
     },
     [removeCartItemMutation.mutateAsync]
@@ -136,15 +334,21 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
         } else {
           const itemsForMutation: ItemToUpdateMutation[] = items
             .map((cartItem) => {
+              const productOption = cartItem.option as ProductOption | null;
               const priceToUse =
-                cartItem.option?.price !== undefined &&
-                cartItem.option.price !== null
-                  ? cartItem.option.price
-                  : cartItem.price || 0;
+                (productOption?.price !== undefined &&
+                productOption?.price !== null
+                  ? productOption.price
+                  : cartItem.price) || 0;
+
+              // Determine if it's a bundle or a product
+              const isBundle =
+                cartItem.bundle_id !== null && cartItem.bundle_id !== undefined;
 
               return {
-                product_id: cartItem.product_id || "",
-                option: cartItem.option,
+                product_id: isBundle ? null : cartItem.product_id || "", // Set to null for bundles
+                bundle_id: isBundle ? cartItem.bundle_id : null, // Set to bundle_id for bundles, null for products
+                option: isBundle ? null : cartItem.option, // Set option to null for bundles
                 quantity:
                   cartItem.id === itemToUpdate.id
                     ? newQuantity
@@ -156,13 +360,20 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
 
           try {
             await updateCartMutation.mutateAsync(itemsForMutation);
+            // Invalidate and refetch cart data after successful update
+            queryClient.invalidateQueries({ queryKey: cartQueryKey });
           } catch (error: any) {
             console.error("Failed to update cart item quantity:", error);
           }
         }
       }
     },
-    [items, updateCartMutation.mutateAsync, removeCartItemMutation.mutateAsync]
+    [
+      items,
+      updateCartMutation.mutateAsync,
+      removeCartItemMutation.mutateAsync,
+      queryClient,
+    ]
   );
 
   const handleClearCart = useCallback(async () => {
@@ -178,19 +389,10 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
     [items]
   );
 
-  const subtotal = useMemo(
-    () =>
-      items.reduce(
-        (acc, item) =>
-          acc +
-          ((item.option?.price !== undefined && item.option.price !== null
-            ? item.option.price
-            : item.price) || 0) *
-            item.quantity,
-        0
-      ), // Add initial value 0
-    [items]
-  );
+  const totalAmount = useMemo(
+    () => subtotal - voucherDiscount,
+    [subtotal, voucherDiscount]
+  ); // Calculate total with discount
 
   if (asLink) {
     return (
@@ -247,99 +449,15 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
               </p>
             </div>
           ) : (
-            // Iterate over groupedItems instead of items
             Object.entries(groupedItems).map(
               ([productId, productGroup]: [string, GroupedCartItem]) => (
-                <div key={productId} className="flex flex-col gap-4">
-                  {/* Display product level info here if needed, e.g., product image/name once */}
-                  <div className="flex items-center gap-2">
-                    {productGroup.product ? (
-                      <p className="h6-bold text-lg">
-                        {productGroup.product.name}
-                      </p>
-                    ) : (
-                      <div className="h-6 w-32 bg-gray-200 animate-pulse rounded" />
-                    )}
-                  </div>
-                  {Object.entries(productGroup.options).map(
-                    ([optionKey, item]: [string, CartItem]) => (
-                      <React.Fragment key={item.id}>
-                        {" "}
-                        {/* Use item.id for key */}
-                        <div className="flex items-center gap-3 sm:gap-4 overflow-y-visible">
-                          <Link href={`/product/${item.products?.slug}`}>
-                            <Image
-                              width={64}
-                              height={64}
-                              src={
-                                item.option?.image ||
-                                item.products?.images?.[0] ||
-                                "/placeholder.png"
-                              }
-                              alt={item.products?.name || "Product image"}
-                              className="h-[64px] rounded-[5px] border-[0.31px] border-[#DDD5DD] object-contain"
-                            />
-                          </Link>
-                          <div className="flex flex-col gap-[6px] w-full">
-                            <div className="flex justify-between">
-                              {/* Product name is displayed above, here we can show option name */}
-                              {item.option?.name && (
-                                <p className="h6-light !text-[14px]">
-                                  {item.option.name}
-                                </p>
-                              )}
-                              <Trash2Icon
-                                className="size-4 cursor-pointer"
-                                onClick={() =>
-                                  handleRemoveItem(item as CartItem)
-                                }
-                                aria-label="Remove item"
-                              />
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <p className="text-[#101828] font-bold">
-                                {formatNaira(
-                                  (item.option?.price !== undefined &&
-                                  item.option.price !== null
-                                    ? item.option.price
-                                    : item.price) || 0
-                                )}{" "}
-                                {/* Use option price if available */}
-                              </p>
-                              <div className="flex items-center gap-2 sm:gap-4">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="size-[9px] bg-[#D0D5DD] rounded-[4px] p-3 text-white"
-                                  onClick={() =>
-                                    handleQuantityChange(
-                                      item as CartItem,
-                                      false
-                                    )
-                                  }
-                                >
-                                  <AiOutlineMinus />
-                                </Button>
-                                <span>{item.quantity}</span>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="size-[9px] bg-[#1B6013] rounded-[4px] p-3 text-white"
-                                  onClick={() =>
-                                    handleQuantityChange(item as CartItem, true)
-                                  }
-                                >
-                                  <AiOutlinePlus />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        <Separator />
-                      </React.Fragment>
-                    )
-                  )}
-                </div>
+                <CartProductGroupDisplay
+                  key={productId}
+                  productId={productId}
+                  productGroup={productGroup}
+                  handleRemoveItem={handleRemoveItem}
+                  handleQuantityChange={handleQuantityChange}
+                />
               )
             )
           )}
@@ -353,23 +471,33 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
                 <p>Subtotal</p>
                 <p>{formatNaira(subtotal)}</p>
               </div>
+              {/* Voucher Section */}
               <div className="flex w-full items-center pt-[10px] gap-3">
                 <Input
                   type="text"
                   placeholder="Discount Code"
                   className="h-10 placeholder:text-xs text-[#737373] placeholder:font-semibold"
+                  value={voucherCode}
+                  onChange={(e) => setVoucherCode(e.target.value)}
                 />
                 <Button
                   type="button"
                   className="btn-primary !text-[#B7CDB4] !bg-[#F2F4F7] h-10"
+                  onClick={handleVoucherValidation}
+                  disabled={isVoucherPending}
                 >
-                  Apply
+                  {isVoucherPending ? "Applying..." : "Apply"}
                 </Button>
               </div>
+              {isVoucherValid && ( // Display discount if valid
+                <div className="mt-2 text-green-600 text-sm">
+                  Voucher applied! You saved {formatNaira(voucherDiscount)}
+                </div>
+              )}
               <Separator className="my-3" />
               <div className="flex justify-between text-[14px] text-[#101828]">
                 <p>Total</p>
-                <p>{formatNaira(subtotal)}</p>
+                <p>{formatNaira(totalAmount)}</p>
               </div>
               <p className="text-black">Delivery fees not included yet.</p>
               <button

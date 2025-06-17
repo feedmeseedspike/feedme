@@ -6,7 +6,7 @@ import Link from "next/link";
 import { toSlug } from "src/lib/utils";
 import { Skeleton } from "@components/ui/skeleton";
 import { Tables } from "../../../utils/database.types";
-type Category = Tables<'categories'>
+type Category = Tables<"categories">;
 import { useQuery } from "@tanstack/react-query";
 
 import { createClient } from "@utils/supabase/client";
@@ -21,7 +21,7 @@ const TopCategories = () => {
   // Define the query function
   const queryFn = async () => {
     const queryBuilder = getAllCategoriesQuery(supabase);
-    const { data, error } = await queryBuilder.select("*"); 
+    const { data, error } = await queryBuilder.select("*");
     if (error) throw error;
     return data;
   };
@@ -30,21 +30,21 @@ const TopCategories = () => {
     data: categories,
     isLoading,
     error,
-  } = useQuery<
-    Category[] | null,
-    any
-  >({
+  } = useQuery<Category[] | null, any>({
     queryKey: queryKey,
     queryFn: queryFn,
   });
 
-  console.log("useQuery state for categories:", {
+  console.log("Client - TopCategories: useQuery state", {
     categories,
     isLoading,
     error,
   });
 
   if (isLoading) {
+    console.log(
+      "Client - TopCategories: Showing skeleton because isLoading is true."
+    );
     return (
       <section className="w-full pb-[80px]">
         <Stroke />
@@ -64,8 +64,18 @@ const TopCategories = () => {
   }
 
   if (error || !categories || !Array.isArray(categories)) {
+    console.log("Client - TopCategories: Showing error/no data message.", {
+      error,
+      categories,
+    });
     return <div>Error loading categories or no categories found.</div>;
   }
+
+  console.log(
+    "Client - TopCategories: Rendering with data.",
+    categories.length,
+    "categories."
+  );
 
   return (
     <section className="w-full pb-[80px]">

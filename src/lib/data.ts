@@ -13,18 +13,18 @@ export const headerMenus =  [
     name: 'Favourites',
     href: '/account/favourites',
   },
+  // {
+  //   name: 'Subscriptions',
+  //   href: '/search?tag=subcriptions',
+  // },
   {
-    name: 'Subscriptions',
-    href: '/search?tag=subcriptions',
+    name: 'Customer Support',
+    href: '/customer-support',
   },
-  {
-    name: 'Customer Service',
-    href: '/customer-service',
-  },
-  {
-    name: 'Vendors',
-    href: '/vendors',
-  },
+  // {
+  //   name: 'Vendors',
+  //   href: '/vendors',
+  // },
   // {
   //   name: 'About Us',
   //   href: '/page/about-us',

@@ -50,6 +50,7 @@ interface ProductDetailsCardProps {
   hideDetails?: boolean;
   hideBorder?: boolean;
   hideAddToCart?: boolean;
+  tag?: string;
 }
 
 const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
@@ -63,6 +64,14 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
     const { showToast } = useToast();
     const user = useUser();
     const router = useRouter();
+
+    console.log("ProductDetailsCard: Product data", {
+      productId: product.id,
+      productName: product.name,
+      stockStatus: product.stockStatus,
+      countInStock: product.countInStock,
+      isPublished: product.is_published,
+    });
 
     // Tanstack Query for Cart
     const { data: cartItems, isLoading: isLoadingCart } = useCartQuery();
@@ -116,7 +125,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           item.product_id === product.id &&
           JSON.stringify(item.option || null) ===
             JSON.stringify(selectedOptionData || null)
-      );
+        );
       });
     }, [cartItems, product.id, selectedOptionData]);
 
@@ -138,7 +147,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
     // Handler to update quantity via mutation
     const handleUpdateCartQuantity = useCallback(
       async (newQuantity: number) => {
-        if (!product.id || !selectedOptionData) return;
+        if (!product.id) return;
 
         if (!user) {
           showToast("Please log in to add items to cart", "error");
@@ -158,10 +167,16 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                 JSON.stringify(selectedOptionData || null);
 
             return {
-              product_id: item.product_id || "",
+              product_id: item.product_id || null,
+              bundle_id: item.bundle_id || null,
               option: item.option,
               quantity: isTargetItem ? newQuantity : item.quantity,
-              price: item.option?.price ?? item.price ?? 0,
+              // Use product.price if item.option is null and item.price is not set
+              price:
+                (item.option as ProductOption | null)?.price ??
+                item.price ??
+                product.price ??
+                0,
             };
           })
           .filter((item) => item.quantity > 0);
@@ -173,12 +188,15 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
               JSON.stringify(selectedOptionData || null)
         );
 
+        const itemPriceForNew = selectedOptionData?.price ?? product.price ?? 0;
+
         if (newQuantity > 0 && !targetItemExistsInMutationArray) {
           itemsForMutation.push({
-            product_id: product.id,
-            option: selectedOptionData as ProductOption,
+            product_id: product.bundleId ? null : product.id,
+            bundle_id: product.bundleId ? product.id : null,
+            option: selectedOptionData as ProductOption | null,
             quantity: newQuantity,
-            price: selectedOptionData.price ?? 0,
+            price: itemPriceForNew, // Use the determined price
           });
         }
 
@@ -219,7 +237,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       } catch (error: any) {
         console.error("Failed to remove cart item:", error);
         showToast("Failed to remove item from cart.", "error");
-        }
+      }
     }, [
       currentCartItem?.id,
       removeCartItemMutation.mutateAsync,
@@ -442,23 +460,57 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           {/* Product image */}
           <Link href={`/product/${product.slug}`} passHref>
             <div className="relative h-[10rem] lg:h-[12rem] w-full overflow-hidden rounded-lg">
-              {product.images?.length > 1 ? (
+              {product.images && product.images.length > 1 ? (
                 <ImageHover
-                  src={product.images[0]}
-                  hoverSrc={product.images[1]}
+                  src={
+                    typeof product.images[0] === "string"
+                      ? product.images[0]
+                      : typeof product.images[0] === "object" &&
+                        product.images[0] !== null &&
+                        "url" in product.images[0]
+                      ? (product.images[0] as { url: string }).url
+                      : "/placeholder-product.png"
+                  }
+                  hoverSrc={
+                    typeof product.images[1] === "string"
+                      ? product.images[1]
+                      : typeof product.images[1] === "object" &&
+                        product.images[1] !== null &&
+                        "url" in product.images[1]
+                      ? (product.images[1] as { url: string }).url
+                      : "/placeholder-product.png"
+                  }
                   alt={product.name}
                 />
               ) : (
                 <div className="relative w-full h-full">
                   <Image
-                    src={product.images?.[0] || "/placeholder-product.png"}
+                    src={
+                      product.images?.[0]
+                        ? typeof product.images[0] === "string"
+                          ? product.images[0]
+                          : typeof product.images[0] === "object" &&
+                            product.images[0] !== null &&
+                            "url" in product.images[0]
+                          ? (product.images[0] as { url: string }).url
+                          : "/placeholder-product.png"
+                        : "/placeholder-product.png"
+                    }
                     alt={product.name}
                     fill
-                    className="object-cover transition-transform duration-300 ease-in-out hover:scale-105"
-                    priority
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    className="object-cover transition-transform duration-300 ease-in-out hover:scale-105  h-full w-full"
+                    onError={(e) => {
+                      e.currentTarget.src = "/placeholder-product.png";
+                    }}
                   />
                 </div>
+              )}
+
+              {discountPercent > 0 && (
+                <span className="absolute top-2 left-2 bg-[#1B6013] text-white text-xs font-semibold px-2 py-1 rounded-md z-10">
+                  -{discountPercent}%
+                </span>
               )}
             </div>
           </Link>
@@ -474,15 +526,34 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       showQuantityControls,
       showToast,
       isLoading,
+      user,
+      router,
     ]);
 
     const ProductDetails = useMemo(() => {
-      const priceRange =
-        sortedOptions.length > 0
-          ? `${formatNaira(sortedOptions[0].price)} - ${formatNaira(
-              sortedOptions[sortedOptions.length - 1].price
-            )}`
-          : formatNaira(product.price);
+      // Safely determine the price display
+      let priceDisplay = "Price N/A";
+
+      if (sortedOptions.length > 0) {
+        const firstPrice = sortedOptions[0]?.price;
+        const lastPrice = sortedOptions[sortedOptions.length - 1]?.price;
+        if (
+          firstPrice !== null &&
+          firstPrice !== undefined &&
+          lastPrice !== null &&
+          lastPrice !== undefined
+        ) {
+          priceDisplay = `${formatNaira(firstPrice)} - ${formatNaira(
+            lastPrice
+          )}`;
+        } else if (firstPrice !== null && firstPrice !== undefined) {
+          priceDisplay = formatNaira(firstPrice);
+        } else if (lastPrice !== null && lastPrice !== undefined) {
+          priceDisplay = formatNaira(lastPrice);
+        }
+      } else if (product.price !== null && product.price !== undefined) {
+        priceDisplay = formatNaira(product.price);
+      }
 
       return (
         <div className="flex-1">
@@ -507,13 +578,13 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           <div className="flex flex-col">
             {sortedOptions.length > 0 ? (
               <span className="font-bold text-md whitespace-nowrap">
-                {priceRange}
+                {priceDisplay}
               </span>
             ) : (
               <ProductPrice
                 isDeal={product.tags?.includes("todays-deal") || false}
-                price={product.price}
-                listPrice={product.list_price}
+                price={product.price || 0}
+                listPrice={product.list_price || 0}
                 forListing
               />
             )}

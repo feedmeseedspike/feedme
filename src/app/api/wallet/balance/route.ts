@@ -8,7 +8,7 @@ export const GET = authMiddleware(async (request: Request, user_id: string) => {
       .from("wallets")
       .select("balance, currency")
       .eq("user_id", user_id)
-      .single();
+      .maybeSingle();
     if (walletError || !wallet) {
       return NextResponse.json(
         { message: "Wallet not found" },

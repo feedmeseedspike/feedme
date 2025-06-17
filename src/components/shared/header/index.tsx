@@ -10,12 +10,6 @@ import {
   ChevronLeft,
   Wallet,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
 import Container from "@components/shared/Container";
 import Cart from "@components/shared/header/Cart";
@@ -37,15 +31,15 @@ import {
 import { Button } from "@components/ui/button";
 import { createClient } from "@utils/supabase/client";
 import { Tables } from "src/utils/database.types";
+import FlyoutLink from "./FlyoutLink";
+import UserDropdownContent from "./UserDropdownContent";
+import { useUser } from "src/hooks/useUser";
 
 type Category = Tables<"categories">;
 
 const Header = () => {
   const supabase = createClient();
-  const { data: user, isLoading: isUserLoading } = useQuery({
-    ...getUserQuery(),
-    staleTime: 1000 * 60 * 5, // Keep user data fresh for 5 minutes
-  });
+  const { user, isLoading: isUserLoading } = useUser();
   const isLoggedIn = !!user;
   const [openAccountSheet, setOpenAccountSheet] = useState(false);
 
@@ -61,7 +55,7 @@ const Header = () => {
       if (error) throw error;
       return data || [];
     },
-    staleTime: 1000 * 60 * 5, // Keep categories data fresh for 5 minutes
+    staleTime: 1000 * 60 * 5,
   });
 
   return (
@@ -72,7 +66,7 @@ const Header = () => {
             {/* Logo and Mobile Menu */}
             <nav className="rounded-xl flex flex-row w-full">
               <div className="flex flex-row gap-x-6 md:gap-x-12 items-center relative">
-                {/* Mobile Sheet Menu */}
+                {/* Mobile Sheet Menu for Categories */}
                 <Sheet>
                   <SheetTrigger className="md:hidden" asChild>
                     <Button
@@ -108,6 +102,7 @@ const Header = () => {
                             width={100}
                             height={32}
                             className="w-[6rem] cursor-pointer"
+                            priority={true}
                           />
                         </Link>
                       </SheetTitle>
@@ -149,9 +144,8 @@ const Header = () => {
                       </div>
                     </div>
 
-                    {/* Fixed Account Link at Bottom */}
                     <div className="border-t border-white">
-                      <Sheet
+                      {/* <Sheet
                         open={openAccountSheet}
                         onOpenChange={setOpenAccountSheet}
                       >
@@ -183,7 +177,9 @@ const Header = () => {
                               <>
                                 <div className="px-4 py-3 text-center">
                                   <Avatar className="mx-auto size-16 mb-4">
-                                    <AvatarImage src={user?.avatar_url} />
+                                    <AvatarImage
+                                      src={user?.avatar_url ?? undefined}
+                                    />
                                     <AvatarFallback>
                                       {user?.display_name?.[0] || "U"}
                                     </AvatarFallback>
@@ -235,7 +231,7 @@ const Header = () => {
                                 </p>
                                 <Link
                                   href="/login"
-                                  className="block w-full text-center bg-white/10 hover:bg-white/20 py-3 rounded transition-colors"
+                                  className="block w-full text-center bg-white/10  py-3 rounded transition-colors"
                                 >
                                   Sign In
                                 </Link>
@@ -249,10 +245,11 @@ const Header = () => {
                             )}
                           </div>
                         </SheetContent>
-                      </Sheet>
+                      </Sheet> */}
                     </div>
                   </SheetContent>
                 </Sheet>
+
                 {/* Desktop Logo */}
                 <Link href="/">
                   <Image
@@ -283,58 +280,28 @@ const Header = () => {
                     <Skeleton className="w-24 h-6 rounded-full bg-white/60" />
                   </div>
                 ) : isLoggedIn ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button className="inline-flex justify-center items-center gap-2 py-3 px-6 text-sm text-white rounded-full cursor-pointer font-semibold text-center shadow-xs transition-all duration-500 whitespace-nowrap">
-                        <Avatar>
-                          <AvatarImage src={user?.avatar_url} />
-                          <AvatarFallback>
-                            {user?.display_name?.[0] || "U"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span>
-                          Hello, {user?.display_name?.split(" ")[0] || "User"}
-                        </span>
-                        <ChevronDown className="w-4 h-4" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-60">
-                      <div className="px-4 py-3 flex gap-3">
-                        <p className="font-semibold text-md mb-1">
-                          Welcome, {user?.display_name}
-                        </p>
-                        {/* <p className="text-xs text-gray-500 truncate">
-                          {user?.email}
-                        </p> */}
-                      </div>
-                      <Separator />
-                      <DropdownMenuItem asChild>
-                        <Link href="/account" className="w-full">
-                          <User className="mr-2 h-4 w-4" />
-                          Account
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href="/account/order" className="w-full">
-                          <Package className="mr-2 h-4 w-4" />
-                          Orders
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer flex items-center gap-2">
-                        <Heart className="w-5 h-5 text-gray-600" />
-                        <Link href={"/account/favourites"}>Favourites</Link>
-                      </DropdownMenuItem>
-                      <Separator className="my-2" />
-                      <DropdownMenuItem asChild className="px-4">
-                        <LogoutButton />
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <FlyoutLink
+                    FlyoutContent={UserDropdownContent}
+                    flyoutProps={{ user }}
+                  >
+                    <button className="inline-flex justify-center items-center gap-2 py-3 pl-6 text-sm text-white rounded-full cursor-pointer font-semibold text-center shadow-xs transition-all duration-500 whitespace-nowrap">
+                      <Avatar>
+                        <AvatarImage src={user?.avatar_url ?? undefined} />
+                        <AvatarFallback>
+                          {user?.display_name?.[0] || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span>
+                        Hello, {user?.display_name?.split(" ")[0] || "User"}
+                      </span>
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                  </FlyoutLink>
                 ) : (
                   <Link href="/login">
                     <Button
                       variant="secondary"
-                      className="bg-white text-[#1B6013]"
+                      className="bg-white text-[#1B6013] hover:!bg-none"
                     >
                       Sign In
                     </Button>

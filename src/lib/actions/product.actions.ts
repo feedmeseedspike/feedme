@@ -1,7 +1,8 @@
-import { getProducts, getCategories } from '../api';
-import { createClient } from '../../utils/supabase/client';
+"use server";
 
-const supabase = createClient();
+import { createClient } from '../../utils/supabase/server';
+
+// Removed top-level supabase initialization
 
 // export async function getAllCategories() {
 //   const allCategories = await getCategories();
@@ -21,6 +22,7 @@ const supabase = createClient();
 // }
 
 export async function getTrendingProducts({ limit = 10 }: { limit?: number }) {
+  const supabase = createClient(); // Initialize client inside the function
   const { data, error } = await supabase
     .from('products')
     .select('*')
@@ -32,6 +34,7 @@ export async function getTrendingProducts({ limit = 10 }: { limit?: number }) {
 }
 
 export async function getFreshFruits({ limit = 10 }: { limit?: number }) {
+  const supabase = createClient(); // Initialize client inside the function
   const { data, error } = await supabase
     .from('products')
     .select('*')
@@ -43,6 +46,7 @@ export async function getFreshFruits({ limit = 10 }: { limit?: number }) {
 }
 
 export async function getFreshVegetables({ limit = 10 }: { limit?: number }) {
+  const supabase = createClient(); // Initialize client inside the function
   const { data, error } = await supabase
     .from('products')
     .select('*')
@@ -54,6 +58,7 @@ export async function getFreshVegetables({ limit = 10 }: { limit?: number }) {
 }
 
 export async function getProductsByTag({ tag, limit = 10 }: { tag: string; limit?: number }) {
+  const supabase = createClient(); // Initialize client inside the function
   const { data, error } = await supabase
     .from('products')
     .select('*')
@@ -65,13 +70,24 @@ export async function getProductsByTag({ tag, limit = 10 }: { tag: string; limit
 }
 
 export async function getProductBySlug(slug: string) {
-  const { data, error } = await supabase
-    .from('products')
-    .select('*')
-    .eq('slug', slug)
-    .single();
-  if (error) throw error;
-  return data;
+  try {
+    const supabase = createClient(); // Initialize client inside the function
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('slug', slug)
+      .single();
+
+    if (error) {
+      console.error("Error fetching product by slug from Supabase:", error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Unhandled error in getProductBySlug:", error);
+    throw error; // Re-throw to ensure the error propagates
+  }
 }
 
 export async function getRelatedProductsByCategory({
@@ -85,6 +101,7 @@ export async function getRelatedProductsByCategory({
   limit?: number;
   page: number;
 }) {
+  const supabase = createClient(); // Initialize client inside the function
   const { data, error } = await supabase
     .from('products')
     .select('*')
@@ -100,7 +117,7 @@ export async function getRelatedProductsByCategory({
   };
 }
 
-export async function getAllProducts({
+export async function getProductsServer({
   query,
   limit = 10,
   page = 1,
@@ -119,7 +136,8 @@ export async function getAllProducts({
   rating?: string;
   sort?: string;
 }) {
-  console.log("getAllProducts parameters:", { query, limit, page, category, tag, price, rating, sort });
+  const supabase = createClient(); // Initialize client inside the function
+  // console.log("getProductsServer parameters:", { query, limit, page, category, tag, price, rating, sort });
   let queryBuilder = supabase
     .from('products')
     .select('*')
@@ -159,16 +177,13 @@ export async function getAllProducts({
     queryBuilder = queryBuilder.order('id', { ascending: true });
   }
 
-  console.log("getAllProducts queryBuilder before execution:");
-  // Note: Logging the full queryBuilder object might be too verbose, 
-  // but this will at least show the state of chaining.
-  // For detailed query inspection, you might need to use Supabase client debug features if available or log constructed URL/params if the client allows.
 
   const { data, error } = await queryBuilder.range((page - 1) * limit, page * limit - 1);
   if (error) {
-    console.error("Error executing getAllProducts query:", error);
+    console.error("Error executing getProductsServer query:", error);
     throw error; // Re-throw the error after logging
   }
+
 
   return {
     products: data,
@@ -180,9 +195,11 @@ export async function getAllProducts({
 }
 
 export async function getAllTags() {
-  const allProducts = await getProducts();
+  const supabase = createClient(); // Initialize client inside the function
+  const allProductsResponse = await getProductsServer({});
+  const allProducts = allProductsResponse?.products || [];
   return Array.from(
-    new Set(allProducts.flatMap((product) => product.tags || []))
+    new Set(allProducts.flatMap((product: any) => product.tags || []))
   )
     .sort((a, b) => a.localeCompare(b))
     .map((tag) =>
@@ -191,4 +208,34 @@ export async function getAllTags() {
         .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ')
     );
+}
+
+export async function addProduct(product: any) {
+  const supabase = createClient(); 
+  const { data, error } = await supabase.from('products').insert([product]).select();
+  if (error) {
+    console.error("Error adding product:", error);
+    throw error;
+  }
+  return data?.[0];
+}
+
+export async function updateProduct(id: string, product: any) {
+  const supabase = createClient(); // Initialize client inside the function
+  const { data, error } = await supabase.from('products').update(product).eq('id', id).select();
+  if (error) {
+    console.error("Error updating product:", error);
+    throw error;
+  }
+  return data?.[0];
+}
+
+export async function deleteProduct(id: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from('products').delete().eq('id', id);
+  if (error) {
+    console.error("Error deleting product:", error);
+    throw error;
+  }
+  return true;
 }

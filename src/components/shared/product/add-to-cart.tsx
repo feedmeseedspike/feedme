@@ -24,17 +24,18 @@ import { useQueryClient } from "@tanstack/react-query";
 interface AddToCartProps {
   item: {
     id: string;
-  name: string;
-  slug: string;
-  category: string;
-  price: number;
+    name: string;
+    slug: string;
+    category: string;
+    price: number;
     images: string[];
     countInStock?: number | null;
-  options?: ProductOption[];
-  selectedOption?: string;
+    options?: ProductOption[];
+    selectedOption?: string;
     option?: ProductOption | null;
     onOutOfStock?: () => void;
     iconOnly?: boolean;
+    bundleId?: string;
   };
   minimal?: boolean;
   className?: string;
@@ -132,12 +133,15 @@ const AddToCart = React.memo(
           try {
             const itemsForMutation: ItemToUpdateMutation[] = currentCartItems
               .map((cartItem) => ({
-                product_id: cartItem.product_id || "",
+                product_id: cartItem.product_id || null,
+                bundle_id: cartItem.bundle_id || null,
                 option: cartItem.option || null,
                 quantity:
-                  cartItem.product_id === item.id &&
-                  JSON.stringify(cartItem.option || null) ===
-                    JSON.stringify(item.option || null)
+                  (cartItem.product_id &&
+                    cartItem.product_id === item.id &&
+                    JSON.stringify(cartItem.option || null) ===
+                      JSON.stringify(item.option || null)) ||
+                  (cartItem.bundle_id && cartItem.bundle_id === item.id)
                     ? newQuantity
                     : cartItem.quantity,
                 price: cartItem.option?.price ?? cartItem.price ?? 0,
@@ -146,14 +150,17 @@ const AddToCart = React.memo(
 
             const targetItemExists = itemsForMutation.some(
               (cartItem) =>
-                cartItem.product_id === item.id &&
-                JSON.stringify(cartItem.option || null) ===
-                  JSON.stringify(item.option || null)
+                (cartItem.product_id &&
+                  cartItem.product_id === item.id &&
+                  JSON.stringify(cartItem.option || null) ===
+                    JSON.stringify(item.option || null)) ||
+                (cartItem.bundle_id && cartItem.bundle_id === item.id)
             );
 
             if (!targetItemExists) {
               itemsForMutation.push({
-                product_id: item.id,
+                product_id: item.bundleId ? null : item.id,
+                bundle_id: item.bundleId ? item.id : null,
                 option: item.option || null,
                 quantity: newQuantity,
                 price: item.price,
@@ -217,7 +224,8 @@ const AddToCart = React.memo(
         const currentCartItems = Array.isArray(cartItems) ? cartItems : [];
         const itemsForMutation: ItemToUpdateMutation[] = currentCartItems
           .map((cartItem) => ({
-            product_id: cartItem.product_id || "",
+            product_id: cartItem.product_id || null,
+            bundle_id: cartItem.bundle_id || null,
             option: cartItem.option || null,
             quantity: cartItem.quantity,
             price: cartItem.option?.price ?? cartItem.price ?? 0,
@@ -226,14 +234,17 @@ const AddToCart = React.memo(
 
         const targetItemExists = itemsForMutation.some(
           (cartItem) =>
-            cartItem.product_id === item.id &&
-            JSON.stringify(cartItem.option || null) ===
-              JSON.stringify(item.option || null)
+            (cartItem.product_id &&
+              cartItem.product_id === item.id &&
+              JSON.stringify(cartItem.option || null) ===
+                JSON.stringify(item.option || null)) ||
+            (cartItem.bundle_id && cartItem.bundle_id === item.id)
         );
 
         if (!targetItemExists) {
           itemsForMutation.push({
-            product_id: item.id,
+            product_id: item.bundleId ? null : item.id,
+            bundle_id: item.bundleId ? item.id : null,
             option: item.option || null,
             quantity: 1,
             price: item.price,
@@ -371,17 +382,17 @@ const AddToCart = React.memo(
     return (
       <div className="space-y-4">
         {isInCart ? (
-        <div className="flex flex-col gap-2">
-          <p className="h6-bold">Quantity</p>
-          <div className="flex items-center py-3">
-            <button
+          <div className="flex flex-col gap-2">
+            <p className="h6-bold">Quantity</p>
+            <div className="flex items-center py-3">
+              <button
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   handleQuantityChange(quantity - 1);
                 }}
                 disabled={quantity <= 1 || updateCartMutation.isPending}
-              className="bg-[#F5F5F5] disabled:opacity-50 p-2 rounded-full"
+                className="bg-[#F5F5F5] disabled:opacity-50 p-2 rounded-full"
                 aria-label={
                   quantity === 1 ? "Remove item" : "Decrease quantity"
                 }
@@ -391,11 +402,11 @@ const AddToCart = React.memo(
                 ) : (
                   <Minus className="size-[14px]" />
                 )}
-            </button>
-            <span className="w-12 font-bold inline-block text-center">
-              {quantity}
-            </span>
-            <button
+              </button>
+              <span className="w-12 font-bold inline-block text-center">
+                {quantity}
+              </span>
+              <button
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -411,18 +422,18 @@ const AddToCart = React.memo(
                 aria-label="Increase quantity"
               >
                 <Plus className="w-4 h-4 text-white" />
-            </button>
-          </div>
-          <Link
-            href="/checkout"
-            className="text-white bg-[#1B6013] rounded-[8px] px-3 sm:px-[20px] py-3 text-xs lg:text-[16px] w-full flex justify-center items-center hover:bg-[#1a5f13cc] transition-colors"
-          >
-            Buy Now
-          </Link>
+              </button>
+            </div>
+            <Link
+              href="/checkout"
+              className="text-white bg-[#1B6013] rounded-[8px] px-3 sm:px-[20px] py-3 text-xs lg:text-[16px] w-full flex justify-center items-center hover:bg-[#1a5f13cc] transition-colors"
+            >
+              Buy Now
+            </Link>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-          <button
+            <button
               onClick={(e) => {
                 e.preventDefault();
                 handleAddToCartClick();
@@ -433,11 +444,11 @@ const AddToCart = React.memo(
                   item.countInStock <= 0) ||
                 updateCartMutation.isPending
               }
-            className={clsx(
-              "text-[#284625] bg-[#F2F8F1] rounded-[8px] px-3 sm:px-[20px] py-3 text-xs lg:text-[16px] w-full",
-              "transition-colors duration-300",
-              missingOption && "animate-shake border border-red-500",
-              className,
+              className={clsx(
+                "text-[#284625] bg-[#F2F8F1] rounded-[8px] px-3 sm:px-[20px] py-3 text-xs lg:text-[16px] w-full",
+                "transition-colors duration-300",
+                missingOption && "animate-shake border border-red-500",
+                className,
                 item.countInStock !== null &&
                   item.countInStock !== undefined &&
                   item.countInStock <= 0 &&
@@ -453,14 +464,14 @@ const AddToCart = React.memo(
               ) : (
                 "Add to Cart"
               )}
-          </button>
+            </button>
 
-          {missingOption && (
-            <p className="text-red-500 text-xs mt-1">
-              Please select an option first
-            </p>
-          )}
-        </div>
+            {missingOption && (
+              <p className="text-red-500 text-xs mt-1">
+                Please select an option first
+              </p>
+            )}
+          </div>
         )}
       </div>
     );

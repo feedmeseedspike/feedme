@@ -38,19 +38,25 @@ interface FetchCustomersParams {
   search?: string;
 }
 
+export interface FetchedCustomerData extends Tables<'users'> {
+    addresses: Array<{ phone: string | null; city: string | null }> | null; 
+}
+
 export async function fetchCustomers({
   page = 1,
   itemsPerPage = 10,
   search = '',
-}: FetchCustomersParams): Promise<{ data: Tables<'users'>[] | null; count: number | null }> {
+}: FetchCustomersParams): Promise<{ data: FetchedCustomerData[] | null; count: number | null }> {
   const supabase = createClient();
 
-  let query = supabase.from('users').select('id, display_name, email, phone, created_at', { count: 'exact' });
+  // Select all users columns and related addresses' phone and city
+  let query = supabase.from('users').select('*, addresses(phone, city)', { count: 'exact' });
 
   if (search) {
-    query = query.or(
-      `display_name.ilike.%${search}%, email.ilike.%${search}%, phone.ilike.%${search}%`
-    );
+    // Adjust search to filter on display_name and email for now
+     query = query.or(
+       `display_name.ilike.%${search}%, email.ilike.%${search}%`
+     );
   }
 
   const start = (page - 1) * itemsPerPage;
@@ -64,7 +70,8 @@ export async function fetchCustomers({
     throw error;
   }
 
-  return { data, count };
+  // The data structure returned should now include the nested addresses array
+  return { data: data as unknown as FetchedCustomerData[] | null, count };
 }
 
 // Hook to use the customer query

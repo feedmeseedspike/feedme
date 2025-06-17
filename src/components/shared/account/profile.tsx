@@ -12,13 +12,13 @@ import {
   MapPin,
   Shield,
   Camera,
+  // Calendar,
+  Apple,
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { useFormState, useFormStatus } from "react-dom";
-import { updateUserInfo } from "src/lib/actions/user.action";
+import { useState } from "react";
 import { formatDate } from "src/lib/utils";
 import { PublicUserData } from "src/types";
-import { toast } from "sonner";
+import { useToast } from "src/hooks/useToast";
 import {
   Form,
   FormControl,
@@ -28,7 +28,6 @@ import {
   FormMessage,
 } from "@components/ui/form";
 import { Input } from "@components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import {
@@ -39,24 +38,87 @@ import {
   SelectValue,
 } from "@components/ui/select";
 import { z } from "zod";
+import Link from "next/link";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { updateUserInfo } from "src/lib/actions/user.action";
+import { format } from "date-fns";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { cn } from "../../../lib/utils";
+import { Calendar } from "../../../components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "../../../components/ui/popover";
 
 interface AppSidebarProps {
   user: PublicUserData;
 }
 
+const isFile = (value: any): value is File => value instanceof File;
+
 const Profile = ({ user }: AppSidebarProps) => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [state, formAction] = useFormState(updateUserInfo, null);
-  const { pending } = useFormStatus();
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
 
-  const form = useForm({
+  const form = useForm<z.infer<typeof UserProfileSchema>>({
     resolver: zodResolver(UserProfileSchema),
+    mode: "all",
     defaultValues: {
       display_name: user.display_name,
-      phone: user.phone || "",
-      address: user.address || "",
       role: user.role,
-      avatar: undefined,
+      avatar: user?.avatar_url ?? undefined,
+      birthday: user.birthday
+        ? format(new Date(user.birthday), "yyyy-MM-dd")
+        : null,
+      favorite_fruit: user.favorite_fruit || "",
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: async (data: z.infer<typeof UserProfileSchema>) => {
+      const formData = new FormData();
+      if (data.display_name !== undefined && data.display_name !== null) {
+        formData.append("display_name", data.display_name);
+      }
+      if (data.role !== undefined && data.role !== null) {
+        formData.append("role", data.role);
+      }
+      if (data.favorite_fruit !== undefined && data.favorite_fruit !== null) {
+        formData.append("favorite_fruit", data.favorite_fruit);
+      }
+      if (data.birthday !== undefined) {
+        formData.append(
+          "birthday",
+          data.birthday === null ? "" : data.birthday
+        );
+      }
+      if (data.avatar !== undefined) {
+        if (data.avatar instanceof File) {
+          formData.append("avatar", data.avatar);
+        } else if (data.avatar === null || data.avatar === "") {
+          formData.append("avatar", "");
+        } else if (typeof data.avatar === "string") {
+          formData.append("avatar", data.avatar);
+        }
+      }
+      return await updateUserInfo(null, formData);
+    },
+    onSuccess: (result) => {
+      if (result?.success) {
+        showToast(result.message || "Profile updated successfully!", "success");
+        if (result.avatarUrl) {
+          setAvatarPreview(null);
+        }
+        // Invalidate queries to refresh data
+        queryClient.invalidateQueries({ queryKey: ["user"] });
+      } else if (result?.message) {
+        showToast(result.message, "error");
+      }
+    },
+    onError: (error) => {
+      showToast(error.message || "Failed to update profile", "error");
     },
   });
 
@@ -64,331 +126,283 @@ const Profile = ({ user }: AppSidebarProps) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast.error("File size must be less than 5MB");
+      showToast("File size must be less than 5MB", "error");
       return;
     }
 
     const reader = new FileReader();
     reader.onloadend = () => {
       setAvatarPreview(reader.result as string);
-      form.setValue("avatar", file);
+      form.setValue(
+        "avatar",
+        file as z.infer<typeof UserProfileSchema>["avatar"]
+      );
     };
     reader.readAsDataURL(file);
   };
 
-  const onSubmit = async (data: z.infer<typeof UserProfileSchema>) => {
-    const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        formData.append(key, value instanceof File ? value : String(value));
-      }
-    });
-    await formAction(formData);
+  const onSubmit = (data: z.infer<typeof UserProfileSchema>) => {
+    mutation.mutate(data);
   };
-
-  useEffect(() => {
-    if (state) {
-      if (state.success) {
-        toast.success(state.message || "Profile updated successfully!");
-        if (state.avatarUrl) {
-          setAvatarPreview(null);
-        }
-        form.setValue("avatar", undefined);
-      } else if (state.message) {
-        toast.error(state.message);
-      }
-    }
-  }, [state, form]);
 
   const watchedAvatar = form.watch("avatar");
 
   return (
-    <div className="min-h-screen p-4 md:p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header Card */}
-        {/* <Card className="overflow-hidden border-0 shadow-lg bg-[#1B6013]">
-          <CardContent className="p-6 md:p-8">
-            <div className="flex flex-col md:flex-row items-center gap-6">
-              <div className="relative group">
-                <Avatar className="w-24 h-24 md:w-32 md:h-32 ring-4 ring-white/20 shadow-xl">
-                  <AvatarImage
-                    className="w-full h-full object-cover"
-                    src={avatarPreview || user?.avatar_url || undefined}
-                  />
-                  <AvatarFallback className="w-full h-full text-2xl md:text-3xl bg-white/10 text-white">
-                    {user?.display_name[0]}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <Camera className="w-6 h-6 text-white" />
-                </div>
-              </div>
-
-              <div className="text-center md:text-left text-white">
-                <h1 className="text-2xl md:text-3xl font-bold mb-2">
-                  {user?.display_name}
-                </h1>
-                <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
-                  <Mail className="w-4 h-4" />
-                  <span className="text-white/90">{user?.email}</span>
-                </div>
-                <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
-                  <User className="w-4 h-4" />
-                  <span className="text-white/90 text-sm">
-                    Member since {formatDate(user?.created_at || "")}
-                  </span>
-                </div>
-                <Badge
-                  variant="secondary"
-                  className="bg-white/20 text-white border-white/30"
-                >
-                  <Shield className="w-3 h-3 mr-1" />
-                  {user?.role === "seller" ? "Seller" : "Buyer"}
-                </Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card> */}
-
-        {/* Profile Form Card */}
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="pb-6">
-            <CardTitle className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+    <div className="min-h-screen md:px-6">
+      <div className="max-w-4xl mx-auto space-y-3">
+        <div className="">
+          <div className="pb-6 border-b border-gray-200 mb-3">
+            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
               <User className="w-6 h-6 text-[#1B6013]" />
               Personal Information
-            </CardTitle>
+            </h2>
             <p className="text-gray-600">
               Update your profile information and preferences
             </p>
-          </CardHeader>
+          </div>
 
-          <CardContent className="p-6">
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-8"
-              >
-                {/* Avatar Upload Section */}
-                <div className="flex flex-col items-center gap-4 p-6 bg-gray-50 rounded-xl">
-                  <div className="relative">
-                    <Avatar className="w-20 h-20 ring-2 ring-[#1B6013]/20">
-                      <AvatarImage
-                        className="w-full h-full object-cover"
-                        src={avatarPreview || user?.avatar_url || undefined}
-                      />
-                      <AvatarFallback className="text-xl bg-[#1B6013]/10 text-[#1B6013]">
-                        {user?.display_name[0]}
-                      </AvatarFallback>
-                    </Avatar>
-
-                    <label
-                      htmlFor="avatar"
-                      className="absolute -bottom-2 -right-2 bg-[#1B6013] hover:bg-green-700 cursor-pointer rounded-full p-2 text-white shadow-lg transition-colors"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </label>
-
-                    <input
-                      type="file"
-                      id="avatar"
-                      name="avatar"
-                      className="hidden"
-                      accept=".jpg,.jpeg,.png,.webp"
-                      onChange={handleAvatarPreview}
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              {/* Avatar Upload Section */}
+              <div className="flex flex-col items-center gap-4 p-6 bg-gray-50 rounded-xl">
+                <div className="relative">
+                  <Avatar className="w-20 h-20 ring-2 ring-[#1B6013]/20">
+                    <AvatarImage
+                      className="w-full h-full object-cover"
+                      src={avatarPreview || user?.avatar_url || undefined}
                     />
-                  </div>
+                    <AvatarFallback className="text-xl bg-[#1B6013]/10 text-[#1B6013]">
+                      {user?.display_name[0]}
+                    </AvatarFallback>
+                  </Avatar>
 
-                  {watchedAvatar instanceof File && (
-                    <div className="text-center">
-                      <p className="text-sm text-gray-600">
-                        Selected:{" "}
-                        <span className="font-medium">
-                          {watchedAvatar.name}
-                        </span>
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        ({(watchedAvatar.size / 1024 / 1024).toFixed(2)} MB)
-                      </p>
-                    </div>
-                  )}
+                  <label
+                    htmlFor="avatar"
+                    className="absolute -bottom-2 -right-2 bg-[#1B6013] hover:bg-green-700 cursor-pointer rounded-full p-2 text-white shadow-lg transition-colors"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </label>
 
-                  <p className="text-xs text-gray-500 text-center max-w-xs">
-                    Upload a new profile picture. Max file size: 5MB. Supported
-                    formats: JPG, PNG, WebP
-                  </p>
+                  <input
+                    type="file"
+                    id="avatar"
+                    name="avatar"
+                    className="hidden"
+                    accept=".jpg,.jpeg,.png,.webp"
+                    onChange={handleAvatarPreview}
+                  />
                 </div>
 
-                {/* Form Fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Display Name */}
-                  <FormField
-                    control={form.control}
-                    name="display_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
-                          <User className="w-4 h-4 text-[#1B6013]" />
-                          Full Name
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            placeholder="Enter your full name"
-                            className="h-12 border-gray-200 focus:border-[#1B6013] focus:ring-[#1B6013]/20 rounded-lg"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Email (Read-only) */}
-                  <FormItem>
-                    <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-[#1B6013]" />
-                      Email Address
-                    </FormLabel>
-                    <Input
-                      value={user.email}
-                      readOnly
-                      className="h-12 bg-gray-50 border-gray-200 text-gray-600 rounded-lg cursor-not-allowed"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Email cannot be changed
+                {/* {isFile(watchedAvatar) && (
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">
+                      Selected:{" "}
+                      <span className="font-medium">
+                        {watchedAvatar.name}
+                      </span>
                     </p>
-                  </FormItem>
+                    <p className="text-xs text-gray-500">
+                      ({(watchedAvatar.size / 1024 / 1024).toFixed(2)} MB)
+                    </p>
+                  </div>
+                )} */}
 
-                  {/* Phone */}
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-[#1B6013]" />
-                          Phone Number
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            placeholder="Enter your phone number"
-                            className="h-12 border-gray-200 focus:border-[#1B6013] focus:ring-[#1B6013]/20 rounded-lg"
-                            value={field.value || ""}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <p className="text-xs text-gray-500 text-center max-w-xs">
+                  Upload a new profile picture. Max file size: 2MB. Supported
+                  formats: JPG, PNG, WebP
+                </p>
+              </div>
 
-                  {/* Address */}
-                  <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-[#1B6013]" />
-                          Address
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            placeholder="Enter your address"
-                            className="h-12 border-gray-200 focus:border-[#1B6013] focus:ring-[#1B6013]/20 rounded-lg"
-                            value={field.value || ""}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Role Selection */}
+              {/* Form Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Display Name */}
                 <FormField
                   control={form.control}
-                  name="role"
+                  name="display_name"
                   render={({ field }) => (
-                    <FormItem className="max-w-md">
+                    <FormItem>
                       <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
-                        <Shield className="w-4 h-4 text-[#1B6013]" />
-                        Account Type
+                        <User className="w-4 h-4 text-[#1B6013]" />
+                        Full Name
                       </FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="h-12 border-gray-200 focus:border-[#1B6013] focus:ring-[#1B6013]/20 rounded-lg">
-                            <SelectValue placeholder="Select your role" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="buyer">
-                            <div className="flex items-center gap-2">
-                              <User className="w-4 h-4" />
-                              Buyer
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="seller">
-                            <div className="flex items-center gap-2">
-                              <Shield className="w-4 h-4" />
-                              Seller
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Enter your full name"
+                          className="h-12 border-gray-200 focus:border-[#1B6013] focus:ring-[#1B6013]/20 rounded-lg"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                {/* Form Errors */}
-                {Object.keys(form.formState.errors).length > 0 && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <h4 className="text-red-800 font-medium mb-2">
-                      Please fix the following errors:
-                    </h4>
-                    <ul className="text-red-600 text-sm space-y-1">
-                      {Object.values(form.formState.errors).map(
-                        (error, index) => (
-                          <li key={index} className="flex items-center gap-2">
-                            <span className="w-1 h-1 bg-red-500 rounded-full"></span>
-                            {error.message}
-                          </li>
-                        )
-                      )}
-                    </ul>
-                  </div>
-                )}
+                {/* Email (Read-only) */}
+                <FormItem>
+                  <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-[#1B6013]" />
+                    Email Address
+                  </FormLabel>
+                  <Input
+                    value={user.email}
+                    readOnly
+                    className="h-12 bg-gray-50 border-gray-200 text-gray-600 rounded-lg cursor-not-allowed"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Email cannot be changed
+                  </p>
+                </FormItem>
 
-                {/* Submit Button */}
-                <div className="flex justify-end pt-6 border-t border-gray-200">
-                  <Button
-                    type="submit"
-                    disabled={pending || !form.formState.isValid}
-                    className="bg-[#1B6013] hover:bg-green-700 text-white px-8 py-3 rounded-lg font-medium transition-colors shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {pending ? (
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Updating Profile...
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4" />
-                        Update Profile
-                      </div>
+                {/* Address (Link to Address Management Page)*/}
+                <FormItem className="md:col-span-2">
+                  <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-[#1B6013]" />
+                    Addresses
+                  </FormLabel>
+                  <p className="text-gray-600 text-sm mb-2">
+                    Manage your delivery addresses.
+                  </p>
+                  <Link href="/account/addresses">
+                    <Button
+                      variant="outline"
+                      className="border-[#1B6013] text-[#1B6013] hover:bg-[#1B6013]/10"
+                    >
+                      Manage Addresses
+                    </Button>
+                  </Link>
+                </FormItem>
+
+                {/* Birthday Field */}
+                <FormField
+                  control={form.control}
+                  name="birthday"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
+                        <CalendarIcon className="w-4 h-4 text-[#1B6013]" />
+                        Birthday
+                      </FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {field.value ? (
+                                format(new Date(field.value), "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={
+                              field.value ? new Date(field.value) : undefined
+                            }
+                            onSelect={(date) =>
+                              field.onChange(
+                                date ? format(date, "yyyy-MM-dd") : null
+                              )
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Favorite Fruit Field */}
+                <FormField
+                  control={form.control}
+                  name="favorite_fruit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
+                        <Apple className="w-4 h-4 text-[#1B6013]" />
+                        Favorite Fruit
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="e.g., Apple, Banana"
+                          className="h-12 border-gray-200 focus:border-[#1B6013] focus:ring-[#1B6013]/20 rounded-lg"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Role (Read-only for now, can be made editable later) */}
+                <FormItem>
+                  <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-[#1B6013]" />
+                    Account Type
+                  </FormLabel>
+                  <Input
+                    value={user.role}
+                    readOnly
+                    className="h-12 bg-gray-50 border-gray-200 text-gray-600 rounded-lg cursor-not-allowed"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Account type cannot be changed from here
+                  </p>
+                </FormItem>
+              </div>
+
+              {/* Form Errors */}
+              {Object.keys(form.formState.errors).length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <h4 className="text-red-800 font-medium mb-2">
+                    Please fix the following errors:
+                  </h4>
+                  <ul className="text-red-600 text-sm space-y-1">
+                    {Object.values(form.formState.errors).map(
+                      (error, index) => (
+                        <li key={index} className="flex items-center gap-2">
+                          <span className="w-1 h-1 bg-red-500 rounded-full"></span>
+                          {error.message}
+                        </li>
+                      )
                     )}
-                  </Button>
+                  </ul>
                 </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+              )}
+
+              {/* Submit Button */}
+              <div className="flex justify-end pt-6 border-t border-gray-200">
+                <Button
+                  type="submit"
+                  disabled={mutation.isPending || !form.formState.isValid}
+                  className="bg-[#1B6013]/90 hover:bg-[#1B6013] text-white px-8 py-3 rounded-lg font-medium transition-colors shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {mutation.isPending ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Updating Profile...
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      Update Profile
+                    </div>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </div>
       </div>
     </div>
   );

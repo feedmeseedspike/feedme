@@ -4,15 +4,15 @@ import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { Database } from "src/utils/database.types";
 
-const ITEMS_PER_PAGE = 10; // Define items per page, consistent with previous logic
+const ITEMS_PER_PAGE = 10; 
 
 export async function getPromotions() {
   const supabase = createServerComponentClient<Database>({ cookies });
 
   const { data: promotions, error } = await supabase
     .from("promotions")
-    .select("*") // Select all columns for now
-    .eq("is_active", true); // Fetch only active promotions
+    .select("*") 
+    .eq("is_active", true); 
 
   if (error) {
     console.error("Error fetching promotions:", error.message);

@@ -2,7 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@utils/supabase/client";
 import { ReviewInputSchema } from "src/lib/validator";
 import { z } from "zod";
-import { Database } from "@utils/database.types";
+import { Database, Json } from "@utils/database.types";
+// import { revalidateProductPage } from "src/lib/actions/product.actions";
 
 type Tables = Database["public"]["Tables"];
 type ReviewRow = Tables["product_reviews"]["Row"];
@@ -11,14 +12,15 @@ type UserRow = Tables["users"]["Row"];
 // Types
 export interface ReviewQueryResult {
   id: string;
-  title: string;
-  comment: string;
-  rating: number;
-  is_verified_purchase: boolean;
-  created_at: string;
-  updated_at: string;
-  helpful_count: number;
-  reports: any;
+  title: string | null;
+  comment: string | null;
+  rating: number | null;
+  is_verified_purchase: boolean | null;
+  image_urls: string[] | null;
+  created_at: string | null;
+  updated_at: string | null;
+  helpful_count: number | null;
+  reports: Json | null;
   user_id: string;
   user: {
     id: string;
@@ -38,7 +40,7 @@ export interface ReviewsResponse {
 export const reviewKeys = {
   all: ["reviews"] as const,
   lists: () => [...reviewKeys.all, "list"] as const,
-  list: (productId: string) => [...reviewKeys.lists(), productId] as const,
+  list: (productId: string, page: number) => [...reviewKeys.lists(), productId, page] as const,
   detail: (reviewId: string) => [...reviewKeys.all, "detail", reviewId] as const,
 };
 
@@ -74,6 +76,7 @@ export const getReviews = async ({
         comment,
         rating,
         is_verified_purchase,
+        image_urls,
         helpful_count,
         reports,
         created_at,
@@ -145,7 +148,7 @@ export const createUpdateReview = async ({
   data,
   userId,
 }: {
-  data: z.infer<typeof ReviewInputSchema>;
+  data: z.infer<typeof ReviewInputSchema> & { slug: string };
   userId: string;
 }) => {
   const supabase = await createClient();
@@ -166,6 +169,7 @@ export const createUpdateReview = async ({
           title: data.title,
           comment: data.comment,
           rating: data.rating,
+          image_urls: data.image_urls,
           updated_at: new Date().toISOString(),
         })
         .eq("id", existingReview.id);
@@ -185,6 +189,7 @@ export const createUpdateReview = async ({
         comment: data.comment,
         rating: data.rating,
         is_verified_purchase: data.isVerifiedPurchase,
+        image_urls: data.image_urls,
       });
 
       if (error) throw error;
@@ -195,11 +200,8 @@ export const createUpdateReview = async ({
       };
     }
   } catch (error: any) {
-    console.error("Error in createUpdateReview:", error);
-    return {
-      success: false,
-      message: error.message || "Failed to submit review",
-    };
+    console.error("Error creating/updating review:", error);
+    throw new Error(error.message || "Failed to create/update review");
   }
 };
 
@@ -214,46 +216,19 @@ export const addHelpfulVote = async ({
   const supabase = await createClient();
 
   try {
-    // First check if vote already exists
-    const { data: existingVote } = await supabase
+    const { error } = await supabase
       .from("review_helpful_votes")
-      .select("id")
-      .eq("review_id", reviewId)
-      .eq("user_id", userId)
-      .single();
-
-    if (existingVote) {
-      return {
-        success: false,
-        message: "You have already voted for this review",
-      };
-    }
-
-    // Insert new vote
-    const { error } = await supabase.from("review_helpful_votes").insert({
-      review_id: reviewId,
-      user_id: userId,
-    });
-
+      .insert({ review_id: reviewId, user_id: userId });
     if (error) throw error;
-
-    // Update helpful count using RPC function
-    const { error: rpcError } = await supabase.rpc("increment_helpful_count", {
-      review_id_param: reviewId,
-    });
-
-    if (rpcError) throw rpcError;
-
-    return {
-      success: true,
-      message: "Vote added successfully",
-    };
+    // Increment helpful_count in product_reviews table
+    const { error: updateError } = await supabase.rpc(
+      "increment_helpful_count",
+      { review_id_param: reviewId }
+    );
+    if (updateError) throw updateError;
   } catch (error: any) {
-    console.error("Error in addHelpfulVote:", error);
-    return {
-      success: false,
-      message: error.message || "Failed to add vote",
-    };
+    console.error("Error adding helpful vote:", error);
+    throw new Error(error.message || "Failed to add helpful vote");
   }
 };
 
@@ -268,47 +243,21 @@ export const removeHelpfulVote = async ({
   const supabase = await createClient();
 
   try {
-    // First check if vote exists
-    const { data: existingVote } = await supabase
-      .from("review_helpful_votes")
-      .select("id")
-      .eq("review_id", reviewId)
-      .eq("user_id", userId)
-      .single();
-
-    if (!existingVote) {
-      return {
-        success: false,
-        message: "You haven't voted for this review yet",
-      };
-    }
-
-    // Delete the vote
     const { error } = await supabase
       .from("review_helpful_votes")
       .delete()
       .eq("review_id", reviewId)
       .eq("user_id", userId);
-
     if (error) throw error;
-
-    // Update helpful count using RPC function
-    const { error: rpcError } = await supabase.rpc("decrement_helpful_count", {
-      review_id_param: reviewId,
-    });
-
-    if (rpcError) throw rpcError;
-
-    return {
-      success: true,
-      message: "Vote removed successfully",
-    };
+    // Decrement helpful_count in product_reviews table
+    const { error: updateError } = await supabase.rpc(
+      "decrement_helpful_count",
+      { review_id_param: reviewId }
+    );
+    if (updateError) throw updateError;
   } catch (error: any) {
-    console.error("Error in removeHelpfulVote:", error);
-    return {
-      success: false,
-      message: error.message || "Failed to remove vote",
-    };
+    console.error("Error removing helpful vote:", error);
+    throw new Error(error.message || "Failed to remove helpful vote");
   }
 };
 
@@ -325,66 +274,78 @@ export const addReport = async ({
   const supabase = await createClient();
 
   try {
-    // First get the current reports array
-    const { data: review, error: fetchError } = await supabase
+    // Fetch existing reports
+    const { data: existingReview, error: fetchError } = await supabase
       .from("product_reviews")
       .select("reports")
       .eq("id", reviewId)
-      .single();
+      .maybeSingle();
 
     if (fetchError) throw fetchError;
 
-    // Parse existing reports or initialize empty array
-    const currentReports = review?.reports || [];
-    
-    // Check if user has already reported
-    const hasReported = currentReports.some(
-      (report: any) => report.user_id === userId
-    );
-
-    if (hasReported) {
-      return {
-        success: false,
-        message: "You have already reported this review",
-      };
-    }
+    const currentReports = (existingReview?.reports || []) as { user_id: string; reason: string; created_at: string }[];
 
     // Add new report
-    const newReport = {
-      user_id: userId,
-      reason,
-      created_at: new Date().toISOString(),
-    };
+    const updatedReports = [
+      ...currentReports,
+      { user_id: userId, reason, created_at: new Date().toISOString() },
+    ];
 
-    // Update the reports array
-    const { error: updateError } = await supabase
+    const { error } = await supabase
       .from("product_reviews")
-      .update({
-        reports: [...currentReports, newReport],
-      })
+      .update({ reports: updatedReports as any })
       .eq("id", reviewId);
 
-    if (updateError) throw updateError;
+    if (error) throw error;
 
     return {
       success: true,
-      message: "Report submitted successfully",
+      message: "Review reported successfully",
     };
   } catch (error: any) {
-    console.error("Error in addReport:", error);
+    console.error("Error adding report:", error);
+    throw new Error(error.message || "Failed to add report");
+  }
+};
+
+// Delete a review
+export const deleteReview = async ({
+  reviewId,
+  userId,
+  productSlug,
+}: {
+  reviewId: string;
+  userId: string;
+  productSlug: string;
+}) => {
+  const supabase = await createClient();
+
+  try {
+    const { error } = await supabase
+      .from("product_reviews")
+      .delete()
+      .eq("id", reviewId)
+      .eq("user_id", userId);
+
+    if (error) throw error;
+
     return {
-      success: false,
-      message: error.message || "Failed to submit report",
+      success: true,
+      message: "Review deleted successfully",
     };
+  } catch (error: any) {
+    console.error("Error deleting review:", error);
+    throw new Error(error.message || "Failed to delete review");
   }
 };
 
 // Hooks
 export const useReviewsQuery = (productId: string, page: number = 1, userId?: string) => {
   return useQuery({
-    queryKey: reviewKeys.list(productId),
+    queryKey: reviewKeys.list(productId, page),
     queryFn: () => getReviews({ productId, page, userId }),
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    enabled: !!productId,
+    keepPreviousData: true,
   });
 };
 
@@ -393,11 +354,12 @@ export const useCreateUpdateReviewMutation = () => {
 
   return useMutation({
     mutationFn: createUpdateReview,
-    onSuccess: (_, variables) => {
-      // Invalidate reviews list for the product
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: reviewKeys.list(variables.data.product),
+        queryKey: reviewKeys.list(variables.data.product, variables.data.page),
       });
+      // Revalidate the product page to update avg_rating and rating_distribution
+      // await revalidateProductPage(variables.data.slug);
     },
   });
 };
@@ -407,11 +369,11 @@ export const useAddHelpfulVoteMutation = () => {
 
   return useMutation({
     mutationFn: addHelpfulVote,
-    onSuccess: (_, variables) => {
-      // Invalidate reviews list for the product
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: reviewKeys.lists(),
+        queryKey: reviewKeys.detail(variables.reviewId),
       });
+      queryClient.invalidateQueries({ queryKey: reviewKeys.lists() });
     },
   });
 };
@@ -421,11 +383,11 @@ export const useRemoveHelpfulVoteMutation = () => {
 
   return useMutation({
     mutationFn: removeHelpfulVote,
-    onSuccess: (_, variables) => {
-      // Invalidate reviews list for the product
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: reviewKeys.lists(),
+        queryKey: reviewKeys.detail(variables.reviewId),
       });
+      queryClient.invalidateQueries({ queryKey: reviewKeys.lists() });
     },
   });
 };
@@ -435,11 +397,24 @@ export const useAddReportMutation = () => {
 
   return useMutation({
     mutationFn: addReport,
-    onSuccess: (_, variables) => {
-      // Invalidate reviews list for the product
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: reviewKeys.lists(),
+        queryKey: reviewKeys.detail(variables.reviewId),
       });
+    },
+  });
+};
+
+// Use mutation for deleting a review
+export const useDeleteReviewMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteReview,
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: reviewKeys.lists() });
+
+      // Revalidate the product page to update avg_rating and rating_distribution
+      // await revalidateProductPage(variables.productSlug);
     },
   });
 }; 

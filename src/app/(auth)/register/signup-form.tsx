@@ -1,6 +1,6 @@
 "use client";
 import { redirect, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import Link from "next/link";
@@ -23,6 +23,7 @@ import { registerUser } from "src/lib/actions/auth.actions";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@utils/supabase/client";
+import { useUser } from "src/hooks/useUser";
 
 const signUpDefaultValues =
   process.env.NODE_ENV === "development"
@@ -42,63 +43,158 @@ const signUpDefaultValues =
 export default function CredentialsSignUpForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const urlReferralCode = searchParams.get("referral_code");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { user, isLoading: isUserLoading } = useUser();
+
+  useEffect(() => {
+    if (user && !isUserLoading) {
+      const redirectUrl = urlReferralCode
+        ? `/account?referral_code=${encodeURIComponent(urlReferralCode)}`
+        : "/account";
+      router.replace("/account/referral");
+    }
+  }, [user, isUserLoading, router, urlReferralCode]);
 
   const form = useForm<IUserSignUp>({
     resolver: zodResolver(UserSignUpSchema),
-    defaultValues: signUpDefaultValues,
+    defaultValues: {
+      ...signUpDefaultValues,
+      referralCode: urlReferralCode || "",
+    },
   });
 
-  const { control, handleSubmit } = form;
+  const { control, handleSubmit, setValue } = form;
 
   const { showToast } = useToast();
 
-  const onSubmit = async (data: IUserSignUp) => {
-    const { name, email, password } = data;
-    setLoading(true);
-    const supabase = createClient(); // Get Supabase client instance
-    try {
-      const { data: signUpData, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            // Optional: include name in user metadata
-            name,
-          },
-        },
-      });
+  useEffect(() => {
+    if (urlReferralCode) {
+      localStorage.setItem("referral_code", urlReferralCode);
+    }
+  }, [urlReferralCode]);
 
-      if (error) {
-        console.error("Supabase signup error:", error);
-        showToast(error.message, "error");
-        setLoading(false); // Ensure loading is set to false on error
-        return;
+  const applyReferral = async (
+    referrerEmail: string,
+    referredUserId: string
+  ) => {
+    try {
+      const response = await fetch("/api/referral", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ referrerEmail, referredUserId }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        console.error("Failed to apply referral:", data.message);
+        showToast(data.message || "Failed to apply referral", "error");
+      } else {
+        showToast(data.message || "Referral applied successfully!", "success");
+      }
+    } catch (error) {
+      console.error("Error applying referral:", error);
+      showToast(
+        "An unexpected error occurred during referral application.",
+        "error"
+      );
+    }
+  };
+
+  const onSubmit = async (data: IUserSignUp) => {
+    setLoading(true);
+    const { name, email, password, referralCode } = data;
+    const supabase = createClient();
+
+    try {
+      // First check if user exists
+      const {
+        data: { user: existingUser },
+        error: existingUserError,
+      } = await supabase.auth.getUser();
+
+
+      if (existingUser && !existingUserError) {
+        showToast("User already exists. Please login instead.", "error");
+        return router.push(
+          `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
+        );
       }
 
-      console.log("Supabase signup successful:", signUpData);
+      // Create the user
+      const { data: signUpData, error: signUpError } =
+        await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { name },
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
+        });
 
-      // Check if user requires email confirmation
-      // if (signUpData.user && !signUpData.user.confirmed_at) {
-      //   showToast(
-      //     "Registration successful! Please check your email to confirm your account.",
-      //     "success"
-      //   );
-      // } else {
+      if (signUpError) {
+        console.error("Signup error:", signUpError);
+        throw signUpError;
+      }
+
+      if (!signUpData.user) {
+        throw new Error("User creation failed - no user returned");
+      }
+
+      console.log("User created:", signUpData.user);
+
+      if (referralCode || localStorage.getItem("referral_code")) {
+        handleReferral(
+          signUpData.user.id,
+          referralCode,
+          signUpData.user.email!
+        ).catch((e) => console.error("Referral error:", e));
+      }
+
+      // Show success and redirect
       showToast("Registration successful!", "success");
-      // }
 
-      router.push(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+      return router.push(
+        `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
+      );
     } catch (error: any) {
-      console.error("Catch block error during signup:", error);
-      // This catch block might be less relevant with supabase.auth.signUp handling errors,
-      // but keep it for unexpected issues.
-      showToast(error?.message || "Registration failed", "error");
+      console.error("Signup failed:", error);
+      showToast(
+        error.message || "An error occurred during registration",
+        "error"
+      );
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Separate function for referral handling
+  const handleReferral = async (
+    userId: string,
+    referralCode?: string,
+    referredUserEmail?: string
+  ) => {
+    const code = referralCode || localStorage.getItem("referral_code");
+    if (!code || !referredUserEmail) return;
+
+    try {
+      const response = await fetch("/api/referral", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          referrerEmail: code,
+          referredUserId: userId,
+          referredUserEmail: referredUserEmail,
+        }),
+      });
+
+      if (!response.ok) throw new Error(await response.text());
+
+      localStorage.removeItem("referral_code");
+    } catch (error) {
+      console.error("Referral failed - continuing without referral:", error);
     }
   };
 
@@ -211,6 +307,27 @@ export default function CredentialsSignUpForm() {
                       )}
                     </button>
                   </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={control}
+            name="referralCode"
+            render={({ field }) => (
+              <FormItem className="w-full">
+                <FormLabel className="font-semibold ring-zinc-400">
+                  Referral Code (Optional)
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Enter referrer's email if you have one"
+                    {...field}
+                    className="py-6 ring-1 ring-zinc-400"
+                    readOnly={!!urlReferralCode}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

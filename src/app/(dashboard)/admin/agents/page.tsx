@@ -41,7 +41,8 @@ import {
   SelectValue,
 } from "@components/ui/select";
 import EditAgentModal from "@components/admin/editAgentModal";
-import { getAgents } from "../../../../lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { getAgentsQuery } from "../../../../queries/agents";
 
 export default function Agents() {
   const [search, setSearch] = useState("");
@@ -50,22 +51,15 @@ export default function Agents() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<any>();
-  const [agents, setAgents] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    setLoading(true);
-    getAgents()
-      .then((data) => {
-        setAgents(data || []);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message || "Failed to fetch agents");
-        setLoading(false);
-      });
-  }, []);
+  const {
+    data: agents,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["agents"],
+    queryFn: getAgentsQuery,
+  });
 
   const toggleFilter = (
     value: string,
@@ -79,25 +73,26 @@ export default function Agents() {
     );
   };
 
-  const filteredAgents = agents.filter(
+  const filteredAgents = agents?.filter(
     (agent) =>
-      (agent.display_name || agent.name || "")
-        .toLowerCase()
-        .includes(search.toLowerCase()) &&
-      (selectedStatus.length === 0 || selectedStatus.includes(agent.status))
+      (agent.display_name || "").toLowerCase().includes(search.toLowerCase()) &&
+      (selectedStatus.length === 0 ||
+        (agent.status && selectedStatus.includes(agent.status)))
   );
 
   const handleUpdateAgent = (updatedAgent: any) => {
-    const updatedAgents = agents.map((agent) =>
+    const updatedAgents = agents?.map((agent) =>
       agent.id === selectedAgent?.id ? { ...agent, ...updatedAgent } : agent
     );
     // // console.log("Updated Agents:", updatedAgents);
+    // TODO: Implement actual agent update logic using a mutation
+    // setAgents(updatedAgents || []); // This line is no longer needed with react-query
     setIsEditModalOpen(false);
   };
 
   const ITEMS_PER_PAGE = 5;
-  const totalPages = Math.ceil(filteredAgents.length / ITEMS_PER_PAGE);
-  const paginatedAgents = filteredAgents.slice(
+  const totalPages = Math.ceil((filteredAgents?.length || 0) / ITEMS_PER_PAGE);
+  const paginatedAgents = filteredAgents?.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
@@ -106,8 +101,14 @@ export default function Agents() {
     setCurrentPage(page);
   };
 
-  if (loading) return <div className="p-4">Loading agents...</div>;
-  if (error) return <div className="p-4 text-red-500">{error}</div>;
+  if (isLoading) return <div className="p-4">Loading agents...</div>;
+  if (error)
+    return <div className="p-4 text-red-500">Error: {error.message}</div>;
+
+  if (!agents || agents.length === 0) {
+    return <div className="p-4">No agents found.</div>;
+  }
+
   return (
     <div className="p-4">
       <div className="flex justify-between items-center mb-4">
@@ -258,20 +259,23 @@ export default function Agents() {
           </TableHeader>
 
           <TableBody>
-            {paginatedAgents.map((agent) => (
+            {paginatedAgents?.map((agent) => (
               <TableRow key={agent.id}>
                 <TableCell className="text-left px-6 py-4 flex gap-2 items-center">
-                  <Image
-                    src={agent.image}
-                    alt={agent.name}
+                  <img
+                    src={
+                      agent.image_url ||
+                      "https://dummyimage.com/40x40/000/fff&text=N/A"
+                    }
+                    alt={agent.display_name || "Agent"}
                     width={40}
                     height={40}
                     className="rounded-full"
                   />
-                  {agent.name}
+                  {agent.display_name}
                 </TableCell>
                 <TableCell className="text-center px-6 py-4">
-                  {agent.phoneNumber}
+                  {agent.phone}
                 </TableCell>
                 <TableCell className="text-center px-6 py-4">
                   {agent.email}
@@ -281,9 +285,10 @@ export default function Agents() {
                 </TableCell>
                 <TableCell className="text-center px-6 py-4">
                   <Select
-                    defaultValue={agent.status}
+                    defaultValue={agent.status || ""}
                     onValueChange={(value) => {
                       // Update agent status logic here
+                      // TODO: Implement actual status update logic using a mutation
                     }}
                   >
                     <SelectTrigger className="w-[140px] border p-3 rounded-lg">
