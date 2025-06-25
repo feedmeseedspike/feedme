@@ -2,6 +2,8 @@ import { authMiddleware } from "middleware/auth";
 import { NextResponse } from "next/server";
 import { supabase } from "src/lib/supabaseClient";
 
+export const dynamic = "force-dynamic";
+
 export const GET = authMiddleware(async (request: Request, user_id: string) => {
   try {
     const { data: wallet, error: walletError } = await supabase

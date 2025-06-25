@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
 import Container from "@components/shared/Container";
@@ -219,12 +220,12 @@ const CartPage = () => {
     string[]
   >({
     // Corrected type to string[]
-    queryKey: ["purchasedProductIds", user?.id],
+    queryKey: ["purchasedProductIds", user.user?.id],
     queryFn: async () => {
-      if (!user?.id) return [];
-      return getUsersPurchasedProductIds(supabase, user.id);
+      if (!user.user?.id) return [];
+      return getUsersPurchasedProductIds(supabase, user.user?.id);
     },
-    enabled: !!user?.id,
+    enabled: !!user.user?.id,
   });
 
   const { data: allCategories, isLoading: isLoadingCategories } = useQuery<
@@ -243,7 +244,7 @@ const CartPage = () => {
       const categories: CategoryData[] = data.map((cat) => ({
         id: cat.id,
         title: cat.title,
-        thumbnail: cat.thumbnail as string | null, // Ensure thumbnail is string | null
+        thumbnail: cat.thumbnail as any, // Ensure thumbnail is string | null
       }));
       return categories;
     },

@@ -16,7 +16,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast, Toaster } from "sonner";
-import { requestPasswordReset } from "src/lib/actions/auth.actions";
+import { updatePassword } from "@/lib/actions/auth.actions";
+// import { requestPasswordReset } from "src/lib/actions/auth.actions";
 
 const ForgotPasswordSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -44,7 +45,7 @@ export default function ForgotPasswordForm() {
     // // console.log(data);
     setLoading(true);
     try {
-      const result = await requestPasswordReset(data.email, data.password);
+      const result = await updatePassword(data.email, data.password);
       // // console.log(result);
 
       if (result.success) {
@@ -59,7 +60,7 @@ export default function ForgotPasswordForm() {
       } else {
         toast.error("Error", {
           description:
-            result.error || "Failed to reset password. Please try again.",
+             "Failed to reset password. Please try again.",
         });
       }
     } catch (error) {

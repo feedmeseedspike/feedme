@@ -50,7 +50,7 @@ export default function EditCategory({ params }: { params: { id: string } }) {
     async function fetchCategory() {
       setLoading(true);
       try {
-        const foundCategory = await getCategoryById(id);
+        const foundCategory:any = await getCategoryById(id);
         if (foundCategory) {
           setCategory(foundCategory);
           setTitle(foundCategory.title);

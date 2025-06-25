@@ -76,7 +76,7 @@ const Signin = async (props: {
         </div>
 
         <div className="flex flex-col gap-5">
-          <form action={signinWithGoogle}>
+          <form action={()=>signinWithGoogle()}>
             <button
               type="submit"
               className="rounded-lg w-full py-3 flex justify-center ring-1 ring-zinc-500 shadow-sm"

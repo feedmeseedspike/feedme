@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
@@ -297,7 +298,7 @@ export default function EditProduct() {
         variation: productOptions.length > 0 ? "Yes" : "No",
         images: [],
         options: productOptions,
-        is_published: product.is_published,
+        is_published: product.is_published ? product?.is_published : false,
       });
 
       setOptions(productOptions);
@@ -601,8 +602,7 @@ export default function EditProduct() {
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="p-6 rounded-lg shadow-md bg-white flex flex-col gap-2"
-        >
+          className="p-6 rounded-lg shadow-md bg-white flex flex-col gap-2">
           {/* Product Name */}
           <FormField
             control={form.control}
@@ -689,8 +689,7 @@ export default function EditProduct() {
                   <RadioGroup
                     onValueChange={field.onChange}
                     defaultValue={field.value}
-                    className="flex gap-6 mt-1"
-                  >
+                    className="flex gap-6 mt-1">
                     <div className="flex items-center gap-2">
                       <RadioGroupItem value="Yes" id="variation-yes" />
                       <Label htmlFor="variation-yes">Yes</Label>
@@ -715,8 +714,7 @@ export default function EditProduct() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.3 }}
-          >
+            transition={{ duration: 0.3 }}>
             {form.watch("variation") === "No" ? (
               <>
                 {/* Image Upload */}
@@ -756,8 +754,7 @@ export default function EditProduct() {
                                     type="button"
                                     className="absolute top-0 right-0 bg-white rounded-full p-1 shadow"
                                     onClick={() => handleRemoveImage(index)}
-                                    aria-label="Remove image"
-                                  >
+                                    aria-label="Remove image">
                                     <span className="text-red-500 font-bold text-xs">
                                       X
                                     </span>
@@ -811,8 +808,7 @@ export default function EditProduct() {
                       <FormControl>
                         <ShadSelect
                           onValueChange={field.onChange}
-                          value={field.value}
-                        >
+                          value={field.value}>
                           <SelectTrigger className="col-span-7 border p-4 rounded-lg">
                             <SelectValue placeholder="Select Stock Status" />
                           </SelectTrigger>
@@ -892,8 +888,9 @@ export default function EditProduct() {
                                 <button
                                   type="button"
                                   className="size-5"
-                                  onClick={() => handleDeleteOptionClick(index)}
-                                >
+                                  onClick={() =>
+                                    handleDeleteOptionClick(index)
+                                  }>
                                   <Trash />
                                 </button>
                               </TableCell>
@@ -906,8 +903,7 @@ export default function EditProduct() {
                   <button
                     type="button"
                     className="bg-[#E8F3E7] px-4 py-[10px] flex items-center gap-2 text-sm whitespace-nowrap rounded-[8px]"
-                    onClick={() => setIsDialogOpen(true)}
-                  >
+                    onClick={() => setIsDialogOpen(true)}>
                     <Plus size={14} />
                     Add New Option
                   </button>
@@ -936,36 +932,31 @@ export default function EditProduct() {
               variant="outline"
               className="w-full sm:w-auto"
               disabled={updateProductMutation.isPending}
-              onClick={() => router.push("/admin/products")}
-            >
+              onClick={() => router.push("/admin/products")}>
               Cancel
             </Button>
             <Button
               type="submit"
               className="w-full sm:w-auto bg-[#1B6013] text-white"
-              disabled={updateProductMutation.isPending}
-            >
+              disabled={updateProductMutation.isPending}>
               {updateProductMutation.isPending ? (
                 <span className="flex items-center gap-2">
                   <svg
                     className="animate-spin h-4 w-4 text-white"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
-                    viewBox="0 0 24 24"
-                  >
+                    viewBox="0 0 24 24">
                     <circle
                       className="opacity-25"
                       cx="12"
                       cy="12"
                       r="10"
                       stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
+                      strokeWidth="4"></circle>
                     <path
                       className="opacity-75"
                       fill="currentColor"
-                      d="M4 12a8 8 0 018-8v8z"
-                    ></path>
+                      d="M4 12a8 8 0 018-8v8z"></path>
                   </svg>{" "}
                   Updating...
                 </span>
@@ -980,8 +971,7 @@ export default function EditProduct() {
       {/* Delete Option Dialog */}
       <Dialog
         open={deleteOptionDialogOpen}
-        onOpenChange={setDeleteOptionDialogOpen}
-      >
+        onOpenChange={setDeleteOptionDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Option</DialogTitle>
@@ -993,8 +983,7 @@ export default function EditProduct() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setDeleteOptionDialogOpen(false)}
-            >
+              onClick={() => setDeleteOptionDialogOpen(false)}>
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleDeleteOptionConfirm}>

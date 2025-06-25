@@ -15,7 +15,7 @@ import { createClient } from "@utils/supabase/server";
 import ProfileDropdown from "@components/shared/account/profile-dropdown";
 
 const Dashboard = async ({ children }: { children: React.ReactNode }) => {
-  const userData = await getUser();
+  const userData: any = await getUser();
 
   if (!userData) {
     redirect("/login?callbackUrl=/account");

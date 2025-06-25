@@ -72,9 +72,9 @@ export default function ProductSlider({
     data: fetchedProducts,
     isLoading,
     error: fetchedError,
-  } = useQuery<IProductInput[] | null, any>({
+  }:any = useQuery<IProductInput[] | null, any>({
     queryKey: queryKey,
-    queryFn: queryFn,
+    queryFn: queryFn as any,
     enabled: !!tag,
   });
 
@@ -104,7 +104,7 @@ export default function ProductSlider({
     return <div>Error: Invalid product data received.</div>;
   }
 
-  const productsToRender = Array.isArray(products) ? products : fetchedProducts;
+  const productsToRender:any = Array.isArray(products) ? products : fetchedProducts;
 
   if (!productsToRender || productsToRender.length === 0) {
     return <div>No products found.</div>;
@@ -138,7 +138,7 @@ export default function ProductSlider({
         className="w-full"
       >
         <CarouselContent className="px-2 md:px-[4rem]">
-          {productsToRender.map((product) => (
+          {productsToRender.map((product:any) => (
             <CarouselItem key={product.slug || product.id}>
               <ProductCard
                 hideDetails={hideDetails}

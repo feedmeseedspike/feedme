@@ -14,7 +14,7 @@ import { useSearchParams } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { fetchOrderById } from "src/queries/orders";
 import { formatNaira } from "src/lib/utils";
-import { CartItem, Purchase } from "src/types"; // Assuming Purchase type is in src/types
+import { Purchase } from "src/types"; // Assuming Purchase type is in src/types
 import { Badge } from "@components/ui/badge";
 import { useUser } from "src/hooks/useUser";
 import { useCreateUpdateReviewMutation } from "src/queries/reviews";
@@ -53,7 +53,7 @@ const OrderConfirmation = () => {
   const user = useUser();
   const searchParams = useSearchParams();
   const orderId = searchParams.get("orderId");
-  const [orderDetails, setOrderDetails] = useState<FetchedOrderDetails | null>(
+  const [orderDetails, setOrderDetails] = useState<any>(
     null
   );
   const [transaction, setTransaction] = useState<any>(null);
@@ -68,7 +68,7 @@ const OrderConfirmation = () => {
         return;
       }
       try {
-        const result = await fetchOrderById(orderId);
+        const result:any = await fetchOrderById(orderId);
         setOrderDetails(result);
       } catch (err: any) {
         setError(err.message || "An unexpected error occurred.");
@@ -276,11 +276,11 @@ const OrderConfirmation = () => {
             {items.length === 0 ? (
               <p className="text-gray-500">No products to review.</p>
             ) : (
-              items.map((item: CartItem) => (
+              items.map((item: any) => (
                 <ProductReviewForm
                   key={item.id}
                   product={item.products || item.bundles}
-                  userId={user?.id}
+                  userId={user.user?.id}
                 />
               ))
             )}
@@ -442,7 +442,7 @@ const ProductReviewForm: React.FC<ProductReviewFormProps> = ({
         setExistingImageUrls([]);
         setOriginalImageUrls([]);
       } else {
-        showToast(result.error || "Failed to submit review.", "error");
+        showToast("Failed to submit review.", "error");
       }
     } catch (err: any) {
       showToast(err.message || "An unexpected error occurred.", "error");

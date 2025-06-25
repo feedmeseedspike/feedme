@@ -11,11 +11,11 @@ import { getUser } from "src/lib/actions/auth.actions";
 import { FcDown } from "react-icons/fc";
 
 const Sidebar = async () => {
-  const pathname = usePathname();
+  const pathname = ''
   const user = await getUser();
   // const user = useSelector((state) => state.auth.user);
 
-  let routes: Route[] = [];
+  let routes: any[] = [];
 
   if (user?.role === "buyer") {
     routes = [
@@ -168,17 +168,16 @@ const Sidebar = async () => {
   return (
     <section className="md:col-span-4 col-span-12 overflow-hidden bg-white z-50 min-w-full max-w-lg px-2 overflow-y-auto md:block hidden">
       <div className="w-full h-full flex flex-col gap-y-4">
-        {routes.map((route, index) => (
+        {routes.map((route: any, index) => (
           <div
             key={index}
-            className="bg-slate-50/50 p-2 rounded flex flex-col gap-y-2"
-          >
+            className="bg-slate-50/50 p-2 rounded flex flex-col gap-y-2">
             <h2 className="flex flex-row justify-between items-center">
               {route.name} <FcDown />
             </h2>
 
             <div className="flex flex-col gap-y-2 text-sm p-2 bg-slate-100/50 rounded">
-              {route.paths.map((path, index) => (
+              {route.paths.map((path: any, index: any) => (
                 <Link
                   href={path.path}
                   key={index}
@@ -188,8 +187,7 @@ const Sidebar = async () => {
                     (pathname === path.path
                       ? "bg-custom-green text-white"
                       : "bg-slate-200/50 text-black")
-                  }
-                >
+                  }>
                   <span></span>
                   {path.name}
                 </Link>
@@ -199,16 +197,14 @@ const Sidebar = async () => {
         ))}
         <Link
           href="/"
-          className="text-sm bg-slate-50/50 p-2 rounded mt-auto flex flex-row gap-x-1 items-center"
-        >
+          className="text-sm bg-slate-50/50 p-2 rounded mt-auto flex flex-row gap-x-1 items-center">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
             strokeWidth={1.5}
             stroke="currentColor"
-            className="w-5 h-5"
-          >
+            className="w-5 h-5">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"

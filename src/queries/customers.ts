@@ -16,7 +16,7 @@ export const customerKeys = {
 export function getCustomerQuery(customerId: string): UseQueryOptions<Customer | undefined, Error> {
   return {
     queryKey: customerKeys.detail(customerId),
-    queryFn: () => getCustomerByIdAction(customerId) as Promise<Customer | undefined>,
+    queryFn: () => getCustomerByIdAction(customerId) as any,
     // Add staleTime, cacheTime, etc. as per your application's caching strategy
   };
 }

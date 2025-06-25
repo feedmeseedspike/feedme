@@ -13,7 +13,7 @@ import { Category } from "src/types/category";
 import { formatDate } from "src/lib/utils";
 
 interface CategoryDetailsProps {
-  category: Category;
+  category: any;
 }
 
 export default function CategoryDetails({ category }: CategoryDetailsProps) {
@@ -79,7 +79,7 @@ export default function CategoryDetails({ category }: CategoryDetailsProps) {
         <CardContent>
           <div className="flex flex-wrap gap-2">
             {category.tags && category.tags.length > 0 ? (
-              category.tags.map((tag) => (
+              category.tags.map((tag: any) => (
                 <Badge key={tag} className="px-2 py-1">
                   {tag}
                 </Badge>
@@ -102,7 +102,7 @@ export default function CategoryDetails({ category }: CategoryDetailsProps) {
         <CardContent>
           {category.keynotes && category.keynotes.length > 0 ? (
             <ul className="list-disc pl-5 space-y-1">
-              {category.keynotes.map((keynote) => (
+              {category.keynotes.map((keynote: any) => (
                 <li key={keynote}>{keynote}</li>
               ))}
             </ul>

@@ -26,7 +26,7 @@ const ForgotPassword = async (props: {
       <div className="flex md:w-[60%] lg:w-[40%] w-full flex-col justify-center px-4 md:px-8">
         <div className="pb-6">
           <div className="flex flex-col gap-7">
-            <PreloadResource />
+            <PreloadResource slides={[]} />
             <div className="flex flex-col gap-3">
               <p className="h2-bold text-3xl text-[#1B6013]">
                 Reset your password

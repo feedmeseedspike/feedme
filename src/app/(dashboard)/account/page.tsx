@@ -1,4 +1,3 @@
-
 // "use client";
 
 // import Inform from "@/components/icons/Inform";
@@ -18,8 +17,8 @@ import Profile from "@components/shared/account/profile";
 
 const Page = async () => {
   // const userInfo = useSelector((state) => state.auth.user);
-  const user = await getUser();
- 
+  const user: any = await getUser();
+
   // const [updateUserInformation, { isLoading, data, error }] =
   //   useUpdateUserMutation();
 
@@ -39,14 +38,11 @@ const Page = async () => {
   //   }
   // }, [userInfo, isLoading, data, error]);
 
-
-
   return (
-      <section className=" py-8">
-
-        <Profile user={user} />
-        {/* <DeleteUser /> */}
-      </section>
+    <section className=" py-8">
+      <Profile user={user} />
+      {/* <DeleteUser /> */}
+    </section>
   );
 };
 

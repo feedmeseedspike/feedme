@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import SimpleBar from "simplebar-react";
+// import SimpleBar from "simplebar-react";
 import "simplebar-react/dist/simplebar.min.css";
 
 export default function CustomScrollbar({
@@ -38,12 +38,12 @@ export default function CustomScrollbar({
   }, []);
 
   return (
-    <SimpleBar
-      style={{ maxHeight: "100vh" }}
-      autoHide={false}
-      className="custom-scrollbar"
-    >
+    // <SimpleBar
+    //   style={{ maxHeight: "100vh" }}
+    //   autoHide={false}
+    //   className="custom-scrollbar"
+    <>
       {children}
-    </SimpleBar>
+    </>
   );
 }

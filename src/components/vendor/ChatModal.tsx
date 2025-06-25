@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 // components/vendor/ChatModal.tsx
 'use client';
 

@@ -140,7 +140,7 @@ const AddressesPage = () => {
 
   const onSubmit = async (values: z.infer<typeof FormAddressSchema>) => {
     // Map form values to the expected database type, converting empty string label to null
-    const addressData = {
+    const addressData: any = {
       ...values,
       label: values.label === "" ? null : values.label,
     };
@@ -190,8 +190,7 @@ const AddressesPage = () => {
               setEditingAddress(null);
               setShowAddForm(!showAddForm);
             }}
-            className="bg-[#1B6013] hover:bg-green-700"
-          >
+            className="bg-[#1B6013] hover:bg-green-700">
             {showAddForm ? (
               "Cancel"
             ) : (
@@ -214,8 +213,7 @@ const AddressesPage = () => {
               <Form {...form}>
                 <form
                   onSubmit={form.handleSubmit(onSubmit)}
-                  className="space-y-6"
-                >
+                  className="space-y-6">
                   <FormField
                     control={form.control}
                     name="label"
@@ -332,8 +330,7 @@ const AddressesPage = () => {
                     disabled={
                       addAddressMutation.isPending ||
                       updateAddressMutation.isPending
-                    }
-                  >
+                    }>
                     {(addAddressMutation.isPending ||
                       updateAddressMutation.isPending) && (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -365,8 +362,7 @@ const AddressesPage = () => {
               addresses.map((address) => (
                 <div
                   key={address.id}
-                  className="border rounded-lg p-4 flex justify-between items-center"
-                >
+                  className="border rounded-lg p-4 flex justify-between items-center">
                   <div>
                     <h3 className="font-semibold">
                       {address.label || "Unnamed Address"}
@@ -385,8 +381,7 @@ const AddressesPage = () => {
                       variant="outline"
                       size="icon"
                       onClick={() => handleEditClick(address)}
-                      disabled={deleteAddressMutation.isPending}
-                    >
+                      disabled={deleteAddressMutation.isPending}>
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
@@ -394,8 +389,7 @@ const AddressesPage = () => {
                       size="icon"
                       className="hover:bg-red-100"
                       onClick={() => handleDeleteClick(address.id)}
-                      disabled={deleteAddressMutation.isPending}
-                    >
+                      disabled={deleteAddressMutation.isPending}>
                       <Trash2 className="h-4 w-4 text-red-600" />
                     </Button>
                   </div>
@@ -426,8 +420,7 @@ const AddressesPage = () => {
                 if (addressToDeleteId) {
                   deleteAddressMutation.mutate(addressToDeleteId);
                 }
-              }}
-            >
+              }}>
               Delete
             </Button>
             <Button type="reset" onClick={() => setIsDeleteDialogOpen(false)}>

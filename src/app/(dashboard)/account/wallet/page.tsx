@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@components/ui/button";
@@ -294,8 +295,7 @@ export default function WalletPage() {
               variant="ghost"
               size="sm"
               onClick={() => setShowBalance(!showBalance)}
-              className="text-white hover:bg-white/20"
-            >
+              className="text-white hover:bg-white/20">
               {showBalance ? (
                 <EyeOff className="w-4 h-4" />
               ) : (
@@ -356,8 +356,7 @@ export default function WalletPage() {
                   <DialogFooter>
                     <Button
                       variant="outline"
-                      onClick={() => setIsAddFundsOpen(false)}
-                    >
+                      onClick={() => setIsAddFundsOpen(false)}>
                       Cancel
                     </Button>
                     <Button
@@ -368,8 +367,7 @@ export default function WalletPage() {
                         !session ||
                         !amount ||
                         parseFloat(amount) <= 0
-                      }
-                    >
+                      }>
                       {addFundsMutation.status === "pending"
                         ? "Adding..."
                         : "Continue"}
@@ -437,15 +435,14 @@ export default function WalletPage() {
                 <div key={transaction.id}>
                   <div
                     className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
-                    onClick={() => setSelectedTransaction(transaction)}
-                  >
+                    onClick={() => setSelectedTransaction(transaction)}>
                     <div className="flex items-center gap-4">
                       <div className="p-2 bg-gray-100 rounded-full">
                         {getTransactionIcon(transaction.amount)}
                       </div>
                       <div>
                         <p className="text-sm text-gray-500">
-                          {formatTransactionDate(transaction.created_at)} •{" "}
+                          {formatTransactionDate(transaction.created_at + "")} •{" "}
                           {transaction.reference}
                         </p>
                         <div className="flex items-center gap-2 mt-1">
@@ -458,8 +455,7 @@ export default function WalletPage() {
                             <Badge
                               className={getStatusColor(
                                 transaction.payment_status
-                              )}
-                            >
+                              )}>
                               {transaction.payment_status}
                             </Badge>
                           )}
@@ -472,8 +468,7 @@ export default function WalletPage() {
                           transaction.amount >= 0
                             ? "text-green-600"
                             : "text-red-600"
-                        }`}
-                      >
+                        }`}>
                         {transaction.amount >= 0 ? "+" : "-"}
                         {formatNaira(Math.abs(transaction.amount))}
                       </p>
@@ -497,8 +492,7 @@ export default function WalletPage() {
       {selectedTransaction && (
         <Dialog
           open={!!selectedTransaction}
-          onOpenChange={() => setSelectedTransaction(null)}
-        >
+          onOpenChange={() => setSelectedTransaction(null)}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Transaction Details</DialogTitle>
@@ -515,8 +509,7 @@ export default function WalletPage() {
                     selectedTransaction.amount >= 0
                       ? "text-green-600"
                       : "text-red-600"
-                  }`}
-                >
+                  }`}>
                   {selectedTransaction.amount >= 0 ? "+" : "-"}
                   {formatNaira(Math.abs(selectedTransaction.amount))}
                 </span>
@@ -527,8 +520,7 @@ export default function WalletPage() {
                   <Badge
                     className={getStatusColor(
                       selectedTransaction.payment_status
-                    )}
-                  >
+                    )}>
                     {selectedTransaction.payment_status}
                   </Badge>
                 )}
@@ -557,8 +549,7 @@ export default function WalletPage() {
             <DialogFooter>
               <Button
                 variant="outline"
-                onClick={() => setSelectedTransaction(null)}
-              >
+                onClick={() => setSelectedTransaction(null)}>
                 Close
               </Button>
             </DialogFooter>

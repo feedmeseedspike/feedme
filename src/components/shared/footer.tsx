@@ -78,7 +78,7 @@ const Footer = () => {
   useEffect(() => {
     const supabase = createClient();
     const fetchCategories = async () => {
-      const { data, error } = await getAllCategoriesQuery(supabase).select(
+      const { data, error }: any = await getAllCategoriesQuery(supabase).select(
         "id, title, thumbnail"
       );
       if (error) {
@@ -122,8 +122,7 @@ const Footer = () => {
                       <li key={category.id} className="text-sm">
                         <Link
                           href={`/category/${toSlug(category?.title)}`}
-                          className="hover:underline hover:underline-offset-2"
-                        >
+                          className="hover:underline hover:underline-offset-2">
                           {category.title}
                         </Link>
                       </li>
@@ -148,8 +147,7 @@ const Footer = () => {
                           ) : (
                             <a
                               href={link.href}
-                              className="hover:underline hover:underline-offset-2"
-                            >
+                              className="hover:underline hover:underline-offset-2">
                               {link.name}
                             </a>
                           )}
@@ -173,8 +171,7 @@ const Footer = () => {
                   target="_blank"
                   rel="noreferrer"
                   key={icon.href}
-                  className="text-2xl hover:text-green-600 hover:transition-colors hover:ease-in-out"
-                >
+                  className="text-2xl hover:text-green-600 hover:transition-colors hover:ease-in-out">
                   {icon.icon}
                 </a>
               ))}

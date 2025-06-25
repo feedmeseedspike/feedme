@@ -38,7 +38,7 @@ export function SupabaseAuthProvider({
         const {
           data: { user: authenticatedUser, session: authenticatedSession },
           error: authError,
-        } = await supabase.auth.getUser();
+        }: any = await supabase.auth.getUser();
 
         if (authError) {
           console.error(
@@ -81,7 +81,7 @@ export function SupabaseAuthProvider({
         const {
           data: { user: authenticatedUser, session: authenticatedSession },
           error: authError,
-        } = await supabase.auth.getUser();
+        }: any = await supabase.auth.getUser();
 
         if (authError) {
           console.error(

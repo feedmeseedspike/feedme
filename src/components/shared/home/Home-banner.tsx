@@ -1,7 +1,7 @@
 "use client";
 
 import Container from "@components/shared/Container";
-import { HomeCarousel } from "@components/shared/home/home-carousel";
+import { HomeCarousel } from "@components/shared/home/Home-carousel";
 import Image from "next/image";
 import Link from "next/link";
 import React from "react";

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
 import React, { useCallback, useEffect, useState, useMemo } from "react";
@@ -132,7 +133,7 @@ const AddToCart = React.memo(
 
           try {
             const itemsForMutation: ItemToUpdateMutation[] = currentCartItems
-              .map((cartItem) => ({
+              .map((cartItem: any) => ({
                 product_id: cartItem.product_id || null,
                 bundle_id: cartItem.bundle_id || null,
                 option: cartItem.option || null,
@@ -149,7 +150,7 @@ const AddToCart = React.memo(
               .filter((item) => item.quantity > 0);
 
             const targetItemExists = itemsForMutation.some(
-              (cartItem) =>
+              (cartItem:any) =>
                 (cartItem.product_id &&
                   cartItem.product_id === item.id &&
                   JSON.stringify(cartItem.option || null) ===
@@ -161,7 +162,7 @@ const AddToCart = React.memo(
               itemsForMutation.push({
                 product_id: item.bundleId ? null : item.id,
                 bundle_id: item.bundleId ? item.id : null,
-                option: item.option || null,
+                option: item.option as any,
                 quantity: newQuantity,
                 price: item.price,
               });
@@ -223,7 +224,7 @@ const AddToCart = React.memo(
 
         const currentCartItems = Array.isArray(cartItems) ? cartItems : [];
         const itemsForMutation: ItemToUpdateMutation[] = currentCartItems
-          .map((cartItem) => ({
+          .map((cartItem:any) => ({
             product_id: cartItem.product_id || null,
             bundle_id: cartItem.bundle_id || null,
             option: cartItem.option || null,
@@ -233,7 +234,7 @@ const AddToCart = React.memo(
           .filter((item) => item.quantity > 0);
 
         const targetItemExists = itemsForMutation.some(
-          (cartItem) =>
+          (cartItem:any) =>
             (cartItem.product_id &&
               cartItem.product_id === item.id &&
               JSON.stringify(cartItem.option || null) ===
@@ -245,7 +246,7 @@ const AddToCart = React.memo(
           itemsForMutation.push({
             product_id: item.bundleId ? null : item.id,
             bundle_id: item.bundleId ? item.id : null,
-            option: item.option || null,
+            option: item.option as any,
             quantity: 1,
             price: item.price,
           });
@@ -362,8 +363,7 @@ const AddToCart = React.memo(
               item.countInStock !== undefined &&
               item.countInStock <= 0) ||
             updateCartMutation.isPending
-          }
-        >
+          }>
           <span className="font-semibold">
             {updateCartMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin inline-block mr-2" />
@@ -395,8 +395,7 @@ const AddToCart = React.memo(
                 className="bg-[#F5F5F5] disabled:opacity-50 p-2 rounded-full"
                 aria-label={
                   quantity === 1 ? "Remove item" : "Decrease quantity"
-                }
-              >
+                }>
                 {quantity === 1 ? (
                   <Trash2 className="size-[14px]" />
                 ) : (
@@ -419,15 +418,13 @@ const AddToCart = React.memo(
                   updateCartMutation.isPending
                 }
                 className="p-1 rounded-full bg-[#1B6013]/70 backdrop-blur-sm shadow-md hover:bg-[#1B6013]/90 transition-colors"
-                aria-label="Increase quantity"
-              >
+                aria-label="Increase quantity">
                 <Plus className="w-4 h-4 text-white" />
               </button>
             </div>
             <Link
               href="/checkout"
-              className="text-white bg-[#1B6013] rounded-[8px] px-3 sm:px-[20px] py-3 text-xs lg:text-[16px] w-full flex justify-center items-center hover:bg-[#1a5f13cc] transition-colors"
-            >
+              className="text-white bg-[#1B6013] rounded-[8px] px-3 sm:px-[20px] py-3 text-xs lg:text-[16px] w-full flex justify-center items-center hover:bg-[#1a5f13cc] transition-colors">
               Buy Now
             </Link>
           </div>
@@ -453,8 +450,7 @@ const AddToCart = React.memo(
                   item.countInStock !== undefined &&
                   item.countInStock <= 0 &&
                   "opacity-50 cursor-not-allowed"
-              )}
-            >
+              )}>
               {updateCartMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin inline-block mr-2" />
               ) : item.countInStock !== null &&

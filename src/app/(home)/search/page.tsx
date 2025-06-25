@@ -4,7 +4,7 @@ import ProductCard from "@components/shared/product/product-card";
 import { Button } from "@components/ui/button";
 import {
   // getAllCategories,
-  getAllProducts,
+  // getAllProducts,
   getAllTags,
   getRelatedProductsByCategory,
 } from "../../../lib/actions/product.actions";
@@ -27,6 +27,9 @@ import { ProductSkeletonGrid } from "@components/shared/product/product-skeleton
 import PriceRangeSlider from "@components/shared/product/price-range-slider";
 import ProductSlider from "@components/shared/product/product-slider";
 import { getAllCategories } from "src/lib/api";
+import { getAllProducts } from "@/queries/products";
+import { TypedSupabaseClient } from "@/utils/types";
+import { supabase } from "@/lib/supabaseClient";
 
 const sortOrders = [
   { value: "price-low-to-high", name: "Price: Low to high" },
@@ -101,10 +104,11 @@ const SearchPage = async (props: {
   } = searchParams;
 
   const params = { q, category, tag, price, rating, sort, page };
+  const client: TypedSupabaseClient = supabase;
 
   const categories = await getAllCategories();
   const tags = await getAllTags();
-  const data = await getAllProducts({
+  const data = await getAllProducts(client, {
     category,
     tag,
     query: q,
@@ -115,12 +119,12 @@ const SearchPage = async (props: {
   });
 
   // Safely get a category for related products
-  let relatedCategory = category !== "all" ? category : null;
+  let relatedCategory: any = category !== "all" ? category : null;
   let productIdForExclusion = null;
 
   // If no category in params, try to get from first product
   if (!relatedCategory && data.products.length > 0) {
-    const firstProduct = data.products[0];
+    const firstProduct: any = data.products[0];
     if (firstProduct.category?.length > 0) {
       relatedCategory = firstProduct.category[0];
       productIdForExclusion = firstProduct._id;
@@ -133,7 +137,7 @@ const SearchPage = async (props: {
   }
 
   // Only fetch related products if we have a valid category
-  let relatedProducts = { data: [] };
+  let relatedProducts: any = { data: [] };
   if (relatedCategory) {
     relatedProducts = await getRelatedProductsByCategory({
       category: relatedCategory,
@@ -150,8 +154,10 @@ const SearchPage = async (props: {
       ? Array.from(
           new Set(
             data.products
-              .filter((p) => Array.isArray(p.category) && p.category.length > 0)
-              .map((p) => p.category[0])
+              .filter(
+                (p: any) => Array.isArray(p.category) && p.category.length > 0
+              )
+              .map((p: any) => p.category[0])
           )
         )
       : categories;
@@ -208,22 +214,22 @@ const SearchPage = async (props: {
                                   href={getFilterUrl({
                                     category: "all",
                                     params,
-                                  })}
-                                >
+                                  })}>
                                   All
                                 </Link>
                               </li>
-                              {relevantCategories.map((c) => (
+                              {relevantCategories.map((c: any) => (
                                 <li
                                   key={c}
-                                  className="border p-2 rounded-md border-gray-300"
-                                >
+                                  className="border p-2 rounded-md border-gray-300">
                                   <Link
                                     className={`${
                                       c === category && "text-green-600"
                                     }`}
-                                    href={getFilterUrl({ category: c, params })}
-                                  >
+                                    href={getFilterUrl({
+                                      category: c,
+                                      params,
+                                    })}>
                                     {c}
                                   </Link>
                                 </li>
@@ -241,7 +247,7 @@ const SearchPage = async (props: {
                             <PriceRangeSlider
                               params={params}
                               maxPrice={Math.max(
-                                ...data.products.map((p) =>
+                                ...data.products.map((p: any) =>
                                   typeof p.price === "number" ? p.price : 0
                                 ),
                                 0
@@ -264,16 +270,14 @@ const SearchPage = async (props: {
                                     !rating || rating === "all"
                                       ? "text-primary"
                                       : ""
-                                  }`}
-                                >
+                                  }`}>
                                   All Ratings
                                 </Link>
                               </li>
                               {[5, 4, 3, 2, 1].map((ratingValue) => (
                                 <li
                                   key={ratingValue}
-                                  className="border px-2 py-1 rounded-md border-gray-400"
-                                >
+                                  className="border px-2 py-1 rounded-md border-gray-400">
                                   <Link
                                     href={getFilterUrl({
                                       rating: ratingValue.toString(),
@@ -286,8 +290,7 @@ const SearchPage = async (props: {
                                       rating === ratingValue.toString()
                                         ? "text-primary"
                                         : ""
-                                    }`}
-                                  >
+                                    }`}>
                                     <div className="flex items-center gap-2">
                                       <Rating size={4} rating={ratingValue} />
                                       <span>& Up</span>
@@ -328,14 +331,13 @@ const SearchPage = async (props: {
                       All
                     </Link>
                   </li> */}
-                {relevantCategories.map((c) => (
+                {relevantCategories.map((c: any) => (
                   <li key={c}>
                     <Link
                       className={`${
                         c === category && "text-[#1B6013]"
                       } grid gap-2`}
-                      href={`/category/${c}`}
-                    >
+                      href={`/category/${c}`}>
                       {c}
                     </Link>
                   </li>
@@ -355,7 +357,7 @@ const SearchPage = async (props: {
               <PriceRangeSlider
                 params={params}
                 maxPrice={Math.max(
-                  ...data.products.map((p) =>
+                  ...data.products.map((p: any) =>
                     typeof p.price === "number" ? p.price : 0
                   ),
                   0
@@ -377,8 +379,7 @@ const SearchPage = async (props: {
                   href={getFilterUrl({ rating: "all", params })}
                   className={`${
                     !rating || rating === "all" ? "text-[#1B6013]" : ""
-                  }`}
-                >
+                  }`}>
                   All Ratings
                 </Link>
               </li>
@@ -391,8 +392,7 @@ const SearchPage = async (props: {
                     })}
                     className={`${
                       rating === ratingValue.toString() ? "text-[#1B6013]" : ""
-                    }`}
-                  >
+                    }`}>
                     <div className="flex items-center gap-2">
                       <Rating size={4} rating={ratingValue} />
                       <span>& Up</span>
@@ -428,15 +428,14 @@ const SearchPage = async (props: {
                   <Button
                     asChild
                     variant="outline"
-                    className="border-[#1B6013] bg-[#1B6013] text-white px-10 py-6 hover:bg-[#1B6013]/90 rounded-full"
-                  >
+                    className="border-[#1B6013] bg-[#1B6013] text-white px-10 py-6 hover:bg-[#1B6013]/90 rounded-full">
                     <Link href="/search">Clear all filters</Link>
                   </Button>
                 </div>
               )}
             </div>
             <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4 ">
-              {data.products.map((product) => (
+              {data.products.map((product: any) => (
                 <ProductdetailsCard key={product._id} product={product} />
               ))}
             </div>
@@ -446,14 +445,13 @@ const SearchPage = async (props: {
           )}
         </div>
         {relatedProducts.data.length > 0 && (
-            <section className="mt-10">
-              <ProductSlider
-                products={relatedProducts.data}
-                title={"You may also like"}
-              />
-            </section>
-          )}
-
+          <section className="mt-10">
+            <ProductSlider
+              products={relatedProducts.data}
+              title={"You may also like"}
+            />
+          </section>
+        )}
       </Container>
     </main>
   );

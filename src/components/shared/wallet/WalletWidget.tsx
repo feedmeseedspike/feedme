@@ -25,7 +25,7 @@ function WalletWidget({
     data: walletBalance,
     isLoading: isLoadingBalance,
     error: errorBalance,
-  } = useWalletBalanceQuery(session?.user?.id || "");
+  }:any = useWalletBalanceQuery(session?.user?.id || "");
 
   useEffect(() => {
     if (errorBalance) {

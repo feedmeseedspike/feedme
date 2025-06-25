@@ -79,7 +79,7 @@ export default function CustomerDetailsPage() {
     data: customer,
     isLoading: isCustomerLoading,
     error: customerError,
-  } = useCustomer(customerId);
+  }: any = useCustomer(customerId);
 
   // Define schema for form validation
   const CustomerDetailsSchema = z.object({
@@ -94,9 +94,10 @@ export default function CustomerDetailsPage() {
     resolver: zodResolver(CustomerDetailsSchema),
     defaultValues: {
       display_name: customer?.display_name || "",
-      birthday: customer?.birthday
-        ? format(new Date(customer.birthday), "yyyy-MM-dd")
-        : "",
+      birthday:
+        customer?.birthday + ""
+          ? format(new Date(customer.birthday), "yyyy-MM-dd")
+          : "",
       favorite_fruit: customer?.favorite_fruit || "",
     },
   });
@@ -254,8 +255,7 @@ export default function CustomerDetailsPage() {
                               className={cn(
                                 "w-full justify-start text-left font-normal",
                                 !field.value && "text-muted-foreground"
-                              )}
-                            >
+                              )}>
                               <CalendarIcon className="mr-2 h-4 w-4" />
                               {field.value ? (
                                 format(new Date(field.value), "PPP")
@@ -288,7 +288,7 @@ export default function CustomerDetailsPage() {
                 <FormField
                   control={form.control}
                   name="favorite_fruit"
-                  render={({ field }) => (
+                  render={({ field }:any) => (
                     <FormItem>
                       <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
                         <Apple className="w-4 h-4 text-[#1B6013]" />
@@ -343,8 +343,7 @@ export default function CustomerDetailsPage() {
               <Button
                 type="submit"
                 className="w-full py-2 text-lg font-semibold bg-[#1B6013] text-white hover:bg-[#1B6013]/90 transition-colors rounded-md"
-                disabled={updateCustomerMutation.isPending}
-              >
+                disabled={updateCustomerMutation.isPending}>
                 {updateCustomerMutation.isPending
                   ? "Updating..."
                   : "Update Details"}
@@ -407,7 +406,7 @@ export default function CustomerDetailsPage() {
                   </TableRow>
                 ))
               ) : orders && orders.length > 0 ? (
-                orders.map((order: Tables<"orders">) => (
+                orders.map((order: any) => (
                   <TableRow key={order.id}>
                     {/* Map fetched data to Order interface structure for display */}
                     <TableCell>{order.id?.substring(0, 8) || "#N/A"}</TableCell>{" "}
@@ -439,8 +438,7 @@ export default function CustomerDetailsPage() {
                         value={order.status || "Unknown Status"} // Use order.status as the value
                         onValueChange={(newValue) =>
                           updateOrderStatus(order.id, newValue)
-                        }
-                      >
+                        }>
                         <SelectTrigger className="w-[150px]">
                           <SelectValue placeholder="Select Status" />
                         </SelectTrigger>

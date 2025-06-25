@@ -18,7 +18,7 @@ interface IssueReferrerDiscountResult {
   error?: any;
 }
 
-export async function issueReferrerDiscount(params: IssueReferrerDiscountParams): Promise<IssueReferrerDiscountResult> {
+export async function issueReferrerDiscount(params: any): Promise<IssueReferrerDiscountResult> {
   const supabase = createClient();
 
   try {

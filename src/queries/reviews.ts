@@ -40,8 +40,10 @@ export interface ReviewsResponse {
 export const reviewKeys = {
   all: ["reviews"] as const,
   lists: () => [...reviewKeys.all, "list"] as const,
-  list: (productId: string, page: number) => [...reviewKeys.lists(), productId, page] as const,
-  detail: (reviewId: string) => [...reviewKeys.all, "detail", reviewId] as const,
+  list: (productId: string, page: number) =>
+    [...reviewKeys.lists(), productId, page] as const,
+  detail: (reviewId: string) =>
+    [...reviewKeys.all, "detail", reviewId] as const,
 };
 
 // Get reviews for a product
@@ -70,7 +72,8 @@ export const getReviews = async ({
     // Get paginated reviews with user info
     const { data: reviews, error } = await supabase
       .from("product_reviews")
-      .select(`
+      .select(
+        `
         id,
         title,
         comment,
@@ -87,7 +90,8 @@ export const getReviews = async ({
           display_name,
           avatar_url
         )
-      `)
+      `
+      )
       .eq("product_id", productId)
       .order("created_at", { ascending: false })
       .range((page - 1) * limit, page * limit - 1);
@@ -102,11 +106,13 @@ export const getReviews = async ({
             ...review,
             hasVoted: false,
             canEdit: false,
-            user: review.user ? {
-              id: review.user.id,
-              display_name: review.user.display_name || 'Anonymous',
-              avatar_url: review.user.avatar_url || null,
-            } : null
+            user: review.user
+              ? {
+                  id: review.user.id,
+                  display_name: review.user.display_name || "Anonymous",
+                  avatar_url: review.user.avatar_url || null,
+                }
+              : null,
           };
         }
 
@@ -121,11 +127,13 @@ export const getReviews = async ({
           ...review,
           hasVoted: !!vote,
           canEdit: review.user_id === userId,
-          user: review.user ? {
-            id: review.user.id,
-            display_name: review.user.display_name || 'Anonymous',
-            avatar_url: review.user.avatar_url || null,
-          } : null
+          user: review.user
+            ? {
+                id: review.user.id,
+                display_name: review.user.display_name || "Anonymous",
+                avatar_url: review.user.avatar_url || null,
+              }
+            : null,
         };
       })
     );
@@ -283,7 +291,11 @@ export const addReport = async ({
 
     if (fetchError) throw fetchError;
 
-    const currentReports = (existingReview?.reports || []) as { user_id: string; reason: string; created_at: string }[];
+    const currentReports = (existingReview?.reports || []) as {
+      user_id: string;
+      reason: string;
+      created_at: string;
+    }[];
 
     // Add new report
     const updatedReports = [
@@ -340,12 +352,16 @@ export const deleteReview = async ({
 };
 
 // Hooks
-export const useReviewsQuery = (productId: string, page: number = 1, userId?: string) => {
+export const useReviewsQuery: any = (
+  productId: string,
+  page: number = 1,
+  userId?: string
+) => {
   return useQuery({
     queryKey: reviewKeys.list(productId, page),
     queryFn: () => getReviews({ productId, page, userId }),
     enabled: !!productId,
-    keepPreviousData: true,
+    // keepPreviousData: true,
   });
 };
 
@@ -354,7 +370,7 @@ export const useCreateUpdateReviewMutation = () => {
 
   return useMutation({
     mutationFn: createUpdateReview,
-    onSuccess: (data, variables) => {
+    onSuccess: (data: any, variables: any) => {
       queryClient.invalidateQueries({
         queryKey: reviewKeys.list(variables.data.product, variables.data.page),
       });
@@ -417,4 +433,4 @@ export const useDeleteReviewMutation = () => {
       // await revalidateProductPage(variables.productSlug);
     },
   });
-}; 
+};

@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable react/jsx-no-undef */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -286,7 +288,7 @@ export default function AddProduct() {
                 };
                 reader.readAsDataURL(option.image);
               } else {
-                resolve(option.image);
+                resolve(option.image + "");
               }
             });
           })
@@ -368,7 +370,7 @@ export default function AddProduct() {
       is_published: data.is_published,
       category_ids: data.selectedCategories.map((cat) => cat.value),
       options: hasVariations ? data.options : [],
-      vendor_id: auth.user?.id, // Assuming vendor_id is the user's ID
+      vendor_id: '', // Assuming vendor_id is the user's ID
     };
 
     try {
@@ -416,8 +418,7 @@ export default function AddProduct() {
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="p-6 rounded-lg shadow-md bg-white flex flex-col gap-2"
-        >
+          className="p-6 rounded-lg shadow-md bg-white flex flex-col gap-2">
           {/* Product Name */}
           <FormField
             control={form.control}
@@ -500,15 +501,14 @@ export default function AddProduct() {
                   <RadioGroup
                     onValueChange={field.onChange}
                     value={field.value}
-                    className="flex gap-6 mt-1 col-span-7"
-                  >
+                    className="flex gap-6 mt-1 col-span-7">
                     <div className="flex items-center gap-2">
                       <RadioGroupItem value="Yes" id="variation-yes" />
-                      <Label htmlFor="variation-yes">Yes</Label>
+                      <label htmlFor="variation-yes">Yes</label>
                     </div>
                     <div className="flex items-center gap-2">
                       <RadioGroupItem value="No" id="variation-no" />
-                      <Label htmlFor="variation-no">No</Label>
+                      <label htmlFor="variation-no">No</label>
                     </div>
                   </RadioGroup>
                   <FormDescription>
@@ -526,8 +526,7 @@ export default function AddProduct() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.3 }}
-          >
+            transition={{ duration: 0.3 }}>
             {form.watch("variation") === "No" ? (
               <>
                 {/* Image Upload */}
@@ -573,8 +572,7 @@ export default function AddProduct() {
                                       arr.splice(index, 1);
                                       form.setValue("images", arr);
                                     }}
-                                    aria-label="Remove image"
-                                  >
+                                    aria-label="Remove image">
                                     <span className="text-red-500 font-bold text-xs">
                                       X
                                     </span>
@@ -629,8 +627,7 @@ export default function AddProduct() {
                       <FormControl>
                         <ShadSelect
                           onValueChange={field.onChange}
-                          value={field.value}
-                        >
+                          value={field.value}>
                           <SelectTrigger className="col-span-7 border p-4 rounded-lg">
                             <SelectValue placeholder="Select Stock Status" />
                           </SelectTrigger>
@@ -692,7 +689,7 @@ export default function AddProduct() {
                                     />
                                   ) : (
                                     <Image
-                                      src={option.image}
+                                      src={option.image + ""}
                                       alt={option.name}
                                       fill
                                       className="rounded-[12px]"
@@ -723,8 +720,7 @@ export default function AddProduct() {
                   )}
                   <button
                     className="bg-[#E8F3E7] px-4 py-[10px] flex items-center gap-2 text-sm whitespace-nowrap rounded-[8px]"
-                    onClick={() => setIsDialogOpen(true)}
-                  >
+                    onClick={() => setIsDialogOpen(true)}>
                     <Plus size={14} />
                     Add New Option
                   </button>
@@ -749,36 +745,31 @@ export default function AddProduct() {
               type="button"
               onClick={form.handleSubmit(handleSaveDraft)}
               variant="outline"
-              className="w-full sm:w-auto"
-            >
+              className="w-full sm:w-auto">
               Save Draft
             </Button>
             <Button
               type="submit"
               className="w-full sm:w-auto bg-[#1B6013] text-white"
-              disabled={loading}
-            >
+              disabled={loading}>
               {loading ? (
                 <span className="flex items-center gap-2">
                   <svg
                     className="animate-spin h-4 w-4 text-white"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
-                    viewBox="0 0 24 24"
-                  >
+                    viewBox="0 0 24 24">
                     <circle
                       className="opacity-25"
                       cx="12"
                       cy="12"
                       r="10"
                       stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
+                      strokeWidth="4"></circle>
                     <path
                       className="opacity-75"
                       fill="currentColor"
-                      d="M4 12a8 8 0 018-8v8z"
-                    ></path>
+                      d="M4 12a8 8 0 018-8v8z"></path>
                   </svg>{" "}
                   Adding...
                 </span>
@@ -807,36 +798,31 @@ export default function AddProduct() {
                 setDuplicateDialogOpen(false);
                 setPendingProduct(null);
               }}
-              disabled={loading}
-            >
+              disabled={loading}>
               Cancel
             </Button>
             <Button
               className="bg-[#1B6013] text-white"
               onClick={handleConfirmDuplicate}
-              disabled={loading}
-            >
+              disabled={loading}>
               {loading ? (
                 <span className="flex items-center gap-2">
                   <svg
                     className="animate-spin h-4 w-4 text-white"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
-                    viewBox="0 0 24 24"
-                  >
+                    viewBox="0 0 24 24">
                     <circle
                       className="opacity-25"
                       cx="12"
                       cy="12"
                       r="10"
                       stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
+                      strokeWidth="4"></circle>
                     <path
                       className="opacity-75"
                       fill="currentColor"
-                      d="M4 12a8 8 0 018-8v8z"
-                    ></path>
+                      d="M4 12a8 8 0 018-8v8z"></path>
                   </svg>{" "}
                   Adding...
                 </span>

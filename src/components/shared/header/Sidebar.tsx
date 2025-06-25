@@ -34,7 +34,7 @@ export default function Sidebar({ categories }: Props) {
           <SelectValue placeholder="categories" />
         </SelectTrigger>
         <SelectContent>
-          {categories.map((category) => (
+          {categories.map((category:any) => (
             <SelectItem key={category._id} value={category._id}>
               <Link href={`/category/${category.title}`}>{category.title}</Link>
             </SelectItem>

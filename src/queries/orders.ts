@@ -2,17 +2,24 @@ import { createClient } from "@utils/supabase/client";
 import { Database } from "../utils/database.types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatError } from "src/lib/utils";
+import { issueReferrerDiscount } from "@/lib/actions/referrer.actions";
 
 interface FetchOrdersParams {
   page?: number;
   itemsPerPage?: number;
   search?: string;
-  status?: Database['public']['Enums']['order_status_enum'][];
+  status?: Database["public"]["Enums"]["order_status_enum"][];
 }
 
 interface AddPurchaseBody {
   userId: string;
-  cartItems: Array<{ productId: string; quantity: number; option?: any; price?: number | null; bundleId?: string }>;
+  cartItems: Array<{
+    productId: string;
+    quantity: number;
+    option?: any;
+    price?: number | null;
+    bundleId?: string;
+  }>;
   shippingAddress: any; // Use more specific type if available
   totalAmount: number;
   totalAmountPaid: number;
@@ -95,7 +102,7 @@ export async function fetchUserOrders(
   itemsPerPage: number = 5
 ) {
   const supabase = createClient();
-  
+
   let query = supabase
     .from("orders")
     .select(
@@ -103,7 +110,8 @@ export async function fetchUserOrders(
       *,
       users(display_name),
       order_items(*)
-    `, { count: 'exact' } // Request exact count
+    `,
+      { count: "exact" } // Request exact count
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
@@ -126,28 +134,38 @@ export async function fetchUserOrders(
 export async function addPurchase(body: AddPurchaseBody) {
   const supabase = createClient();
 
-  const { data: { user: authenticatedUser }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user: authenticatedUser },
+    error: authError,
+  } = await supabase.auth.getUser();
   if (authError || !authenticatedUser) {
-    return { success: false, error: 'Authentication required to place an order.' };
+    return {
+      success: false,
+      error: "Authentication required to place an order.",
+    };
   }
 
   try {
-    const { data: order, error: orderError } = await supabase.from('orders').insert({
-      user_id: body.userId,
-      payment_method: body.paymentMethod,
-      shipping_address: body.shippingAddress,
-      total_amount: body.totalAmount,
-      status: 'order confirmed', 
-      payment_status: body.paymentMethod === 'wallet' ? 'Paid' : 'Pending',
-      voucher_id: body.voucherId,
-    }).select().single();
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .insert({
+        user_id: body.userId,
+        payment_method: body.paymentMethod,
+        shipping_address: body.shippingAddress,
+        total_amount: body.totalAmount,
+        status: "order confirmed",
+        payment_status: body.paymentMethod === "wallet" ? "Paid" : "Pending",
+        voucher_id: body.voucherId,
+      })
+      .select()
+      .single();
 
     if (orderError) throw orderError;
     if (!order) throw new Error("Failed to create order.");
 
-    const orderItemsToInsert = body.cartItems.map(item => ({
+    const orderItemsToInsert = body.cartItems.map((item) => ({
       order_id: order.id,
-      product_id: item.productId || null, 
+      product_id: item.productId || null,
       bundle_id: item.bundleId || null,
       quantity: item.quantity,
       price: item.price,
@@ -155,56 +173,71 @@ export async function addPurchase(body: AddPurchaseBody) {
       // You might need to add vendor_id here if it's part of your schema for order_items
     }));
 
-    const { error: orderItemsError } = await supabase.from('order_items').insert(orderItemsToInsert);
+    const { error: orderItemsError } = await supabase
+      .from("order_items")
+      .insert(orderItemsToInsert);
 
     if (orderItemsError) throw orderItemsError;
 
     // After a successful order, check for referral and update purchase amount
     const { data: referral, error: referralFetchError } = await supabase
-      .from('referrals')
-      .select('*')
-      .eq('referred_user_id', body.userId)
-      .eq('status', 'applied')
+      .from("referrals")
+      .select("*")
+      .eq("referred_user_id", body.userId)
+      .eq("status", "applied")
       .maybeSingle();
 
     if (referralFetchError) {
-      console.error("Error fetching referral during purchase tracking:", referralFetchError);
+      console.error(
+        "Error fetching referral during purchase tracking:",
+        referralFetchError
+      );
       // Continue processing, as referral tracking is secondary to order completion
     }
 
     if (referral) {
-      const newReferredPurchaseAmount = (referral.referred_purchase_amount || 0) + body.totalAmount;
+      const newReferredPurchaseAmount =
+        (referral.referred_purchase_amount || 0) + body.totalAmount;
 
-      const updateData: Partial<Database['public']['Tables']['referrals']['Update']> = {
+      const updateData: Partial<
+        Database["public"]["Tables"]["referrals"]["Update"]
+      > = {
         referred_purchase_amount: newReferredPurchaseAmount,
         updated_at: new Date().toISOString(),
       };
 
       let newStatus = referral.status;
-      if (newReferredPurchaseAmount >= 5000 && referral.status === 'applied') {
-        newStatus = 'qualified';
+      if (newReferredPurchaseAmount >= 5000 && referral.status === "applied") {
+        newStatus = "qualified";
         updateData.status = newStatus;
 
         // Trigger the referrer discount
-        const referrerDiscountResult = await issueReferrerDiscount({
-          referrerUserId: referral.referrer_user_id,
-          referrerEmail: referral.referrer_email,
-          referralId: referral.id,
-          discountAmount: 2000, // ₦2,000 discount for the referrer
-        });
+        const referrerDiscountResult:any = async () =>
+          await issueReferrerDiscount({
+            referrerUserId: referral.referrer_user_id,
+            referrerEmail: referral.referrer_email,
+            referralId: referral.id,
+            discountAmount: 2000, // ₦2,000 discount for the referrer
+          });
 
         if (!referrerDiscountResult.success) {
-          console.error("Failed to issue referrer discount:", referrerDiscountResult.error);
+          console.error(
+            "Failed to issue referrer discount:",
+            referrerDiscountResult.error
+          );
           // Log this, but don't block the order. A separate system might re-attempt or alert.
         } else {
-          console.log("Referrer discount issued successfully for referral:", referral.id);
+          console.log(
+            "Referrer discount issued successfully for referral:",
+            referral.id
+          );
         }
       }
 
       const { error: updateError } = await supabase
-        .from('referrals')
+        .from("referrals")
         .update(updateData)
-        .eq('id', referral.id);
+        .eq("id", referral.id);
 
       if (updateError) {
         console.error("Error updating referral purchase amount:", updateError);
@@ -212,9 +245,8 @@ export async function addPurchase(body: AddPurchaseBody) {
     }
 
     return { success: true, data: { orderId: order.id } };
-
   } catch (error: any) {
-    console.error('Error in addPurchase:', error);
+    console.error("Error in addPurchase:", error);
     return { success: false, error: formatError(error.message) };
   }
 }
@@ -225,8 +257,8 @@ export const useAddPurchaseMutation = () => {
     mutationFn: addPurchase,
     onSuccess: (data) => {
       if (data.success) {
-        queryClient.invalidateQueries({ queryKey: ['orders'] });
-        queryClient.invalidateQueries({ queryKey: ['cart'] }); // Invalidate cart after successful order
+        queryClient.invalidateQueries({ queryKey: ["orders"] });
+        queryClient.invalidateQueries({ queryKey: ["cart"] }); // Invalidate cart after successful order
       }
     },
   });
@@ -245,4 +277,4 @@ export async function fetchPendingOrdersCount(): Promise<number> {
   }
 
   return count || 0;
-} 
+}

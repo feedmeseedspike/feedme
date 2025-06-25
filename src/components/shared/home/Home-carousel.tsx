@@ -23,7 +23,7 @@ const ONE_SECOND = 1000;
 const AUTO_DELAY = ONE_SECOND * 10;
 const DRAG_BUFFER = 50;
 
-const SPRING_OPTIONS = {
+const SPRING_OPTIONS: any = {
   type: "spring",
   mass: 3,
   stiffness: 400,
@@ -32,7 +32,7 @@ const SPRING_OPTIONS = {
 
 export const HomeCarousel = () => {
   const supabase = createClient();
-  const { data: carouselBanners, isLoading: isLoadingCarousel } = useQuery<
+  const { data: carouselBanners, isLoading: isLoadingCarousel }: any = useQuery<
     Banner[]
   >({
     queryKey: ["carouselBanners"],
@@ -85,7 +85,7 @@ export const HomeCarousel = () => {
     }, AUTO_DELAY);
 
     return () => clearInterval(intervalRef);
-  }, [hasMounted, dragX, carouselBanners]); 
+  }, [hasMounted, dragX, carouselBanners]);
 
   const onDragEnd = () => {
     const x = dragX.get();
@@ -129,12 +129,11 @@ export const HomeCarousel = () => {
           x: dragX,
         }}
         animate={{
-          translateX: `-${imgIndex * 100}%`,
+          // translateX: `-${imgIndex * 100}%`,
         }}
         transition={SPRING_OPTIONS}
         onDragEnd={onDragEnd}
-        className="flex "
-      >
+        className="flex ">
         <Images carouselBanners={carouselBanners} imgIndex={imgIndex} />
       </motion.div>
 
@@ -173,15 +172,13 @@ const Images = ({
           <Link
             href={linkHref}
             key={banner.id}
-            className="relative w-full max-w-[1200px] aspect-[70/35] md:aspect-[70/30] shrink-0 overflow-hidden hover:opacity-90 transition-opacity"
-          >
+            className="relative w-full max-w-[1200px] aspect-[70/35] md:aspect-[70/30] shrink-0 overflow-hidden hover:opacity-90 transition-opacity">
             <motion.div
               // animate={{
               //   scale: imgIndex === idx ? 0.95 : 0.85,
               // }}
               transition={SPRING_OPTIONS}
-              className="w-full h-full"
-            >
+              className="w-full h-full">
               <Image
                 src={imageUrl}
                 alt={altText}

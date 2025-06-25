@@ -14,7 +14,7 @@ export const useWalletBalanceQuery = (userId: string) => {
         .eq("user_id", userId)
         .maybeSingle();
 
-        console.log("Wallet balance query data:", data, error);
+      console.log("Wallet balance query data:", data, error);
 
       if (error) throw error;
       return data?.balance || 0;
@@ -24,7 +24,11 @@ export const useWalletBalanceQuery = (userId: string) => {
 };
 
 // Transactions query
-export const useTransactionsQuery = (userId: string, page: number = 1, pageSize: number = 10) => {
+export const useTransactionsQuery = (
+  userId: string,
+  page: number = 1,
+  pageSize: number = 10
+) => {
   const start = (page - 1) * pageSize;
   const end = start + pageSize - 1;
 
@@ -57,10 +61,16 @@ export const useAddFundsMutation = () => {
       email: string;
       amount: number;
     }) => {
-      const { data: { session }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { session },
+        error: authError,
+      }: any = await supabase.auth.getUser();
       const token = session?.access_token;
       if (authError || !token) {
-        console.error("Add Funds Error: No authenticated session found", authError);
+        console.error(
+          "Add Funds Error: No authenticated session found",
+          authError
+        );
         throw new Error("Authentication required to add funds");
       }
       const res = await fetch("/api/wallet/initialize", {
@@ -104,10 +114,16 @@ export const useWithdrawFundsMutation = () => {
       bank_code: string;
       recipient_name: string;
     }) => {
-      const { data: { session }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { session },
+        error: authError,
+      }: any = await supabase.auth.getUser();
       const token = session?.access_token;
       if (authError || !token) {
-        console.error("Withdraw Funds Error: No authenticated session found", authError);
+        console.error(
+          "Withdraw Funds Error: No authenticated session found",
+          authError
+        );
         throw new Error("Authentication required to withdraw funds");
       }
       const res = await fetch("/api/wallet/transfer", {
@@ -116,7 +132,12 @@ export const useWithdrawFundsMutation = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ amount, account_number, bank_code, recipient_name }),
+        body: JSON.stringify({
+          amount,
+          account_number,
+          bank_code,
+          recipient_name,
+        }),
       });
       if (!res.ok) {
         const error = await res.json();

@@ -376,8 +376,8 @@ export default function Categories() {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the category "
-              {categoryToDelete?.title}"? This action cannot be undone.
+              Are you sure you want to delete the category &rdquo;
+              {categoryToDelete?.title}&quot;? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

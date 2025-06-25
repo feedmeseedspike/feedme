@@ -3,6 +3,9 @@ import paystack from "../../../../utils/paystack";
 import { authMiddleware } from "middleware/auth";
 import { supabase } from "src/lib/supabaseClient";
 
+export const dynamic = "force-dynamic";
+
+
 export const POST = authMiddleware(
   async (request: Request, user_id: string) => {
     try {

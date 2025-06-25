@@ -10,15 +10,15 @@ export default async function HomeLayout({
   children: React.ReactNode;
   params: { slug: string };
 }) {
-  const product = await getProductBySlug(params.slug);
-  const category = product?.category || "";
+  const product:any = await getProductBySlug(params.slug);
+  const category:any = product?.category || "";
 
   return (
     <div className='flex flex-col '>
       {/* <Header /> */}
       <div className="bg-white">
         <Container className="py-4">
-          <BreadCrumb category={category[0]} />
+          <BreadCrumb hideCategorySegment={category[0]} />
         </Container>
       </div>
 

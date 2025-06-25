@@ -18,7 +18,7 @@ import Image from "next/image";
 import { Category } from "src/types/category";
 
 interface CategoryFormProps {
-  initialData?: Category;
+  initialData?: any;
   onSubmit: (formData: FormData) => void;
   isSubmitting: boolean;
 }

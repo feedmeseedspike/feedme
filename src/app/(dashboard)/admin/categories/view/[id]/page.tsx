@@ -54,7 +54,7 @@ export default function ViewCategory({ params }: { params: { id: string } }) {
       try {
         const foundCategory = await getCategoryById(id);
         if (foundCategory) {
-          setCategory(foundCategory);
+          setCategory(foundCategory as any);
         } else {
           setError("Category not found");
         }
@@ -106,8 +106,7 @@ export default function ViewCategory({ params }: { params: { id: string } }) {
       <div className="mb-6">
         <Link
           href="/admin/categories"
-          className="flex items-center text-gray-600 hover:text-gray-900"
-        >
+          className="flex items-center text-gray-600 hover:text-gray-900">
           <ArrowLeft size={16} className="mr-2" />
           Back to Categories
         </Link>
@@ -128,8 +127,7 @@ export default function ViewCategory({ params }: { params: { id: string } }) {
           <Button
             variant="destructive"
             className="flex items-center gap-2"
-            onClick={() => setDeleteDialogOpen(true)}
-          >
+            onClick={() => setDeleteDialogOpen(true)}>
             <Trash2 size={16} />
             Delete
           </Button>
@@ -168,7 +166,7 @@ export default function ViewCategory({ params }: { params: { id: string } }) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {categoryProducts.map((product) => (
+                  {categoryProducts.map((product: any) => (
                     <TableRow key={product.id}>
                       <TableCell>
                         <Image
@@ -189,8 +187,7 @@ export default function ViewCategory({ params }: { params: { id: string } }) {
                             product.stockStatus === "In stock"
                               ? "bg-green-100 text-green-800"
                               : "bg-orange-100 text-orange-800"
-                          }
-                        >
+                          }>
                           {product.stockStatus}
                         </Badge>
                       </TableCell>
@@ -200,8 +197,7 @@ export default function ViewCategory({ params }: { params: { id: string } }) {
                             href={{
                               pathname: "/admin/products/edit",
                               query: { slug: product.slug },
-                            }}
-                          >
+                            }}>
                             <Button variant="ghost" size="icon">
                               <Edit
                                 className="text-gray-600 hover:text-gray-900"
@@ -211,8 +207,7 @@ export default function ViewCategory({ params }: { params: { id: string } }) {
                           </Link>
                           <Link
                             href={`/product/${product.slug}`}
-                            target="_blank"
-                          >
+                            target="_blank">
                             <Button variant="ghost" size="icon">
                               <ExternalLink
                                 className="text-gray-600 hover:text-gray-900"
@@ -230,8 +225,7 @@ export default function ViewCategory({ params }: { params: { id: string } }) {
               <div className="text-center py-10 text-gray-500">
                 <p>No products in this category yet.</p>
                 <Link
-                  href={`/admin/products/add-new?category=${category.title}`}
-                >
+                  href={`/admin/products/add-new?category=${category.title}`}>
                   <Button variant="outline" className="mt-4">
                     <Plus size={16} className="mr-2" /> Add Your First Product
                   </Button>
@@ -248,15 +242,14 @@ export default function ViewCategory({ params }: { params: { id: string } }) {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the category "{category.title}"?
+              Are you sure you want to delete the category &quot;{category.title}&quot;?
               This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
-            >
+              onClick={() => setDeleteDialogOpen(false)}>
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleDeleteConfirm}>

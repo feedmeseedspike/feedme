@@ -95,11 +95,8 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
   const [originalImageUrls, setOriginalImageUrls] = useState<string[]>([]);
 
   // Use Tanstack Query hooks
-  const { data: reviewsData, isLoading: isLoadingReviews } = useReviewsQuery(
-    product.id,
-    currentPage,
-    userId
-  );
+  const { data: reviewsData, isLoading: isLoadingReviews }: any =
+    useReviewsQuery(product.id, currentPage, userId);
 
   const createUpdateReviewMutation = useCreateUpdateReviewMutation();
   const deleteReviewMutation = useDeleteReviewMutation();
@@ -136,7 +133,7 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
 
   // Find the current user's review if it exists
   const currentUserReview = reviewsData?.data.find(
-    (review) => review.user?.id === userId
+    (review: any) => review.user?.id === userId
   );
 
   // Function to handle deletion of existing images from state
@@ -451,7 +448,7 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
             </div>
           ) : (
             <>
-              {reviewsData?.data.map((review) => {
+              {reviewsData?.data.map((review: any) => {
                 // Determine if comment should be truncated
                 const isCommentTooLong =
                   review.comment &&
@@ -506,8 +503,7 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
                       {isCommentTooLong && (
                         <button
                           onClick={() => toggleCommentExpansion(review.id)}
-                          className="text-sm text-blue-600 hover:underline mt-1"
-                        >
+                          className="text-sm text-blue-600 hover:underline mt-1">
                           {isExpanded ? "Show less" : "Read more"}
                         </button>
                       )}
@@ -515,7 +511,7 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
                     {review.image_urls && review.image_urls.length > 0 && (
                       <div className="mt-4 flex gap-2">
                         {review.image_urls.map(
-                          (imageUrl, index) =>
+                          (imageUrl: any, index: any) =>
                             imageUrl && (
                               <motion.div
                                 key={imageUrl}
@@ -524,8 +520,7 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
                                   review.image_urls &&
                                   openImageDialog(review.image_urls, index)
                                 }
-                                className="relative h-32 w-32 overflow-hidden rounded-md cursor-pointer"
-                              >
+                                className="relative h-32 w-32 overflow-hidden rounded-md cursor-pointer">
                                 <Image
                                   src={imageUrl}
                                   alt={`Review image ${index + 1}`}
@@ -560,8 +555,7 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
                     onClick={() =>
                       setCurrentPage((prev) => Math.max(prev - 1, 1))
                     }
-                    disabled={currentPage === 1}
-                  >
+                    disabled={currentPage === 1}>
                     <ChevronLeft className="h-4 w-4 mr-1" />
                     Previous
                   </Button>
@@ -576,8 +570,7 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
                         Math.min(prev + 1, reviewsData.totalPages)
                       )
                     }
-                    disabled={currentPage === reviewsData.totalPages}
-                  >
+                    disabled={currentPage === reviewsData.totalPages}>
                     Next
                     <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
@@ -600,8 +593,7 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
               <Form {...form}>
                 <form
                   onSubmit={form.handleSubmit(onSubmit)}
-                  className="space-y-4"
-                >
+                  className="space-y-4">
                   <FormField
                     control={form.control}
                     name="rating"
@@ -615,8 +607,7 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
                                 key={value}
                                 type="button"
                                 onClick={() => field.onChange(value)}
-                                className="focus:outline-none"
-                              >
+                                className="focus:outline-none">
                                 <StarIcon
                                   className={`h-6 w-6 ${
                                     value <= field.value
@@ -702,8 +693,7 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
                             imageUrl && (
                               <div
                                 key={`existing-${index}`}
-                                className="relative h-24 w-24 overflow-hidden rounded-md border bg-gray-100 flex items-center justify-center group"
-                              >
+                                className="relative h-24 w-24 overflow-hidden rounded-md border bg-gray-100 flex items-center justify-center group">
                                 {imageUrl ? (
                                   <Image
                                     src={imageUrl}
@@ -721,8 +711,7 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
                                   }
                                   disabled={
                                     createUpdateReviewMutation.isPending
-                                  }
-                                >
+                                  }>
                                   <X className="h-4 w-4" />
                                 </button>
                               </div>
@@ -736,8 +725,7 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
                         {selectedImageFiles.map((file, index) => (
                           <div
                             key={`selected-${index}`}
-                            className="relative h-24 w-24 overflow-hidden rounded-md border bg-gray-100 flex items-center justify-center"
-                          >
+                            className="relative h-24 w-24 overflow-hidden rounded-md border bg-gray-100 flex items-center justify-center">
                             <Image
                               src={URL.createObjectURL(file)}
                               alt={`Selected review image ${index + 1}`}
@@ -752,8 +740,7 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
                   <DialogFooter>
                     <Button
                       type="submit"
-                      disabled={form.formState.isSubmitting}
-                    >
+                      disabled={form.formState.isSubmitting}>
                       Submit Review
                     </Button>
                   </DialogFooter>
@@ -767,8 +754,7 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
             <Button
               onClick={() => handleOpenForm()}
               variant="outline"
-              className="w-full mt-4"
-            >
+              className="w-full mt-4">
               Write a Review
             </Button>
           )}
@@ -778,8 +764,7 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
                 href={`/login?callbackUrl=${encodeURIComponent(
                   window.location.pathname
                 )}`}
-                className="text-blue-600 hover:underline"
-              >
+                className="text-blue-600 hover:underline">
                 Sign in
               </Link>{" "}
               to write a review
@@ -795,23 +780,20 @@ const ReviewList = ({ product, userId, avgRating = 0 }: ReviewListProps) => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-[100] top-0 left-0 right-0 bottom-0 flex flex-col items-center justify-center bg-[#00000033] backdrop-blur-lg cursor-zoom-out"
-              onClick={() => setIsImageZoomOpen(false)}
-            >
+              onClick={() => setIsImageZoomOpen(false)}>
               <button
                 className="absolute top-4 right-4 p-2 border rounded-full bg-gray-400/40 text-white backdrop-blur-lg z-[101]"
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsImageZoomOpen(false);
-                }}
-              >
+                }}>
                 <X />
               </button>
 
               <motion.div
                 layoutId={`review-image-${zoomedImageUrls[currentZoomedImageIndex]}`}
                 className="rounded-md w-[800px] h-[500px] flex flex-col items-center justify-center cursor-auto"
-                onClick={(e) => e.stopPropagation()}
-              >
+                onClick={(e) => e.stopPropagation()}>
                 <Image
                   src={zoomedImageUrls[currentZoomedImageIndex]}
                   width={500}

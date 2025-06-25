@@ -706,12 +706,12 @@ const Order = () => {
   const ordersPerPage = 5;
 
   const { data: ordersData, isLoading: isLoadingOrders } = useQuery({
-    queryKey: ["userOrders", user?.id, currentPage],
+    queryKey: ["userOrders", user.user?.id, currentPage],
     queryFn: () =>
-      user?.id
-        ? fetchUserOrders(user.id, currentPage, ordersPerPage)
+      user.user?.id
+        ? fetchUserOrders(user.user?.id, currentPage, ordersPerPage)
         : Promise.resolve({ data: [], count: 0 }),
-    enabled: !!user?.id,
+    enabled: !!user.user?.id,
   });
 
   console.log(
@@ -722,7 +722,7 @@ const Order = () => {
   );
 
   const orders = useMemo(() => {
-    return (ordersData?.data || []).map((order: Tables<"orders">) => ({
+    return (ordersData?.data || []).map((order: any) => ({
       // Spread existing properties from the fetched order (Tables<'orders'>['Row'])
       ...order,
       // Custom fields/overrides that might not be directly from Tables<'orders'>['Row']
@@ -731,7 +731,7 @@ const Order = () => {
         | ShippingAddress
         | string
         | null, // Cast as it's Json
-      order_items: order.order_items as UserOrder["order_items"], // Cast
+      order_items: order.order_items as any, // Cast
     })) as UserOrder[];
   }, [ordersData]);
   const totalOrdersCount = ordersData?.count || 0;

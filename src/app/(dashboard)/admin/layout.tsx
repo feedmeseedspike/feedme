@@ -8,7 +8,6 @@ import LogoutButton from "@components/shared/header/LogoutButton";
 import Sidebar from "@components/shared/account/sidebar";
 // import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { SidebarProvider, SidebarTrigger } from "@components/ui/sidebar";
-import { AppSidebar } from "@components/shared/account/app-sidebar";
 import { UserData } from "src/types";
 import Container from "@components/shared/Container";
 import { AdminSidebar } from "@components/admin/adminSidebar";
@@ -16,7 +15,7 @@ import { AdminSidebar } from "@components/admin/adminSidebar";
 // const poppins = Poppins({ weight: [`100`, `200`, `300`, `400`, `500`, `600`, `700`, `800`, `900`] });
 
 const Dashboard = async ({ children }: { children: React.ReactNode }) => {
-  const user: UserData = await getUser();
+  const user: any = await getUser();
   // console.log(user)
 
   return (

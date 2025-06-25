@@ -17,7 +17,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@components/ui/form";
-import { ErrorBoundary } from "@components/shared/ErrorBoundary";
+import  ErrorBoundary  from "@components/shared/ErrorBoundary";
 
 const passwordSchema = z
   .object({
@@ -81,7 +81,7 @@ export default function PasswordPage() {
                     <div className="relative">
                       <Input
                         type={
-                          form.watch("showCurrentPassword")
+                          form.watch("showCurrentPassword" as any)
                             ? "text"
                             : "password"
                         }
@@ -92,13 +92,12 @@ export default function PasswordPage() {
                         type="button"
                         onClick={() =>
                           form.setValue(
-                            "showCurrentPassword",
-                            !form.watch("showCurrentPassword")
+                            "showCurrentPassword" as any,
+                            !form.watch("showCurrentPassword" as any)
                           )
                         }
-                        className="absolute right-3 top-1/2 -translate-y-1/2"
-                      >
-                        {form.watch("showCurrentPassword") ? (
+                        className="absolute right-3 top-1/2 -translate-y-1/2">
+                        {form.watch("showCurrentPassword" as any) ? (
                           <EyeOff className="h-4 w-4 text-gray-500" />
                         ) : (
                           <Eye className="h-4 w-4 text-gray-500" />
@@ -121,7 +120,9 @@ export default function PasswordPage() {
                     <div className="relative">
                       <Input
                         type={
-                          form.watch("showNewPassword") ? "text" : "password"
+                          form.watch("showNewPassword" as any)
+                            ? "text"
+                            : "password"
                         }
                         {...field}
                         disabled={isLoading}
@@ -130,13 +131,12 @@ export default function PasswordPage() {
                         type="button"
                         onClick={() =>
                           form.setValue(
-                            "showNewPassword",
-                            !form.watch("showNewPassword")
+                            "showNewPassword" as any,
+                            !form.watch("showNewPassword" as any)
                           )
                         }
-                        className="absolute right-3 top-1/2 -translate-y-1/2"
-                      >
-                        {form.watch("showNewPassword") ? (
+                        className="absolute right-3 top-1/2 -translate-y-1/2">
+                        {form.watch("showNewPassword" as any) ? (
                           <EyeOff className="h-4 w-4 text-gray-500" />
                         ) : (
                           <Eye className="h-4 w-4 text-gray-500" />
@@ -159,7 +159,7 @@ export default function PasswordPage() {
                     <div className="relative">
                       <Input
                         type={
-                          form.watch("showConfirmPassword")
+                          form.watch("showConfirmPassword" as any)
                             ? "text"
                             : "password"
                         }
@@ -170,13 +170,12 @@ export default function PasswordPage() {
                         type="button"
                         onClick={() =>
                           form.setValue(
-                            "showConfirmPassword",
-                            !form.watch("showConfirmPassword")
+                            "showConfirmPassword" as any,
+                            !form.watch("showConfirmPassword" as any)
                           )
                         }
-                        className="absolute right-3 top-1/2 -translate-y-1/2"
-                      >
-                        {form.watch("showConfirmPassword") ? (
+                        className="absolute right-3 top-1/2 -translate-y-1/2">
+                        {form.watch("showConfirmPassword" as any) ? (
                           <EyeOff className="h-4 w-4 text-gray-500" />
                         ) : (
                           <Eye className="h-4 w-4 text-gray-500" />

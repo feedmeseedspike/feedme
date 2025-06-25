@@ -48,7 +48,7 @@ export default function CredentialsSignInForm() {
 
   const { control, handleSubmit } = form;
 
-  const { mutateAsync, isLoading, error } = useMutation(signInMutation());
+  const { mutateAsync, error, isPending:isLoading } = useMutation(signInMutation());
 
   const onSubmit = async (data: IUserSignIn) => {
     try {

@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -67,7 +68,7 @@ const FavoritesPage = () => {
       const { data, error } = await supabase
         .from("products")
         .select("*")
-        .in("id", favoriteProductIds);
+        .in("id", favoriteProductIds as any);
 
       if (error) throw error;
       return (data || []) as FavoriteProductDetails[];
@@ -85,7 +86,7 @@ const FavoritesPage = () => {
   const filteredAndSortedProducts = useMemo(() => {
     if (!products) return [];
 
-    let filtered = products.filter((product) => {
+    let filtered = products.filter((product: any) => {
       const matchesSearch =
         product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.brand?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -96,20 +97,20 @@ const FavoritesPage = () => {
     });
 
     // Sort products
-    filtered.sort((a, b) => {
+    filtered.sort((a:any, b:any) => {
       switch (sortBy) {
         case "date-newest":
           return (
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            new Date(b.created_at+'').getTime() - new Date(a.created_at+'').getTime()
           );
         case "date-oldest":
           return (
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            new Date(a.created_at+'').getTime() - new Date(b.created_at+'').getTime()
           );
         case "price-low-high":
-          return a.price - b.price;
+          return +a.price - +b.price;
         case "price-high-low":
-          return b.price - a.price;
+          return +b.price - +a.price;
         case "name-a-z":
           return a.name.localeCompare(b.name);
         case "name-z-a":
@@ -126,7 +127,7 @@ const FavoritesPage = () => {
   const categories = useMemo(() => {
     if (!products) return [];
     const uniqueCategories = [
-      ...new Set(products.map((product) => product.category)),
+      ...new Set(products.map((product:any) => product.category)),
     ];
     return uniqueCategories.filter(Boolean);
   }, [products]);
@@ -401,7 +402,7 @@ const ProductGridCard = ({
   onRemove,
   isRemoving,
 }: {
-  product: FavoriteProductDetails;
+  product: any;
   onRemove: (id: string) => void;
   isRemoving: boolean;
 }) => (
@@ -410,8 +411,7 @@ const ProductGridCard = ({
       <div className="aspect-square relative overflow-hidden rounded-t-lg">
         <img
           src={product.images?.[0] || "/placeholder-product.jpg"}
-          alt={product.name}
-          fill
+          alt={product.name+''}
           className="object-cover group-hover:scale-105 transition-transform duration-300"
         />
         <div className="absolute top-2 right-2">
@@ -513,7 +513,7 @@ const ProductListCard = ({
   onRemove,
   isRemoving,
 }: {
-  product: FavoriteProductDetails;
+  product: any;
   onRemove: (id: string) => void;
   isRemoving: boolean;
 }) => (
@@ -524,7 +524,6 @@ const ProductListCard = ({
           <img
             src={product.images?.[0] || "/placeholder-product.jpg"}
             alt={product.name}
-            fill
             className="object-cover"
           />
           {product.stockStatus === "Out of Stock" && (

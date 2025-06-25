@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
 import React, {
@@ -50,7 +51,7 @@ const SearchFilter = () => {
         page: 1,
         limit: 50,
       });
-      setProducts(response.products);
+      setProducts(response.products as any);
     } catch (error) {
       toast.error("Failed to fetch products");
     } finally {

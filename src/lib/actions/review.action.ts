@@ -181,7 +181,7 @@ export async function getReviews({
 
     // Check if current user has voted on each review
     const reviewsWithVotes = await Promise.all(
-      (reviews as ReviewQueryResult[] || []).map(async (review: ReviewQueryResult) => {
+      (reviews as any || []).map(async (review: ReviewQueryResult) => {
         if (!userId) {
              return {
                  ...review,
@@ -336,7 +336,7 @@ export async function addReport({
       .eq("id", reviewId)
       .single();
 
-    const existingReports = review?.reports || [];
+    const existingReports:any = review?.reports || [];
     const alreadyReported = existingReports.some(
       (r: any) => r.userId === userId
     );

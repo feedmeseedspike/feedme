@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CheckoutPage() {
-  const data = await getUser();
+  const data:any = await getUser();
   // const data = session?.data;
   // console.log(session);
 

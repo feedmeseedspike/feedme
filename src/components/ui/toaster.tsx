@@ -11,11 +11,11 @@ import {
 } from "src/components/ui/toast";
 
 export function Toaster() {
-  const { toasts } = useToast();
+  const toasts: any = useToast();
 
   return (
     <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, ...props }) {
+      {toasts.map(function ({ id, title, description, action, ...props }: any) {
         return (
           <Toast key={id} {...props}>
             <div className="grid gap-1">

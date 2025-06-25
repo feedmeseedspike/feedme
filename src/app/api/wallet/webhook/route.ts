@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { supabase } from "src/lib/supabaseClient";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   try {
     // Verify Paystack webhook signature

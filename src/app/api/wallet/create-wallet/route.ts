@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { supabase } from "src/lib/supabaseClient";
 
+export const dynamic = "force-dynamic";
+
+
 export async function POST(request: Request) {
   try {
     // Extract and validate JWT
