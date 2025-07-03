@@ -35,7 +35,7 @@ export default function Sidebar({ categories }: Props) {
         </SelectTrigger>
         <SelectContent>
           {categories.map((category) => (
-            <SelectItem key={category._id} value={category._id}>
+            <SelectItem key={category.id} value={category.id}>
               <Link href={`/category/${category.title}`}>{category.title}</Link>
             </SelectItem>
           ))}

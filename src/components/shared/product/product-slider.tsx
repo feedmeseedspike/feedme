@@ -17,6 +17,8 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@utils/supabase/client";
 import { getProductsByTagQuery } from "src/queries/products";
 import ProductSliderSkeleton from "./product-slider-skeleton";
+import { Tables } from "src/utils/database.types";
+import { mapSupabaseProductToIProductInput } from "src/lib/utils";
 
 export default function ProductSlider({
   title,
@@ -50,29 +52,23 @@ export default function ProductSlider({
       limit
     );
 
-    let queryBuilder;
-    queryBuilder = getProductsByTagQuery(supabase, tag, limit);
-
-    // if (tag === "trending") {
-    //   queryBuilder = getTrendingProductsQuery(supabase, limit);
-    // } else if (tag === "fresh-fruits") {
-    //   queryBuilder = getFreshFruitsQuery(supabase, limit);
-    // } else if (tag === "fresh-vegetables") {
-    //   queryBuilder = getFreshVegetablesQuery(supabase, limit);
-    // } else {
-    //   queryBuilder = getProductsByTagQuery(supabase, tag, limit);
-    // }
-
+    let queryBuilder = getProductsByTagQuery(supabase, tag, limit);
     const { data, error } = await queryBuilder.select("*");
+
     if (error) throw error;
-    return data;
+
+    // Map Supabase products to IProductInput
+    return (
+      data?.map((product) => mapSupabaseProductToIProductInput(product, [])) ||
+      null
+    );
   }, [supabase, tag, limit]);
 
   const {
     data: fetchedProducts,
     isLoading,
     error: fetchedError,
-  } = useQuery<IProductInput[] | null, any>({
+  } = useQuery<IProductInput[] | null>({
     queryKey: queryKey,
     queryFn: queryFn,
     enabled: !!tag,
@@ -95,16 +91,7 @@ export default function ProductSlider({
     return <div>Error loading products or no {tag} products found.</div>;
   }
 
-  if (!Array.isArray(fetchedProducts) && !Array.isArray(products)) {
-    console.error(
-      "Expected products to be an array, but received:",
-      fetchedProducts,
-      products
-    );
-    return <div>Error: Invalid product data received.</div>;
-  }
-
-  const productsToRender = Array.isArray(products) ? products : fetchedProducts;
+  const productsToRender = products || fetchedProducts;
 
   if (!productsToRender || productsToRender.length === 0) {
     return <div>No products found.</div>;
@@ -138,13 +125,13 @@ export default function ProductSlider({
         className="w-full"
       >
         <CarouselContent className="px-2 md:px-[4rem]">
-          {productsToRender.map((product) => (
+          {productsToRender.map((product: IProductInput) => (
             <CarouselItem key={product.slug || product.id}>
               <ProductCard
                 hideDetails={hideDetails}
                 hideAddToCart
                 hideBorder
-                product={product as IProductInput}
+                product={product}
               />
             </CarouselItem>
           ))}

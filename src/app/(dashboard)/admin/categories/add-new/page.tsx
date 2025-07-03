@@ -1,6 +1,7 @@
 "use client";
+export const dynamic = "force-dynamic";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@components/ui/button";
 import {
   Card,
@@ -20,11 +21,16 @@ import { Badge } from "@components/ui/badge";
 import { X } from "lucide-react";
 import Image from "next/image";
 import { addCategory, uploadImage } from "../../../../../lib/api";
-import { useToast } from "../../../../../hooks/useToast"; 
+import { useToast } from "../../../../../hooks/useToast";
+import supabaseAdmin from "@/utils/supabase/admin";
+import ReactSelect from "react-select";
+import { createClient } from "src/utils/supabase/client";
+
+const supabase = createClient();
 
 export default function AddNewCategory() {
   const router = useRouter();
-  const { showToast } = useToast(); 
+  const { showToast } = useToast();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -34,8 +40,28 @@ export default function AddNewCategory() {
   const [keynotes, setKeynotes] = useState<string[]>([]);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false); // State for submission loading
   const [error, setError] = useState<string | null>(null); // State for errors
+  const [allProducts, setAllProducts] = useState<any[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
+
+  // Fetch all products for selection
+  useEffect(() => {
+    async function fetchProducts() {
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, name, images");
+      if (error) {
+        console.error("Supabase error fetching products:", error);
+      }
+      console.log(allProducts);
+      console.log("Fetched products:", data);
+      if (!error && data) setAllProducts(data);
+    }
+    fetchProducts();
+  }, [allProducts]);
 
   const handleAddTag = () => {
     if (tag.trim() && !tags.includes(tag.trim())) {
@@ -71,6 +97,18 @@ export default function AddNewCategory() {
     }
   };
 
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setBannerFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBannerPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -82,9 +120,27 @@ export default function AddNewCategory() {
       return;
     }
 
-    let thumbnailUrl = null;
+    let thumbnail = null;
+    let banner_url = null;
     try {
-      thumbnailUrl = await uploadImage(imageFile, "category-images"); // Upload image
+      const fileExt = imageFile.name.split(".").pop();
+      const filePath = `${Date.now()}.${fileExt}`;
+      await uploadImage(imageFile, "category-images");
+      const { data: publicUrlData } = supabaseAdmin.storage
+        .from("category-images")
+        .getPublicUrl(filePath);
+      thumbnail = publicUrlData.publicUrl
+        ? { url: publicUrlData.publicUrl, public_id: filePath }
+        : null;
+      if (bannerFile) {
+        const bannerExt = bannerFile.name.split(".").pop();
+        const bannerPath = `banner_${Date.now()}.${bannerExt}`;
+        await uploadImage(bannerFile, "category-images");
+        const { data: bannerUrlData } = supabaseAdmin.storage
+          .from("category-images")
+          .getPublicUrl(bannerPath);
+        banner_url = bannerUrlData.publicUrl || null;
+      }
     } catch (err: any) {
       showToast(err.message || "Failed to upload image", "error");
       setSubmitting(false);
@@ -97,9 +153,32 @@ export default function AddNewCategory() {
         description,
         tags,
         keynotes,
-        thumbnail: thumbnailUrl ? { url: thumbnailUrl } : null, // Store thumbnail as an object with url
+        thumbnail,
+        banner_url,
       };
-      await addCategory(newCategoryData);
+      const created = await addCategory(newCategoryData);
+      // Update selected products' category_ids
+      if (created && selectedProducts.length > 0) {
+        for (const prod of selectedProducts) {
+          const { data: prodData, error: prodError } = await supabase
+            .from("products")
+            .select("category_ids")
+            .eq("id", prod.value)
+            .single();
+          if (!prodError && prodData) {
+            const ids = Array.isArray(prodData.category_ids)
+              ? prodData.category_ids
+              : [];
+            if (!ids.includes(created.id)) {
+              const newIds = [...ids, created.id];
+              await supabase
+                .from("products")
+                .update({ category_ids: newIds })
+                .eq("id", prod.value);
+            }
+          }
+        }
+      }
       showToast("Category created successfully!", "success");
       router.push("/admin/categories");
     } catch (err: any) {
@@ -199,6 +278,78 @@ export default function AddNewCategory() {
                   </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Banner Image */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Banner Image (optional)</CardTitle>
+              <CardDescription>
+                Upload a banner image for this category (optional).
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Label htmlFor="banner">Banner Image</Label>
+                <Input
+                  id="banner"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleBannerChange}
+                />
+                {bannerPreview && (
+                  <div className="mt-2 relative w-full h-32 border rounded-md overflow-hidden">
+                    <Image
+                      src={bannerPreview}
+                      alt="Banner Preview"
+                      fill
+                      className="object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Products in this Category */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Add Products to Category (optional)</CardTitle>
+              <CardDescription>
+                Select products to associate with this category.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ReactSelect
+                isMulti
+                options={allProducts.map((p) => ({
+                  value: p.id,
+                  label: p.name,
+                  image:
+                    Array.isArray(p.images) && p.images[0]
+                      ? p.images[0]
+                      : undefined,
+                }))}
+                value={selectedProducts}
+                onChange={(newValue) => setSelectedProducts(newValue as any[])}
+                placeholder="Select products..."
+                formatOptionLabel={(option) => (
+                  <div className="flex items-center gap-2">
+                    {option.image && (
+                      <Image
+                        src={option.image}
+                        alt={option.label}
+                        width={24}
+                        height={24}
+                        className="w-6 h-6 rounded object-cover"
+                      />
+                    )}
+                    <span>{option.label}</span>
+                  </div>
+                )}
+                classNamePrefix="react-select"
+              />
             </CardContent>
           </Card>
 

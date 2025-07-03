@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -81,6 +82,12 @@ export default function CustomerDetailsPage() {
     error: customerError,
   } = useCustomer(customerId);
 
+  // Ensure customer fields are always string or string | null
+  const safeCustomer = customer as typeof customer & {
+    birthday?: string | null;
+    favorite_fruit?: string | null;
+  };
+
   // Define schema for form validation
   const CustomerDetailsSchema = z.object({
     display_name: z.string().optional(),
@@ -93,11 +100,11 @@ export default function CustomerDetailsPage() {
   const form = useForm<CustomerDetailsFormData>({
     resolver: zodResolver(CustomerDetailsSchema),
     defaultValues: {
-      display_name: customer?.display_name || "",
-      birthday: customer?.birthday
-        ? format(new Date(customer.birthday), "yyyy-MM-dd")
+      display_name: safeCustomer?.display_name || "",
+      birthday: safeCustomer?.birthday
+        ? format(new Date(safeCustomer.birthday), "yyyy-MM-dd")
         : "",
-      favorite_fruit: customer?.favorite_fruit || "",
+      favorite_fruit: safeCustomer?.favorite_fruit || "",
     },
   });
 
@@ -106,13 +113,13 @@ export default function CustomerDetailsPage() {
     mutationFn: async (data: CustomerDetailsFormData) => {
       const supabase = createClient();
       const { error } = await supabase
-        .from("users")
+        .from("profiles")
         .update({
           display_name: data.display_name,
           birthday: data.birthday,
           favorite_fruit: data.favorite_fruit,
         })
-        .eq("id", customerId);
+        .eq("user_id", customerId);
 
       if (error) throw error;
     },
@@ -297,6 +304,7 @@ export default function CustomerDetailsPage() {
                       <FormControl>
                         <Input
                           {...field}
+                          value={field.value ?? ""}
                           placeholder="e.g., Apple, Banana"
                           className="h-10 border-gray-200 focus:border-[#1B6013] focus:ring-[#1B6013]/20 rounded-md"
                         />
@@ -407,7 +415,7 @@ export default function CustomerDetailsPage() {
                   </TableRow>
                 ))
               ) : orders && orders.length > 0 ? (
-                orders.map((order: Tables<"orders">) => (
+                (orders as Tables<"orders">[]).map((order) => (
                   <TableRow key={order.id}>
                     {/* Map fetched data to Order interface structure for display */}
                     <TableCell>{order.id?.substring(0, 8) || "#N/A"}</TableCell>{" "}

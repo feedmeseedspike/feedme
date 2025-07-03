@@ -80,12 +80,7 @@ const ShareLike = ({ product }: { product: any }) => {
         }
       }
     },
-    [
-      product.id,
-      isFavorited,
-      addFavoriteMutation.mutateAsync,
-      removeFavoriteMutation.mutateAsync,
-    ]
+    [product.id, product.name, isFavorited, removeFavoriteMutation, addFavoriteMutation]
   );
 
   // Handle share functionality

@@ -4,7 +4,6 @@ import ProductCard from "@components/shared/product/product-card";
 import { Button } from "@components/ui/button";
 import {
   // getAllCategories,
-  getAllProducts,
   getAllTags,
   getRelatedProductsByCategory,
 } from "../../../lib/actions/product.actions";
@@ -27,6 +26,9 @@ import { ProductSkeletonGrid } from "@components/shared/product/product-skeleton
 import PriceRangeSlider from "@components/shared/product/price-range-slider";
 import ProductSlider from "@components/shared/product/product-slider";
 import { getAllCategories } from "src/lib/api";
+import { createClient } from "@utils/supabase/client";
+import { getAllProducts } from "../../../queries/products";
+import { IProductInput } from "src/types";
 
 const sortOrders = [
   { value: "price-low-to-high", name: "Price: Low to high" },
@@ -104,7 +106,8 @@ const SearchPage = async (props: {
 
   const categories = await getAllCategories();
   const tags = await getAllTags();
-  const data = await getAllProducts({
+  const client = createClient();
+  const data = await getAllProducts(client, {
     category,
     tag,
     query: q,
@@ -115,15 +118,18 @@ const SearchPage = async (props: {
   });
 
   // Safely get a category for related products
-  let relatedCategory = category !== "all" ? category : null;
+  let relatedCategory: string | null = category !== "all" ? category : null;
   let productIdForExclusion = null;
 
   // If no category in params, try to get from first product
   if (!relatedCategory && data.products.length > 0) {
     const firstProduct = data.products[0];
-    if (firstProduct.category?.length > 0) {
-      relatedCategory = firstProduct.category[0];
-      productIdForExclusion = firstProduct._id;
+    if (
+      Array.isArray(firstProduct.category_ids) &&
+      firstProduct.category_ids.length > 0
+    ) {
+      relatedCategory = firstProduct.category_ids[0];
+      productIdForExclusion = firstProduct.id;
     }
   }
 
@@ -133,11 +139,11 @@ const SearchPage = async (props: {
   }
 
   // Only fetch related products if we have a valid category
-  let relatedProducts = { data: [] };
+  let relatedProducts: { data: any[]; totalPages?: number } = { data: [] };
   if (relatedCategory) {
     relatedProducts = await getRelatedProductsByCategory({
-      category: relatedCategory,
-      productId: productIdForExclusion,
+      category: relatedCategory!,
+      productId: productIdForExclusion || "",
       page: 1,
     });
   }
@@ -150,11 +156,42 @@ const SearchPage = async (props: {
       ? Array.from(
           new Set(
             data.products
-              .filter((p) => Array.isArray(p.category) && p.category.length > 0)
-              .map((p) => p.category[0])
+              .filter(
+                (p) =>
+                  Array.isArray(p.category_ids) &&
+                  (p.category_ids?.length ?? 0) > 0
+              )
+              .map((p) => p.category_ids![0])
           )
         )
       : categories;
+
+  // Add a mapping function for Supabase product row to IProductInput
+  function mapSupabaseProductToIProductInput(product: any): IProductInput {
+    return {
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      category: product.category_ids ?? [],
+      images: product.images ?? [],
+      tags: product.tags ?? [],
+      is_published: !!product.is_published,
+      price: product.price ?? 0,
+      list_price: product.list_price ?? 0,
+      stockStatus: product.stock_status ?? "",
+      brand: product.brand ?? "",
+      vendor: product.vendor ?? undefined,
+      avg_rating: product.avg_rating ?? 0,
+      num_reviews: product.num_reviews ?? 0,
+      ratingDistribution: product.rating_distribution ?? [],
+      numSales: product.num_sales ?? 0,
+      countInStock: product.count_in_stock ?? 0,
+      description: product.description ?? "",
+      colors: product.colors ?? [],
+      options: product.options ?? [],
+      reviews: product.reviews ?? [],
+    };
+  }
 
   return (
     <main>
@@ -437,7 +474,10 @@ const SearchPage = async (props: {
             </div>
             <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4 ">
               {data.products.map((product) => (
-                <ProductdetailsCard key={product._id} product={product} />
+                <ProductdetailsCard
+                  key={product.id}
+                  product={mapSupabaseProductToIProductInput(product)}
+                />
               ))}
             </div>
           </Suspense>
@@ -446,14 +486,13 @@ const SearchPage = async (props: {
           )}
         </div>
         {relatedProducts.data.length > 0 && (
-            <section className="mt-10">
-              <ProductSlider
-                products={relatedProducts.data}
-                title={"You may also like"}
-              />
-            </section>
-          )}
-
+          <section className="mt-10">
+            <ProductSlider
+              products={relatedProducts.data}
+              title={"You may also like"}
+            />
+          </section>
+        )}
       </Container>
     </main>
   );

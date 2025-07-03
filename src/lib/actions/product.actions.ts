@@ -137,7 +137,36 @@ export async function getProductsServer({
   sort?: string;
 }) {
   const supabase = createClient(); // Initialize client inside the function
-  // console.log("getProductsServer parameters:", { query, limit, page, category, tag, price, rating, sort });
+  // Build the base query for counting
+  let countQuery = supabase
+    .from('products')
+    .select('*', { count: 'exact', head: true })
+    .eq('is_published', true);
+
+  if (query && query !== 'all') {
+    countQuery = countQuery.ilike('name', `%${query}%`);
+  }
+  if (category && category !== 'all') {
+    countQuery = countQuery.contains('category_ids', [category]);
+  }
+  if (tag && tag !== 'all') {
+    countQuery = countQuery.contains('tags', [tag]);
+  }
+  if (rating && rating !== 'all') {
+    countQuery = countQuery.gte('avg_rating', Number(rating));
+  }
+  if (price && price !== 'all') {
+    const [minPrice, maxPrice] = price.split('-').map(Number);
+    countQuery = countQuery.gte('price', minPrice).lte('price', maxPrice);
+  }
+
+  const { count, error: countError } = await countQuery;
+  if (countError) {
+    console.error("Error counting products:", countError);
+    throw countError;
+  }
+
+  // Build the paginated query
   let queryBuilder = supabase
     .from('products')
     .select('*')
@@ -146,19 +175,15 @@ export async function getProductsServer({
   if (query && query !== 'all') {
     queryBuilder = queryBuilder.ilike('name', `%${query}%`);
   }
-
   if (category && category !== 'all') {
     queryBuilder = queryBuilder.contains('category_ids', [category]);
   }
-
   if (tag && tag !== 'all') {
     queryBuilder = queryBuilder.contains('tags', [tag]);
   }
-
   if (rating && rating !== 'all') {
     queryBuilder = queryBuilder.gte('avg_rating', Number(rating));
   }
-
   if (price && price !== 'all') {
     const [minPrice, maxPrice] = price.split('-').map(Number);
     queryBuilder = queryBuilder.gte('price', minPrice).lte('price', maxPrice);
@@ -177,20 +202,18 @@ export async function getProductsServer({
     queryBuilder = queryBuilder.order('id', { ascending: true });
   }
 
-
   const { data, error } = await queryBuilder.range((page - 1) * limit, page * limit - 1);
   if (error) {
     console.error("Error executing getProductsServer query:", error);
-    throw error; // Re-throw the error after logging
+    throw error;
   }
-
 
   return {
     products: data,
-    totalPages: Math.ceil(data.length / limit),
-    totalProducts: data.length,
+    totalPages: Math.ceil((count || 0) / limit),
+    totalProducts: count || 0,
     from: (page - 1) * limit + 1,
-    to: (page - 1) * limit + data.length,
+    to: Math.min(page * limit, count || 0),
   };
 }
 
@@ -238,4 +261,22 @@ export async function deleteProduct(id: string) {
     throw error;
   }
   return true;
+}
+
+export async function getProductsBySearch(query: string, limit = 10) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('products')
+    .select('id, slug, name, images')
+    .ilike('name', `%${query}%`)
+    .eq('is_published', true)
+    .limit(limit);
+  if (error) throw error;
+  // Prefer the first image if available
+  return (data || []).map((p: any) => ({
+    id: p.id,
+    slug: p.slug,
+    name: p.name,
+    image: Array.isArray(p.images) ? p.images[0] : p.images || null,
+  }));
 }

@@ -7,7 +7,7 @@ import { Database, Json } from "@utils/database.types";
 
 type Tables = Database["public"]["Tables"];
 type ReviewRow = Tables["product_reviews"]["Row"];
-type UserRow = Tables["users"]["Row"];
+type UserProfileRow = Tables["profiles"]["Row"];
 
 // Types
 export interface ReviewQueryResult {
@@ -82,8 +82,8 @@ export const getReviews = async ({
         created_at,
         updated_at,
         user_id,
-        user:users (
-          id,
+        user:profiles (
+          user_id: user_id,
           display_name,
           avatar_url
         )
@@ -97,16 +97,27 @@ export const getReviews = async ({
     // Check if current user has voted on each review
     const reviewsWithVotes = await Promise.all(
       (reviews || []).map(async (review) => {
+        let userProfile: UserProfileRow | null = null;
+        if (review.user) {
+          if (Array.isArray(review.user)) {
+            userProfile = review.user.length > 0 ? review.user[0] as UserProfileRow : null;
+          } else if (typeof review.user === 'object') {
+            userProfile = review.user as UserProfileRow;
+          }
+        }
+
         if (!userId) {
           return {
             ...review,
             hasVoted: false,
             canEdit: false,
-            user: review.user ? {
-              id: review.user.id,
-              display_name: review.user.display_name || 'Anonymous',
-              avatar_url: review.user.avatar_url || null,
-            } : null
+            user: userProfile
+              ? {
+                  id: userProfile.user_id,
+                  display_name: userProfile.display_name || 'Anonymous',
+                  avatar_url: userProfile.avatar_url || null,
+                }
+              : null,
           };
         }
 
@@ -121,11 +132,13 @@ export const getReviews = async ({
           ...review,
           hasVoted: !!vote,
           canEdit: review.user_id === userId,
-          user: review.user ? {
-            id: review.user.id,
-            display_name: review.user.display_name || 'Anonymous',
-            avatar_url: review.user.avatar_url || null,
-          } : null
+          user: userProfile
+            ? {
+                id: userProfile.user_id,
+                display_name: userProfile.display_name || 'Anonymous',
+                avatar_url: userProfile.avatar_url || null,
+              }
+            : null,
         };
       })
     );
@@ -345,7 +358,6 @@ export const useReviewsQuery = (productId: string, page: number = 1, userId?: st
     queryKey: reviewKeys.list(productId, page),
     queryFn: () => getReviews({ productId, page, userId }),
     enabled: !!productId,
-    keepPreviousData: true,
   });
 };
 
@@ -356,7 +368,7 @@ export const useCreateUpdateReviewMutation = () => {
     mutationFn: createUpdateReview,
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: reviewKeys.list(variables.data.product, variables.data.page),
+        queryKey: reviewKeys.list(variables.data.product, 1),
       });
       // Revalidate the product page to update avg_rating and rating_distribution
       // await revalidateProductPage(variables.data.slug);

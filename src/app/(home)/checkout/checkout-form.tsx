@@ -24,7 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@components/ui/select";
-import { ShippingAddress, UserData } from "src/types";
 import { ShippingAddressSchema } from "src/lib/validator";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { Input } from "@components/ui/input";
@@ -55,6 +54,10 @@ import {
   type StepItem,
 } from "../../../components/ui/stepper";
 import { ShimmerButton } from "@components/magicui/shimmer-button";
+import type { ShippingAddress } from "src/types/index";
+import { useUser } from "src/hooks/useUser";
+import { createClient } from "@/utils/supabase/client";
+import { DeliveryLocation } from "@/types/delivery-location";
 
 // Define a more specific type for grouped items
 interface GroupedCartItem {
@@ -100,7 +103,7 @@ interface CartItemDisplayProps {
 }
 
 const CartItemDisplay = React.memo(({ item }: CartItemDisplayProps) => {
-  const productOption = item.option as unknown as ProductOption | null;
+  const productOption = isProductOption(item.option) ? item.option : null;
 
   return (
     <React.Fragment>
@@ -143,30 +146,23 @@ const CartItemDisplay = React.memo(({ item }: CartItemDisplayProps) => {
 
 CartItemDisplay.displayName = "CartItemDisplay";
 
-const locations = [
-  { value: "Agege", label: "Agege", cost: 2500 },
-  { value: "Ajeromi-Ifelodun", label: "Ajeromi-Ifelodun", cost: 2500 },
-  { value: "Alimosho", label: "Alimosho", cost: 2500 },
-  { value: "Amuwo-Odofin", label: "Amuwo-Odofin", cost: 2500 },
-  { value: "Apapa", label: "Apapa", cost: 4500 },
-  { value: "Badagry", label: "Badagry", cost: 4500 },
-  { value: "Epe", label: "Epe", cost: 4500 },
-  { value: "Eti-Osa", label: "Eti-Osa", cost: 2500 },
-  { value: "Ibeju-Lekki", label: "Ibeju-Lekki", cost: 2500 },
-  { value: "Ifako/Ijaye", label: "Ifako/Ijaye", cost: 2500 },
-  { value: "Ikeja", label: "Ikeja", cost: 2500 },
-  { value: "Ikorodu", label: "Ikorodu", cost: 3000 },
-  { value: "Iyana-Ipaja", label: "Iyana-Ipaja", cost: 3000 },
-  { value: "Ajah", label: "Ajah", cost: 3000 },
-  { value: "Kosofe", label: "Kosofe", cost: 2500 },
-  { value: "Lagos Island", label: "Lagos Island", cost: 2500 },
-  { value: "Lagos Mainland", label: "Lagos Mainland", cost: 2500 },
-  { value: "Mushin", label: "Mushin", cost: 2500 },
-  { value: "Ojo", label: "Ojo", cost: 4500 },
-  { value: "Oshodi–Isolo", label: "Oshodi–Isolo", cost: 2500 },
-  { value: "Shomolu", label: "Shomolu", cost: 2500 },
-  { value: "Surulere", label: "Surulere", cost: 2500 },
-];
+function useDeliveryLocations() {
+  return useQuery<DeliveryLocation[], Error>({
+    queryKey: ["delivery-locations"],
+    queryFn: async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("delivery_locations")
+        .select("*")
+        .order("name", { ascending: true });
+      if (error) {
+        console.error("Error fetching delivery locations:", error);
+        throw new Error(error.message);
+      }
+      return data || [];
+    },
+  });
+}
 
 const shippingAddressDefaultValues =
   process.env.NODE_ENV === "development"
@@ -183,10 +179,6 @@ const shippingAddressDefaultValues =
         phone: "",
       };
 
-interface AppSidebarProps {
-  user: UserData;
-}
-
 interface OrderProcessingResult {
   success: boolean;
   error?: string;
@@ -199,7 +191,16 @@ const steps = [
   { label: "Review Order" },
 ] satisfies StepItem[];
 
-const CheckoutForm = ({ user }: AppSidebarProps) => {
+interface CheckoutFormProps {
+  addresses: AddressWithId[];
+  walletBalance: number;
+}
+
+const CheckoutForm = ({
+  addresses,
+  walletBalance,
+}: Omit<CheckoutFormProps, "user">) => {
+  const { user } = useUser();
   const router = useRouter();
   const dispatch = useDispatch();
   const { data: cartItems, isLoading, isError, error } = useCartQuery();
@@ -226,33 +227,25 @@ const CheckoutForm = ({ user }: AppSidebarProps) => {
 
   const { data: referralStatusData, isLoading: isLoadingReferralStatus } =
     useQuery({
-      queryKey: ["referralStatus", user?.id],
+      queryKey: ["referralStatus", user?.user_id],
       queryFn: async () => {
-        if (!user?.id) return null;
-        const response = await fetch(`/api/referral/status?userId=${user.id}`);
+        if (!user?.user_id) return null;
+        const response = await fetch(
+          `/api/referral/status?userId=${user.user_id}`
+        );
         if (!response.ok) throw new Error("Failed to fetch referral status");
         return response.json();
       },
-      enabled: !!user?.id,
+      enabled: !!user?.user_id,
     });
 
   console.log("CheckoutForm: Component rendering.");
   console.log("CheckoutForm: User prop received:", user);
   console.log("CheckoutForm: isLoadingAddresses (before useQuery result log):");
 
-  const { data: userAddresses, isLoading: isLoadingAddresses } = useQuery({
-    queryKey: ["userAddresses"],
-    queryFn: getUserAddresses,
-    enabled: !!user?.id,
-  });
-
-  useEffect(() => {
-    console.log("CheckoutForm: isLoadingAddresses state:", isLoadingAddresses);
-    console.log("CheckoutForm: userAddresses state:", userAddresses);
-  }, [isLoadingAddresses, userAddresses]);
-
-  const { data: walletBalance, isLoading: isLoadingWalletBalance } =
-    useWalletBalanceQuery(user?.id);
+  const userAddresses = addresses;
+  const isLoadingAddresses = false;
+  const isLoadingWalletBalance = false;
 
   const shippingAddressForm = useForm<ShippingAddress>({
     resolver: zodResolver(ShippingAddressSchema),
@@ -261,17 +254,22 @@ const CheckoutForm = ({ user }: AppSidebarProps) => {
   });
 
   const formLocation = shippingAddressForm.watch("location");
+  const {
+    data: locations = [],
+    isLoading: isLoadingLocations,
+    error: locationsError,
+  } = useDeliveryLocations();
   const cost =
-    locations.find((loc) => loc.value === formLocation)?.cost || 2500;
+    locations.find((loc) => loc.name === formLocation)?.price || 2500;
 
   const subtotal = useMemo(
     () =>
       items.reduce((acc, item) => {
         let itemPrice = 0;
+        const productOption = isProductOption(item.option) ? item.option : null;
         if (item.bundle_id && item.bundles) {
           itemPrice = item.bundles.price || 0;
         } else if (item.product_id && item.products) {
-          const productOption = item.option as unknown as ProductOption | null;
           itemPrice =
             (productOption?.price !== undefined && productOption?.price !== null
               ? productOption.price
@@ -285,120 +283,95 @@ const CheckoutForm = ({ user }: AppSidebarProps) => {
   const totalAmount = subtotal;
   const totalAmountPaid = subtotal + cost - voucherDiscount;
 
+  const isReferralVoucher = isVoucherValid && voucherCode.startsWith("REF-");
+
+  const [voucherValidationAttempted, setVoucherValidationAttempted] =
+    useState(false);
+
+  // Restore voucher from localStorage on mount
   useEffect(() => {
-    const autoApplyReferralVoucher = async () => {
-      const storedReferralCode = localStorage.getItem("referral_code");
+    const savedCode = localStorage.getItem("voucherCode");
+    const savedDiscount = localStorage.getItem("voucherDiscount");
+    if (savedCode) setVoucherCode(savedCode);
+    if (savedDiscount) setVoucherDiscount(Number(savedDiscount));
+  }, []);
 
-      if (user?.id && storedReferralCode && !autoAppliedReferralVoucher) {
-        console.log("Attempting to auto-apply referral voucher...");
-        try {
-          const response = await fetch("/api/referral", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              referrerEmail: storedReferralCode,
-              referredUserId: user.id,
-              referredUserEmail: user.email,
-            }),
-          });
+  useEffect(() => {
+    // Always check for referral and voucher for referred users
+    const tryAutoApplyReferralVoucher = async () => {
+      if (!user?.user_id || isVoucherValid || !subtotal || subtotal === 0)
+        return;
 
-          if (response.ok) {
-            showToast(
-              "Referral applied automatically! Check your email for a discount.",
-              "success"
-            );
-            localStorage.removeItem("referral_code");
-            setAutoAppliedReferralVoucher(true);
+      // 1. Check if referral exists for this user
+      const referralStatusRes = await fetch(
+        `/api/referral/status?userId=${user.user_id}`
+      );
+      const referralStatus = referralStatusRes.ok
+        ? await referralStatusRes.json()
+        : null;
+      const isReferred =
+        referralStatus?.data &&
+        referralStatus.data.status === "applied" &&
+        !referralStatus.data.referred_discount_given;
 
-            queryClient.invalidateQueries({ queryKey: ["referralStatus"] });
-            queryClient.invalidateQueries({ queryKey: ["referredUsers"] });
-          } else {
-            const errorData = await response.json();
-            // Only show toast if it's not a 409 (conflict - already applied)
-            if (response.status !== 409) {
-              showToast(
-                errorData.message || "Failed to auto-apply referral.",
-                "error"
-              );
-            } else {
-              // If 409, it means it was already applied, so just mark as applied
-              localStorage.removeItem("referral_code");
-              setAutoAppliedReferralVoucher(true);
-              showToast("Referral already applied.", "info"); // Informational toast
-            }
-          }
-        } catch (error: any) {
-          console.error("Error during auto-referral application:", error);
-          showToast("Failed to auto-apply referral due to an error.", "error");
-          // Ensure autoAppliedReferralVoucher is reset on error if it wasn't a 409
-          setAutoAppliedReferralVoucher(false);
-        }
-      }
-    };
+      if (isReferred) {
+        // 2. Check if voucher already exists for this user
+        const voucherCodeGuess = `REF-${user.user_id.slice(0, 8).toUpperCase()}`;
+        const voucherRes = await fetch(`/api/voucher?code=${voucherCodeGuess}`);
+        const voucherData = voucherRes.ok ? await voucherRes.json() : null;
 
-    if (user?.id && !isLoadingReferralStatus) {
-      const hasReferralStatus = referralStatusData?.data !== null;
+        let codeToApply = voucherData?.data?.code;
 
-      if (!hasReferralStatus) {
-        autoApplyReferralVoucher();
-      }
-    }
-
-    const autoApplyExistingReferralVoucher = async () => {
-      if (!user?.id || isVoucherValid || !subtotal || subtotal === 0) return;
-
-      try {
-        // First, check if there's an existing referral record for this referredUserId
-        const existingReferralCheckResponse = await fetch(
-          `/api/referral/status?referredUserId=${user.id}`
-        );
-        const existingReferralCheckData =
-          await existingReferralCheckResponse.json();
-
-        if (
-          existingReferralCheckResponse.ok &&
-          existingReferralCheckData.data &&
-          existingReferralCheckData.data.status === "applied" &&
-          !existingReferralCheckData.data.referred_discount_given
-        ) {
-          console.log("Found existing unredeemed referral for referred user.");
-
+        if (!codeToApply) {
+          // 3. Create voucher if not found
           const voucherResult = await createVoucher({
-            userId: user.id,
+            userId: user.user_id,
             discountType: "fixed",
             discountValue: 1000,
             name: "Referral Sign-up Discount",
             description: "Discount for signing up via a referral",
             maxUses: 1,
           });
-
           if (voucherResult.success && voucherResult.voucherCode) {
-            validateVoucherMutation({
-              code: voucherResult.voucherCode,
-              totalAmount: subtotal,
-            });
-            showToast(
-              "Your referral discount has been automatically applied!",
-              "success"
-            );
-            setAutoAppliedReferralVoucher(true);
+            codeToApply = voucherResult.voucherCode;
           } else {
-            console.error(
-              "Failed to create voucher for referred user:",
-              voucherResult.error
-            );
-            showToast("Failed to apply referral discount.", "error");
+            showToast("Failed to create referral voucher.", "error");
+            return;
           }
         }
-      } catch (error) {
-        console.error("Error auto-applying existing referral voucher:", error);
+
+        // 4. Validate/apply the voucher
+        if (codeToApply) {
+          const result = await validateVoucherMutation({
+            code: codeToApply,
+            totalAmount: subtotal,
+          });
+          if (result.success && result.data) {
+            const data: any = result.data;
+            setVoucherCode(codeToApply);
+            setIsVoucherValid(true);
+            setVoucherDiscount(
+              data.discountType === "percentage"
+                ? (data.discountValue / 100) * subtotal
+                : (data.discountValue ?? 0)
+            );
+            setVoucherId(data.id ?? null);
+            setAutoAppliedReferralVoucher(true);
+            showToast("Referral discount applied!", "success");
+          } else {
+            showToast(
+              result.error || "Failed to apply referral voucher.",
+              "error"
+            );
+          }
+        }
       }
     };
 
     if (user && !isLoadingReferralStatus && !autoAppliedReferralVoucher) {
       startTransition(() => {
-        autoApplyExistingReferralVoucher().catch((error) => {
-          console.error("Error with autoApplyExistingReferralVoucher:", error);
+        tryAutoApplyReferralVoucher().catch((error) => {
+          console.error("Error with tryAutoApplyReferralVoucher:", error);
           setVoucherCode("");
           setVoucherDiscount(0);
           setIsVoucherValid(false);
@@ -408,16 +381,14 @@ const CheckoutForm = ({ user }: AppSidebarProps) => {
       });
     }
   }, [
-    referralStatusData,
-    user?.id,
-    items,
+    user,
     isVoucherValid,
+    subtotal,
+    autoAppliedReferralVoucher,
+    isLoadingReferralStatus,
     validateVoucherMutation,
     showToast,
     startTransition,
-    subtotal,
-    autoAppliedReferralVoucher, // Add autoAppliedReferralVoucher to dependencies
-    queryClient,
   ]);
 
   const groupedItems = useMemo(() => {
@@ -500,13 +471,22 @@ const CheckoutForm = ({ user }: AppSidebarProps) => {
               : discountValue;
           const discount = Math.min(calculatedDiscount, subtotal);
           setVoucherDiscount(discount);
+          // Persist voucher in localStorage
+          localStorage.setItem("voucherCode", voucherCode);
+          localStorage.setItem("voucherDiscount", discount.toString());
           showToast("Voucher applied successfully!", "success");
         } else {
           setIsVoucherValid(false);
+          // Remove voucher from localStorage
+          localStorage.removeItem("voucherCode");
+          localStorage.removeItem("voucherDiscount");
           showToast(result.error || "Voucher validation failed.", "error");
         }
       } catch (error: any) {
         setIsVoucherValid(false);
+        // Remove voucher from localStorage
+        localStorage.removeItem("voucherCode");
+        localStorage.removeItem("voucherDiscount");
         console.error("Error caught in handleVoucherValidation:", error);
         showToast(
           error.message || "An error occurred while validating the voucher.",
@@ -534,8 +514,14 @@ const CheckoutForm = ({ user }: AppSidebarProps) => {
 
       startTransition(async () => {
         try {
+          // GUARD: Ensure user.user_id is defined
+          if (!user?.user_id) {
+            showToast("User not found. Please log in again.", "error");
+            setIsSubmitting(false);
+            return;
+          }
           const orderData = {
-            userId: user.id,
+            userId: user.user_id, // now always a string
             cartItems: (items || []).map((item) => ({
               productId: item.product_id || "",
               bundleId: item.bundle_id || "",
@@ -568,10 +554,60 @@ const CheckoutForm = ({ user }: AppSidebarProps) => {
             }
             result = await processWalletPayment(orderData);
           } else if (selectedPaymentMethod === "paystack") {
-            result = await processWalletPayment(orderData);
+            // Call the new API route to initialize Paystack payment for orders
+            try {
+              const response = await fetch("/api/orders/initialize", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  email: user.email,
+                  amount: totalAmountPaid,
+                  orderDetails: orderData,
+                }),
+              });
+              const data = await response.json();
+              if (response.ok && data.authorization_url) {
+                // Redirect to Paystack
+                window.location.href = data.authorization_url;
+                return; // Stop further execution
+              } else {
+                showToast(
+                  data.message || "Failed to initialize Paystack payment.",
+                  "error"
+                );
+                setIsSubmitting(false);
+                return;
+              }
+            } catch (err) {
+              showToast("Failed to connect to payment gateway.", "error");
+              setIsSubmitting(false);
+              return;
+            }
           }
 
           if (result.success) {
+            // After successful order, update referral record if needed
+            if (autoAppliedReferralVoucher && user?.user_id) {
+              try {
+                await fetch(`/api/referral/status`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    userId: user.user_id,
+                    status: "qualified",
+                    referred_discount_given: true,
+                  }),
+                });
+              } catch (err) {
+                console.error(
+                  "Failed to update referral status after order:",
+                  err
+                );
+              }
+            }
+            // Clear voucher from localStorage after successful order
+            localStorage.removeItem("voucherCode");
+            localStorage.removeItem("voucherDiscount");
             showToast("Order created successfully!", "success");
             router.push(
               `/order/order-confirmation?orderId=${result.data.orderId}`
@@ -667,7 +703,7 @@ const CheckoutForm = ({ user }: AppSidebarProps) => {
                                   <Input
                                     placeholder="Enter full name"
                                     {...field}
-                                    className="rounded-lg p-3 border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent"
+                                    className="rounded-lg p-3 border-gray-300 "
                                     disabled={isSubmitting}
                                   />
                                 </FormControl>
@@ -688,7 +724,7 @@ const CheckoutForm = ({ user }: AppSidebarProps) => {
                                   <Input
                                     placeholder="Enter street address"
                                     {...field}
-                                    className="rounded-lg p-3 border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent"
+                                    className="rounded-lg p-3 border-gray-300 "
                                     disabled={isSubmitting}
                                   />
                                 </FormControl>
@@ -713,25 +749,36 @@ const CheckoutForm = ({ user }: AppSidebarProps) => {
                                   disabled={isSubmitting}
                                 >
                                   <FormControl>
-                                    <SelectTrigger className="rounded-lg p-3 border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent">
+                                    <SelectTrigger className="rounded-lg p-3 border-gray-300 ">
                                       <SelectValue placeholder="Select your location" />
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                    {locations.map((location) => (
-                                      <SelectItem
-                                        key={location.value}
-                                        value={location.value}
-                                        className="hover:bg-gray-100 px-4 py-2"
-                                      >
-                                        <div className="flex justify-between items-center">
-                                          <span>{location.label}</span>
-                                          <span className="text-sm text-gray-500">
-                                            {formatNaira(location.cost)}
-                                          </span>
-                                        </div>
-                                      </SelectItem>
-                                    ))}
+                                    {locationsError ? (
+                                      <div className="text-red-500 p-2">
+                                        Failed to load locations:{" "}
+                                        {locationsError.message}
+                                      </div>
+                                    ) : isLoadingLocations ? (
+                                      <div className="p-2 text-gray-500">
+                                        Loading locations...
+                                      </div>
+                                    ) : (
+                                      locations.map((location) => (
+                                        <SelectItem
+                                          key={location.name}
+                                          value={location.name}
+                                          className="hover:bg-gray-100 px-4 py-2"
+                                        >
+                                          <div className="flex justify-between items-center">
+                                            <span>{location.name}</span>
+                                            <span className="text-sm text-gray-500">
+                                              {formatNaira(location.price)}
+                                            </span>
+                                          </div>
+                                        </SelectItem>
+                                      ))
+                                    )}
                                   </SelectContent>
                                 </Select>
                                 <FormMessage className="text-red-500" />
@@ -751,7 +798,7 @@ const CheckoutForm = ({ user }: AppSidebarProps) => {
                                   <Input
                                     placeholder="Enter phone number"
                                     {...field}
-                                    className="rounded-lg p-3 border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent"
+                                    className="rounded-lg p-3 border-gray-300 "
                                     disabled={isSubmitting}
                                   />
                                 </FormControl>
@@ -797,7 +844,7 @@ const CheckoutForm = ({ user }: AppSidebarProps) => {
                             value={selectedPaymentMethod}
                             onValueChange={setSelectedPaymentMethod}
                           >
-                            <SelectTrigger className="mt-1 w-48 rounded-lg p-3 border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent">
+                            <SelectTrigger className="mt-1 w-48 rounded-lg p-3 border-gray-300 ">
                               <SelectValue placeholder="Select payment method" />
                             </SelectTrigger>
                             <SelectContent>
@@ -859,7 +906,7 @@ const CheckoutForm = ({ user }: AppSidebarProps) => {
                         {Object.entries(groupedItems).map(
                           ([productId, productGroup]: [
                             string,
-                            GroupedCartItem
+                            GroupedCartItem,
                           ]) => (
                             <CartProductGroupDisplay
                               key={productId}
@@ -921,41 +968,54 @@ const CheckoutForm = ({ user }: AppSidebarProps) => {
                               id="voucherCode"
                               placeholder="Enter voucher code"
                               value={voucherCode}
-                              onChange={(e) => setVoucherCode(e.target.value)}
-                              className="flex-grow py-6 ring-1 ring-zinc-400 focus:ring-2 focus:ring-primary focus:border-transparent"
-                              disabled={
-                                isSubmitting ||
-                                autoAppliedReferralVoucher !== null
-                              }
-                              readOnly={autoAppliedReferralVoucher !== null}
+                              onChange={(e) => {
+                                setVoucherCode(e.target.value);
+                                setVoucherValidationAttempted(false);
+                              }}
+                              className="flex-grow py-6 ring-1 ring-zinc-400 "
+                              disabled={isReferralVoucher || isSubmitting}
                             />
                             <ShimmerButton
                               type="button"
-                              onClick={handleVoucherValidation}
+                              onClick={() => {
+                                setVoucherValidationAttempted(true);
+                                handleVoucherValidation();
+                              }}
                               className="px-6 py-3 text-sm font-medium"
-                              shimmerColor="#1B6013" // Use your primary color for shimmer
+                              shimmerColor="#1B6013"
                               shimmerSize="0.1em"
                               borderRadius="8px"
                               background="#1B6013"
                               disabled={
+                                isReferralVoucher ||
                                 isSubmitting ||
-                                isLoadingReferralStatus ||
-                                autoAppliedReferralVoucher !== null
+                                isLoadingReferralStatus
                               }
                             >
                               Apply
                             </ShimmerButton>
                           </div>
-                          {isVoucherValid && voucherDiscount > 0 && (
-                            <p className="text-sm text-green-600">
-                              Discount Applied: {formatNaira(voucherDiscount)}
+                          {isReferralVoucher && (
+                            <p className="text-sm text-blue-600">
+                              Referral voucher applied. You cannot apply another
+                              voucher.
                             </p>
                           )}
-                          {!isVoucherValid && voucherCode && (
-                            <p className="text-sm text-red-600">
-                              Invalid or expired voucher.
-                            </p>
-                          )}
+                          {isVoucherValid &&
+                            voucherDiscount > 0 &&
+                            !isReferralVoucher && (
+                              <p className="text-sm text-green-600">
+                                Discount Applied: {formatNaira(voucherDiscount)}
+                              </p>
+                            )}
+                          {voucherValidationAttempted &&
+                            !isVoucherValid &&
+                            voucherCode &&
+                            !isReferralVoucher && (
+                              <p className="text-sm text-red-600">
+                                Invalid or expired voucher.
+                              </p>
+                            )}
                         </div>
                       </div>
                     </div>
@@ -1071,6 +1131,16 @@ function Footer({
         </Button>
       )}
     </div>
+  );
+}
+
+// Type guard for ProductOption
+function isProductOption(option: unknown): option is ProductOption {
+  return (
+    typeof option === "object" &&
+    option !== null &&
+    "price" in option &&
+    typeof (option as any).price === "number"
   );
 }
 

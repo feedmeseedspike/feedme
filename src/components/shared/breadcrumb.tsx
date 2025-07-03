@@ -13,17 +13,26 @@ import {
 import { usePathname } from "next/navigation";
 
 interface CustomBreadcrumbProps {
-  hideCategorySegment?: boolean; // Add this prop
+  hideCategorySegment?: boolean;
+  category?: string;
+  productName?: string;
 }
 
-const CustomBreadcrumb = ({ hideCategorySegment = false }: CustomBreadcrumbProps) => {
+const CustomBreadcrumb = ({
+  hideCategorySegment = false,
+  category,
+  productName,
+}: CustomBreadcrumbProps) => {
   const paths = usePathname() ?? "";
   const pathNames = paths.split("/").filter((path) => path);
 
-  // Filter out "category" if the prop is true
-  const displayPathNames = hideCategorySegment
-    ? pathNames.filter(name => name !== "category")
-    : pathNames;
+  // If category and productName are provided, use them for the breadcrumb
+  const displayPathNames =
+    category && productName
+      ? [category, productName]
+      : hideCategorySegment
+        ? pathNames.filter((name) => name !== "category")
+        : pathNames;
 
   return (
     <Breadcrumb className="">
@@ -33,15 +42,13 @@ const CustomBreadcrumb = ({ hideCategorySegment = false }: CustomBreadcrumbProps
             <Link href="/">Home</Link>
           </BreadcrumbLink>
         </BreadcrumbItem>
-        
         {displayPathNames.length > 0 && (
           <>
             <BreadcrumbSeparator />
             {displayPathNames.map((link, index) => {
               const isLast = index === displayPathNames.length - 1;
-              // Build href with original path names (including "category" if present)
-              const href = `/${pathNames.slice(0, index + 1).join("/")}`;
-
+              // Build href for category, but not for product name
+              const href = index === 0 ? `/category/${link}` : undefined;
               return (
                 <React.Fragment key={index}>
                   <BreadcrumbItem>
@@ -49,7 +56,7 @@ const CustomBreadcrumb = ({ hideCategorySegment = false }: CustomBreadcrumbProps
                       <BreadcrumbPage>{link}</BreadcrumbPage>
                     ) : (
                       <BreadcrumbLink asChild>
-                        <Link href={href}>{link}</Link>
+                        <Link href={href || "#"}>{link}</Link>
                       </BreadcrumbLink>
                     )}
                   </BreadcrumbItem>

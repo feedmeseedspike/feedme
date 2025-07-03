@@ -39,17 +39,18 @@ import {
 } from "@components/ui/select";
 import { z } from "zod";
 import Link from "next/link";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { updateUserInfo } from "src/lib/actions/user.action";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "../../../lib/utils";
-import { Calendar } from "../../../components/ui/calendar";
+import { Calendar as ShadCalendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "../../../components/ui/popover";
+import { getUserQuery } from "src/queries/auth";
 
 interface AppSidebarProps {
   user: PublicUserData;
@@ -57,22 +58,66 @@ interface AppSidebarProps {
 
 const isFile = (value: any): value is File => value instanceof File;
 
-const Profile = ({ user }: AppSidebarProps) => {
+// Helper: convert MM-DD string to Date (use year 2000)
+function mmddToDate(mmdd: string): Date | undefined {
+  if (!mmdd) return undefined;
+  const [month, day] = mmdd.split("-").map(Number);
+  if (!month || !day) return undefined;
+  return new Date(2000, month - 1, day);
+}
+
+// Helper: convert Date to MM-DD string
+function dateToMMDD(date: Date | null | undefined): string | null {
+  if (!date) return null;
+  return `${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+// Helper: format MM-DD as 'Month Day'
+function formatMonthDay(mmdd: string | null | undefined): string {
+  if (!mmdd) return "";
+  const date = mmddToDate(mmdd);
+  return date
+    ? date.toLocaleDateString(undefined, { month: "long", day: "numeric" })
+    : "";
+}
+
+const Profile = ({ user: initialUser }: AppSidebarProps) => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { showToast } = useToast();
 
+  const {
+    data: user,
+    isLoading,
+    isError,
+    error: userError,
+  } = useQuery({
+    ...getUserQuery(),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const allowedRoles = [
+    "customer",
+    "vendor",
+    "admin",
+    "buyer",
+    "seller",
+  ] as const;
+  const defaultRole = allowedRoles.includes(user?.role as any)
+    ? (user?.role as (typeof allowedRoles)[number])
+    : "customer";
   const form = useForm<z.infer<typeof UserProfileSchema>>({
     resolver: zodResolver(UserProfileSchema),
     mode: "all",
-    defaultValues: {
-      display_name: user.display_name,
-      role: user.role,
-      avatar: user?.avatar_url ?? undefined,
-      birthday: user.birthday
-        ? format(new Date(user.birthday), "yyyy-MM-dd")
-        : null,
-      favorite_fruit: user.favorite_fruit || "",
+    values: {
+      display_name: user?.display_name || "",
+      role: defaultRole,
+      avatar: user?.avatar_url ?? "",
+      birthday:
+        typeof user?.birthday === "string" && user?.birthday?.length === 5
+          ? user.birthday
+          : null,
+      favorite_fruit: user?.favorite_fruit || "",
     },
   });
 
@@ -173,7 +218,7 @@ const Profile = ({ user }: AppSidebarProps) => {
                       src={avatarPreview || user?.avatar_url || undefined}
                     />
                     <AvatarFallback className="text-xl bg-[#1B6013]/10 text-[#1B6013]">
-                      {user?.display_name[0]}
+                      {user?.display_name ? user.display_name[0] : "U"}
                     </AvatarFallback>
                   </Avatar>
 
@@ -245,7 +290,7 @@ const Profile = ({ user }: AppSidebarProps) => {
                     Email Address
                   </FormLabel>
                   <Input
-                    value={user.email}
+                    value={initialUser.email || ""}
                     readOnly
                     className="h-12 bg-gray-50 border-gray-200 text-gray-600 rounded-lg cursor-not-allowed"
                   />
@@ -281,7 +326,7 @@ const Profile = ({ user }: AppSidebarProps) => {
                     <FormItem className="flex flex-col">
                       <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
                         <CalendarIcon className="w-4 h-4 text-[#1B6013]" />
-                        Birthday
+                        Birthday (Month & Day Only)
                       </FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
@@ -295,7 +340,7 @@ const Profile = ({ user }: AppSidebarProps) => {
                             >
                               <CalendarIcon className="mr-2 h-4 w-4" />
                               {field.value ? (
-                                format(new Date(field.value), "PPP")
+                                formatMonthDay(field.value)
                               ) : (
                                 <span>Pick a date</span>
                               )}
@@ -303,17 +348,16 @@ const Profile = ({ user }: AppSidebarProps) => {
                           </FormControl>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
+                          <ShadCalendar
                             mode="single"
-                            selected={
-                              field.value ? new Date(field.value) : undefined
-                            }
-                            onSelect={(date) =>
-                              field.onChange(
-                                date ? format(date, "yyyy-MM-dd") : null
-                              )
-                            }
+                            selected={mmddToDate(field.value ?? "")}
+                            onSelect={(date) => {
+                              field.onChange(dateToMMDD(date));
+                            }}
                             initialFocus
+                            captionLayout="dropdown"
+                            startMonth={new Date(2000, 0)}
+                            endMonth={new Date(2000, 11)}
                           />
                         </PopoverContent>
                       </Popover>
@@ -351,7 +395,7 @@ const Profile = ({ user }: AppSidebarProps) => {
                     Account Type
                   </FormLabel>
                   <Input
-                    value={user.role}
+                    value={user?.role || "customer"}
                     readOnly
                     className="h-12 bg-gray-50 border-gray-200 text-gray-600 rounded-lg cursor-not-allowed"
                   />
@@ -360,25 +404,6 @@ const Profile = ({ user }: AppSidebarProps) => {
                   </p>
                 </FormItem>
               </div>
-
-              {/* Form Errors */}
-              {Object.keys(form.formState.errors).length > 0 && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <h4 className="text-red-800 font-medium mb-2">
-                    Please fix the following errors:
-                  </h4>
-                  <ul className="text-red-600 text-sm space-y-1">
-                    {Object.values(form.formState.errors).map(
-                      (error, index) => (
-                        <li key={index} className="flex items-center gap-2">
-                          <span className="w-1 h-1 bg-red-500 rounded-full"></span>
-                          {error.message}
-                        </li>
-                      )
-                    )}
-                  </ul>
-                </div>
-              )}
 
               {/* Submit Button */}
               <div className="flex justify-end pt-6 border-t border-gray-200">

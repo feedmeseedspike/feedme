@@ -51,7 +51,7 @@ const ReferralBanner = ({ hasReferralStatus }: ReferralBannerProps) => {
         variant="ghost"
         size="icon"
         onClick={handleClose}
-        className="absolute right-2 top-1/2 -translate-y-1/2 text-white hover:bg-white/20"
+        className="absolute right-2 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 !border-none"
       >
         <X className="w-4 h-4" />
         <span className="sr-only">Close banner</span>

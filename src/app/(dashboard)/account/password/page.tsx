@@ -17,7 +17,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@components/ui/form";
-import { ErrorBoundary } from "@components/shared/ErrorBoundary";
+import ErrorBoundary from "@components/shared/ErrorBoundary";
 
 const passwordSchema = z
   .object({
@@ -30,6 +30,9 @@ const passwordSchema = z
         "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"
       ),
     confirmPassword: z.string(),
+    showCurrentPassword: z.boolean().optional(),
+    showNewPassword: z.boolean().optional(),
+    showConfirmPassword: z.boolean().optional(),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
     message: "Passwords don't match",
@@ -48,15 +51,30 @@ export default function PasswordPage() {
       currentPassword: "",
       newPassword: "",
       confirmPassword: "",
+      showCurrentPassword: false,
+      showNewPassword: false,
+      showConfirmPassword: false,
     },
   });
 
   const onSubmit = async (data: PasswordFormValues) => {
     try {
       setIsLoading(true);
-      await updatePassword(data.currentPassword, data.newPassword);
-      showToast("Password updated successfully", "success");
-      form.reset();
+      const result = await updatePassword(
+        data.currentPassword,
+        data.newPassword
+      );
+
+      if (result.success) {
+        showToast("Password updated successfully", "success");
+        form.reset();
+      } else {
+        const errorMsg =
+          typeof result.error === "string"
+            ? result.error
+            : result.error.message;
+        showToast(errorMsg || "Failed to update password", "error");
+      }
     } catch (error: any) {
       showToast(error.message || "Failed to update password", "error");
     } finally {
@@ -66,8 +84,8 @@ export default function PasswordPage() {
 
   return (
     <ErrorBoundary>
-      <div className="max-w-md mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-6">Change Password</h1>
+      <div className=" py-4">
+        <h1 className="text-2xl font-bold mb-4">Change Password</h1>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

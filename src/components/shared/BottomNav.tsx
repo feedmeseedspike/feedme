@@ -21,7 +21,7 @@ export default function BottomNav() {
     { href: "/cart", icon: FaShoppingCart, label: "Cart" },
     { href: "/account/order", icon: FaClipboardList, label: "Orders" },
     { href: "/account/favourites", icon: FaHeart, label: "Favorites" },
-    { href: "/account", icon: FaUserCircle, label: "Account" },
+    { href: "/account/profile", icon: FaUserCircle, label: "Account" },
   ];
 
   return (

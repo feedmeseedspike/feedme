@@ -23,6 +23,7 @@ import { CloudUpload, Plus } from "lucide-react";
 import Option from "@components/icons/option.svg";
 import { OptionSchema } from "src/lib/validator";
 import { uploadOptionImage } from "src/lib/api";
+import Image from "next/image";
 
 type OptionFormValues = z.infer<typeof OptionSchema>;
 
@@ -169,9 +170,11 @@ export default function OptionModal({
                 className="cursor-pointer text-center"
               >
                 {image ? (
-                  <img
+                  <Image
                     src={URL.createObjectURL(image)}
                     alt="Preview"
+                    width={80}
+                    height={80}
                     className="w-20 h-20 object-cover rounded-md"
                   />
                 ) : (

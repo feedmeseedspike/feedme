@@ -79,7 +79,7 @@ const cartSlice = createSlice({
           ...item,
           quantity,
           selectedOption: selectedOption ?? undefined,
-          options: item.options || [],
+          options: Array.isArray(item.options) ? item.options : [],
         });
       }
 

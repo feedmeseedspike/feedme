@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getPromotions as getPromotionsAction, createPromotion as createPromotionAction, getProductsByTag as getProductsByTagAction, getPromotionByTag as getPromotionByTagAction, deletePromotion as deletePromotionAction, updatePromotion as updatePromotionAction, addProductToPromotion as addProductToPromotionAction, removeProductFromPromotion as removeProductFromPromotionAction, getLinkedProductsForPromotion as getLinkedProductsForPromotionAction, searchProducts as searchProductsAction } from "../lib/actions/promotion.actions";
 import { Database } from "../utils/database.types";
 import { useToast } from "../hooks/useToast";
-import { createClient } from "../utils/supabase/client"; // Use local memoized client
+import { createClient } from "@/utils/supabase/client";
 
 // Define the query keys
 export const promotionsQueryKey = ["promotions"];
@@ -11,7 +11,7 @@ export const promotionByTagQueryKey = (tag: string) => ["promotion", tag];
 
 // This query hook will call the server action to fetch promotions
 export function usePromotionsQuery(filterOptions?: { isFeatured?: boolean }) {
-  const supabase = createClient(); // Use local memoized client
+  const supabase = createClient();
 
   // Base query: select all columns from promotions that are active.
   let queryBuilder = supabase

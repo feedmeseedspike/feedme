@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { Range } from "react-range";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { formatNaira } from "src/lib/utils";
@@ -33,19 +33,20 @@ const PriceRangeSlider = ({
     return [0, maxPrice];
   });
 
-  // Create a debounced URL update function
-  const debouncedUpdateUrl = useCallback(
-    debounce((newValues: [number, number]) => {
-      const newParams = new URLSearchParams(searchParams.toString());
+  const debouncedUpdateUrl = useMemo(
+    () =>
+      debounce((newValues: [number, number]) => {
+        const newParams = new URLSearchParams(searchParams.toString());
+        if (newValues[0] === 0 && newValues[1] === maxPrice) {
+          newParams.delete("price");
+        } else {
+          newParams.set("price", `${newValues[0]}-${newValues[1]}`);
+        }
 
-      if (newValues[0] === 0 && newValues[1] === maxPrice) {
-        newParams.delete("price");
-      } else {
-        newParams.set("price", `${newValues[0]}-${newValues[1]}`);
-      }
-
-      router.replace(`${pathname}?${newParams.toString()}`, { scroll: false });
-    }, 500),
+        router.replace(`${pathname}?${newParams.toString()}`, {
+          scroll: false,
+        });
+      }, 500),
     [maxPrice, pathname, router, searchParams]
   );
 

@@ -15,11 +15,35 @@ import { createClient } from "@utils/supabase/server";
 import ProfileDropdown from "@components/shared/account/profile-dropdown";
 
 const Dashboard = async ({ children }: { children: React.ReactNode }) => {
-  const userData = await getUser();
+  const userDataRaw = await getUser();
 
-  if (!userData) {
-    redirect("/login?callbackUrl=/account");
+  if (!userDataRaw) {
+    redirect("/login?callbackUrl=/account/profile");
   }
+
+  // Adapt userDataRaw to match UserData type
+  const userData: UserData = {
+    avatar_url: userDataRaw.avatar_url ?? "",
+    vouchers: [],
+    deletedAt: undefined,
+    id: userDataRaw.user_id ?? "",
+    display_name: userDataRaw.display_name ?? "",
+    email: userDataRaw.email ?? "",
+    password: undefined,
+    phone: undefined,
+    role: (userDataRaw.role as "buyer" | "seller" | "admin") ?? "buyer",
+    status: userDataRaw.status ?? "",
+    cart: [],
+    favorites: [],
+    reviews: [],
+    purchases: [],
+    products: [],
+    address: undefined,
+    createdAt: userDataRaw.created_at ?? undefined,
+    updatedAt: undefined,
+    birthday: userDataRaw.birthday ?? undefined,
+    favorite_fruit: userDataRaw.favorite_fruit ?? undefined,
+  };
 
   return (
     <SidebarProvider>

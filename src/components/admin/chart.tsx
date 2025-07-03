@@ -52,36 +52,24 @@ export default function Chart({
   value,
   percentage,
   data,
-  dataKeyName,
-  secondDataKeyName,
-  secondLineColor = "blue",
+  xAxisKey,
+  yAxisKey,
   dateRange,
-  compareTo,
 }: {
   title: string;
   value: string | number;
   percentage: number;
   data: any[];
-  dataKeyName?: string;
-  secondDataKeyName?: string;
-  secondLineColor?: string;
+  xAxisKey: string;
+  yAxisKey: string;
   dateRange?: DateRange;
-  compareTo?: "Previous period" | "Previous year" | null;
 }) {
-  const [showDataset1, setShowDataset1] = useState(true);
   const [filteredData, setFilteredData] = useState(data);
 
   useEffect(() => {
-    // Filtering based on date is now handled in the parent component (page.tsx)
-    // This effect will just update the internal state when the data prop changes
     setFilteredData(data);
   }, [data]);
 
-  // Determine data keys for lines (exclude 'date')
-  const dataKeys =
-    data.length > 0 ? Object.keys(data[0]).filter((key) => key !== "date") : [];
-
-  // Assign colors dynamically for multiple lines
   const colors = [
     "#101828",
     "#007BFF",
@@ -89,7 +77,7 @@ export default function Chart({
     "#28A745",
     "#DC3545",
     "#6F42C1",
-  ]; // Add more colors if needed
+  ];
 
   return (
     <div className="py-4 border border-[#EAECF0] rounded-xl shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)] bg-white w-full">
@@ -110,39 +98,22 @@ export default function Chart({
       </div>
       <div className="flex flex-col gap-5 px-5">
         <p className="text-[13px] font-medium mt-2">
-          {title.includes("Location")
-            ? "OVER TIME by Location"
-            : dataKeyName
-            ? dataKeyName.toUpperCase() + " OVER TIME"
-            : "DATA OVER TIME"}
+          {yAxisKey.toUpperCase()} OVER TIME
         </p>
-
         <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={filteredData}>
             <defs>
-              {dataKeys.map((key, index) => (
-                <linearGradient
-                  id={`gradient-${key}`}
-                  x1="0"
-                  y1="0"
-                  x2="0"
-                  y2="1"
-                  key={key}
-                >
-                  <stop
-                    offset="0%"
-                    stopColor={colors[index % colors.length]}
-                    stopOpacity={0.3}
-                  />
-                  <stop
-                    offset="100%"
-                    stopColor={colors[index % colors.length]}
-                    stopOpacity={0}
-                  />
-                </linearGradient>
-              ))}
+              <linearGradient
+                id={`gradient-${yAxisKey}`}
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
+              >
+                <stop offset="0%" stopColor={colors[0]} stopOpacity={0.3} />
+                <stop offset="100%" stopColor={colors[0]} stopOpacity={0} />
+              </linearGradient>
             </defs>
-
             <CartesianGrid
               strokeDasharray="3 3"
               stroke="#DEE3EDB2"
@@ -150,7 +121,7 @@ export default function Chart({
               vertical={false}
             />
             <XAxis
-              dataKey="date"
+              dataKey={xAxisKey}
               tick={{ fontSize: 12, fill: "#666" }}
               axisLine={false}
               tickLine={false}
@@ -168,38 +139,32 @@ export default function Chart({
                 fontSize: "12px",
               }}
             />
-
-            {dataKeys.map((key, index) => (
-              <React.Fragment key={key}>
-                <Area
-                  type="monotone"
-                  dataKey={key}
-                  stroke={colors[index % colors.length]}
-                  fill={`url(#gradient-${key})`}
-                  key={`area-${key}`}
-                />
-                <Line
-                  type="monotone"
-                  dataKey={key}
-                  stroke={colors[index % colors.length]}
-                  strokeWidth={2.5}
-                  dot={{ r: 0 }}
-                  activeDot={{ r: 5, fill: colors[index % colors.length] }}
-                  key={`line-${key}`}
-                />
-              </React.Fragment>
-            ))}
+            <Area
+              type="monotone"
+              dataKey={yAxisKey}
+              stroke={colors[0]}
+              fill={`url(#gradient-${yAxisKey})`}
+            />
+            <Line
+              type="monotone"
+              dataKey={yAxisKey}
+              stroke={colors[0]}
+              strokeWidth={2.5}
+              dot={{ r: 0 }}
+              activeDot={{ r: 5, fill: colors[0] }}
+            />
           </AreaChart>
         </ResponsiveContainer>
-
-        <div className="flex justify-end gap-4 items-center text-xs text-gray-500">
-          {dateRange?.from && dateRange?.to
-            ? `${format(dateRange.from, "MMM. d")}-${format(
-                dateRange.to,
-                "MMM. d"
-              )}`
-            : "Custom Range"}
-        </div>
+        {dateRange && (
+          <div className="flex justify-end gap-4 items-center text-xs text-gray-500">
+            {dateRange?.from && dateRange?.to
+              ? `${format(dateRange.from, "MMM. d")}-${format(
+                  dateRange.to,
+                  "MMM. d"
+                )}`
+              : "Custom Range"}
+          </div>
+        )}
       </div>
     </div>
   );

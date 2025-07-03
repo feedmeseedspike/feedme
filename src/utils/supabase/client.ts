@@ -5,21 +5,12 @@ import { useMemo } from 'react'
 
 let client: TypedSupabaseClient | undefined
 
-function createClient() {
-  if (client) {
-    return client
-  }
-
-  client = createBrowserClient<Database>(
+export function createClient() {
+  return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
-
-  return client
 }
-
-export { createClient }
-
 function useSupabaseBrowser() {
   return useMemo(createClient, [])
 }

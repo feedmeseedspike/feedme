@@ -35,15 +35,11 @@ export default function CategoryDetails({ category }: CategoryDetailsProps) {
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500">Created At</h3>
-            <p className="text-base">
-              {category.createdAt ? formatDate(category.created_at) : "N/A"}
-            </p>
+            <p className="text-base">N/A</p>
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500">Last Updated</h3>
-            <p className="text-base">
-              {category.updatedAt ? formatDate(category.updated_at) : "N/A"}
-            </p>
+            <p className="text-base">N/A</p>
           </div>
         </CardContent>
       </Card>

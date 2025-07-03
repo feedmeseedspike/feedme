@@ -5,6 +5,7 @@ import { TablesInsert } from 'src/utils/database.types'; // Import TablesInsert
 
 export async function POST(request: Request) {
   const supabase = createClient();
+  const supabaseAdmin = createClient();
 
   const { referrerEmail, referredUserId, referredUserEmail } = await request.json();
 
@@ -16,15 +17,25 @@ export async function POST(request: Request) {
 
   try {
     // 1. Validate referrer email and get referrer_user_id
-    const { data: referrerData, error: referrerError } = await supabase
-      .from('users')
-      .select('id, email')
-      .eq('email', referrerEmail)
+    // Use Supabase Admin API to get user by email
+    const { data: users, error: referrerUserError } = await supabaseAdmin.auth.admin.listUsers();
+    const referrerUser = users?.users?.find((u) => u.email === referrerEmail);
+
+    if (referrerUserError || !referrerUser) {
+      console.error('Referrer email not found or error fetching referrer:', referrerUserError);
+      return NextResponse.json({ message: 'Invalid referral code (referrer email not found).' }, { status: 404 });
+    }
+
+    // Now get the profile by user_id
+    const { data: referrerProfile, error: referrerProfileError } = await supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('user_id', referrerUser.id)
       .single();
 
-    if (referrerError || !referrerData) {
-      console.error('Referrer email not found or error fetching referrer:', referrerError);
-      return NextResponse.json({ message: 'Invalid referral code (referrer email not found).' }, { status: 404 });
+    if (referrerProfileError || !referrerProfile) {
+      console.error('Referrer profile not found:', referrerProfileError);
+      return NextResponse.json({ message: 'Referrer profile not found.' }, { status: 404 });
     }
 
     // Check if a record with this referrer_email already exists in the referrals table
@@ -71,8 +82,8 @@ export async function POST(request: Request) {
 
     // 3. Insert the referral record
     const referralInsertData: TablesInsert<'referrals'> = {
-      referrer_user_id: referrerData.id,
-      referrer_email: referrerData.email as string,
+      referrer_user_id: referrerProfile.user_id,
+      referrer_email: referrerUser.email as string,
       referred_user_id: referredUserId,
       referred_user_email: referredUserEmail,
       status: 'pending',

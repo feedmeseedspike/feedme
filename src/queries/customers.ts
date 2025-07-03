@@ -16,7 +16,7 @@ export const customerKeys = {
 export function getCustomerQuery(customerId: string): UseQueryOptions<Customer | undefined, Error> {
   return {
     queryKey: customerKeys.detail(customerId),
-    queryFn: () => getCustomerByIdAction(customerId) as Promise<Customer | undefined>,
+    queryFn: () => getCustomerByIdAction(customerId) as unknown as Promise<Customer | undefined>,
     // Add staleTime, cacheTime, etc. as per your application's caching strategy
   };
 }
@@ -38,7 +38,7 @@ interface FetchCustomersParams {
   search?: string;
 }
 
-export interface FetchedCustomerData extends Tables<'users'> {
+export interface FetchedCustomerData extends Tables<'profiles'> {
     addresses: Array<{ phone: string | null; city: string | null }> | null; 
 }
 
@@ -49,11 +49,10 @@ export async function fetchCustomers({
 }: FetchCustomersParams): Promise<{ data: FetchedCustomerData[] | null; count: number | null }> {
   const supabase = createClient();
 
-  // Select all users columns and related addresses' phone and city
-  let query = supabase.from('users').select('*, addresses(phone, city)', { count: 'exact' });
+  // Select all profiles columns and related addresses' phone and city
+  let query = supabase.from('profiles').select('*, addresses(phone, city)', { count: 'exact' });
 
   if (search) {
-    // Adjust search to filter on display_name and email for now
      query = query.or(
        `display_name.ilike.%${search}%, email.ilike.%${search}%`
      );

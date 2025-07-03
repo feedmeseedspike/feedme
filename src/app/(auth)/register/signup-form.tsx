@@ -54,8 +54,8 @@ export default function CredentialsSignUpForm() {
     if (user && !isUserLoading) {
       const redirectUrl = urlReferralCode
         ? `/account?referral_code=${encodeURIComponent(urlReferralCode)}`
-        : "/account";
-      router.replace("/account/referral");
+        : "/";
+      router.replace("/");
     }
   }, [user, isUserLoading, router, urlReferralCode]);
 
@@ -157,7 +157,7 @@ export default function CredentialsSignUpForm() {
       showToast("Registration successful!", "success");
 
       return router.push(
-        `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
+        `/login`
       );
     } catch (error: any) {
       console.error("Signup failed:", error);

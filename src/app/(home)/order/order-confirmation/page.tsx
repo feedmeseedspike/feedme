@@ -14,7 +14,6 @@ import { useSearchParams } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { fetchOrderById } from "src/queries/orders";
 import { formatNaira } from "src/lib/utils";
-import { CartItem, Purchase } from "src/types"; // Assuming Purchase type is in src/types
 import { Badge } from "@components/ui/badge";
 import { useUser } from "src/hooks/useUser";
 import { useCreateUpdateReviewMutation } from "src/queries/reviews";
@@ -46,11 +45,10 @@ type FetchedOrderDetails = Tables<"orders"> & {
     products: Tables<"products"> | null;
     bundles: Tables<"bundles"> | null;
   })[];
-  users?: Tables<"users"> | null; // Assuming users is also joined as per fetchOrderById
 };
 
 const OrderConfirmation = () => {
-  const user = useUser();
+  const userObj = useUser();
   const searchParams = useSearchParams();
   const orderId = searchParams.get("orderId");
   const [orderDetails, setOrderDetails] = useState<FetchedOrderDetails | null>(
@@ -59,6 +57,12 @@ const OrderConfirmation = () => {
   const [transaction, setTransaction] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  let normalizedUser = userObj.user as { id?: string; user_id?: string } | null;
+  if (normalizedUser && !normalizedUser.id && normalizedUser.user_id) {
+    normalizedUser = { ...normalizedUser, id: normalizedUser.user_id };
+  }
+  const normalizedUserId = normalizedUser?.id ?? "";
 
   useEffect(() => {
     const fetchOrderDetails = async () => {
@@ -117,7 +121,7 @@ const OrderConfirmation = () => {
     );
   }
 
-  const items = orderDetails.order_items || [];
+  const items: any[] = orderDetails.order_items || [];
   const subtotal = items.reduce((acc: number, item: any) => {
     const itemPrice =
       (item.option?.price !== undefined && item.option?.price !== null
@@ -131,7 +135,7 @@ const OrderConfirmation = () => {
     orderDetails.delivery_fee !== null
       ? orderDetails.delivery_fee
       : 0;
-  const voucherDiscount = orderDetails.voucher_discount || 0;
+  const voucherDiscount = 0;
   const totalAmountPaid =
     orderDetails.total_amount_paid || subtotal + deliveryFee - voucherDiscount;
 
@@ -276,11 +280,11 @@ const OrderConfirmation = () => {
             {items.length === 0 ? (
               <p className="text-gray-500">No products to review.</p>
             ) : (
-              items.map((item: CartItem) => (
+              items.map((item: any) => (
                 <ProductReviewForm
                   key={item.id}
                   product={item.products || item.bundles}
-                  userId={user?.id}
+                  userId={normalizedUserId}
                 />
               ))
             )}
@@ -442,7 +446,7 @@ const ProductReviewForm: React.FC<ProductReviewFormProps> = ({
         setExistingImageUrls([]);
         setOriginalImageUrls([]);
       } else {
-        showToast(result.error || "Failed to submit review.", "error");
+        showToast(result.message || "Failed to submit review.", "error");
       }
     } catch (err: any) {
       showToast(err.message || "An unexpected error occurred.", "error");

@@ -1,197 +1,114 @@
 // "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 // import Down from "../icons/Down";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSelector } from "react-redux";
-import path from "path";
-import { Route } from "src/types";
-import { getUser } from "src/lib/actions/auth.actions";
 import { FcDown } from "react-icons/fc";
 
-const Sidebar = async () => {
+type SidebarSection = {
+  title: string;
+  links: { label: string; href: string }[];
+};
+
+const getSidebarSections = (role: string | undefined): SidebarSection[] => {
+  if (role === "buyer") {
+    return [
+      {
+        title: "My Profile",
+        links: [
+          { label: "View Profile", href: "/dashboard/buyer/my-profile" },
+          { label: "View Purchases", href: "/dashboard/buyer/my-purchases" },
+        ],
+      },
+      {
+        title: "My Cart",
+        links: [
+          { label: "View Cart", href: "/dashboard/buyer/my-cart" },
+          { label: "View Wishlist", href: "/dashboard/buyer/my-wishlist" },
+        ],
+      },
+      {
+        title: "My Reviews",
+        links: [{ label: "View Reviews", href: "/dashboard/buyer/my-reviews" }],
+      },
+    ];
+  }
+  if (role === "seller") {
+    return [
+      {
+        title: "My Profile",
+        links: [
+          { label: "View Profile", href: "/dashboard/seller/my-profile" },
+        ],
+      },
+      {
+        title: "My Assets",
+        links: [
+          { label: "View brand", href: "/dashboard/seller/my-brand" },
+          { label: "View Category", href: "/dashboard/seller/my-category" },
+          { label: "View Store", href: "/dashboard/seller/my-store" },
+        ],
+      },
+      {
+        title: "My Products",
+        links: [
+          { label: "Add Product", href: "/dashboard/seller/add-product" },
+          { label: "List Products", href: "/dashboard/seller/list-products" },
+        ],
+      },
+    ];
+  }
+  return [];
+};
+
+const Sidebar = () => {
   const pathname = usePathname();
-  const user = await getUser();
-  // const user = useSelector((state) => state.auth.user);
+  const [role, setRole] = useState<string | undefined>(undefined);
 
-  let routes: Route[] = [];
+  useEffect(() => {
+    // Replace with your actual user role fetching logic
+    // For now, try to get from localStorage or API
+    const userData =
+      typeof window !== "undefined" ? localStorage.getItem("user") : null;
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        setRole(user.role);
+      } catch {
+        setRole(undefined);
+      }
+    }
+  }, []);
 
-  if (user?.role === "buyer") {
-    routes = [
-      {
-        name: "My Profile",
-        paths: [
-          {
-            name: "View Profile",
-            path: "/dashboard/buyer/my-profile",
-          },
-          {
-            name: "View Purchases",
-            path: "/dashboard/buyer/my-purchases",
-          },
-        ],
-      },
-      {
-        name: "My Cart",
-        paths: [
-          {
-            name: "View Cart",
-            path: "/dashboard/buyer/my-cart",
-          },
-          {
-            name: "View Wishlist",
-            path: "/dashboard/buyer/my-wishlist",
-          },
-        ],
-      },
-      {
-        name: "My Reviews",
-        paths: [
-          {
-            name: "View Reviews",
-            path: "/dashboard/buyer/my-reviews",
-          },
-        ],
-      },
-    ];
-  }
-
-  if (user?.role === "seller") {
-    routes = [
-      {
-        name: "My Profile",
-        paths: [
-          {
-            name: "View Profile",
-            path: "/dashboard/seller/my-profile",
-          },
-        ],
-      },
-      {
-        name: "My Assets",
-        paths: [
-          {
-            name: "View brand",
-            path: "/dashboard/seller/my-brand",
-          },
-          {
-            name: "View Category",
-            path: "/dashboard/seller/my-category",
-          },
-          {
-            name: "View Store",
-            path: "/dashboard/seller/my-store",
-          },
-        ],
-      },
-      {
-        name: "My Products",
-        paths: [
-          {
-            name: "Add Product",
-            path: "/dashboard/seller/add-product",
-          },
-          {
-            name: "List Products",
-            path: "/dashboard/seller/list-products",
-          },
-        ],
-      },
-    ];
-  }
-
-  if (user?.role === "admin") {
-    routes = [
-      {
-        name: "Product Discovery",
-        paths: [
-          {
-            name: "List Brands",
-            path: "/dashboard/admin/list-brands",
-          },
-          {
-            name: "List Categories",
-            path: "/dashboard/admin/list-categories",
-          },
-          {
-            name: "List Stores",
-            path: "/dashboard/admin/list-stores",
-          },
-          {
-            name: "List Products",
-            path: "/dashboard/admin/list-products",
-          },
-          {
-            name: "Add Product",
-            path: "/dashboard/seller/add-product",
-          },
-        ],
-      },
-      {
-        name: "Account Features",
-        paths: [
-          // {
-          //   name: "List Favorites",
-          //   path: "/dashboard/admin/list-favorites",
-          // },
-          // {
-          //   name: "List Cart",
-          //   path: "/dashboard/admin/list-cart",
-          // },
-          {
-            name: "List Purchases",
-            path: "/dashboard/admin/list-purchases",
-          },
-          {
-            name: "Offline Orders",
-            path: "/dashboard/agent/offline-order",
-          },
-        ],
-      },
-      // {
-      //   name: "Account Manager",
-      //   paths: [
-      //     {
-      //       name: "List Users",
-      //       path: "/dashboard/admin/list-users",
-      //     },
-      //     {
-      //       name: "Sellers Requests",
-      //       path: "/dashboard/admin/seller-requests",
-      //     },
-      //   ],
-      // },
-    ];
-  }
+  const sections = getSidebarSections(role);
 
   return (
     <section className="md:col-span-4 col-span-12 overflow-hidden bg-white z-50 min-w-full max-w-lg px-2 overflow-y-auto md:block hidden">
       <div className="w-full h-full flex flex-col gap-y-4">
-        {routes.map((route, index) => (
+        {sections.map((section, idx) => (
           <div
-            key={index}
+            key={idx}
             className="bg-slate-50/50 p-2 rounded flex flex-col gap-y-2"
           >
             <h2 className="flex flex-row justify-between items-center">
-              {route.name} <FcDown />
+              {section.title} <FcDown />
             </h2>
-
             <div className="flex flex-col gap-y-2 text-sm p-2 bg-slate-100/50 rounded">
-              {route.paths.map((path, index) => (
+              {section.links.map((link, lidx) => (
                 <Link
-                  href={path.path}
-                  key={index}
+                  href={link.href}
+                  key={lidx}
                   className={
                     "p-1 rounded flex flex-row gap-x-2" +
                     " " +
-                    (pathname === path.path
+                    (pathname === link.href
                       ? "bg-custom-green text-white"
                       : "bg-slate-200/50 text-black")
                   }
                 >
                   <span></span>
-                  {path.name}
+                  {link.label}
                 </Link>
               ))}
             </div>

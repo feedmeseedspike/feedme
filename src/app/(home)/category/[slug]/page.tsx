@@ -87,12 +87,13 @@ async function CategoryContent({
   categoryName: string;
   sort: string;
   page: string;
-  allCategories: any[]; // Assuming CategoryData[] type
+  allCategories: any[];
 }) {
   const data = await getProductsServer({
     category: categoryId,
     page: Number(page),
     sort,
+    limit: 20,
   });
 
   const noResults = data.totalProducts === 0;
@@ -183,7 +184,7 @@ export default async function CategoryPage({
           </Container>
         </div>
         <Container>
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
               <h1 className="text-[#1B6013] text-2xl md:text-3xl !leading-3 font-bold">
                 {categoryName.charAt(0).toUpperCase() + categoryName.slice(1)}

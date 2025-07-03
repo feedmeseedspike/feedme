@@ -107,9 +107,8 @@ const ProductDetails = async (props: {
   }
 
   const supabase = await createClient();
-  const { data: categoriesData } = await getAllCategoriesQuery(supabase).select(
-    "id, title"
-  );
+  const { data: categoriesData } =
+    await getAllCategoriesQuery(supabase).select("id, title");
 
   const productCategory = categoriesData?.find(
     (cat) => cat.id === product.category_ids?.[0]
@@ -117,9 +116,14 @@ const ProductDetails = async (props: {
 
   const cartItemId = generateId();
 
-  const totalRatings = (
-    (product.rating_distribution as Array<{ count: number }>) || []
-  ).reduce((acc: number, { count }: { count: number }) => acc + count, 0);
+  const ratingDistArr = Array.isArray(product.rating_distribution)
+    ? (product.rating_distribution as { count: number }[]).filter(Boolean)
+    : [];
+  const totalRatings = ratingDistArr.reduce(
+    (acc: number, curr: any) =>
+      acc + (typeof curr?.count === "number" ? curr.count : 0),
+    0
+  );
 
   const relatedProducts = await getRelatedProductsByCategory({
     category: product.category_ids?.[0] || "",
@@ -138,7 +142,6 @@ const ProductDetails = async (props: {
         mapSupabaseProductToIProductInput(p, categoriesData as CategoryData[])
       );
     }
-    console.log("Also Viewed Products:", alsoViewedProducts);
   } catch (error) {
     console.error("Error fetching also viewed products:", error);
   }
@@ -154,7 +157,6 @@ const ProductDetails = async (props: {
         mapSupabaseProductToIProductInput(p, categoriesData as CategoryData[])
       );
     }
-    console.log("Also Bought Products:", alsoBoughtProducts);
   } catch (error) {
     console.error("Error fetching also bought products:", error);
   }
@@ -185,10 +187,10 @@ const ProductDetails = async (props: {
             name: product.name,
             image: product.images?.[0],
             description: product.description,
-            brand: {
-              "@type": "Brand",
-              name: product.brand || "FeedMe",
-            },
+            // brand: {
+            //   "@type": "Brand",
+            //   name: product.brand || "FeedMe",
+            // },
             offers: {
               "@type": "Offer",
               url: `${siteUrl}/product/${product.slug}`,
@@ -203,6 +205,22 @@ const ProductDetails = async (props: {
                 name: "FeedMe Nigeria",
               },
             },
+            twitter: {
+              card: "summary_large_image",
+              title: product.name,
+              description: product.description || "",
+              images: product.images?.[0] || "/logo.png",
+            },
+            alternates: {
+              canonical: `${process.env.NEXT_PUBLIC_SITE_URL}/product/${product.slug}`,
+            },
+            openGraph: {
+              title: product.name,
+              description: product.description || "",
+              images: product.images?.[0] || "/logo.png",
+              url: `${process.env.NEXT_PUBLIC_SITE_URL}/product/${product.slug}`,
+              type: "product",
+            },
             aggregateRating:
               product.numReviews > 0
                 ? {
@@ -216,10 +234,17 @@ const ProductDetails = async (props: {
       />
     );
   };
+
+  // Ensure options is ProductOption[] and filter out nulls
+  const productOptions = Array.isArray(product.options)
+    ? (product.options as any[]).filter(Boolean)
+    : [];
+
   return (
-    <section>
-      <Container>
-        {/* {productCategory && (
+    <>
+      <section>
+        <Container>
+          {/* {productCategory && (
           <div className="mb-4 text-sm text-gray-500">
             <Link href={`/categories`} className="hover:underline">
               Categories
@@ -235,75 +260,77 @@ const ProductDetails = async (props: {
             <span>{product.name}</span>
           </div>
         )} */}
-        <AddToBrowsingHistory
-          id={product.id!}
-          category={product.category_ids || []}
-        />
-        <ProductDetailsClient
-          product={{
-            _id: product.id,
-            name: product.name,
-            images: product.images || [],
-            avgRating: product.avg_rating || 0,
-            numReviews: product.num_reviews || 0,
-            ratingDistribution: product.rating_distribution || [],
-            options: (product.options as any) || [],
-            slug: product.slug,
-            category: product.category_ids?.[0] || "",
-            price: product.price || 0,
-            vendor: {
-              id: product.vendor_id || "",
-              shopId: (product as any).vendor_shopId || "",
-              displayName: (product as any).vendor_displayName || "",
-              logo: (product as any).vendor_logo || "",
-            },
-          }}
-          cartItemId={cartItemId}
-        />
+          <AddToBrowsingHistory
+            id={product.id!}
+            category={product.category_ids || []}
+          />
+          <ProductDetailsClient
+            product={{
+              _id: product.id,
+              name: product.name,
+              images: product.images || [],
+              avgRating: product.avg_rating || 0,
+              numReviews: product.num_reviews || 0,
+              ratingDistribution: ratingDistArr,
+              options: productOptions,
+              slug: product.slug,
+              category: product.category_ids?.[0] || "",
+              price: product.price || 0,
+              vendor: {
+                id: product.vendor_id || "",
+                shopId: (product as any).vendor_shopId || "",
+                displayName: (product as any).vendor_displayName || "",
+                logo: (product as any).vendor_logo || "",
+              },
+            }}
+            cartItemId={cartItemId}
+          />
 
-        {/* Product Description and Reviews */}
-        <div className="bg-white my-6 p-3">
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="item-1" className="!border-none">
-              <AccordionTrigger>Product Description</AccordionTrigger>
-              <AccordionContent>{product.description || ""}</AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </div>
-        <Separator className="mt-2" />
-        <section className="mt-6">
-          <h2 className="h2-bold mb-2" id="reviews">
-            Customer Reviews ({totalRatings})
-          </h2>
-          <ReviewList userId={user?.id} product={product} />
-        </section>
-        {/* <section className="mt-10">
+          {/* Product Description and Reviews */}
+          <div className="bg-white my-6 p-3">
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="item-1" className="!border-none">
+                <AccordionTrigger>Product Description</AccordionTrigger>
+                <AccordionContent>{product.description || ""}</AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+          <Separator className="mt-2" />
+          <section className="mt-6">
+            <h2 className="h2-bold mb-2" id="reviews">
+              Customer Reviews (
+              {typeof totalRatings === "number" ? totalRatings : 0})
+            </h2>
+            <ReviewList product={product} />
+          </section>
+          {/* <section className="mt-10">
           <ProductSlider
             products={relatedProducts.data || []}
             title={"You may also like"}
           />
         </section> */}
-        {alsoViewedProducts.length > 0 && (
-          <section className="mt-10">
-            <ProductSlider
-              products={alsoViewedProducts}
-              title={"Customers who viewed this item also viewed"}
-            />
+          {alsoViewedProducts.length > 0 && (
+            <section className="mt-10">
+              <ProductSlider
+                products={alsoViewedProducts}
+                title={"Customers who viewed this item also viewed"}
+              />
+            </section>
+          )}
+          {alsoBoughtProducts.length > 0 && (
+            <section className="mt-10">
+              <ProductSlider
+                products={alsoBoughtProducts}
+                title={"Customers who bought this item also bought"}
+              />
+            </section>
+          )}
+          <section>
+            <BrowsingHistoryList className="mt-10" />
           </section>
-        )}
-        {alsoBoughtProducts.length > 0 && (
-          <section className="mt-10">
-            <ProductSlider
-              products={alsoBoughtProducts}
-              title={"Customers who bought this item also bought"}
-            />
-          </section>
-        )}
-        <section>
-          <BrowsingHistoryList className="mt-10" />
-        </section>
-      </Container>
-    </section>
+        </Container>
+      </section>
+    </>
   );
 };
 export default ProductDetails;

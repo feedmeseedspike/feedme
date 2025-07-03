@@ -106,7 +106,7 @@ export default function ReviewActions({
   });
 
   const handleHelpfulClick = async () => {
-    if (!userId) {
+    if (!userId || typeof userId !== "string") {
       showToast("Please sign in to vote", "error");
       router.push(
         `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`
@@ -151,7 +151,7 @@ export default function ReviewActions({
   };
 
   const handleReportSubmit: SubmitHandler<ReportFormValues> = async (data) => {
-    if (!userId) {
+    if (!userId || typeof userId !== "string") {
       showToast("Please sign in to report", "error");
       router.push(
         `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`

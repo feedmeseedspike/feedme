@@ -1,14 +1,31 @@
-"use client"
+"use client";
 
-import Chart from '@components/admin/chart'
-import React, { useState } from 'react'
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@components/ui/table";
+import Chart from "@components/admin/chart";
+import React, { useState, useEffect } from "react";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@components/ui/table";
 import { Input } from "@components/ui/input";
 import { Button } from "@components/ui/button";
 import { Avatar, AvatarFallback } from "@components/ui/avatar";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@components/ui/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@components/ui/select";
 
-const progressOptions = ["Order Confirmed", "Processing order", "Out for Delivery"];
+const progressOptions = [
+  "Order Confirmed",
+  "Processing order",
+  "Out for Delivery",
+];
 
 interface Customer {
   name: string;
@@ -25,17 +42,23 @@ interface Order {
   progress: string;
 }
 
-// interface PendingOrdersProps {
-//   search: string;
-// }
+interface PendingOrdersProps {
+  initialData: Order[];
+}
 
-const PendingOrders = ({ orders }: { orders: Order[] }) => {
+const PendingOrders: React.FC<PendingOrdersProps> = ({ initialData = [] }) => {
   const [search, setSearch] = useState("");
-  const [filteredOrders, setFilteredOrders] = useState(orders);
+  const [orders, setOrders] = useState(initialData);
+  const [filteredOrders, setFilteredOrders] = useState(initialData);
   const [page, setPage] = useState(1);
   const ordersPerPage = 4;
 
-  const handleSearch = (e: any) => {
+  useEffect(() => {
+    setOrders(initialData);
+    setFilteredOrders(initialData);
+  }, [initialData]);
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.toLowerCase();
     setSearch(value);
     setFilteredOrders(
@@ -48,13 +71,21 @@ const PendingOrders = ({ orders }: { orders: Order[] }) => {
     );
   };
 
-  const paginatedOrders = filteredOrders.slice((page - 1) * ordersPerPage, page * ordersPerPage);
+  const paginatedOrders = filteredOrders.slice(
+    (page - 1) * ordersPerPage,
+    page * ordersPerPage
+  );
 
   return (
     <div className="p-4 pt-8">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold">Pending Orders</h2>
-        <Input placeholder="Search" className="w-64" value={search} onChange={handleSearch} />
+        <Input
+          placeholder="Search"
+          className="w-64"
+          value={search}
+          onChange={handleSearch}
+        />
       </div>
       <div className="border rounded-lg shadow-sm">
         <Table>
@@ -80,7 +111,9 @@ const PendingOrders = ({ orders }: { orders: Order[] }) => {
                   </Avatar>
                   <div>
                     <p className="font-medium">{order.customer.name}</p>
-                    <p className="text-sm text-gray-500">{order.customer.phone}</p>
+                    <p className="text-sm text-gray-500">
+                      {order.customer.phone}
+                    </p>
                   </div>
                 </TableCell>
                 <TableCell>{order.amount}</TableCell>
@@ -106,14 +139,29 @@ const PendingOrders = ({ orders }: { orders: Order[] }) => {
         </Table>
       </div>
       <div className="flex justify-between items-center mt-4">
-        <Button variant="outline" disabled={page === 1} onClick={() => setPage((prev) => prev - 1)}>Previous</Button>
-        <p>Page {page} of {Math.ceil(filteredOrders.length / ordersPerPage)}</p>
-        <Button variant="outline" disabled={page === Math.ceil(filteredOrders.length / ordersPerPage)} onClick={() => setPage((prev) => prev + 1)}>Next</Button>
+        <Button
+          variant="outline"
+          disabled={page === 1}
+          onClick={() => setPage((prev) => prev - 1)}
+        >
+          Previous
+        </Button>
+        <p>
+          Page {page} of{" "}
+          {Math.ceil((filteredOrders || []).length / ordersPerPage)}
+        </p>
+        <Button
+          variant="outline"
+          disabled={
+            page === Math.ceil((filteredOrders || []).length / ordersPerPage)
+          }
+          onClick={() => setPage((prev) => prev + 1)}
+        >
+          Next
+        </Button>
       </div>
     </div>
   );
 };
 
 export default PendingOrders;
-
-

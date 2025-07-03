@@ -21,6 +21,7 @@ import {
 } from "@components/ui/select";
 import { CloudUpload } from "lucide-react";
 import Agent from "@components/icons/addAgent.svg";
+import Image from "next/image";
 
 const AgentSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -240,9 +241,11 @@ export default function AgentModal({
                 className="cursor-pointer text-center"
               >
                 {image ? (
-                  <img
+                  <Image
                     src={URL.createObjectURL(image)}
                     alt="Preview"
+                    width={80}
+                    height={80}
                     className="w-20 h-20 object-cover rounded-md"
                   />
                 ) : (

@@ -6,10 +6,17 @@ import { createClient } from "@utils/supabase/client";
 import { Session, AuthChangeEvent } from "@supabase/supabase-js";
 import { useQueryClient } from "@tanstack/react-query";
 import { Tables } from "src/utils/database.types";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "src/components/ui/dialog";
+import { linkAuthUserToProfile } from "src/utils/users";
 
 interface SupabaseContextType {
   session: Session | null;
-  user: Tables<"users"> | null;
+  user: Tables<"profiles"> | null;
 }
 
 const SupabaseContext = createContext<SupabaseContextType | undefined>(
@@ -23,11 +30,11 @@ export function SupabaseAuthProvider({
 }: {
   children: React.ReactNode;
   initialSession: Session | null;
-  initialUser: Tables<"users"> | null;
+  initialUser: Tables<"profiles"> | null;
 }) {
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(initialSession);
-  const [user, setUser] = useState<Tables<"users"> | null>(initialUser);
+  const [user, setUser] = useState<Tables<"profiles"> | null>(initialUser);
   const supabase = createClient();
   const queryClient = useQueryClient();
 
@@ -36,13 +43,13 @@ export function SupabaseAuthProvider({
     if (initialSession === undefined) {
       const fetchUserAndSession = async () => {
         const {
-          data: { user: authenticatedUser, session: authenticatedSession },
+          data: { user: authenticatedUser },
           error: authError,
         } = await supabase.auth.getUser();
 
         if (authError) {
           console.error(
-            "SupabaseAuthProvider: Error fetching initial authenticated user/session:",
+            "SupabaseAuthProvider: Error fetching initial authenticated user:",
             authError
           );
           setSession(null);
@@ -50,13 +57,13 @@ export function SupabaseAuthProvider({
           return;
         }
 
-        setSession(authenticatedSession);
+        setSession(null); // Don't use session from getSession, just set to null or use user presence
 
-        if (authenticatedUser) {
+        if (authenticatedUser && authenticatedUser.id) {
           const { data: userProfile, error: profileError } = await supabase
-            .from("users")
+            .from("profiles")
             .select("*")
-            .eq("id", authenticatedUser.id)
+            .eq("user_id", authenticatedUser.id)
             .single();
 
           if (profileError) {
@@ -79,13 +86,13 @@ export function SupabaseAuthProvider({
       async (event: AuthChangeEvent, newSession: Session | null) => {
         // Always use getUser() for authenticated user data after an auth change
         const {
-          data: { user: authenticatedUser, session: authenticatedSession },
+          data: { user: authenticatedUser },
           error: authError,
         } = await supabase.auth.getUser();
 
         if (authError) {
           console.error(
-            "SupabaseAuthProvider: Error fetching authenticated user/session on auth change:",
+            "SupabaseAuthProvider: Error fetching authenticated user on auth change:",
             authError
           );
           setSession(null);
@@ -93,13 +100,13 @@ export function SupabaseAuthProvider({
           return;
         }
 
-        setSession(authenticatedSession);
+        setSession(null); // Don't use session from getSession, just set to null or use user presence
 
-        if (authenticatedUser) {
+        if (authenticatedUser && authenticatedUser.id) {
           const { data: userProfile, error: profileError } = await supabase
-            .from("users")
+            .from("profiles")
             .select("*")
-            .eq("id", authenticatedUser.id)
+            .eq("user_id", authenticatedUser.id)
             .single();
 
           if (profileError) {

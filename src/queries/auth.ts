@@ -11,7 +11,7 @@ export const getUserQuery = () => ({
 });
 
 export const signInMutation = () => ({
-  mutationFn: async (variables: Parameters<typeof signInUser>[0]): Promise<any> => {
+  mutationFn: async (variables: Parameters<typeof signInUser>[0]): Promise<SignInUserReturn> => {
     const result: SignInUserReturn = await signInUser(variables);
     if (!result.success) {
       const errorMessage = typeof result.error === 'string'
@@ -21,12 +21,12 @@ export const signInMutation = () => ({
           : 'Sign in failed');
       throw new Error(errorMessage);
     }
-    return (result as AuthSuccess<any>).data; 
+    return result;
   },
 });
 
 export const registerUserMutation = () => ({
-  mutationFn: async (variables: Parameters<typeof registerUser>[0]): Promise<any> => {
+  mutationFn: async (variables: Parameters<typeof registerUser>[0]): Promise<RegisterUserReturn> => {
     const result: RegisterUserReturn = await registerUser(variables);
     if (!result.success) {
       const errorMessage = typeof result.error === 'string'
@@ -36,7 +36,7 @@ export const registerUserMutation = () => ({
           : 'Registration failed');
       throw new Error(errorMessage);
     }
-    return (result as AuthSuccess<any>).data; // Explicitly cast after success check
+    return result;
   },
 });
 
@@ -62,7 +62,7 @@ interface UpdatePasswordVariables {
 }
 
 export const updatePasswordMutation = () => ({
-  mutationFn: async (variables: UpdatePasswordVariables): Promise<any> => {
+  mutationFn: async (variables: UpdatePasswordVariables): Promise<UpdatePasswordReturn> => {
     const result: UpdatePasswordReturn = await updatePassword(variables.currentPassword, variables.newPassword);
     if (!result.success) {
        const errorMessage = typeof result.error === 'string'
@@ -72,6 +72,6 @@ export const updatePasswordMutation = () => ({
           : 'Password update failed');
       throw new Error(errorMessage);
     }
-    return (result as AuthSuccess<any>).data; 
+    return result;
   },
 }); 

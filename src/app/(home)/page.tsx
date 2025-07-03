@@ -37,9 +37,8 @@ export default async function Home() {
     queryClient.prefetchQuery({
       queryKey: ["categories"],
       queryFn: async () => {
-        const { data, error } = await getAllCategoriesQuery(supabase).select(
-          "*"
-        );
+        const { data, error } =
+          await getAllCategoriesQuery(supabase).select("*");
         if (error) throw error;
         return data.map((category) => {
           let thumbnailData: { url: string; public_id?: string } | null = null;
@@ -248,8 +247,11 @@ export default async function Home() {
   console.log(user);
 
   let purchasedProductIds: string[] = [];
-  if (user?.id) {
-    purchasedProductIds = await getUsersPurchasedProductIds(supabase, user.id);
+  if (user?.user_id) {
+    purchasedProductIds = await getUsersPurchasedProductIds(
+      supabase,
+      user.user_id
+    );
   }
 
   let recommendedProducts: IProductInput[] = [];
@@ -288,16 +290,6 @@ export default async function Home() {
             </Suspense>
 
             <div className="flex flex-col gap-6">
-              {recommendedProducts.length > 0 && (
-                <Suspense fallback={<ProductSliderSkeleton />}>
-                  <ProductSlider
-                    title={"Recommended for You"}
-                    products={recommendedProducts}
-                    hideDetails={false}
-                  />
-                </Suspense>
-              )}
-
               <Suspense fallback={<ProductSliderSkeleton />}>
                 <ProductSlider
                   title={"New Arrivals"}

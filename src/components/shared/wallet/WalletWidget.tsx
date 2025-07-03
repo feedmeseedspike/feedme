@@ -132,7 +132,7 @@ function WalletWidget({
             disabled={
               isInitializingPayment ||
               isLoadingBalance ||
-              errorBalance ||
+              Boolean(errorBalance) ||
               !session
             }
           >

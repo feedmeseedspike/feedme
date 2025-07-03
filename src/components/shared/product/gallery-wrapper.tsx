@@ -52,9 +52,9 @@ export default function ProductGalleryWrapper({
         <motion.div
           layoutId={`product-image-${selectedImageIndex}`}
           onClick={() => setIsOpen(true)}
-          className="flex-1 relative w-full h-full bg-white border border-gray-200 flex items-center justify-center p-4 cursor-zoom-in"
+          className="flex-1 relative h-[40vh] md:h-[60vh] bg-white border border-gray-200 flex items-center justify-center p-4 cursor-zoom-in"
         >
-          <div className="h-[60vh] sm:h-[50vh] md:h-[60vh] lg:h-[80vh] flex items-center justify-center">
+          <div className="h-[40vh] md:h-[60vh] flex items-center justify-center">
             <Image
               src={images[selectedImageIndex]}
               alt={`${name} - main view`}

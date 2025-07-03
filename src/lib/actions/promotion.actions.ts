@@ -1,13 +1,13 @@
 "use server";
 
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { Database } from "src/utils/database.types";
 
 const ITEMS_PER_PAGE = 10; 
 
 export async function getPromotions() {
-  const supabase = createServerComponentClient<Database>({ cookies });
+  const supabase = createClient();
 
   const { data: promotions, error } = await supabase
     .from("promotions")
@@ -25,7 +25,7 @@ export async function getPromotions() {
 }
 
 export async function createPromotion(promotionData: Database['public']['Tables']['promotions']['Insert']) {
-  const supabase = createServerComponentClient<Database>({ cookies });
+  const supabase = createClient();
 
   // Remove the id from the insert data, as it has a default value in the DB
   const { id, ...insertData } = promotionData;
@@ -53,7 +53,7 @@ export async function getProductsByTag({
   page?: number;
   sort?: string;
 }) {
-  const supabase = createServerComponentClient<Database>({ cookies });
+  const supabase = createClient();
 
   // Determine sorting order and column
   let sortColumn = 'created_at';
@@ -134,7 +134,7 @@ export async function getProductsByTag({
 }
 
 export async function getPromotionByTag(tag: string) {
-  const supabase = createServerComponentClient<Database>({ cookies });
+  const supabase = createClient();
 
   const { data: promotion, error } = await supabase
     .from("promotions")
@@ -153,7 +153,7 @@ export async function getPromotionByTag(tag: string) {
 }
 
 export async function deletePromotion(id: string) {
-  const supabase = createServerComponentClient<Database>({ cookies });
+  const supabase = createClient();
 
   const { error } = await supabase.from('promotions').delete().eq('id', id);
 
@@ -168,7 +168,7 @@ export async function deletePromotion(id: string) {
 }
 
 export async function updatePromotion(promotionData: Database['public']['Tables']['promotions']['Update']) {
-  const supabase = createServerComponentClient<Database>({ cookies });
+  const supabase = createClient();
 
   if (!promotionData.id) {
     throw new Error("Promotion ID is required for updating.");
@@ -192,7 +192,7 @@ export async function updatePromotion(promotionData: Database['public']['Tables'
 }
 
 export async function addProductToPromotion(promotionId: string, productId: string) {
-  const supabase = createServerComponentClient<Database>({ cookies });
+  const supabase = createClient();
 
   const { data, error } = await supabase
     .from('promotion_products')
@@ -215,7 +215,7 @@ export async function addProductToPromotion(promotionId: string, productId: stri
 }
 
 export async function removeProductFromPromotion(promotionId: string, productId: string) {
-  const supabase = createServerComponentClient<Database>({ cookies });
+  const supabase = createClient();
 
   const { error } = await supabase
     .from('promotion_products')
@@ -232,7 +232,7 @@ export async function removeProductFromPromotion(promotionId: string, productId:
 }
 
 export async function getLinkedProductsForPromotion(promotionId: string) {
-  const supabase = createServerComponentClient<Database>({ cookies });
+  const supabase = createClient();
 
   // Fetch promotion_products entries for the given promotionId and join with the products table
   const { data, error } = await supabase
@@ -251,7 +251,7 @@ export async function getLinkedProductsForPromotion(promotionId: string) {
 }
 
 export async function searchProducts(searchTerm: string) {
-  const supabase = createServerComponentClient<Database>({ cookies });
+  const supabase = createClient();
 
   // Perform a case-insensitive search on the product name
   // You might want to add more fields to search on (e.g., description, SKU)

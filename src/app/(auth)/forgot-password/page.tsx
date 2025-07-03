@@ -3,19 +3,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { getUser } from "src/lib/actions/auth.actions";
 import { redirect } from "next/navigation";
-import { PreloadResource } from "../preload-resources";
+// import { PreloadResource } from "../preload-resources";
 import ForgotPasswordForm from "./forgot-password-form";
 
 export const metadata = { title: "Forgot Password" };
 
-const ForgotPassword = async (props: {
-  searchParams: Promise<{
-    callbackUrl: string;
-  }>;
+const ForgotPassword = async ({
+  searchParams,
+}: {
+  searchParams?: { callbackUrl?: string };
 }) => {
-  const searchParams = await props.searchParams;
-  const { callbackUrl = "/" } = searchParams;
-
+  const callbackUrl = searchParams?.callbackUrl || "/";
   const user = await getUser();
   if (user) {
     return redirect(callbackUrl);
@@ -26,7 +24,7 @@ const ForgotPassword = async (props: {
       <div className="flex md:w-[60%] lg:w-[40%] w-full flex-col justify-center px-4 md:px-8">
         <div className="pb-6">
           <div className="flex flex-col gap-7">
-            <PreloadResource />
+            {/* <PreloadResource /> */}
             <div className="flex flex-col gap-3">
               <p className="h2-bold text-3xl text-[#1B6013]">
                 Reset your password

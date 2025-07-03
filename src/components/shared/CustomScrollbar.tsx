@@ -4,13 +4,19 @@ import React, { useEffect } from "react";
 import SimpleBar from "simplebar-react";
 import "simplebar-react/dist/simplebar.min.css";
 
+interface CustomScrollbarProps {
+  children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+}
+
 export default function CustomScrollbar({
   children,
-}: {
-  children: React.ReactNode;
-}) {
+  className = "",
+  style = { maxHeight: "100vh" },
+}: CustomScrollbarProps) {
   useEffect(() => {
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.textContent = `
       * {
         scrollbar-width: none; /* Firefox */
@@ -31,7 +37,7 @@ export default function CustomScrollbar({
       }
     `;
     document.head.appendChild(style);
-    
+
     return () => {
       document.head.removeChild(style);
     };
@@ -39,9 +45,9 @@ export default function CustomScrollbar({
 
   return (
     <SimpleBar
-      style={{ maxHeight: "100vh" }}
+      style={style}
       autoHide={false}
-      className="custom-scrollbar"
+      className={`custom-scrollbar ${className}`.trim()}
     >
       {children}
     </SimpleBar>

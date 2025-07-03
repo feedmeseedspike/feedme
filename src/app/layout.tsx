@@ -16,6 +16,7 @@ import { createClient as createServerSupabaseClient } from "@utils/supabase/serv
 import { User, Session } from "@supabase/supabase-js";
 import { PathnameProvider } from "@components/shared/pathname-provider";
 import { getReferralStatus } from "@/queries/referrals";
+import { cookies } from "next/headers";
 
 const DynamicReferralBanner = dynamic(
   () => import("@components/shared/ReferralBanner"),
@@ -42,11 +43,6 @@ const proxima = localFont({
 });
 const inter = Inter({ subsets: ["latin"] });
 
-// Lazy load non-critical components
-// const TawkToWidget = dynamic(() => import("@components/shared/TawkToWidget"), {
-//   ssr: false,
-//   loading: () => null,
-// });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://feedme.seedspikeafrica.com/"),
@@ -92,21 +88,19 @@ export default async function RootLayout({
   const supabase = createServerSupabaseClient();
 
   const { data: userData, error: authError } = await supabase.auth.getUser();
-  const { data: sessionData, error: sessionError } =
-    await supabase.auth.getSession();
 
-  const authenticatedUser: User | null = userData.user;
-  const authenticatedSession: Session | null = sessionData.session || null;
+  const authenticatedUser: User | null = userData.user ?? null;
+  console.log("SSR user:", authenticatedUser);
 
   let user = null;
-  let session = authenticatedSession;
+  let session = null;
   let hasReferralStatus = false;
 
   if (authenticatedUser) {
     const { data: userProfile, error: profileError } = await supabase
-      .from("users")
+      .from("profiles")
       .select("*")
-      .eq("id", authenticatedUser.id)
+      .eq("user_id", authenticatedUser.id)
       .single();
 
     if (profileError) {
@@ -126,9 +120,10 @@ export default async function RootLayout({
     }
   }
 
-  if (authError) {
+  // Only log unexpected errors, not missing session
+  if (authError && authError.name !== "AuthSessionMissingError") {
     console.error(
-      "RootLayout: Error fetching authenticated user/session on server:",
+      "RootLayout: Unexpected auth error fetching user/session on server:",
       authError
     );
     console.log(
@@ -138,13 +133,6 @@ export default async function RootLayout({
     );
     session = null;
     user = null;
-  } else if (sessionError) {
-    console.error(
-      "RootLayout: Error fetching session on server:",
-      sessionError
-    );
-
-    session = null;
   }
 
   return (

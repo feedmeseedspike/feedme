@@ -587,8 +587,8 @@ export default function TagBannersManager() {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the tag banner "
-              {promoToDelete?.title}"? This action cannot be undone.
+              Are you sure you want to delete the tag banner
+              {promoToDelete?.title}? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

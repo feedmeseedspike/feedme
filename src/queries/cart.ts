@@ -40,7 +40,7 @@ export const useCartQuery = () => {
       const result = await getCart();
       if (!result.success) {
         console.error('useCartQuery: Failed to fetch cart:', result.error);
-        return [];
+        return []; 
       }
       return result.data;
     },
@@ -238,5 +238,5 @@ export const useCartSubscription = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [queryClient, supabase]);
 }; 

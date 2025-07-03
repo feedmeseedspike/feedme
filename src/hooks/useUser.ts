@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { createClient } from "@utils/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import { Tables } from "src/utils/database.types";
 import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useSupabaseUser, useSupabaseSession } from "@components/supabase-auth-provider";
+import { getUserQuery } from "src/queries/auth";
 
 interface SupabaseAuthUser {
   id: string;
@@ -15,26 +16,38 @@ interface SupabaseAuthUser {
   avatar_url?: string;
 }
 
-export function useUser(initialUser?: Tables<"users"> | null) {
+export function useUser() {
   const contextUser = useSupabaseUser();
   const contextSession = useSupabaseSession();
-
-  const [user, setUser] = useState<Tables<"users"> | null>(initialUser || contextUser || null);
-  const [session, setSession] = useState<Session | null>(contextSession || null);
-  const [isLoading, setIsLoading] = useState(initialUser === undefined && contextUser === undefined);
-  const supabase = createClient();
-  const router = useRouter();
   const queryClient = useQueryClient();
 
-  // console.log("useUser: Initial render state", { initialUser, contextUser, isLoading });
+  const {
+    data: userProfile,
+    isLoading: isLoadingUserProfile,
+    error: userProfileError,
+  } = useQuery({ ...getUserQuery() });
 
-  useEffect(() => {
-    setUser(contextUser || initialUser || null);
-    setSession(contextSession || null);
-    setIsLoading(initialUser === undefined && contextUser === undefined);
-    // console.log("useUser: useEffect update", { contextUser, contextSession, initialUser, isLoading });
-  }, [contextUser, contextSession, initialUser]);
+  // Combine Supabase auth user with user profile data
+  const user = useMemo(() => {
+    if (userProfile) {
+      return { ...userProfile, ...contextUser };
+    } else if (contextUser) {
+      return contextUser;
+    }
+    return null;
+  }, [contextUser, userProfile]);
 
-  // console.log("useUser: Return state", { user, isLoading, session });
+  const isLoading = !contextUser && isLoadingUserProfile;
+
+  const session = contextSession;
+
+  // Optionally add an effect to refetch user profile if contextUser changes, ensuring fresh data
+  // However, `staleTime` and `invalidateQueries` should handle most cases.
+  // useEffect(() => {
+  //   if (contextUser?.id) {
+  //     queryClient.invalidateQueries({ queryKey: ['user'] });
+  //   }
+  // }, [contextUser?.id, queryClient]);
+
   return { user, isLoading, session };
 }

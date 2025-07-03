@@ -57,173 +57,61 @@ export default function AppSidebar({ user }: AppSidebarProps) {
     refetchInterval: 30 * 1000, // Refetch every 30 seconds
   });
 
-  // Define routes based on user role with categories
-  const getRoutesByRole = (role: string) => {
-    switch (role) {
-      case "buyer":
-        return {
-          main: [
-            {
-              title: "Profile",
-              url: "/account",
-              icon: User,
-              description: "Manage your profile",
-            },
-            {
-              title: "Orders",
-              url: "/account/order",
-              icon: ShoppingBag,
-              description: "Track your orders",
-            },
-            {
-              title: "Wallet",
-              url: "/account/wallet",
-              icon: Wallet,
-              description: "Manage payments",
-            },
-            {
-              title: "Favourites",
-              url: "/account/favourites",
-              icon: Heart,
-              description: "Saved products",
-            },
-          ],
-          secondary: [
-            {
-              title: "Browsing History",
-              url: "/browsing-history",
-              icon: History,
-              description: "Recently viewed",
-            },
-            {
-              title: "Change Password",
-              url: "/account/password",
-              icon: Key,
-              description: "Security settings",
-            },
-          ],
-        };
-      case "seller":
-        return {
-          main: [
-            {
-              title: "Profile",
-              url: "/account",
-              icon: User,
-              description: "Manage your profile",
-            },
-            {
-              title: "My Store",
-              url: "/account/store",
-              icon: Store,
-              description: "Store settings",
-            },
-            {
-              title: "Products",
-              url: "/account/products",
-              icon: Package,
-              description: "Manage inventory",
-            },
-            {
-              title: "Orders",
-              url: "/account/orders",
-              icon: ShoppingBag,
-              description: "Customer orders",
-            },
-          ],
-          secondary: [
-            {
-              title: "Wallet",
-              url: "/account/wallet",
-              icon: Wallet,
-              description: "Earnings & payouts",
-            },
-            {
-              title: "Analytics",
-              url: "/account/analytics",
-              icon: Grid,
-              description: "Sales insights",
-            },
-          ],
-        };
-      default: // admin
-        return {
-          main: [
-            {
-              title: "Overview",
-              url: "/admin/overview",
-              icon: Grid,
-              description: "Dashboard overview",
-            },
-            {
-              title: "Products",
-              url: "/admin/products",
-              icon: Package,
-              description: "Product management",
-            },
-            {
-              title: "Categories",
-              url: "/admin/categories",
-              icon: ClipboardList,
-              description: "Category management",
-            },
-            {
-              title: "Orders",
-              url: "/admin/orders",
-              icon: ShoppingBag,
-              description: "Order management",
-              badge:
-                pendingOrdersCount > 0 ? String(pendingOrdersCount) : undefined,
-            },
-          ],
-          secondary: [
-            {
-              title: "Customers",
-              url: "/admin/customers",
-              icon: User,
-              description: "User management",
-            },
-            {
-              title: "Agents",
-              url: "/admin/agents",
-              icon: User,
-              description: "Agent management",
-            },
-            {
-              title: "Promotions",
-              url: "/admin/promotions",
-              icon: Heart,
-              description: "Marketing campaigns",
-            },
-            {
-              title: "Bundles",
-              url: "/admin/bundles",
-              icon: Package,
-              description: "Product bundles",
-            },
-          ],
-        };
-    }
+  // Only show buyer routes, remove role logic
+  const routes = {
+    main: [
+      {
+        title: "Profile",
+        url: "/account",
+        icon: User,
+        description: "Manage your profile",
+      },
+      {
+        title: "Orders",
+        url: "/account/order",
+        icon: ShoppingBag,
+        description: "Track your orders",
+      },
+      {
+        title: "Wallet",
+        url: "/account/wallet",
+        icon: Wallet,
+        description: "Manage payments",
+      },
+      {
+        title: "Favourites",
+        url: "/account/favourites",
+        icon: Heart,
+        description: "Saved products",
+      },
+      {
+        title: "Referral",
+        url: "/account/referral",
+        icon: Bell,
+        description: "Referral from friends",
+      },
+    ],
+    secondary: [
+      {
+        title: "Browsing History",
+        url: "/browsing-history",
+        icon: History,
+        description: "Recently viewed",
+      },
+      {
+        title: "Change Password",
+        url: "/account/password",
+        icon: Key,
+        description: "Security settings",
+      },
+    ],
   };
 
-  const routes = getRoutesByRole(user?.role || "buyer");
-
-  const getRoleBadge = (role: string) => {
-    switch (role) {
-      case "buyer":
-        return { label: "Customer", color: "bg-blue-100 text-blue-800" };
-      case "seller":
-        return { label: "Seller", color: "bg-green-100 text-green-800" };
-      default:
-        return { label: "Admin", color: "bg-purple-100 text-purple-800" };
-    }
-  };
-
-  const roleBadge = getRoleBadge(user?.role || "buyer");
+  // Always show buyer badge
+  const roleBadge = { label: "Customer", color: "bg-blue-100 text-blue-800" };
 
   return (
     <Sidebar className="">
-
       <SidebarContent className="!p-0">
         {/* Main Navigation */}
         <SidebarGroup>
@@ -260,18 +148,6 @@ export default function AppSidebar({ user }: AppSidebarProps) {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
                             <span className="font-medium">{item.title}</span>
-                            {item.badge && (
-                              <Badge
-                                variant={isActive ? "default" : "default"}
-                                className={`text-xs ${
-                                  isActive
-                                    ? "bg-[#1B6013]/20 text-[#1B6013]"
-                                    : "bg-red-100 text-red-600"
-                                }`}
-                              >
-                                {item.badge}
-                              </Badge>
-                            )}
                           </div>
                         </div>
                         <ChevronRight
@@ -330,11 +206,10 @@ export default function AppSidebar({ user }: AppSidebarProps) {
           </SidebarGroupContent>
         </SidebarGroup>
         <Separator className="my-" />
-        
-          {/* Logout Button */}
-          <LogoutButton />
-      </SidebarContent>
 
+        {/* Logout Button */}
+        <LogoutButton />
+      </SidebarContent>
     </Sidebar>
   );
 }

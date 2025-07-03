@@ -12,6 +12,7 @@ import {
 import { Button } from "@components/ui/button";
 import { Badge } from "@components/ui/badge";
 import { Avatar } from "@components/ui/avatar";
+import Image from "next/image";
 import { ArrowDown, CalendarDays } from "lucide-react";
 
 interface Product {
@@ -27,7 +28,7 @@ const BestSellingProducts = () => {
   const products: Product[] = [
     {
       name: "Large Tomatoes",
-      image: "/tomatoes.jpg",
+      image: "/images/fruits.png",
       category: "Pepper",
       price: "₦5000",
       quantitySold: 535,
@@ -35,7 +36,7 @@ const BestSellingProducts = () => {
     },
     {
       name: "Onions",
-      image: "/onions.jpg",
+      image: "/images/lemon.png",
       category: "Onions",
       price: "₦5000",
       quantitySold: 40,
@@ -43,7 +44,7 @@ const BestSellingProducts = () => {
     },
     {
       name: "Rodo",
-      image: "/rodo.jpg",
+      image: "/images/author.png",
       category: "Fruits",
       price: "₦5000",
       quantitySold: 125,
@@ -51,7 +52,7 @@ const BestSellingProducts = () => {
     },
     {
       name: "Watermelon",
-      image: "/watermelon.jpg",
+      image: "/images/default.png",
       category: "Fruits",
       price: "₦5000",
       quantitySold: 425,
@@ -83,9 +84,6 @@ const BestSellingProducts = () => {
     <div className="p-4 pt-8">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold">Best Selling Products</h2>
-        <Button variant="outline" className="flex items-center gap-2">
-          <CalendarDays /> Today
-        </Button>
       </div>
       <div className="border rounded-lg shadow-sm overflow-x-auto">
         <Table>
@@ -129,9 +127,11 @@ const BestSellingProducts = () => {
               <TableRow key={index}>
                 <TableCell className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
-                    <img
+                    <Image
                       src={product.image}
                       alt={product.name}
+                      width={40}
+                      height={40}
                       className="object-cover w-full h-full rounded-full"
                     />
                   </Avatar>
@@ -161,7 +161,11 @@ const BestSellingProducts = () => {
         </Table>
       </div>
       <div className="flex justify-between items-center mt-4">
-        <Button variant="outline" disabled={page === 1} onClick={() => setPage(page - 1)}>
+        <Button
+          variant="outline"
+          disabled={page === 1}
+          onClick={() => setPage(page - 1)}
+        >
           Previous
         </Button>
         <p>

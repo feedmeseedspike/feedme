@@ -81,38 +81,30 @@ export default function ProductDetailsClient({
     product._id ? state.options.selectedOptions[product._id] : undefined
   );
 
-  // Find the selected option data with proper fallback
+  const optionsArr = useMemo(
+    () => (Array.isArray(product.options) ? product.options : []),
+    [product.options]
+  );
+
   const selectedOptionData = useMemo(() => {
-    if (!product.options || product.options.length === 0) return null;
-
-    // If no option selected but options exist, use first option
+    if (optionsArr.length === 0) return null;
     if (!selectedOption) {
-      return product.options[0];
+      return optionsArr[0];
     }
+    const option = optionsArr.find((opt) => opt.name === selectedOption);
+    return option || optionsArr[0];
+  }, [selectedOption, optionsArr]);
 
-    // Find the selected option
-    const option = product.options.find((opt) => opt.name === selectedOption);
-
-    // Fallback to first option if selected option not found
-    return option || product.options[0];
-  }, [selectedOption, product.options]);
-
-  // Set default option if none is selected
   useEffect(() => {
-    if (
-      product._id &&
-      product.options &&
-      product.options.length > 0 &&
-      !selectedOption
-    ) {
+    if (product._id && optionsArr.length > 0 && !selectedOption) {
       dispatch(
         setSelectedOption({
           productId: product._id,
-          option: product.options[0].name,
+          option: optionsArr[0].name,
         })
       );
     }
-  }, [product._id, product.options, selectedOption, dispatch]);
+  }, [product._id, optionsArr, selectedOption, dispatch]);
 
   // Check if the current product is in cart
   const isInCart = useMemo(() => {
@@ -124,6 +116,14 @@ export default function ProductDetailsClient({
           JSON.stringify(selectedOptionData || null)
     );
   }, [product._id, cartItems, selectedOptionData]);
+
+  // Compute images to display based on selected option
+  const imagesToDisplay = useMemo(() => {
+    if (selectedOptionData && selectedOptionData.image) {
+      return [selectedOptionData.image];
+    }
+    return product.images;
+  }, [selectedOptionData, product.images]);
 
   const handleImageSelect = (index: number) => {
     setSelectedImageIndex(index);
@@ -147,7 +147,7 @@ export default function ProductDetailsClient({
     <div className="py-4 grid grid-cols-1 md:grid-cols-6 lg:grid-cols-8 gap-8 bg-white my-6 p-3">
       <div className="col-span-3">
         <ProductGalleryWrapper
-          images={product.images}
+          images={imagesToDisplay}
           name={product.name}
           selectedIndex={selectedImageIndex}
         />
@@ -172,7 +172,7 @@ export default function ProductDetailsClient({
 
           {/* Thumbnail Gallery */}
           <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-            {product.images.map((image, index) => (
+            {imagesToDisplay.map((image, index) => (
               <button
                 key={index}
                 onClick={() => handleImageSelect(index)}
@@ -195,9 +195,9 @@ export default function ProductDetailsClient({
           </div>
         </div>
         <Separator className="mt-4 mb-2" />
-        {product.options && product.options.length > 0 && (
+        {optionsArr.length > 0 && (
           <Options
-            options={product.options}
+            options={optionsArr}
             selectedOption={selectedOptionData?.name}
             onOptionChange={handleOptionChange}
           />
@@ -239,7 +239,7 @@ export default function ProductDetailsClient({
             price: selectedOptionData?.price ?? product.price,
             images: product.images,
             countInStock: product.countInStock,
-            options: product.options,
+            options: optionsArr,
             option: selectedOptionData,
             selectedOption: selectedOptionData?.name,
           }}

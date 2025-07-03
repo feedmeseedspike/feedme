@@ -23,7 +23,8 @@ import {
   Package,
   Grid,
   ClipboardList,
-} from "lucide-react"; // Import necessary icons
+  Bell,
+} from "lucide-react"; 
 import LogoutButton from "@components/shared/header/LogoutButton";
 import { UserData } from "src/types";
 
@@ -64,6 +65,12 @@ export default function ProfileDropdown({ user }: ProfileDropdownProps) {
               icon: Heart,
               description: "Saved products",
             },
+            {
+              title: "Referral",
+              url: "/account/referral",
+              icon: Bell,
+              description: "Referral from friends",
+            }
           ],
           secondary: [
             {

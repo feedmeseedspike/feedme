@@ -7,6 +7,7 @@ import { getUser } from "src/lib/actions/auth.actions";
 import { redirect } from "next/navigation";
 import { PreloadResource, ReviewSlide } from "../preload-resources";
 import { signinWithGoogle } from "@utils/google-action";
+import GoogleButton from "src/components/GoogleButton";
 
 export const metadata = { title: "Sign In" };
 
@@ -76,17 +77,7 @@ const Signin = async (props: {
         </div>
 
         <div className="flex flex-col gap-5">
-          <form action={signinWithGoogle}>
-            <button
-              type="submit"
-              className="rounded-lg w-full py-3 flex justify-center ring-1 ring-zinc-500 shadow-sm"
-            >
-              <p className="flex gap-2 items-end">
-                <FcGoogle className="text-2xl" />
-                <span className="font-semibold text-md">Google</span>
-              </p>
-            </button>
-          </form>
+          <GoogleButton />
           <div className="flex items-center gap-2">
             <span className="bg-[#EEF2FF] h-[2px] w-full"></span>
             <p className="whitespace-nowrap text-xs">

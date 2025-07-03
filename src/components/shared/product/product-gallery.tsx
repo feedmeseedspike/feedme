@@ -21,7 +21,7 @@ export default function ProductGallery({
           className={cn(
             "shrink-0 w-16 h-16 border-2 rounded-lg overflow-hidden transition-all duration-200",
             selectedIndex === index
-              ? "border-primary p-[1px]"
+              ? "border-[#F0800F] p-[1px]"
               : "border-transparent hover:border-gray-300"
           )}
           aria-label={`View image ${index + 1}`}

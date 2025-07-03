@@ -10,18 +10,18 @@ import React, {
 } from "react";
 import { Search, SearchX } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { getProductsServer } from "../../../lib/actions/product.actions";
 import { toast } from "sonner";
 import { debounce } from "lodash";
-import { IProductInput } from "src/types";
 import { FixedSizeList as List } from "react-window";
 import { AnimatePresence, motion } from "framer-motion";
-// import { cn } from "../../../lib/utils";
+import Image from "next/image";
 
 const SearchFilter = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const [products, setProducts] = useState<IProductInput[]>([]);
+  const [products, setProducts] = useState<
+    { id: string; slug: string; name: string; image?: string | null }[]
+  >([]);
   const [isLoading, setIsLoading] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -38,29 +38,44 @@ const SearchFilter = () => {
     const interval = setInterval(() => {
       setCurrentPlaceholder((prev) => (prev + 1) % placeholders.length);
     }, 3000);
-
     return () => clearInterval(interval);
-  }, []);
+  }, [placeholders.length]);
 
-  const fetchProducts = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await getProductsServer({
-        query: "",
-        page: 1,
-        limit: 50,
-      });
-      setProducts(response.products);
-    } catch (error) {
-      toast.error("Failed to fetch products");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  // Debounced fetch to API
+  const fetchProducts = useMemo(
+    () =>
+      debounce(async (query: string) => {
+        if (!query) {
+          setProducts([]);
+          setIsOpen(false);
+          setIsLoading(false);
+          return;
+        }
+        setIsLoading(true);
+        try {
+          const res = await fetch(
+            `/api/products/search?query=${encodeURIComponent(query)}`
+          );
+          const data = await res.json();
+          setProducts(data.products || []);
+          setIsOpen(true);
+        } catch (error) {
+          toast.error("Failed to fetch products");
+        } finally {
+          setIsLoading(false);
+        }
+      }, 300),
+    []
+  );
 
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+  const handleSearch = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const value = event.target.value;
+      setSearchTerm(value);
+      fetchProducts(value);
+    },
+    [fetchProducts]
+  );
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -75,33 +90,14 @@ const SearchFilter = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const debouncedSearch = useMemo(
-    () =>
-      debounce((value: string) => {
-        setSearchTerm(value.toLowerCase());
-        setIsOpen(!!value);
-      }, 300),
-    []
-  );
-
-  const handleSearch = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      debouncedSearch(event.target.value);
+  const handleProductClick = useCallback(
+    (product: { slug: string; name: string }) => {
+      setIsOpen(false);
+      setSearchTerm("");
+      router.push(`/product/${product.slug}`);
     },
-    [debouncedSearch]
+    [router]
   );
-
-  const filteredProducts = useMemo(() => {
-    if (!searchTerm) return [];
-    return products.filter((product) =>
-      product.name.toLowerCase().includes(searchTerm)
-    );
-  }, [products, searchTerm]);
-
-  const handleProductClick = useCallback((product: IProductInput) => {
-    setIsOpen(false);
-    setSearchTerm("");
-  }, []);
 
   const handleSearchSubmit = useCallback(
     (event: FormEvent) => {
@@ -116,18 +112,29 @@ const SearchFilter = () => {
 
   const SearchResultItem = useCallback(
     ({ index, style }: { index: number; style: React.CSSProperties }) => {
-      const product = filteredProducts[index];
+      const product = products[index];
       return (
         <div
           style={style}
           onClick={() => handleProductClick(product)}
-          className="px-2 py-1 hover:bg-gray-100 cursor-pointer"
+          className="flex items-center gap-3 px-2 py-1 hover:bg-gray-100 cursor-pointer"
         >
-          {product.name}
+          {product.image ? (
+            <Image
+              src={product.image}
+              alt={product.name}
+              width={36}
+              height={36}
+              className="rounded object-cover bg-gray-100"
+            />
+          ) : (
+            <div className="w-9 h-9 rounded bg-gray-200 flex-shrink-0" />
+          )}
+          <span className="truncate">{product.name}</span>
         </div>
       );
     },
-    [filteredProducts, handleProductClick]
+    [products, handleProductClick]
   );
 
   return (
@@ -142,31 +149,17 @@ const SearchFilter = () => {
             value={searchTerm}
             onChange={handleSearch}
             className="w-full relative z-50 border-none bg-transparent text-black h-full rounded-full focus:outline-none focus:ring-0 pl-12 pr-4"
-            // placeholder={placeholders[currentPlaceholder]}
           />
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-
           <div className="absolute inset-0 flex items-center rounded-full pointer-events-none">
             <AnimatePresence mode="wait">
               {!searchTerm && (
                 <motion.p
-                  initial={{
-                    y: 5,
-                    opacity: 0,
-                  }}
+                  initial={{ y: 5, opacity: 0 }}
                   key={`current-placeholder-${currentPlaceholder}`}
-                  animate={{
-                    y: 0,
-                    opacity: 1,
-                  }}
-                  exit={{
-                    y: -15,
-                    opacity: 0,
-                  }}
-                  transition={{
-                    duration: 0.3,
-                    ease: "linear",
-                  }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -15, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: "linear" }}
                   className="text-sm font-normal text-neutral-500 pl-12 text-left w-[calc(100%-2rem)] truncate"
                 >
                   {placeholders[currentPlaceholder]}
@@ -176,16 +169,15 @@ const SearchFilter = () => {
           </div>
         </form>
       </div>
-
       {isOpen && (
         <div className="absolute z-50 w-full mt-2 bg-white border rounded-lg shadow-lg max-h-[400px] overflow-hidden">
           {isLoading ? (
             <div className="p-4 text-center">Loading...</div>
-          ) : filteredProducts.length > 0 ? (
+          ) : products.length > 0 ? (
             <List
-              height={Math.min(filteredProducts.length * 40, 400)}
-              itemCount={filteredProducts.length}
-              itemSize={40}
+              height={Math.min(products.length * 48, 400)}
+              itemCount={products.length}
+              itemSize={48}
               width="100%"
             >
               {SearchResultItem}

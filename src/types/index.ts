@@ -45,12 +45,12 @@ export type Route = {
 export type UserData = {
   avatar_url: string;
   vouchers: any[];
-  deletedAt: string | null;
+  deletedAt?: string | null;
   id: string;
   display_name: string;
   email: string;
-  password: string;
-  phone: string;
+  password?: string | null;
+  phone?: string | null;
   role: "buyer" | "seller" | "admin";
   status: string;
   cart: object[]; 
@@ -58,9 +58,11 @@ export type UserData = {
   reviews: object[];
   purchases: object[];
   products: object[];
-  address: string;
-  createdAt: string;
-  updatedAt: string;
+  address?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  birthday?: string | null;
+  favorite_fruit?: string | null;
 };
 
 export type User = {
@@ -96,4 +98,6 @@ export interface Purchase {
   createdAt: string;
   updatedAt: string;
 }
+
+export type { CartItem } from 'src/lib/actions/cart.actions'
 

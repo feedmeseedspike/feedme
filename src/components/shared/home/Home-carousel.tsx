@@ -24,7 +24,7 @@ const AUTO_DELAY = ONE_SECOND * 10;
 const DRAG_BUFFER = 50;
 
 const SPRING_OPTIONS = {
-  type: "spring",
+  type: "spring" as const,
   mass: 3,
   stiffness: 400,
   damping: 50,
@@ -85,7 +85,7 @@ export const HomeCarousel = () => {
     }, AUTO_DELAY);
 
     return () => clearInterval(intervalRef);
-  }, [hasMounted, dragX, carouselBanners]); 
+  }, [hasMounted, dragX, carouselBanners]);
 
   const onDragEnd = () => {
     const x = dragX.get();
@@ -127,9 +127,10 @@ export const HomeCarousel = () => {
         }}
         style={{
           x: dragX,
+          transform: `translateX(-${imgIndex * 100}%)`,
         }}
         animate={{
-          translateX: `-${imgIndex * 100}%`,
+          x: `-${imgIndex * 100}%`,
         }}
         transition={SPRING_OPTIONS}
         onDragEnd={onDragEnd}
@@ -151,49 +152,52 @@ const Images = ({
   carouselBanners,
   imgIndex,
 }: {
-  carouselBanners: BannerWithBundle[];
+  carouselBanners: Banner[];
   imgIndex: number;
 }) => {
   return (
     <>
-      {carouselBanners.map((banner, idx) => {
-        const linkHref = banner.bundle_id
-          ? `/bundles/${banner.bundle_id}`
-          : `/${banner.tag}`;
+      {carouselBanners
+        .filter((banner) => !!banner.id)
+        .map((banner, idx) => {
+          const linkHref = banner.bundle_id
+            ? `/bundles/${banner.bundle_id}`
+            : `/${banner.tag}`;
 
-        const altText = banner.bundle_id
-          ? `${banner.bundles?.name || "Bundle"} banner`
-          : `${banner.tag || "Carousel"} banner`;
+          const altText = banner.bundle_id
+            ? `${banner.bundles?.name || "Bundle"} banner`
+            : `${banner.tag || "Carousel"} banner`;
 
-        const imageUrl = banner.bundle_id
-          ? banner.bundles?.thumbnail_url || "https://placehold.co/1200x600/png"
-          : banner.image_url;
+          const imageUrl = banner.bundle_id
+            ? banner.bundles?.thumbnail_url ||
+              "https://placehold.co/1200x600/png"
+            : banner.image_url;
 
-        return (
-          <Link
-            href={linkHref}
-            key={banner.id}
-            className="relative w-full max-w-[1200px] aspect-[70/35] md:aspect-[70/30] shrink-0 overflow-hidden hover:opacity-90 transition-opacity"
-          >
-            <motion.div
-              // animate={{
-              //   scale: imgIndex === idx ? 0.95 : 0.85,
-              // }}
-              transition={SPRING_OPTIONS}
-              className="w-full h-full"
+          return (
+            <Link
+              href={linkHref}
+              key={banner.id!}
+              className="relative w-full max-w-[1200px] aspect-[70/35] md:aspect-[70/30] shrink-0 overflow-hidden hover:opacity-90 transition-opacity"
             >
-              <Image
-                src={imageUrl}
-                alt={altText}
-                fill
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 1200px"
-                priority={idx === imgIndex}
-                className="object-cover w-full h-full"
-              />
-            </motion.div>
-          </Link>
-        );
-      })}
+              <motion.div
+                // animate={{
+                //   scale: imgIndex === idx ? 0.95 : 0.85,
+                // }}
+                transition={SPRING_OPTIONS}
+                className="w-full h-full"
+              >
+                <Image
+                  src={imageUrl}
+                  alt={altText}
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 1200px"
+                  priority={idx === imgIndex}
+                  className="object-cover w-full h-full"
+                />
+              </motion.div>
+            </Link>
+          );
+        })}
     </>
   );
 };

@@ -10,31 +10,41 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
-export type ToastType = "success" | "error" | "warning" | "info";
+type ToastVariant = "success" | "error" | "warning" | "info";
 
-interface Toast {
+interface ToastMessage {
   id: string;
   message: string;
-  type: ToastType;
+  type?: ToastVariant;
   duration?: number;
 }
 
-// Define props specifically for the Toast component
-interface ToastProps extends Toast {
-  onClose: (id: string) => void; 
+interface ToastProps {
+  id: string;
+  message: string;
+  type?: ToastVariant;
+  duration?: number;
+  onClose: (id: string) => void;
 }
 
-const ToastContext = createContext({
-  showToast: (message: string, type?: ToastType, duration?: number) => {},
-  dismissToast: (id: string) => {},
+interface ToastContextValue {
+  toasts: ToastMessage[];
+  showToast: (message: string, type?: ToastVariant, duration?: number) => void;
+  dismissToast: (id: string) => void;
+}
+
+const ToastContext = createContext<ToastContextValue>({
+  toasts: [],
+  showToast: () => {},
+  dismissToast: () => {},
 });
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   const showToast = (
     message: string,
-    type: ToastType = "info",
+    type: ToastVariant = "info",
     duration = 5000
   ) => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -46,7 +56,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <ToastContext.Provider value={{ showToast, dismissToast }}>
+    <ToastContext.Provider value={{ toasts, showToast, dismissToast }}>
       {children}
       <div className="fixed top-4 right-4 z-[9999] space-y-2 pointer-events-none">
         <AnimatePresence>
@@ -75,7 +85,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-const Toast = ({ id, message, type, onClose, duration = 5000 }: ToastProps) => {
+const Toast = ({
+  id,
+  message,
+  type = "info",
+  onClose,
+  duration = 5000,
+}: ToastProps) => {
   const iconMap = {
     success: <CheckCircle2 className="w-5 h-5" />,
     error: <AlertCircle className="w-5 h-5" />,

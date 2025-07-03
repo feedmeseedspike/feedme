@@ -38,10 +38,15 @@ export default function BrowsingHistoryPage() {
     <div className="max-w-6xl mx-auto p-6">
       <h1 className="text-2xl font-semibold mb-4">Recently Viewed Products</h1>
       {historyData.length > 0 ? (
-        <ProductdetailsCard products={historyData} />
+        <ProductSlider
+          title="Previously Viewed Items"
+          products={historyData}
+          hideDetails={false}
+        />
       ) : (
-        // <ProductSlider title="Previously Viewed Items" products={historyData} hideDetails={false} />
-        <p className="text-gray-500">You haven't viewed any products yet.</p>
+        <p className="text-gray-500">
+          You haven&apos;t viewed any products yet.
+        </p>
       )}
     </div>
   );

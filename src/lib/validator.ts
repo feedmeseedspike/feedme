@@ -124,7 +124,7 @@ export const ShippingAddressSchema = z.object({
   fullName: z.string().trim().min(2, "Full name must be at least 2 characters"),
   street: z.string().trim().min(5, "Street address must be at least 5 characters"),
   location: z.string().trim().min(1, "Please select a location"),
-  phone: z.string().regex(/^\+?[1-9]\d{1,14}$/, "Please enter a valid phone number"),
+  phone: z.string().regex(/^(\+?\d{8,15})$/, "Please enter a valid phone number"),
 });
 
 // ======================
@@ -292,7 +292,7 @@ export const UserProfileSchema = z.object({
     ])
     .nullable()
     .optional(),
-  birthday: z.union([z.string().length(0), z.string().datetime()]).nullable().optional().transform(e => e === "" ? null : e),
+  birthday: z.string().nullable().optional().transform(e => e === "" ? null : e),
   favorite_fruit: z.string().optional(),
 });
 

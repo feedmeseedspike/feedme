@@ -1,7 +1,6 @@
 "use client";
 
 import Container from "@components/shared/Container";
-import { HomeCarousel } from "@components/shared/home/home-carousel";
 import Image from "next/image";
 import Link from "next/link";
 import React from "react";
@@ -9,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@utils/supabase/client";
 import { Tables } from "src/utils/database.types";
 import { Skeleton } from "@components/ui/skeleton";
+import { HomeCarousel } from "@/components/shared/home/Home-carousel";
 
 type Banner = Tables<"banners">;
 
@@ -66,26 +66,28 @@ const Banner = () => {
                 />
               ))
           ) : sideBanners && sideBanners.length > 0 ? (
-            sideBanners.map(
-              (banner: Banner) =>
-                banner.active && (
-                  <Link
-                    href={`/${banner.tag}`}
-                    key={banner.id}
-                    className="w-1/2 md:w-full md:max-w-[445px] aspect-[35/15] h-1/2 md:h-full hover:opacity-90 transition-opacity"
-                  >
-                    <Image
-                      src={banner.image_url}
-                      alt={`${banner.tag} banner`}
-                      // fill
-                      sizes="(max-width: 768px) 50vw, 445px"
-                      width={445}
-                      height={700}
-                      className="h-full w-full object-cover"
-                    />
-                  </Link>
-                )
-            )
+            sideBanners
+              .filter((banner) => !!banner.id)
+              .map(
+                (banner: Banner) =>
+                  banner.active && (
+                    <Link
+                      href={`/${banner.tag}`}
+                      key={banner.id!}
+                      className="w-1/2 md:w-full md:max-w-[445px] aspect-[35/15] h-1/2 md:h-full hover:opacity-90 transition-opacity"
+                    >
+                      <Image
+                        src={banner.image_url}
+                        alt={`${banner.tag} banner`}
+                        // fill
+                        sizes="(max-width: 768px) 50vw, 445px"
+                        width={445}
+                        height={700}
+                        className="h-full w-full object-cover"
+                      />
+                    </Link>
+                  )
+              )
           ) : (
             <p>No side banners available.</p>
           )}

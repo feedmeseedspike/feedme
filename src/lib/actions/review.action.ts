@@ -10,21 +10,21 @@ interface ActionResponse {
 
 interface ReviewQueryResult {
   id: string;
-  title: string;
-  comment: string;
-  rating: number;
-  is_verified_purchase: boolean;
-  helpful_count: number;
-  reports: any[];
+  title: string | null;
+  comment: string | null;
+  rating: number | null;
+  is_verified_purchase: boolean | null;
+  helpful_count: number | null;
+  reports: any[] | null;
   image_urls: string[] | null;
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  updated_at: string | null;
   user_id: string;
-  users: {
-    id: string;
+  profiles: {
+    user_id: string;
     display_name: string | null;
     avatar_url: string | null;
-  }[] | null;
+  } | null;
 }
 
 // Create or update a review (only owner can modify)
@@ -170,27 +170,26 @@ export async function getReviews({
         created_at,
         updated_at,
         user_id,
-        users (id, display_name, avatar_url)
+        profiles!inner (user_id, display_name, avatar_url)
       `)
         .eq("product_id", productId)
         .order("created_at", { ascending: false })
         .range((page - 1) * limit, page * limit - 1);
         
-        console.log(reviews)
     if (error) throw error;
 
     // Check if current user has voted on each review
     const reviewsWithVotes = await Promise.all(
-      (reviews as ReviewQueryResult[] || []).map(async (review: ReviewQueryResult) => {
+      (reviews || []).map(async (review: any) => {
         if (!userId) {
              return {
                  ...review,
                  hasVoted: false,
                  canEdit: false,
-                 user: review.users?.[0] ? {
-                     id: review.users[0].id,
-                     name: review.users[0].display_name || 'Anonymous',
-                     avatar_url: review.users[0].avatar_url || null,
+                 user: review.profiles ? {
+                     id: review.profiles.user_id,
+                     name: review.profiles.display_name || 'Anonymous',
+                     avatar_url: review.profiles.avatar_url || null,
                  } : null
              };
         }
@@ -202,17 +201,15 @@ export async function getReviews({
           .eq("user_id", userId)
           .maybeSingle();
 
-        const userData = review.users?.[0];
-
         return {
           ...review,
           hasVoted: !!vote,
           canEdit: review.user_id === userId,
-          user: {
-            id: userData?.id || '',
-            name: userData?.display_name || 'Anonymous',
-            avatar_url: userData?.avatar_url || null,
-          }
+          user: review.profiles ? {
+            id: review.profiles.user_id,
+            name: review.profiles.display_name || 'Anonymous',
+            avatar_url: review.profiles.avatar_url || null,
+          } : null
         };
       })
     );
@@ -336,10 +333,8 @@ export async function addReport({
       .eq("id", reviewId)
       .single();
 
-    const existingReports = review?.reports || [];
-    const alreadyReported = existingReports.some(
-      (r: any) => r.userId === userId
-    );
+    const existingReports = Array.isArray(review?.reports) ? review.reports as Array<{ userId: string }> : [];
+    const alreadyReported = existingReports.some(r => r.userId === userId);
 
     if (alreadyReported) {
       return { success: false, message: "You've already reported this review" };

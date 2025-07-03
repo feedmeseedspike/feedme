@@ -1,5 +1,6 @@
 import { createClient } from './supabase/client';
 import type { User } from '@supabase/supabase-js';
+import { Database, Tables, TablesInsert, TablesUpdate } from './database.types';
 
 const supabase = createClient();
 
@@ -20,26 +21,24 @@ export interface IUser {
 }
 
 export const users = {
-  async getUser(id: string) {
+  async getUser(user_id: string) {
     const { data, error } = await supabase
-      .from('users')
+      .from('profiles')
       .select('*')
-      .eq('id', id)
-      .single();
-
+      .eq('user_id', user_id)
+      .maybeSingle();
     if (error) throw error;
-    return data as IUser | null;
+    return data as Tables<'profiles'> | null;
   },
 
-  async createUser(user: Partial<IUser>) {
+  async createUser(user: TablesInsert<'profiles'>) {
     const { data, error } = await supabase
-      .from('users')
+      .from('profiles')
       .insert([user])
       .select()
-      .single();
-
+      .maybeSingle();
     if (error) throw error;
-    return data as IUser;
+    return data as Tables<'profiles'>;
   },
 
   async captureUserDetails(authUser: User) {
@@ -47,63 +46,54 @@ export const users = {
     const existingUser = await this.getUser(authUser.id).catch(() => null);
     if (existingUser) return existingUser;
 
-    // Extract provider
-    const provider = authUser.app_metadata.provider as IUser['provider'];
-
-    // Create new user
-    const newUser: Partial<IUser> = {
-      id: authUser.id,
-      email: authUser.email!,
-      display_name: authUser.user_metadata.full_name || authUser.email!.split('@')[0],
-      avatar_url: authUser.user_metadata.avatar_url || '',
-      provider,
+    // Create new profile
+    const newUser: TablesInsert<'profiles'> = {
+      user_id: authUser.id,
+      display_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || '',
+      avatar_url: authUser.user_metadata?.avatar_url || '',
     };
-
     return await this.createUser(newUser);
   },
 
-  async updateUser(id: string, updates: Partial<IUser>) {
+  async updateUser(user_id: string, updates: TablesUpdate<'profiles'>) {
     const { data, error } = await supabase
-      .from('users')
+      .from('profiles')
       .update(updates)
-      .eq('id', id)
+      .eq('user_id', user_id)
       .select()
-      .single();
-
+      .maybeSingle();
     if (error) throw error;
-    return data as IUser;
+    return data as Tables<'profiles'>;
   },
 
   async updateProfile(
     userId: string,
-    updates: Partial<Omit<IUser, 'id' | 'email' | 'provider'>>
+    updates: TablesUpdate<'profiles'>
   ) {
     const { error } = await supabase
-      .from('users')
+      .from('profiles')
       .update(updates)
-      .eq('id', userId);
-
+      .eq('user_id', userId);
     if (error) throw error;
-
-    // Update auth user metadata if avatar_url or display_name changed
-    const metadata: { avatar_url?: string; full_name?: string } = {};
-
-    if (updates.avatar_url !== undefined) {
-      metadata.avatar_url = updates.avatar_url;
-    }
-
-    if (updates.display_name !== undefined) {
-      metadata.full_name = updates.display_name;
-    }
-
-    if (Object.keys(metadata).length > 0) {
-      const { error: authError } = await supabase.auth.updateUser({
-        data: metadata,
-      });
-
-      if (authError) {
-        console.error('Failed to update auth user metadata:', authError);
-      }
-    }
+    // Optionally update auth user metadata if avatar_url or display_name changed
   },
 };
+
+export async function linkAuthUserToProfile(authUserId: string, _email: string) {
+  // 1. Find user profile by user_id
+  const { data: user, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('user_id', authUserId)
+    .maybeSingle();
+
+  if (user) {
+    // Profile already exists for this user_id
+    return { returningUser: true };
+  } else {
+    // Create a new profile if not found
+    const insert: TablesInsert<'profiles'> = { user_id: authUserId };
+    await supabase.from('profiles').insert([insert]);
+    return { returningUser: false };
+  }
+}

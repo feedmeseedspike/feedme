@@ -6,7 +6,7 @@ const supabase = createClient();
 
 export async function getAllProducts(client: TypedSupabaseClient, {
   query,
-  limit = 10,
+  limit = 20,
   page = 1,
   category,
   tag,
@@ -30,6 +30,15 @@ export async function getAllProducts(client: TypedSupabaseClient, {
     .from('products')
     .select('*')
     .eq('is_published', true);
+
+  // Apply tag filter if provided
+  if (tag === 'new-arrival') {
+    queryBuilder = queryBuilder.order('created_at', { ascending: false });
+    // Do NOT filter by tags for new-arrival, just sort by created_at
+  } else if (tag && tag !== 'all') {
+    queryBuilder = queryBuilder.contains('tags', [tag]);
+    console.log(`getAllProducts: Applying tag filter - tag: '${tag}'`);
+  }
 
   // console.log(`getAllProducts: Current tag value before filter: '${tag}'`);
   // if (tag && tag !== 'all') {
@@ -92,8 +101,6 @@ export async function getAllProducts(client: TypedSupabaseClient, {
     data = result.data;
     error = result.error;
 
-    console.log("Supabase query raw response - data:", data);
-    console.log("Supabase query raw response - error:", error);
   } catch (e) {
     console.error("Error during Supabase query execution (caught by try-catch or timeout):", e);
     throw e; // Re-throw to propagate the error
@@ -117,7 +124,13 @@ export async function getAllProducts(client: TypedSupabaseClient, {
   }
 
   // Fetch total count for pagination if data is not null
-  const { count: totalCount, error: countError } = await client.from('products').select('*', { count: 'exact', head: true });
+  let countQuery = client.from('products').select('*', { count: 'exact', head: true }).eq('is_published', true);
+  if (tag === 'new-arrival') {
+    // no tag filter
+  } else if (tag && tag !== 'all') {
+    countQuery = countQuery.contains('tags', [tag]);
+  }
+  const { count: totalCount, error: countError } = await countQuery;
   if (countError) {
     console.error("Error fetching total product count:", countError);
     // Decide how to handle this - either throw or return a partial result
@@ -135,24 +148,24 @@ export async function getAllProducts(client: TypedSupabaseClient, {
 }
 
 // Query function for getting products by tag
-export function getProductsByTagQuery(client: TypedSupabaseClient, tag: string, limit?: number) {
+export function getProductsByTagQuery(client: TypedSupabaseClient, tag: string, limit: number = 20) {
   console.log("getProductsByTagQuery: Processing tag:", tag);
   let query = client
     .from('products')
     .select('*')
     .eq('is_published', true);
 
-  // Always apply the tag filter
-  if (tag && tag !== 'all') {
+  // For new-arrival, do NOT filter by tags, just sort by created_at
+  if (tag === 'new-arrival') {
+    query = query.order('created_at', { ascending: false });
+    console.log("getProductsByTagQuery: Applying new-arrival order (no tag filter).");
+  } else if (tag && tag !== 'all') {
     query = query.contains('tags', [tag]);
     console.log("getProductsByTagQuery: Applying tag filter with contains for tag:", tag);
   }
 
   // Apply specific sorting if applicable
-  if (tag === 'new-arrival') {
-    query = query.order('created_at', { ascending: false });
-    console.log("getProductsByTagQuery: Applying new-arrival order.");
-  } else if (tag === 'best-seller') {
+  if (tag === 'best-seller') {
     query = query.order('num_sales', { ascending: false });
     console.log("getProductsByTagQuery: Applying best-seller order.");
   }
@@ -180,8 +193,7 @@ export async function fetchProductsForBundleModal(client: TypedSupabaseClient, {
     queryBuilder = queryBuilder.ilike('name', `%{search}%`);
   }
 
-  // Limit results to a reasonable number for the modal to avoid fetching too much data
-  queryBuilder = queryBuilder.limit(50); // Adjust limit as needed
+  queryBuilder = queryBuilder.limit(50); 
 
   const { data, error } = await queryBuilder;
 
@@ -206,7 +218,8 @@ export async function getProducts({
 }) {
   const offset = (page - 1) * limit;
 
-  let query = supabase.from("products").select("*, categories(name)", { count: "exact" });
+  // Only select from products, do not join categories
+  let query = supabase.from("products").select("*", { count: "exact" });
 
   if (search) {
     query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
@@ -224,7 +237,7 @@ export async function getProducts({
 }
 
 export async function getProductById(id: string) {
-  const { data, error } = await supabase.from("products").select("*, categories(name)").eq("id", id).single();
+  const { data, error } = await supabase.from("products").select("*").eq("id", id).single();
   if (error) throw error;
   return data;
 }
@@ -359,4 +372,19 @@ export async function getAlsoBoughtProducts(client: TypedSupabaseClient, current
   }
 
   return products;
+}
+
+export async function deleteProduct(id: string) {
+  const supabase = createClient();
+  console.log("[queries/products.ts] Attempting to delete product with ID:", id);
+
+  // Only delete the product from the 'products' table
+  console.log("[queries/products.ts] Attempting to delete product from products table with ID:", id);
+  const { error: deleteProductError } = await supabase.from('products').delete().eq('id', id);
+  if (deleteProductError) {
+    console.error("[queries/products.ts] Error deleting product:", deleteProductError);
+    throw deleteProductError;
+  }
+  console.log("[queries/products.ts] Product deleted successfully with ID:", id);
+  return true;
 }

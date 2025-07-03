@@ -35,16 +35,8 @@ const TopCategories = () => {
     queryFn: queryFn,
   });
 
-  console.log("Client - TopCategories: useQuery state", {
-    categories,
-    isLoading,
-    error,
-  });
 
   if (isLoading) {
-    console.log(
-      "Client - TopCategories: Showing skeleton because isLoading is true."
-    );
     return (
       <section className="w-full pb-[80px]">
         <Stroke />
@@ -64,48 +56,40 @@ const TopCategories = () => {
   }
 
   if (error || !categories || !Array.isArray(categories)) {
-    console.log("Client - TopCategories: Showing error/no data message.", {
-      error,
-      categories,
-    });
     return <div>Error loading categories or no categories found.</div>;
   }
-
-  console.log(
-    "Client - TopCategories: Rendering with data.",
-    categories.length,
-    "categories."
-  );
 
   return (
     <section className="w-full pb-[80px]">
       {/* <Container> */}
       <Stroke />
       <div className="flex gap-3 md:gap-6 pt-6 cursor-pointer overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide w-full">
-        {categories.map((category: Category) => {
-          return (
-            <Link
-              href={`/category/${toSlug(category?.title)}`}
-              className="flex flex-col gap-2 justify-center items-center flex-shrink-0"
-              key={category.id}
-            >
-              <div className="size-[6rem] md:size-[8rem] bg-[#F2F4F7] rounded-[100%] p-3 flex justify-center items-center">
-                {category.thumbnail && (
-                  <Image
-                    src={(category.thumbnail as { url: string }).url}
-                    width={150}
-                    height={150}
-                    alt={category.title}
-                    className="hover:scale-110 hover:transition-transform hover:ease-in-out hover:duration-500 object-contain"
-                  />
-                )}
-              </div>
-              <p className="text-[14px] md:text-[22px] md:text-lg text-black hover:underline hover:underline-offset-2">
-                {category.title}
-              </p>
-            </Link>
-          );
-        })}
+        {categories
+          .filter((category) => !!category.id)
+          .map((category: Category) => {
+            return (
+              <Link
+                href={`/category/${toSlug(category?.title)}`}
+                className="flex flex-col gap-2 justify-center items-center flex-shrink-0"
+                key={category.id!}
+              >
+                <div className="size-[6rem] md:size-[8rem] bg-[#F2F4F7] rounded-[100%] p-3 flex justify-center items-center">
+                  {category.thumbnail && (
+                    <Image
+                      src={(category.thumbnail as { url: string }).url}
+                      width={150}
+                      height={150}
+                      alt={category.title}
+                      className="hover:scale-110 hover:transition-transform hover:ease-in-out hover:duration-500 object-contain"
+                    />
+                  )}
+                </div>
+                <p className="text-[14px] md:text-[22px] md:text-lg text-black hover:underline hover:underline-offset-2">
+                  {category.title}
+                </p>
+              </Link>
+            );
+          })}
       </div>
       {/* </Container> */}
     </section>

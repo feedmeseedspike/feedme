@@ -50,6 +50,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "src/utils/supabase/client";
 import { getCategoryById } from "src/queries/categories";
+import type { Tables } from "src/utils/database.types";
 
 export default function Product() {
   const router = useRouter();
@@ -69,7 +70,8 @@ export default function Product() {
   );
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [productToDelete, setProductToDelete] = useState<any>(null);
+  const [productToDelete, setProductToDelete] =
+    useState<Tables<"products"> | null>(null);
   const [totalProducts, setTotalProducts] = useState(0);
   const [categoryNames, setCategoryNames] = useState<Record<string, string>>(
     {}
@@ -105,16 +107,18 @@ export default function Product() {
       setTotalProducts(count || 0);
       // Fetch category names for each product
       const categoryIds = data
-        ?.map((p: any) => p.category_ids?.[0])
+        ?.map((p: Tables<"products">) => p.category_ids?.[0])
         .filter(Boolean);
       if (categoryIds && categoryIds.length > 0) {
-        const uniqueCategoryIds = [...new Set(categoryIds)];
+        const uniqueCategoryIds = [...new Set(categoryIds)].filter(
+          (id): id is string => typeof id === "string"
+        );
         const fetchedCategoryNames: Record<string, string> = {};
         const fetchPromises = uniqueCategoryIds.map(async (id) => {
           try {
             const category = await getCategoryById(supabase, id);
             if (category) {
-              fetchedCategoryNames[id] = category.title;
+              fetchedCategoryNames[id as string] = category.title;
             }
           } catch (error) {
             console.error(`Failed to fetch category with ID ${id}:`, error);
@@ -176,19 +180,22 @@ export default function Product() {
     router.push(`?${newSearchParams.toString()}`);
   };
 
-  const handleDeleteClick = (product: any) => {
+  const handleDeleteClick = (product: Tables<"products">) => {
     setProductToDelete(product);
     setDeleteDialogOpen(true);
   };
 
   const handleDeleteConfirm = async () => {
-    if (!productToDelete) return;
+    if (!productToDelete || !productToDelete.id) return;
     try {
       await deleteProduct(productToDelete.id);
       showToast("Product deleted successfully!", "success");
       await refetch();
-    } catch (err: any) {
-      showToast(err.message || "Failed to delete product", "error");
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : "Failed to delete product",
+        "error"
+      );
     }
     setDeleteDialogOpen(false);
     setProductToDelete(null);
@@ -199,7 +206,9 @@ export default function Product() {
   if (error)
     return (
       <div className="p-4 text-red-500">
-        {(error as any).message || "Failed to fetch products"}
+        {typeof error === "object" && error && "message" in error
+          ? (error as { message?: string }).message
+          : "Failed to fetch products"}
       </div>
     );
 
@@ -437,88 +446,90 @@ export default function Product() {
                 </TableRow>
               ))
             ) : products && products.length > 0 ? (
-              products.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell className="">
-                    {product.images?.[0] && (
-                      <div className="w-[60px] h-[60px] relative rounded-md overflow-hidden">
-                        <Image
-                          src={
-                            typeof product.images[0] === "string"
-                              ? product.images[0]
-                              : (() => {
-                                  try {
-                                    const parsed = JSON.parse(
-                                      product.images[0]
-                                    );
-                                    return (
-                                      parsed.url || "/placeholder-product.png"
-                                    );
-                                  } catch (e) {
-                                    console.error(
-                                      "Failed to parse image URL JSON:",
-                                      product.images[0],
-                                      e
-                                    );
-                                    return "/placeholder-product.png";
-                                  }
-                                })()
-                          }
-                          alt={product.name}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="font-medium cursor-pointer hover:bg-gray-50">
-                    <div className="">{product.name}</div>
-                  </TableCell>
-                  <TableCell>
-                    {(product.category_ids &&
-                      product.category_ids.length > 0 &&
-                      categoryNames[product.category_ids[0]]) ||
-                      "N/A"}
-                  </TableCell>
-                  <TableCell>{formatNaira(product.price)}</TableCell>
-                  <TableCell>
-                    <Badge
-                      className={
-                        product.stock_status === "In stock"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-orange-100 text-orange-800"
-                      }
-                    >
-                      {product.stock_status || "N/A"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      className={
-                        product.is_published
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-700"
-                      }
-                    >
-                      {product.is_published ? "Published" : "Archived"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="flex items-center gap-2">
-                    <Link href={`/admin/products/edit/${product.id}`}>
-                      <Button variant="outline" size="icon">
-                        <BiEdit size={16} />
+              products
+                .filter((product) => !!product.id)
+                .map((product) => (
+                  <TableRow key={product.id!}>
+                    <TableCell className="">
+                      {product.images?.[0] && (
+                        <div className="w-[60px] h-[60px] relative rounded-md overflow-hidden">
+                          <Image
+                            src={
+                              typeof product.images[0] === "string"
+                                ? product.images[0]
+                                : (() => {
+                                    try {
+                                      const parsed = JSON.parse(
+                                        product.images[0]
+                                      );
+                                      return (
+                                        parsed.url || "/placeholder-product.png"
+                                      );
+                                    } catch (e) {
+                                      console.error(
+                                        "Failed to parse image URL JSON:",
+                                        product.images[0],
+                                        e
+                                      );
+                                      return "/placeholder-product.png";
+                                    }
+                                  })()
+                            }
+                            alt={product.name}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-medium cursor-pointer hover:bg-gray-50">
+                      <div className="">{product.name}</div>
+                    </TableCell>
+                    <TableCell>
+                      {(product.category_ids &&
+                        product.category_ids.length > 0 &&
+                        categoryNames[product.category_ids[0]]) ||
+                        "N/A"}
+                    </TableCell>
+                    <TableCell>{formatNaira(product.price)}</TableCell>
+                    <TableCell>
+                      <Badge
+                        className={
+                          product.stock_status === "In stock"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-orange-100 text-orange-800"
+                        }
+                      >
+                        {product.stock_status || "N/A"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        className={
+                          product.is_published
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-700"
+                        }
+                      >
+                        {product.is_published ? "Published" : "Archived"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="flex items-center gap-2">
+                      <Link href={`/admin/products/edit/${product.id!}`}>
+                        <Button variant="outline" size="icon">
+                          <BiEdit size={16} />
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleDeleteClick(product)}
+                      >
+                        <Trash2 size={16} />
                       </Button>
-                    </Link>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleDeleteClick(product)}
-                    >
-                      <Trash2 size={16} />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
+                    </TableCell>
+                  </TableRow>
+                ))
             ) : (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-8">
@@ -543,8 +554,8 @@ export default function Product() {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the product "
-              {productToDelete?.name}"? This action cannot be undone.
+              Are you sure you want to delete the product
+              {productToDelete?.name}? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

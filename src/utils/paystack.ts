@@ -4,7 +4,7 @@ interface InitializeTransactionParams {
   email: string;
   amount: number;
   callback_url: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 interface CreateRecipientParams {
@@ -23,7 +23,7 @@ interface PaystackResponse {
     reference?: string;
     status?: string;
     amount?: number;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
     recipient_code?: string;
   };
 }
@@ -52,12 +52,14 @@ const paystack = {
         }
       );
       return response.data;
-    } catch (error: any) {
-      throw new Error(
-        `Paystack initialization failed: ${
-          error.response?.data?.message || error.message
-        }`
-      );
+    } catch (error: unknown) {
+      if (typeof error === 'object' && error && 'response' in error && typeof (error as any).response?.data?.message === 'string') {
+        throw new Error(`Paystack initialization failed: ${(error as any).response.data.message}`);
+      }
+      if (error instanceof Error) {
+        throw new Error(`Paystack initialization failed: ${error.message}`);
+      }
+      throw new Error('Paystack initialization failed: Unknown error');
     }
   },
 
@@ -75,12 +77,14 @@ const paystack = {
         }
       );
       return response.data;
-    } catch (error: any) {
-      throw new Error(
-        `Paystack verification failed: ${
-          error.response?.data?.message || error.message
-        }`
-      );
+    } catch (error: unknown) {
+      if (typeof error === 'object' && error && 'response' in error && typeof (error as any).response?.data?.message === 'string') {
+        throw new Error(`Paystack verification failed: ${(error as any).response.data.message}`);
+      }
+      if (error instanceof Error) {
+        throw new Error(`Paystack verification failed: ${error.message}`);
+      }
+      throw new Error('Paystack verification failed: Unknown error');
     }
   },
 
@@ -104,12 +108,14 @@ const paystack = {
         }
       );
       return response.data;
-    } catch (error: any) {
-      throw new Error(
-        `Bank account resolution failed: ${
-          error.response?.data?.message || error.message
-        }`
-      );
+    } catch (error: unknown) {
+      if (typeof error === 'object' && error && 'response' in error && typeof (error as any).response?.data?.message === 'string') {
+        throw new Error(`Bank account resolution failed: ${(error as any).response.data.message}`);
+      }
+      if (error instanceof Error) {
+        throw new Error(`Bank account resolution failed: ${error.message}`);
+      }
+      throw new Error('Bank account resolution failed: Unknown error');
     }
   },
 
@@ -137,12 +143,14 @@ const paystack = {
         }
       );
       return response.data;
-    } catch (error: any) {
-      throw new Error(
-        `Recipient creation failed: ${
-          error.response?.data?.message || error.message
-        }`
-      );
+    } catch (error: unknown) {
+      if (typeof error === 'object' && error && 'response' in error && typeof (error as any).response?.data?.message === 'string') {
+        throw new Error(`Recipient creation failed: ${(error as any).response.data.message}`);
+      }
+      if (error instanceof Error) {
+        throw new Error(`Recipient creation failed: ${error.message}`);
+      }
+      throw new Error('Recipient creation failed: Unknown error');
     }
   },
 
@@ -172,12 +180,14 @@ const paystack = {
         }
       );
       return response.data;
-    } catch (error: any) {
-      throw new Error(
-        `Transfer initiation failed: ${
-          error.response?.data?.message || error.message
-        }`
-      );
+    } catch (error: unknown) {
+      if (typeof error === 'object' && error && 'response' in error && typeof (error as any).response?.data?.message === 'string') {
+        throw new Error(`Transfer initiation failed: ${(error as any).response.data.message}`);
+      }
+      if (error instanceof Error) {
+        throw new Error(`Transfer initiation failed: ${error.message}`);
+      }
+      throw new Error('Transfer initiation failed: Unknown error');
     }
   },
 };

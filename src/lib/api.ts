@@ -59,7 +59,7 @@ export async function getProducts({
   }
 
   if (category) {
-    query = query.eq('category', category);
+    query = query.contains('category_ids', [category]);
   }
 
   const { data, error, count } = await query.range(offset, offset + limit - 1);
@@ -71,7 +71,7 @@ export async function getProducts({
 
 export async function getAgents() {
   const { data, error } = await supabase
-    .from('users')
+    .from('profiles')
     .select('*')
     .eq('role', 'agent');
   if (error) throw error;
@@ -80,7 +80,7 @@ export async function getAgents() {
 
 export async function getCustomers() {
   const { data, error } = await supabase
-    .from('users')
+    .from('profiles')
     .select('*')
     .eq('role', 'buyer');
   if (error) throw error;
@@ -98,12 +98,20 @@ export async function getCategoriesByIds(ids: string[]) {
 }
 
 export async function addProduct(product: any) {
+  // Ensure images is an array of strings
+  if (product.images && Array.isArray(product.images)) {
+    product.images = product.images.map((img: any) => typeof img === 'string' ? img : (img.url || img));
+  }
   const { data, error } = await supabase.from('products').insert([product]).select();
   if (error) throw error;
   return data?.[0];
 }
 
 export async function updateProduct(id: string, product: any) {
+  // Ensure images is an array of strings
+  if (product.images && Array.isArray(product.images)) {
+    product.images = product.images.map((img: any) => typeof img === 'string' ? img : (img.url || img));
+  }
   console.log("Attempting to update product with ID:", id, "with data:", product);
   const { data, error } = await supabase.from('products').update(product).eq('id', id).select();
   if (error) {
@@ -233,21 +241,16 @@ export async function uploadProductImage(file: File, bucketName: string = 'produ
 }
 
 export async function uploadOptionImage(file: File, bucketName: string = 'option-images') {
-  const fileExt = file.name.split('.').pop();
-  const filePath = `${Date.now()}.${fileExt}`;
-
-  const { data, error } = await supabase.storage
-    .from(bucketName)
-    .upload(filePath, file);
-
-  if (error) throw error;
-
-  // Get the public URL
-  const { data: publicUrlData } = supabase.storage
-    .from(bucketName)
-    .getPublicUrl(filePath);
-
-  return publicUrlData.publicUrl;
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("bucket", bucketName);
+  const res = await fetch("/api/upload-product-image", {
+    method: "POST",
+    body: formData,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Upload failed");
+  return data.url;
 }
 
 // Add a placeholder function for fetching a customer by ID
@@ -266,8 +269,5 @@ export async function getCustomerById(customerId: string) {
     throw error;
   }
 
-  // The data structure from Supabase might differ slightly from the dummy data
-  // Ensure the returned data matches the Customer interface or map it accordingly
-  // For now, returning the raw data. You might need to adjust the interface or map here.
   return data; // This will be null if no user with that ID and role 'buyer' is found
 } 

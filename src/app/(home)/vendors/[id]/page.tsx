@@ -388,13 +388,13 @@ export default function VendorPage({ params }: { params: { id: string } }) {
               </div>
 
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-                {bestSellingProducts.map((product) => (
+                {/* {bestSellingProducts.map((product) => (
                   <ProductdetailsCard
                     key={product._id}
                     product={product}
                     // showSalesCount
                   />
-                ))}
+                ))} */}
               </div>
             </div>
           )}
@@ -422,13 +422,13 @@ export default function VendorPage({ params }: { params: { id: string } }) {
             </div>
 
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-              {vendorProducts.map((product) => (
+              {/* {vendorProducts.map((product) => (
                 <ProductdetailsCard
                   key={product._id}
                   product={product}
                   // showQuickView
                 />
-              ))}
+              ))} */}
             </div>
 
             {vendorProducts.length > 12 && (

@@ -1,4 +1,3 @@
-// components/vendor/ChatModal.tsx
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -34,6 +33,7 @@ export default function ChatModal({ vendorId, vendorName, isOpen, onClose }: Cha
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const fetchChatHistory = async () => {
     setIsLoading(true);
     try {
@@ -63,7 +63,7 @@ export default function ChatModal({ vendorId, vendorName, isOpen, onClose }: Cha
     if (isOpen) {
       fetchChatHistory();
     }
-  }, [isOpen, vendorId]);
+  }, [fetchChatHistory, isOpen, vendorId]);
 
   useEffect(() => {
     scrollToBottom();

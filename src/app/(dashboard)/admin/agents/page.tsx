@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from "react";
 import {
@@ -262,7 +263,7 @@ export default function Agents() {
             {paginatedAgents?.map((agent) => (
               <TableRow key={agent.id}>
                 <TableCell className="text-left px-6 py-4 flex gap-2 items-center">
-                  <img
+                  <Image
                     src={
                       agent.image_url ||
                       "https://dummyimage.com/40x40/000/fff&text=N/A"

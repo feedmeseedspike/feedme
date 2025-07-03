@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
 import { Button } from "@components/ui/button";
@@ -50,15 +51,9 @@ import { formatNaira, toSlug } from "src/lib/utils";
 import Edit from "@components/icons/edit.svg";
 import Trash from "@components/icons/trash.svg";
 import { useToast } from "src/hooks/useToast";
-// @ts-ignore
-import {
-  getCategories,
-  addProduct,
-  uploadProductImage,
-} from "../../../../../lib/api";
-// @ts-ignore
-// import { supabase } from "../../../../../lib/supabaseClient"; // Remove unused import
-
+import { getAllCategories } from "../../../../../queries/products";
+import { Label } from "@/components/ui/label";
+import { addProduct, uploadProductImage } from "src/lib/api";
 const animatedComponents = makeAnimated();
 
 const productSchema = z
@@ -160,13 +155,11 @@ export default function AddProduct() {
   const [pendingProduct, setPendingProduct] = useState<any>(null);
 
   useEffect(() => {
-    // console.log(getCategories());
     setLoadingCategories(true);
-    getCategories({})
-      .then((response) => {
-        // console.log(response);
+    getAllCategories()
+      .then((allCategories) => {
         setCategories(
-          (response?.data || []).map((cat: any) => ({
+          (allCategories || []).map((cat: any) => ({
             label: cat.title,
             value: cat.id,
           }))
@@ -257,7 +250,7 @@ export default function AddProduct() {
       return () => previews.forEach(URL.revokeObjectURL);
     }
     setImagePreviews([]);
-  }, [form.watch("images")]);
+  }, [form]);
 
   const handleSaveDraft = async (data: ProductFormValues) => {
     // Convert product images to base64
@@ -286,7 +279,7 @@ export default function AddProduct() {
                 };
                 reader.readAsDataURL(option.image);
               } else {
-                resolve(option.image);
+                resolve(typeof option.image === "string" ? option.image : "");
               }
             });
           })
@@ -351,10 +344,6 @@ export default function AddProduct() {
       }
     }
 
-    // Handle option images if applicable (assuming options.image is a File)
-    // If options.image is already a URL string, skip upload here.
-    // You might need a separate upload logic for option images if they are File objects.
-
     // Determine if the product has variations based on the options array
     const hasVariations = data.options && data.options.length > 0;
 
@@ -363,12 +352,15 @@ export default function AddProduct() {
       slug: toSlug(data.productName),
       description: data.description,
       price: hasVariations ? null : parseFloat(data.price || "0"),
-      stock_status: hasVariations ? null : data.stockStatus,
-      images: uploadedImageUrls.map((url) => ({ url })), // Store image URLs as objects with url property
+      stock_status: hasVariations
+        ? null
+        : data.stockStatus === "In Stock"
+          ? "in_stock"
+          : "out_of_stock",
+      images: uploadedImageUrls,
       is_published: data.is_published,
       category_ids: data.selectedCategories.map((cat) => cat.value),
       options: hasVariations ? data.options : [],
-      vendor_id: auth.user?.id, // Assuming vendor_id is the user's ID
     };
 
     try {
@@ -439,7 +431,7 @@ export default function AddProduct() {
             )}
           />
 
-          {/* Categories */}
+          {/* Categories - FIXED: Removed extra div wrapper */}
           <FormField
             control={form.control}
             name="selectedCategories"
@@ -487,7 +479,7 @@ export default function AddProduct() {
             )}
           />
 
-          {/* Variations */}
+          {/* Variations - FIXED: Moved FormDescription outside FormControl */}
           <FormField
             control={form.control}
             name="variation"
@@ -511,12 +503,8 @@ export default function AddProduct() {
                       <Label htmlFor="variation-no">No</Label>
                     </div>
                   </RadioGroup>
-                  <FormDescription>
-                    Does this product have different variations like size or
-                    color?
-                  </FormDescription>
-                  <FormMessage />
                 </FormControl>
+                <FormMessage className="col-span-7 col-start-3" />
               </FormItem>
             )}
           />
@@ -530,7 +518,7 @@ export default function AddProduct() {
           >
             {form.watch("variation") === "No" ? (
               <>
-                {/* Image Upload */}
+                {/* Image Upload  */}
                 <FormField
                   control={form.control}
                   name="images"
@@ -539,57 +527,61 @@ export default function AddProduct() {
                       <FormLabel className="text-sm font-medium col-span-2">
                         Image(s)
                       </FormLabel>
-                      <FormControl>
-                        <div className="col-span-7">
-                          <label className="flex flex-col items-center justify-center size-[156px] border border-dashed rounded-lg cursor-pointer hover:bg-gray-50 bg-[#EBFFF3]">
-                            <input
-                              type="file"
-                              className="hidden"
-                              onChange={handleImageUpload}
-                              multiple
-                            />
-                            <div className="text-[#61BB84] flex items-center gap-1 justify-center w-full h-full bg-[#ebfff8] px-3 py-[3px] rounded-[3.66px] font-semibold text-[10px]">
-                              <Plus size={10} /> Upload
-                            </div>
-                          </label>
-                          {imagePreviews.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {imagePreviews.map((preview, index) => (
-                                <div key={index} className="relative size-16">
-                                  <Image
-                                    src={preview}
-                                    alt={`Preview ${index}`}
-                                    fill
-                                    className="rounded-lg object-cover"
-                                  />
-                                  <button
-                                    type="button"
-                                    className="absolute top-0 right-0 bg-white rounded-full py-[2px] px-2 shadow"
-                                    onClick={() => {
-                                      const images = form.getValues("images");
-                                      const arr = Array.isArray(images)
-                                        ? images
-                                        : [];
-                                      arr.splice(index, 1);
-                                      form.setValue("images", arr);
-                                    }}
-                                    aria-label="Remove image"
-                                  >
-                                    <span className="text-red-500 font-bold text-xs">
-                                      X
-                                    </span>
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {field.value && field.value.length > 0 && (
-                            <p className="mt-2 text-sm text-green-600">
-                              {field.value.length} file(s) selected
-                            </p>
-                          )}
-                        </div>
-                      </FormControl>
+                      <div className="col-span-7">
+                        <FormControl>
+                          <input
+                            type="file"
+                            className="hidden"
+                            onChange={handleImageUpload}
+                            multiple
+                            id="image-upload"
+                          />
+                        </FormControl>
+                        <label
+                          htmlFor="image-upload"
+                          className="flex flex-col items-center justify-center size-[156px] border border-dashed rounded-lg cursor-pointer hover:bg-gray-50 bg-[#EBFFF3]"
+                        >
+                          <div className="text-[#61BB84] flex items-center gap-1 justify-center w-full h-full bg-[#ebfff8] px-3 py-[3px] rounded-[3.66px] font-semibold text-[10px]">
+                            <Plus size={10} /> Upload
+                          </div>
+                        </label>
+                        {imagePreviews.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {imagePreviews.map((preview, index) => (
+                              <div key={index} className="relative size-16">
+                                <Image
+                                  src={preview}
+                                  alt={`Preview ${index}`}
+                                  fill
+                                  className="rounded-lg object-cover"
+                                />
+                                <button
+                                  type="button"
+                                  className="absolute top-0 right-0 bg-white rounded-full py-[2px] px-2 shadow"
+                                  onClick={() => {
+                                    const images = form.getValues("images");
+                                    const arr = Array.isArray(images)
+                                      ? images
+                                      : [];
+                                    arr.splice(index, 1);
+                                    form.setValue("images", arr);
+                                  }}
+                                  aria-label="Remove image"
+                                >
+                                  <span className="text-red-500 font-bold text-xs">
+                                    X
+                                  </span>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {field.value && field.value.length > 0 && (
+                          <p className="mt-2 text-sm text-green-600">
+                            {field.value.length} file(s) selected
+                          </p>
+                        )}
+                      </div>
                       <FormMessage className="col-span-7 col-start-3" />
                     </FormItem>
                   )}
@@ -692,7 +684,12 @@ export default function AddProduct() {
                                     />
                                   ) : (
                                     <Image
-                                      src={option.image}
+                                      src={
+                                        typeof option.image === "string" &&
+                                        option.image
+                                          ? option.image
+                                          : "/placeholder-product.png"
+                                      }
                                       alt={option.name}
                                       fill
                                       className="rounded-[12px]"

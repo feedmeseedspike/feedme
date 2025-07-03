@@ -8,6 +8,8 @@ import CredentialsSignUpForm from "./signup-form";
 import { getUser } from "src/lib/actions/auth.actions";
 import { PreloadResource, ReviewSlide } from "../preload-resources";
 import { signinWithGoogle } from "@utils/google-action";
+import React from "react";
+import GoogleButton from "src/components/GoogleButton";
 
 export const metadata: Metadata = {
   title: "Create Account",
@@ -45,13 +47,8 @@ export default async function SignUpPage(props: {
 
   const user = await getUser();
   if (user) {
-    return redirect(callbackUrl || "/account");
+    return redirect(callbackUrl || "/");
   }
-
-  const handleGoogleSignIn = async () => {
-    "use server";
-    await signinWithGoogle(referral_code);
-  };
 
   return (
     <main className="h-screen flex gap-6">
@@ -81,17 +78,8 @@ export default async function SignUpPage(props: {
         </div>
 
         <div className="flex flex-col gap-5">
-          <form action={handleGoogleSignIn}>
-            <button
-              type="submit"
-              className="rounded-lg w-full py-3 flex justify-center ring-1 ring-zinc-500 shadow-sm"
-            >
-              <p className="flex gap-2 items-end">
-                <FcGoogle className="text-2xl" />
-                <span className="font-semibold text-md">Google</span>
-              </p>
-            </button>
-          </form>
+          {/* Google Sign-In Button (client-side) */}
+          <GoogleButton referralCode={referral_code} />
           <div className="flex items-center gap-2">
             <span className="bg-[#EEF2FF] h-[2px] w-full"></span>
             <p className="whitespace-nowrap text-xs">

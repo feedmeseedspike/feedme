@@ -27,7 +27,7 @@ const UserDropdownContent: React.FC<UserDropdownContentProps> = ({ user }) => (
     </div>
     <div className="flex-1 space-y-2">
       <Link
-        href="/account"
+        href="/account/profile"
         className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded transition-colors"
       >
         <UserIcon className="mr-2 h-4 w-4" /> Account Settings

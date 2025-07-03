@@ -4,7 +4,17 @@ import { createClient } from "src/utils/supabase/server";
 import { Tables } from "src/utils/database.types"; // Import Tables for typing
 
 // Define explicit return types for success and failure scenarios
-export type FavoritesSuccess = { success: true; data: (Tables<'favorites'> & { products: Tables<'products'> | null })[]; error: null };
+export type FavoritesSuccess = { 
+  success: true; 
+  data: { 
+    id: string;
+    user_id: string | null;
+    product_id: string | null;
+    created_at: string | null;
+    products: Tables<'products'> | null;
+  }[]; 
+  error: null 
+};
 export type FavoritesFailure = { success: false; data: null; error: string };
 
 // Add to favorites with error handling
@@ -130,6 +140,8 @@ export async function getFavourites(): Promise<FavoritesSuccess | FavoritesFailu
       .select('id, user_id, product_id, created_at, products(*)') // Explicitly select fields and join products
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
+
+    console.log("Fetched favorites from Supabase:", favorites, "Error:", error); // Debugging line
 
     if (error) throw error;
 

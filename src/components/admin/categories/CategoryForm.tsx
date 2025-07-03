@@ -29,11 +29,15 @@ export default function CategoryForm({
   isSubmitting,
 }: CategoryFormProps) {
   const [title, setTitle] = useState(initialData?.title || "");
-  const [description, setDescription] = useState(initialData?.description || "");
+  const [description, setDescription] = useState(
+    initialData?.description || ""
+  );
   const [tag, setTag] = useState("");
   const [tags, setTags] = useState<string[]>(initialData?.tags || []);
   const [keynote, setKeynote] = useState("");
-  const [keynotes, setKeynotes] = useState<string[]>(initialData?.keynotes || []);
+  const [keynotes, setKeynotes] = useState<string[]>(
+    initialData?.keynotes || []
+  );
   const [imagePreview, setImagePreview] = useState<string | null>(
     initialData?.thumbnail?.url || null
   );
@@ -75,21 +79,21 @@ export default function CategoryForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const formData = new FormData();
     formData.append("title", title);
     formData.append("description", description);
     formData.append("tags", JSON.stringify(tags));
     formData.append("keynotes", JSON.stringify(keynotes));
-    
+
     if (imageFile) {
       formData.append("thumbnail", imageFile);
     }
-    
-    if (initialData?._id) {
-      formData.append("_id", initialData._id);
+
+    if (initialData?.id) {
+      formData.append("id", initialData.id);
     }
-    
+
     onSubmit(formData);
   };
 
@@ -107,9 +111,9 @@ export default function CategoryForm({
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="title">Category Title</Label>
-              <Input 
-                id="title" 
-                value={title} 
+              <Input
+                id="title"
+                value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., Fruits, Vegetables, Spices"
                 required
@@ -117,9 +121,9 @@ export default function CategoryForm({
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
-              <Textarea 
-                id="description" 
-                value={description} 
+              <Textarea
+                id="description"
+                value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe this category..."
                 rows={4}
@@ -134,21 +138,24 @@ export default function CategoryForm({
           <CardHeader>
             <CardTitle>Category Image</CardTitle>
             <CardDescription>
-              {initialData ? "Update" : "Upload"} an image that represents this category.
+              {initialData ? "Update" : "Upload"} an image that represents this
+              category.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="image">Thumbnail Image</Label>
-              <Input 
-                id="image" 
-                type="file" 
+              <Input
+                id="image"
+                type="file"
                 accept="image/*"
                 onChange={handleImageChange}
                 required={!initialData}
               />
               {initialData && (
-                <p className="text-sm text-gray-500">Leave empty to keep the current image</p>
+                <p className="text-sm text-gray-500">
+                  Leave empty to keep the current image
+                </p>
               )}
             </div>
             {imagePreview && (
@@ -157,9 +164,9 @@ export default function CategoryForm({
                   {initialData ? "Current" : "Preview"} Image:
                 </p>
                 <div className="relative w-40 h-40 border rounded-md overflow-hidden">
-                  <Image 
-                    src={imagePreview} 
-                    alt="Category preview" 
+                  <Image
+                    src={imagePreview}
+                    alt="Category preview"
                     fill
                     className="object-cover"
                   />
@@ -179,22 +186,18 @@ export default function CategoryForm({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-2">
-              <Input 
-                value={tag} 
+              <Input
+                value={tag}
                 onChange={(e) => setTag(e.target.value)}
                 placeholder="Add a tag"
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (e.key === "Enter") {
                     e.preventDefault();
                     handleAddTag();
                   }
                 }}
               />
-              <Button 
-                type="button" 
-                onClick={handleAddTag}
-                variant="outline"
-              >
+              <Button type="button" onClick={handleAddTag} variant="outline">
                 Add
               </Button>
             </div>
@@ -202,9 +205,9 @@ export default function CategoryForm({
               {tags.map((t) => (
                 <Badge key={t} className="px-2 py-1 flex items-center gap-1">
                   {t}
-                  <X 
-                    size={14} 
-                    className="cursor-pointer" 
+                  <X
+                    size={14}
+                    className="cursor-pointer"
                     onClick={() => handleRemoveTag(t)}
                   />
                 </Badge>
@@ -223,19 +226,19 @@ export default function CategoryForm({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-2">
-              <Input 
-                value={keynote} 
+              <Input
+                value={keynote}
                 onChange={(e) => setKeynote(e.target.value)}
                 placeholder="Add a keynote"
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (e.key === "Enter") {
                     e.preventDefault();
                     handleAddKeynote();
                   }
                 }}
               />
-              <Button 
-                type="button" 
+              <Button
+                type="button"
                 onClick={handleAddKeynote}
                 variant="outline"
               >
@@ -244,11 +247,14 @@ export default function CategoryForm({
             </div>
             <div className="flex flex-wrap gap-2 mt-2">
               {keynotes.map((k) => (
-                <Badge key={k} className="px-2 py-1 flex items-center gap-1 bg-blue-100 text-blue-800 hover:bg-blue-200">
+                <Badge
+                  key={k}
+                  className="px-2 py-1 flex items-center gap-1 bg-blue-100 text-blue-800 hover:bg-blue-200"
+                >
                   {k}
-                  <X 
-                    size={14} 
-                    className="cursor-pointer" 
+                  <X
+                    size={14}
+                    className="cursor-pointer"
                     onClick={() => handleRemoveKeynote(k)}
                   />
                 </Badge>
@@ -260,12 +266,16 @@ export default function CategoryForm({
 
       {/* Form Actions */}
       <div className="mt-6 flex justify-end gap-4">
-        <Button 
-          type="submit" 
+        <Button
+          type="submit"
           className="bg-[#1B6013] text-white"
           disabled={isSubmitting}
         >
-          {isSubmitting ? "Saving..." : initialData ? "Update Category" : "Create Category"}
+          {isSubmitting
+            ? "Saving..."
+            : initialData
+              ? "Update Category"
+              : "Create Category"}
         </Button>
       </div>
     </form>

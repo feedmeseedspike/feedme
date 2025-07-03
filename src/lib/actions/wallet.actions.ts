@@ -14,21 +14,40 @@ export async function processWalletPayment(orderData: OrderData) {
 
   const userId = userData.user.id;
 
+  // Debug log for user ID mismatch
+  console.log('OrderData userId:', orderData.userId, 'Authenticated userId:', userId);
+
   // Basic security check: Ensure the order data belongs to the authenticated user
   if (orderData.userId !== userId) {
     return { success: false, error: "Order data mismatch." };
   }
 
   // Fetch user's current wallet balance
-  const { data: walletData, error: walletError } = await supabase
+  let { data: walletData, error: walletError } = await supabase
     .from("wallets")
     .select("balance")
     .eq("user_id", userId)
     .single();
 
   if (walletError || !walletData) {
-    console.error("Error fetching wallet:", walletError?.message);
-    return { success: false, error: "Could not retrieve wallet information." };
+    // Try to auto-create a wallet row if missing
+    const { error: createWalletError } = await supabase
+      .from("wallets")
+      .insert({ user_id: userId, balance: 0 });
+    if (createWalletError) {
+      console.error("Error creating wallet for user:", createWalletError.message);
+      return { success: false, error: "Could not create wallet for user." };
+    }
+    // Retry fetching the wallet
+    ({ data: walletData, error: walletError } = await supabase
+      .from("wallets")
+      .select("balance")
+      .eq("user_id", userId)
+      .single());
+    if (walletError || !walletData) {
+      console.error("Error fetching wallet after creation:", walletError?.message);
+      return { success: false, error: "Could not retrieve wallet information." };
+    }
   }
 
   // Check if balance is null and handle it
@@ -128,4 +147,15 @@ export async function processWalletPayment(orderData: OrderData) {
     }
     return { success: false, error: error.message || "An error occurred during payment processing." };
   }
+} 
+
+export async function getWalletBalanceServer(userId: string): Promise<number> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("wallets")
+    .select("balance")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error || !data) return 0;
+  return data.balance || 0;
 } 

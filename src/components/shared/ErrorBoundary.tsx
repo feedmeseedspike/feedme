@@ -35,18 +35,24 @@ class ErrorBoundary extends React.Component<Props, State> {
       }
 
       return (
-        <div className="flex flex-col items-center justify-center p-4 text-center">
-          <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Something went wrong</h2>
-          <p className="text-gray-600 mb-4">
-            We apologize for the inconvenience. Please try refreshing the page.
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
-          >
-            Refresh Page
-          </button>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 bg-[#F7FAF7]">
+          <div className="bg-white shadow-lg rounded-xl p-8 flex flex-col items-center max-w-md w-full border border-[#E6F4EA]">
+            <AlertCircle className="w-14 h-14 text-[#1B6013] mb-4" />
+            <h2 className="text-2xl font-bold mb-2 text-[#1B6013]">
+              Something went wrong
+            </h2>
+            <p className="text-gray-600 mb-6 text-base">
+              We apologize for the inconvenience.
+              <br />
+              Please try refreshing the page or come back later.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-[#1B6013] text-white rounded-lg font-semibold shadow hover:bg-[#174d10] transition-colors text-base"
+            >
+              Refresh Page
+            </button>
+          </div>
         </div>
       );
     }

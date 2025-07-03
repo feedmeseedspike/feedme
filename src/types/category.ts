@@ -21,6 +21,7 @@ export type Category = {
   keynotes: string[];
   tags: string[];
   products: Product[];
+  banner_url?: string;
 };
 
 export type CategoryResponse = {

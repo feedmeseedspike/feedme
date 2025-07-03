@@ -81,19 +81,21 @@ export async function updateUserInfo(currentState: any, formData: FormData) {
     };
 
     const updateResult = await supabase
-      .from("users")
+      .from("profiles")
       .update(updateData)
-      .eq("id", user.id);
+      .eq("user_id", user.id);
 
 
     if (updateResult.error) {
       throw new Error(updateResult.error.message);
     }
 
-    return { 
-      success: true, 
+    revalidatePath("/"); // Revalidate cache for the root path
+    
+    return {
+      success: true,
       message: "Profile updated successfully",
-      avatarUrl 
+      avatarUrl,
     };
   } catch (error: any) {
     console.error("Error in updateUserInfo:", error);
@@ -112,10 +114,10 @@ export async function getCustomerByIdAction(customerId: string) {
 
   try {
     const { data, error } = await supabase
-      .from('users')
+      .from('profiles')
       .select('*') // Select all fields, adjust if you need a specific subset
       // Query using the string ID directly
-      .eq('id', customerId)
+      .eq('user_id', customerId)
       .eq('role', 'buyer')
       .single(); // Expect a single result
 

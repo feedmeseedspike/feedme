@@ -110,7 +110,7 @@ interface CartItemDisplayProps {
 
 const CartItemDisplay = React.memo(
   ({ item, handleRemoveItem, handleQuantityChange }: CartItemDisplayProps) => {
-    const productOption = item.option as ProductOption | null;
+    const productOption = isProductOption(item.option) ? item.option : null;
 
     return (
       <React.Fragment>
@@ -143,9 +143,10 @@ const CartItemDisplay = React.memo(
             <div className="flex justify-between items-center">
               <p className="text-[#101828] font-bold">
                 {formatNaira(
-                  (productOption?.price !== undefined &&
-                  productOption?.price !== null
-                    ? productOption.price
+                  (isProductOption(item.option) &&
+                  item.option.price !== undefined &&
+                  item.option.price !== null
+                    ? item.option.price
                     : item.price) || 0
                 )}{" "}
               </p>
@@ -179,6 +180,16 @@ const CartItemDisplay = React.memo(
 
 CartItemDisplay.displayName = "CartItemDisplay";
 
+// Type guard for ProductOption
+function isProductOption(option: unknown): option is ProductOption {
+  return (
+    typeof option === "object" &&
+    option !== null &&
+    "price" in option &&
+    typeof (option as any).price === "number"
+  );
+}
+
 const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
   const router = useRouter();
   const { data: cartItems, isLoading, isError, error } = useCartQuery();
@@ -193,9 +204,10 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
       items.reduce(
         (acc, item) =>
           acc +
-          (((item.option as ProductOption | null)?.price !== undefined &&
-          (item.option as ProductOption | null)?.price !== null
-            ? (item.option as ProductOption | null)?.price
+          ((isProductOption(item.option) &&
+          item.option.price !== undefined &&
+          item.option.price !== null
+            ? item.option.price
             : item.price) || 0) *
             item.quantity,
         0
@@ -212,7 +224,24 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
   const { mutateAsync: validateVoucherMutation } =
     useVoucherValidationMutation();
 
+  const isReferralVoucher = isVoucherValid && voucherCode.startsWith("REF-");
+
+  // Restore voucher from localStorage on mount
+  useEffect(() => {
+    const savedCode = localStorage.getItem("voucherCode");
+    const savedDiscount = localStorage.getItem("voucherDiscount");
+    if (savedCode) setVoucherCode(savedCode);
+    if (savedDiscount) setVoucherDiscount(Number(savedDiscount));
+  }, []);
+
   const handleVoucherValidation = useCallback(async () => {
+    if (isReferralVoucher) {
+      showToast(
+        "Referral voucher already applied. Cannot apply another voucher.",
+        "info"
+      );
+      return;
+    }
     if (!voucherCode) {
       showToast("Please enter a voucher code.", "error");
       return;
@@ -225,22 +254,31 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
           totalAmount: subtotal,
         });
         if (result.success && result.data) {
-          const { discountType, discountValue } = result.data;
+          const { discountType, discountValue, id } = result.data;
           setIsVoucherValid(true);
           const discount =
             discountType === "percentage"
               ? (discountValue / 100) * subtotal
               : discountValue;
           setVoucherDiscount(discount);
+          // Persist voucher in localStorage
+          localStorage.setItem("voucherCode", voucherCode);
+          localStorage.setItem("voucherDiscount", discount.toString());
           showToast("Voucher applied successfully!", "success");
         } else {
           setIsVoucherValid(false);
           setVoucherDiscount(0);
+          // Remove voucher from localStorage
+          localStorage.removeItem("voucherCode");
+          localStorage.removeItem("voucherDiscount");
           showToast(result.error || "Voucher validation failed.", "error");
         }
       } catch (error: any) {
         setIsVoucherValid(false);
         setVoucherDiscount(0);
+        // Remove voucher from localStorage
+        localStorage.removeItem("voucherCode");
+        localStorage.removeItem("voucherDiscount");
         console.error("Error caught in handleVoucherValidation:", error);
         showToast(
           error.message || "An error occurred while validating the voucher.",
@@ -248,7 +286,13 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
         );
       }
     });
-  }, [voucherCode, subtotal, showToast, validateVoucherMutation]);
+  }, [
+    voucherCode,
+    subtotal,
+    showToast,
+    validateVoucherMutation,
+    isReferralVoucher,
+  ]);
 
   const groupedItems = useMemo(() => {
     return items.reduce(
@@ -301,7 +345,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
         console.error("Failed to remove item:", error);
       }
     },
-    [removeCartItemMutation.mutateAsync]
+    [removeCartItemMutation]
   );
 
   const handleQuantityChange = useCallback(
@@ -334,7 +378,9 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
         } else {
           const itemsForMutation: ItemToUpdateMutation[] = items
             .map((cartItem) => {
-              const productOption = cartItem.option as ProductOption | null;
+              const productOption = isProductOption(cartItem.option)
+                ? cartItem.option
+                : null;
               const priceToUse =
                 (productOption?.price !== undefined &&
                 productOption?.price !== null
@@ -368,21 +414,19 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
         }
       }
     },
-    [
-      items,
-      updateCartMutation.mutateAsync,
-      removeCartItemMutation.mutateAsync,
-      queryClient,
-    ]
+    [items, removeCartItemMutation, updateCartMutation, queryClient]
   );
 
+  // Remove voucher from localStorage when clearing cart
   const handleClearCart = useCallback(async () => {
     try {
       await clearCartMutation.mutateAsync();
+      localStorage.removeItem("voucherCode");
+      localStorage.removeItem("voucherDiscount");
     } catch (error: any) {
       console.error("Failed to clear cart:", error);
     }
-  }, [clearCartMutation.mutateAsync]);
+  }, [clearCartMutation]);
 
   const totalQuantity = useMemo(
     () => items.reduce((acc, item) => acc + item.quantity, 0),
@@ -394,28 +438,68 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
     [subtotal, voucherDiscount]
   ); // Calculate total with discount
 
+  // Add a state to track if device is mobile
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   if (asLink) {
     return (
       <div className="relative" onMouseEnter={prefetchCart}>
         <ShoppingCart className="size-[24px]" />
         {items.length > 0 && (
-          <p className="absolute -top-2 -right-2 bg-[#D0D5DD] px-[7px] py-[2px] rounded-full text-xs text-white">
+          <span
+            className="absolute -top-2 -right-2 bg-[#D0D5DD] w-5 h-5 flex items-center justify-center rounded-full text-xs text-white font-semibold "
+            style={{ minWidth: 20, minHeight: 20 }}
+          >
             {totalQuantity}
-          </p>
+          </span>
         )}
       </div>
     );
   }
 
+  // On mobile, clicking the cart icon navigates to /cart
+  if (isMobile) {
+    return (
+      <div
+        className="relative cursor-pointer"
+        onClick={() => router.push("/cart")}
+        onMouseEnter={prefetchCart}
+      >
+        <ShoppingCart className="size-[24px]" />
+        {items.length > 0 && (
+          <span
+            className="absolute -top-2 -right-[6px] sm:-right-2 bg-[#D0D5DD] w-5 h-5 flex items-center justify-center rounded-full text-[10px] sm:text-xs text-white font-semibold "
+            style={{ minWidth: 20, minHeight: 20 }}
+          >
+            {totalQuantity}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  // Desktop: show modal
   return (
     <Sheet>
       <SheetTrigger asChild>
         <div className="relative cursor-pointer" onMouseEnter={prefetchCart}>
           <ShoppingCart className="size-[24px]" />
           {items.length > 0 && (
-            <p className="absolute -top-2 -right-[6px] sm:-right-2 bg-[#D0D5DD] px-[5px] py-[2.2px] sm:px-[6px] sm:py-[2.2px] rounded-full text-[10px] sm:text-xs text-white font-semibold">
+            <span
+              className="absolute -top-2 -right-[6px] sm:-right-2 bg-[#D0D5DD] w-5 h-5 flex items-center justify-center rounded-full text-[10px] sm:text-xs text-white font-semibold "
+              style={{ minWidth: 20, minHeight: 20 }}
+            >
               {totalQuantity}
-            </p>
+            </span>
           )}
         </div>
       </SheetTrigger>
@@ -479,16 +563,22 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
                   className="h-10 placeholder:text-xs text-[#737373] placeholder:font-semibold"
                   value={voucherCode}
                   onChange={(e) => setVoucherCode(e.target.value)}
+                  disabled={isReferralVoucher}
                 />
                 <Button
                   type="button"
                   className="btn-primary !text-[#B7CDB4] !bg-[#F2F4F7] h-10"
                   onClick={handleVoucherValidation}
-                  disabled={isVoucherPending}
+                  disabled={isVoucherPending || isReferralVoucher}
                 >
                   {isVoucherPending ? "Applying..." : "Apply"}
                 </Button>
               </div>
+              {isReferralVoucher && (
+                <div className="mt-2 text-blue-600 text-sm">
+                  Referral voucher applied. You cannot apply another voucher.
+                </div>
+              )}
               {isVoucherValid && ( // Display discount if valid
                 <div className="mt-2 text-green-600 text-sm">
                   Voucher applied! You saved {formatNaira(voucherDiscount)}

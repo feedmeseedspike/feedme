@@ -1,21 +1,11 @@
-"use client";
+export const dynamic = "force-dynamic";
 
-import { useEffect, useState } from "react";
 import { Button } from "@components/ui/button";
 import { ArrowLeft, Edit, Trash2, Plus, ExternalLink } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { categories, products } from "src/lib/data";
+import { notFound } from "next/navigation";
 import { Category } from "src/types/category";
 import CategoryDetails from "@components/admin/categories/CategoryDetails";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@components/ui/dialog";
 import {
   Card,
   CardContent,
@@ -34,75 +24,67 @@ import {
   TableRow,
 } from "@components/ui/table";
 import { Badge } from "@components/ui/badge";
-import { getCategoryById, deleteCategory } from "../../../../../../lib/api";
-import { useToast } from "../../../../../../hooks/useToast";
+import { createClient } from "src/utils/supabase/client";
+import type { Database } from "src/utils/database.types";
+import type { Category as AppCategory } from "src/types/category";
 
-export default function ViewCategory({ params }: { params: { id: string } }) {
-  const router = useRouter();
+export default async function ViewCategory({
+  params,
+}: {
+  params: { id: string };
+}) {
   const { id } = params;
-  const { showToast } = useToast();
+  const supabase = createClient();
 
-  const [category, setCategory] = useState<Category | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchCategory() {
-      setLoading(true);
-      setError(null);
-      try {
-        const foundCategory = await getCategoryById(id);
-        if (foundCategory) {
-          setCategory(foundCategory);
-        } else {
-          setError("Category not found");
-        }
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch category");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    if (id) {
-      fetchCategory();
-    }
-  }, [id]);
-
-  const handleDeleteConfirm = async () => {
-    if (category) {
-      try {
-        await deleteCategory(category.id);
-        showToast("Category deleted successfully!", "success");
-        router.push("/admin/categories");
-      } catch (err: any) {
-        showToast(err.message || "Failed to delete category", "error");
-      } finally {
-        setDeleteDialogOpen(false);
-      }
-    }
+  // Fetch category
+  const { data: categoryRow, error: catError } = await supabase
+    .from("categories")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle<Database["public"]["Tables"]["categories"]["Row"]>();
+  if (catError || !categoryRow) {
+    return notFound();
+  }
+  // Map to app Category type
+  const category: AppCategory & { banner_url?: string } = {
+    id: categoryRow.id,
+    title: categoryRow.title,
+    description: categoryRow.description || "",
+    thumbnail:
+      categoryRow.thumbnail &&
+      typeof categoryRow.thumbnail === "object" &&
+      "url" in categoryRow.thumbnail
+        ? (categoryRow.thumbnail as { url: string; public_id: string })
+        : { url: "", public_id: "" },
+    keynotes: categoryRow.keynotes || [],
+    tags: categoryRow.tags || [],
+    products: [], // not used in details
+    banner_url: categoryRow.banner_url || undefined,
   };
 
-  // Get products in this category
-  const categoryProducts = category
-    ? products.filter((product) => product.category[0] === category.title)
+  // Fetch products in this category (category_ids contains id)
+  const { data: categoryProductsRaw } = await supabase
+    .from("products")
+    .select("*")
+    .contains("category_ids", [id]);
+  const categoryProducts = Array.isArray(categoryProductsRaw)
+    ? categoryProductsRaw
     : [];
-
-  if (loading) {
-    return <div className="p-4">Loading...</div>;
-  }
-
-  if (error) {
-    return <div className="p-4 text-red-500">{error}</div>;
-  }
-
-  if (!category) {
-    return <div className="p-4">Category not found</div>;
-  }
 
   return (
     <div className="p-4">
+      {/* Category Banner */}
+      {category.banner_url ? (
+        <div className="mb-6 w-full h-40 md:h-56 rounded-lg overflow-hidden relative">
+          <Image
+            src={category.banner_url}
+            alt={category.title + " banner"}
+            fill
+            className="object-cover w-full h-full"
+          />
+        </div>
+      ) : null}
+
       <div className="mb-6">
         <Link
           href="/admin/categories"
@@ -125,11 +107,7 @@ export default function ViewCategory({ params }: { params: { id: string } }) {
               Edit
             </Button>
           </Link>
-          <Button
-            variant="destructive"
-            className="flex items-center gap-2"
-            onClick={() => setDeleteDialogOpen(true)}
-          >
+          <Button variant="destructive" className="flex items-center gap-2">
             <Trash2 size={16} />
             Delete
           </Button>
@@ -172,7 +150,11 @@ export default function ViewCategory({ params }: { params: { id: string } }) {
                     <TableRow key={product.id}>
                       <TableCell>
                         <Image
-                          src={product.images[0]}
+                          src={
+                            Array.isArray(product.images) && product.images[0]
+                              ? product.images[0]
+                              : "/images/default.png"
+                          }
                           alt={product.name}
                           width={50}
                           height={50}
@@ -182,16 +164,18 @@ export default function ViewCategory({ params }: { params: { id: string } }) {
                       <TableCell className="font-medium">
                         {product.name}
                       </TableCell>
-                      <TableCell>{formatNaira(product.price)}</TableCell>
+                      <TableCell>{formatNaira(product.price ?? 0)}</TableCell>
                       <TableCell>
                         <Badge
                           className={
-                            product.stockStatus === "In stock"
+                            product.stock_status === "in_stock"
                               ? "bg-green-100 text-green-800"
                               : "bg-orange-100 text-orange-800"
                           }
                         >
-                          {product.stockStatus}
+                          {product.stock_status === "in_stock"
+                            ? "In stock"
+                            : "Out of stock"}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -241,30 +225,6 @@ export default function ViewCategory({ params }: { params: { id: string } }) {
           </CardContent>
         </Card>
       </div>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete the category "{category.title}"?
-              This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteConfirm}>
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -17,7 +17,7 @@ import {
   SidebarMenuItem,
 } from "@components/ui/sidebar";
 import Image from "next/image";
-import { Route, UserData } from "src/types";
+import { Route } from "src/types";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
@@ -25,21 +25,24 @@ import LogoutButton from "@components/shared/header/LogoutButton";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "@components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger } from "@components/ui/sheet";
+import { getUnviewedOrdersCount } from "src/queries/orders";
+import { GetUserReturn } from "src/lib/actions/auth.actions";
+import { createClient as createSupabaseClient } from "src/utils/supabase/client";
+import { TiLocation } from "react-icons/ti";
+import { useToast } from "@/hooks/useToast";
 
 interface AppSidebarProps {
-  user: UserData;
+  user: GetUserReturn;
 }
 
 export function AdminSidebar({ user }: AppSidebarProps) {
-  console.log("user here", user)
+  console.log("user here", user);
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [unviewedOrders, setUnviewedOrders] = useState(0);
+  const { showToast } = useToast();
 
   // Redirect "/admin" to "/admin/overview"
   useEffect(() => {
@@ -47,6 +50,50 @@ export function AdminSidebar({ user }: AppSidebarProps) {
       router.replace("/admin/overview");
     }
   }, [pathname, router]);
+
+  useEffect(() => {
+    async function fetchBadge() {
+      try {
+        const count = await getUnviewedOrdersCount();
+        setUnviewedOrders(count);
+      } catch (e) {
+        setUnviewedOrders(0);
+      }
+    }
+    fetchBadge();
+
+    // --- Supabase Realtime subscription for live badge updates ---
+    const supabase = createSupabaseClient();
+    const channel = supabase
+      .channel("admin-unviewed-orders")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+        },
+        (payload) => {
+          // Only refetch if a new order is inserted or admin_viewed changes to false
+          if (
+            payload.eventType === "INSERT" ||
+            (payload.eventType === "UPDATE" &&
+              payload.new.admin_viewed === false)
+          ) {
+            fetchBadge();
+            showToast("New order received!", "info");
+            // Play notification sound
+            const audio = new Audio("/notification.mp3");
+            audio.play();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [showToast]);
 
   const routes: Route[] = [
     { title: "Overview", url: "/admin/overview", icon: Overview },
@@ -57,6 +104,11 @@ export function AdminSidebar({ user }: AppSidebarProps) {
     { title: "Agents", url: "/admin/agents", icon: User },
     { title: "Customers", url: "/admin/customers", icon: Profile },
     { title: "Promotions", url: "/admin/promotions", icon: Product },
+    {
+      title: "Delivery Locations",
+      url: "/admin/delivery-locations",
+      icon: TiLocation,
+    },
   ];
 
   const RenderSidebarContent = () => (
@@ -90,10 +142,29 @@ export function AdminSidebar({ user }: AppSidebarProps) {
                         }`}
                         onClick={() => setOpen(false)}
                       >
-                        <span className={`size-5 text-[#667085] hover:fill-white ${isActive && "fill-white"}`}>
-                          <item.icon />
+                        <span
+                          className={`size-5 text-[#667085] hover:fill-white ${isActive && "fill-white"}`}
+                        >
+                          {item.title === "Delivery Locations" ? (
+                            <TiLocation
+                              size={20}
+                              color={isActive ? "white" : "#667085"}
+                            />
+                          ) : (
+                            <item.icon />
+                          )}
                         </span>
-                        <span className="text-xl">{item.title}</span>
+                        <span className="text-xl flex items-center gap-2">
+                          {item.title}
+                          {item.title === "Orders" && unviewedOrders > 0 && (
+                            <span
+                              className="ml-2 inline-block min-w-[18px] h-5 px-1 rounded-full bg-red-500 text-white text-xs font-bold text-center align-middle"
+                              title={`${unviewedOrders} new orders`}
+                            >
+                              {unviewedOrders}
+                            </span>
+                          )}
+                        </span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -109,11 +180,13 @@ export function AdminSidebar({ user }: AppSidebarProps) {
         <div className="flex gap-2">
           <div className="flex gap-2 items-center">
             <Avatar>
-              <AvatarImage src={user?.avatar_url} />
-              <AvatarFallback>{user?.display_name[0]}</AvatarFallback>
+              <AvatarImage src={user?.avatar_url || undefined} />
+              <AvatarFallback>{user?.display_name?.[0] || ""}</AvatarFallback>
             </Avatar>
             <div>
-              <h3 className="font-medium text-lg text-black">{user?.display_name}</h3>
+              <h3 className="font-medium text-lg text-black">
+                {user?.display_name}
+              </h3>
               <p className="truncate text-[14px]">{user?.email}</p>
             </div>
           </div>

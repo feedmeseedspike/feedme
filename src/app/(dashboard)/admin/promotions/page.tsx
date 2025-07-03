@@ -10,6 +10,8 @@ export const metadata: Metadata = {
   description: "Manage promotional content for FeedMe",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function PromotionsPage() {
   return (
     // <AdminLayout>

@@ -206,10 +206,10 @@ const CareerPage = () => {
         <div className="flex flex-col lg:flex-row items-center justify-between">
           <div className="lg:mb-0 mb-8 text-center lg:text-left">
             <h3 className="text-2xl md:text-3xl font-semibold text-white mb-4">
-              Don't see the role you're interested in?
+              Don&apos;t see the role you&apos;re interested in?
             </h3>
             <p className="text-indigo-100">
-              We're always looking for talented people to join our team. Send us your CV and we will contact you for any future roles.
+              We&apos;re always looking for talented people to join our team. Send us your CV and we will contact you for any future roles.
             </p>
           </div>
           <button className="px-6 py-3 bg-white text-indigo-600 font-semibold rounded-full flex items-center whitespace-nowrap">

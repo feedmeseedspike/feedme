@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -22,7 +23,9 @@ export default function WalletSuccessPage() {
         className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full"
       >
         <CheckCircle className="text-green-500 w-16 h-16 mx-auto mb-4" />
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">Payment Success</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-2">
+          Payment Success
+        </h1>
         <p className="text-gray-700 mb-1">Verifying your payment...</p>
         <p className="text-sm text-gray-500">You will be redirected shortly.</p>
       </motion.div>

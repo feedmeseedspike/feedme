@@ -1,12 +1,73 @@
-import Product from '@components/admin/products'
-import React from 'react'
+export const dynamic = "force-dynamic";
+import ProductsClient from "./ProductsClient";
+import { getProducts, getAllCategories } from "../../../../queries/products";
 
-const productPage = () => {
+export default async function ProductsPage({
+  searchParams,
+}: {
+  searchParams: any;
+}) {
+  const currentPage = Number(searchParams?.page) || 1;
+  const itemsPerPage = 10;
+  const initialSearch = searchParams?.search || "";
+  const initialCategories = Array.isArray(searchParams?.category)
+    ? searchParams.category
+    : searchParams?.category
+      ? [searchParams.category]
+      : [];
+  const initialStock = Array.isArray(searchParams?.stock)
+    ? searchParams.stock
+    : searchParams?.stock
+      ? [searchParams.stock]
+      : [];
+  const initialPublished = Array.isArray(searchParams?.published)
+    ? searchParams.published
+    : searchParams?.published
+      ? [searchParams.published]
+      : [];
+
+  const { data: initialProducts, count: totalProductsCount } =
+    await getProducts({
+      page: currentPage,
+      limit: itemsPerPage,
+      search: initialSearch,
+      category: initialCategories[0] || undefined,
+    });
+
+  // Collect all unique category IDs from products
+  const allCategoryIds = Array.from(
+    new Set(
+      (initialProducts || [])
+        .flatMap((p: any) =>
+          Array.isArray(p.category_ids) ? p.category_ids : []
+        )
+        .filter(Boolean)
+    )
+  );
+
+  // Fetch all categories in one go
+  const allCategories = await getAllCategories();
+  let categoryNames: Record<string, string> = {};
+  if (allCategoryIds.length > 0) {
+    for (const cat of allCategories) {
+      if (allCategoryIds.includes(cat.id)) {
+        categoryNames[cat.id] = cat.title;
+      }
+    }
+  }
+
   return (
-    <main>
-      <Product />
-    </main>
-  )
+    <ProductsClient
+      initialProducts={initialProducts || []}
+      totalProductsCount={totalProductsCount || 0}
+      itemsPerPage={itemsPerPage}
+      currentPage={currentPage}
+      initialSearch={initialSearch}
+      initialCategories={initialCategories}
+      initialStock={initialStock}
+      initialPublished={initialPublished}
+      categoryNames={categoryNames}
+      allCategories={allCategories}
+    />
+  );
 }
-
-export default productPage

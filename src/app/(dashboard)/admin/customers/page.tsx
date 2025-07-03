@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -137,68 +138,71 @@ export default function CustomersPage() {
                 </TableRow>
               ))
             ) : data?.data && data.data.length > 0 ? (
-              data.data.map((customer: FetchedCustomerData) => (
-                <TableRow
-                  key={customer.id}
-                  className="cursor-pointer hover:bg-gray-100"
-                  onClick={() => router.push(`/admin/customers/${customer.id}`)}
-                >
-                  <TableCell>
-                    {customer.id ? `${customer.id.substring(0, 8)}...` : "N/A"}
-                  </TableCell>
-                  <TableCell className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage
-                        src={customer.avatar_url || ""}
-                        alt="Avatar"
-                      />
-                      <AvatarFallback>
-                        {customer.display_name
-                          ? customer.display_name
-                              .split(" ")
-                              .map((n: string) => n[0])
-                              .join("")
-                              .substring(0, 2)
-                              .toUpperCase()
-                          : ""}
-                      </AvatarFallback>
-                    </Avatar>
-                    {customer.display_name || "N/A"}
-                  </TableCell>
-                  <TableCell>{customer.email || "N/A"}</TableCell>
-                  <TableCell>
-                    {/* Display phone from the first address if available */}
-                    {customer.addresses &&
-                    customer.addresses.length > 0 &&
-                    customer.addresses[0]?.phone
-                      ? customer.addresses[0].phone
-                      : "N/A"}
-                  </TableCell>
-                  <TableCell>
-                    {customer.created_at
-                      ? format(new Date(customer.created_at), "PPP")
-                      : "N/A"}
-                  </TableCell>
-                  <TableCell>
-                    ₦{Math.floor(Math.random() * 100000).toLocaleString()}
-                  </TableCell>
-                  <TableCell>{Math.floor(Math.random() * 50)}</TableCell>
-                  <TableCell>
-                    {/* Display city from the first address if available */}
-                    {customer.addresses &&
-                    customer.addresses.length > 0 &&
-                    customer.addresses[0]?.city
-                      ? customer.addresses[0].city
-                      : "N/A"}
-                  </TableCell>
-                  <TableCell>
-                    {customer.birthday
-                      ? format(new Date(customer.birthday), "PPP")
-                      : "N/A"}
-                  </TableCell>
-                  <TableCell>{customer.favorite_fruit || "N/A"}</TableCell>
-                </TableRow>
-              ))
+              (
+                data.data as import("../../../../queries/customers").FetchedCustomerData[]
+              ).map((customer) => {
+                const {
+                  id = "",
+                  display_name = "",
+                  email = "",
+                  birthday = "",
+                  favorite_fruit = "",
+                  avatar_url = "",
+                  created_at = "",
+                  addresses = [],
+                } = customer as any;
+                return (
+                  <TableRow
+                    key={id}
+                    className="cursor-pointer hover:bg-gray-100"
+                    onClick={() => router.push(`/admin/customers/${id}`)}
+                  >
+                    <TableCell>
+                      {id ? `${id.substring(0, 8)}...` : "N/A"}
+                    </TableCell>
+                    <TableCell className="flex items-center gap-3">
+                      <Avatar>
+                        <AvatarImage src={avatar_url || ""} alt="Avatar" />
+                        <AvatarFallback>
+                          {display_name
+                            ? display_name
+                                .split(" ")
+                                .map((n: string) => n[0])
+                                .join("")
+                                .substring(0, 2)
+                                .toUpperCase()
+                            : ""}
+                        </AvatarFallback>
+                      </Avatar>
+                      {display_name || "N/A"}
+                    </TableCell>
+                    <TableCell>{email || "N/A"}</TableCell>
+                    <TableCell>
+                      {/* Display phone from the first address if available */}
+                      {addresses && addresses.length > 0 && addresses[0]?.phone
+                        ? addresses[0].phone
+                        : "N/A"}
+                    </TableCell>
+                    <TableCell>
+                      {created_at ? format(new Date(created_at), "PPP") : "N/A"}
+                    </TableCell>
+                    <TableCell>
+                      ₦{Math.floor(Math.random() * 100000).toLocaleString()}
+                    </TableCell>
+                    <TableCell>{Math.floor(Math.random() * 50)}</TableCell>
+                    <TableCell>
+                      {/* Display city from the first address if available */}
+                      {addresses && addresses.length > 0 && addresses[0]?.city
+                        ? addresses[0].city
+                        : "N/A"}
+                    </TableCell>
+                    <TableCell>
+                      {birthday ? format(new Date(birthday), "PPP") : "N/A"}
+                    </TableCell>
+                    <TableCell>{favorite_fruit || "N/A"}</TableCell>
+                  </TableRow>
+                );
+              })
             ) : (
               // No customers message
               <TableRow>

@@ -224,8 +224,12 @@ export const mapSupabaseProductToIProductInput = (
     is_published: supabaseProduct.is_published || false,
     category: categories, // Now contains IDs
     tags: supabaseProduct.tags || [],
-    images: supabaseProduct.images || [],
-    options: (supabaseProduct.options as OptionType[] || []),
+    images: Array.isArray(supabaseProduct.images)
+      ? supabaseProduct.images.filter((img): img is string => typeof img === 'string' && !!img)
+      : [],
+    options: Array.isArray(supabaseProduct.options)
+      ? (supabaseProduct.options as any[]).filter((opt) => opt && typeof opt === 'object' && 'name' in opt && 'price' in opt)
+      : [],
     ratingDistribution: (supabaseProduct.rating_distribution as { rating: number; count: number }[] || []),
     stockStatus: supabaseProduct.stock_status || 'In Stock',
     vendor: undefined,

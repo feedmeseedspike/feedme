@@ -72,30 +72,13 @@ const AddToCart = React.memo(
       setQuantity(item.countInStock || 1);
     }, [item.countInStock]);
 
-    const handleIncrement = useCallback(() => {
-      const maxQuantity = item.countInStock || 100;
-      handleQuantityChange(Math.min(quantity + 1, maxQuantity || 100));
-    }, [
-      quantity,
-      item.countInStock,
-      item,
-      cartItems,
-      updateCartMutation.mutateAsync,
-    ]);
-
-    const handleDecrement = useCallback(() => {
-      handleQuantityChange(quantity - 1);
-    }, [quantity, item, cartItems, updateCartMutation.mutateAsync]);
-
     const handleQuantityChange = useCallback(
       async (newQuantity: number) => {
         if (!user) {
           onAuthRequired?.();
           return;
         }
-
         if (newQuantity < 0) return;
-
         const currentCartItems = Array.isArray(cartItems) ? cartItems : [];
         const existingItemInCart = currentCartItems.find(
           (cartItem) =>
@@ -103,15 +86,12 @@ const AddToCart = React.memo(
             JSON.stringify(cartItem.option || null) ===
               JSON.stringify(item.option || null)
         );
-
         if (newQuantity === 0) {
           if (existingItemInCart?.id) {
             try {
               await removeCartItemMutation.mutateAsync(existingItemInCart.id);
               showToast(
-                `${item.name}${
-                  item.option?.name ? ` (${item.option.name})` : ""
-                } removed from cart`,
+                `${item.name}${item.option?.name ? ` (${item.option.name})` : ""} removed from cart`,
                 "info"
               );
             } catch (error: any) {
@@ -129,13 +109,15 @@ const AddToCart = React.memo(
         } else {
           setQuantity(newQuantity);
           setShowQuantityControls(true);
-
           try {
             const itemsForMutation: ItemToUpdateMutation[] = currentCartItems
               .map((cartItem) => ({
                 product_id: cartItem.product_id || null,
                 bundle_id: cartItem.bundle_id || null,
-                option: cartItem.option || null,
+                option:
+                  cartItem.option && typeof cartItem.option === "object"
+                    ? JSON.parse(JSON.stringify(cartItem.option))
+                    : null,
                 quantity:
                   (cartItem.product_id &&
                     cartItem.product_id === item.id &&
@@ -144,10 +126,14 @@ const AddToCart = React.memo(
                   (cartItem.bundle_id && cartItem.bundle_id === item.id)
                     ? newQuantity
                     : cartItem.quantity,
-                price: cartItem.option?.price ?? cartItem.price ?? 0,
+                price:
+                  cartItem.option &&
+                  typeof cartItem.option === "object" &&
+                  "price" in cartItem.option
+                    ? ((cartItem.option as any).price ?? cartItem.price ?? 0)
+                    : (cartItem.price ?? 0),
               }))
               .filter((item) => item.quantity > 0);
-
             const targetItemExists = itemsForMutation.some(
               (cartItem) =>
                 (cartItem.product_id &&
@@ -156,17 +142,18 @@ const AddToCart = React.memo(
                     JSON.stringify(item.option || null)) ||
                 (cartItem.bundle_id && cartItem.bundle_id === item.id)
             );
-
             if (!targetItemExists) {
               itemsForMutation.push({
                 product_id: item.bundleId ? null : item.id,
                 bundle_id: item.bundleId ? item.id : null,
-                option: item.option || null,
+                option:
+                  item.option && typeof item.option === "object"
+                    ? JSON.parse(JSON.stringify(item.option))
+                    : null,
                 quantity: newQuantity,
                 price: item.price,
               });
             }
-
             await updateCartMutation.mutateAsync(itemsForMutation);
             onAddToCart?.();
           } catch (error: any) {
@@ -181,24 +168,35 @@ const AddToCart = React.memo(
         }
       },
       [
-        item,
+        user,
         cartItems,
-        updateCartMutation.mutateAsync,
-        removeCartItemMutation.mutateAsync,
-        queryClient,
+        onAuthRequired,
+        item.id,
+        item.option,
+        item.name,
+        item.bundleId,
+        item.price,
+        removeCartItemMutation,
+        updateCartMutation,
         onAddToCart,
         onError,
-        onAuthRequired,
-        user,
       ]
     );
+
+    const handleIncrement = useCallback(() => {
+      const maxQuantity = item.countInStock || 100;
+      handleQuantityChange(Math.min(quantity + 1, maxQuantity));
+    }, [item.countInStock, handleQuantityChange, quantity]);
+
+    const handleDecrement = useCallback(() => {
+      handleQuantityChange(quantity - 1);
+    }, [handleQuantityChange, quantity]);
 
     const handleAddToCartClick = useCallback(async () => {
       if (!user) {
         onAuthRequired?.();
         return;
       }
-
       try {
         if (
           item.countInStock !== null &&
@@ -207,7 +205,6 @@ const AddToCart = React.memo(
         ) {
           return;
         }
-
         if (
           item.options &&
           item.options.length > 0 &&
@@ -220,18 +217,24 @@ const AddToCart = React.memo(
           onError?.();
           return;
         }
-
         const currentCartItems = Array.isArray(cartItems) ? cartItems : [];
         const itemsForMutation: ItemToUpdateMutation[] = currentCartItems
           .map((cartItem) => ({
             product_id: cartItem.product_id || null,
             bundle_id: cartItem.bundle_id || null,
-            option: cartItem.option || null,
+            option:
+              cartItem.option && typeof cartItem.option === "object"
+                ? JSON.parse(JSON.stringify(cartItem.option))
+                : null,
             quantity: cartItem.quantity,
-            price: cartItem.option?.price ?? cartItem.price ?? 0,
+            price:
+              cartItem.option &&
+              typeof cartItem.option === "object" &&
+              "price" in cartItem.option
+                ? ((cartItem.option as any).price ?? cartItem.price ?? 0)
+                : (cartItem.price ?? 0),
           }))
           .filter((item) => item.quantity > 0);
-
         const targetItemExists = itemsForMutation.some(
           (cartItem) =>
             (cartItem.product_id &&
@@ -240,25 +243,23 @@ const AddToCart = React.memo(
                 JSON.stringify(item.option || null)) ||
             (cartItem.bundle_id && cartItem.bundle_id === item.id)
         );
-
         if (!targetItemExists) {
           itemsForMutation.push({
             product_id: item.bundleId ? null : item.id,
             bundle_id: item.bundleId ? item.id : null,
-            option: item.option || null,
+            option:
+              item.option && typeof item.option === "object"
+                ? JSON.parse(JSON.stringify(item.option))
+                : null,
             quantity: 1,
             price: item.price,
           });
         }
-
         await updateCartMutation.mutateAsync(itemsForMutation);
         setShowQuantityControls(true);
         setQuantity(1);
-
         showToast(
-          `${item.name}${
-            item.option?.name ? ` (${item.option.name})` : ""
-          } added to cart!`,
+          `${item.name}${item.option?.name ? ` (${item.option.name})` : ""} added to cart!`,
           "success"
         );
         onAddToCart?.();
@@ -272,14 +273,20 @@ const AddToCart = React.memo(
         }
       }
     }, [
-      item,
-      cartItems,
-      updateCartMutation.mutateAsync,
-      showToast,
-      onError,
-      onAddToCart,
-      onAuthRequired,
       user,
+      onAuthRequired,
+      item.countInStock,
+      item.options,
+      item.selectedOption,
+      item.name,
+      item.option,
+      item.id,
+      item.bundleId,
+      item.price,
+      cartItems,
+      updateCartMutation,
+      onAddToCart,
+      onError,
     ]);
 
     const isInCart = useMemo(() => {
@@ -292,7 +299,6 @@ const AddToCart = React.memo(
     }, [cartItems, item.id, item.option]);
 
     useEffect(() => {
-      console.log("AddToCart: isInCart changed", isInCart);
       setShowQuantityControls(isInCart);
       if (!isInCart) {
         setQuantity(1);
@@ -300,7 +306,6 @@ const AddToCart = React.memo(
     }, [isInCart]);
 
     useEffect(() => {
-      console.log("AddToCart: cartItems data changed", cartItems);
       const currentItemInCart = (cartItems || []).find(
         (cartItem) =>
           cartItem.product_id === item.id &&
@@ -308,10 +313,6 @@ const AddToCart = React.memo(
             JSON.stringify(item.option || null)
       );
       if (currentItemInCart) {
-        console.log(
-          "AddToCart: Updating local quantity to",
-          currentItemInCart.quantity
-        );
         setQuantity(currentItemInCart.quantity);
       } else if (!isInCart) {
         setQuantity(1);

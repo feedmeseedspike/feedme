@@ -57,7 +57,7 @@ export const useAddFundsMutation = () => {
       email: string;
       amount: number;
     }) => {
-      const { data: { session }, error: authError } = await supabase.auth.getUser();
+      const { data: { session }, error: authError } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (authError || !token) {
         console.error("Add Funds Error: No authenticated session found", authError);
@@ -104,7 +104,7 @@ export const useWithdrawFundsMutation = () => {
       bank_code: string;
       recipient_name: string;
     }) => {
-      const { data: { session }, error: authError } = await supabase.auth.getUser();
+      const { data: { session }, error: authError } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (authError || !token) {
         console.error("Withdraw Funds Error: No authenticated session found", authError);

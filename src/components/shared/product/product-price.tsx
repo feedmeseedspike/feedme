@@ -30,14 +30,14 @@ const ProductPrice = React.memo(
     }
 
     if (listPrice === 0) {
-      return <div className={cn("text-xl", className)}>{formattedPrice}</div>;
+      return <div className={cn("text-lg font-bold", className)}>{formattedPrice}</div>;
     }
 
     if (isDeal) {
       return (
         <div className="space-y-2">
           <div className={`flex ${forListing && ""} items-center gap-2`}>
-            <div className={cn("text-xl", className)}>{formattedPrice}</div>
+            <div className={cn("text-lg font-bold", className)}>{formattedPrice}</div>
             {/* <div className="text-muted-foreground text-xs py-2">
             Was: <span className="line-through">{formattedListPrice}</span>
           </div> */}
@@ -49,7 +49,7 @@ const ProductPrice = React.memo(
     return (
       <div>
         <div className="flex gap-2 items-center">
-          <div className={cn("text-xl", className)}>{formattedPrice}</div>
+          <div className={cn("text-lg font-bold", className)}>{formattedPrice}</div>
           {/* <span className="line-through text-xs">{formattedListPrice}</span> */}
         </div>
       </div>

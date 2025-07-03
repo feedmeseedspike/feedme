@@ -84,7 +84,17 @@ const Footer = () => {
       if (error) {
         console.error("Error fetching categories:", error);
       } else {
-        setCategories(data || []);
+        setCategories(
+          (data || []).map((cat) => ({
+            ...cat,
+            thumbnail:
+              typeof cat.thumbnail === "string" ||
+              typeof cat.thumbnail === "object" ||
+              cat.thumbnail === null
+                ? cat.thumbnail
+                : null,
+          }))
+        );
       }
     };
     fetchCategories();
@@ -118,16 +128,18 @@ const Footer = () => {
                     Categories
                   </h3>
                   <ul className="space-y-2">
-                    {categories.map((category) => (
-                      <li key={category.id} className="text-sm">
-                        <Link
-                          href={`/category/${toSlug(category?.title)}`}
-                          className="hover:underline hover:underline-offset-2"
-                        >
-                          {category.title}
-                        </Link>
-                      </li>
-                    ))}
+                    {categories
+                      .filter((category) => !!category.id)
+                      .map((category) => (
+                        <li key={category.id!} className="text-sm">
+                          <Link
+                            href={`/category/${toSlug(category?.title)}`}
+                            className="hover:underline hover:underline-offset-2"
+                          >
+                            {category.title}
+                          </Link>
+                        </li>
+                      ))}
                   </ul>
                   <Link href="/categories">
                     <button className="mt-4 text-orange-600 hover:underline">

@@ -77,9 +77,8 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
     const { data: cartItems, isLoading: isLoadingCart } = useCartQuery();
 
     // Tanstack Query for Favorites
-    const { data: favorites, isLoading: isLoadingFavorites } = useQuery(
-      getFavoritesQuery()
-    );
+    const { data: favorites, isLoading: isLoadingFavorites } =
+      useQuery(getFavoritesQuery());
     const isFavorited =
       product.id && favorites ? favorites.includes(product.id) : false;
 
@@ -101,8 +100,9 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
 
     // Extract and sort product options
     const sortedOptions = useMemo(() => {
-      if (!product.options || product.options.length === 0) return [];
-      return [...product.options].sort((a, b) => a.price - b.price);
+      const opts = Array.isArray(product.options) ? product.options : [];
+      if (opts.length === 0) return [];
+      return [...opts].sort((a, b) => a.price - b.price);
     }, [product.options]);
 
     // Get data for the selected option with validation
@@ -129,15 +129,15 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       });
     }, [cartItems, product.id, selectedOptionData]);
 
-    const [quantity, setQuantity] = useState(currentCartItem?.quantity || 1);
+    const [quantity, setQuantity] = useState(currentCartItem?.quantity ?? 1);
     const [showQuantityControls, setShowQuantityControls] = useState(
-      !!currentCartItem
+      Boolean(currentCartItem)
     );
 
     // Update local state when the item in the cart changes
     useEffect(() => {
-      setQuantity(currentCartItem?.quantity || 1);
-      setShowQuantityControls(!!currentCartItem);
+      setQuantity(currentCartItem?.quantity ?? 1);
+      setShowQuantityControls(Boolean(currentCartItem));
     }, [currentCartItem]);
 
     // Use cart mutations
@@ -194,7 +194,9 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           itemsForMutation.push({
             product_id: product.bundleId ? null : product.id,
             bundle_id: product.bundleId ? product.id : null,
-            option: selectedOptionData as ProductOption | null,
+            option: selectedOptionData
+              ? JSON.parse(JSON.stringify(selectedOptionData))
+              : null,
             quantity: newQuantity,
             price: itemPriceForNew, // Use the determined price
           });
@@ -209,12 +211,14 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       },
       [
         product.id,
-        selectedOptionData,
-        cartItems,
-        updateCartMutation.mutateAsync,
-        showToast,
+        product.price,
+        product.bundleId,
         user,
+        cartItems,
+        selectedOptionData,
+        showToast,
         router,
+        updateCartMutation,
       ]
     );
 
@@ -238,13 +242,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
         console.error("Failed to remove cart item:", error);
         showToast("Failed to remove item from cart.", "error");
       }
-    }, [
-      currentCartItem?.id,
-      removeCartItemMutation.mutateAsync,
-      showToast,
-      user,
-      router,
-    ]);
+    }, [currentCartItem, user, showToast, router, removeCartItemMutation]);
 
     const handleOptionChange = useCallback(
       (value: string) => {
@@ -276,21 +274,23 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       handleUpdateCartQuantity(1);
     };
 
-    const handleQuantityChange = (newQuantity: number) => {
-      if (!user) {
-        showToast("Please log in to modify cart", "error");
-        router.push(
-          `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`
-        );
-        return;
-      }
-
-      if (newQuantity < 1) {
-        handleRemoveFromCart();
-      } else {
-        handleUpdateCartQuantity(newQuantity);
-      }
-    };
+    const handleQuantityChange = useCallback(
+      (newQuantity: number) => {
+        if (!user) {
+          showToast("Please log in to modify cart", "error");
+          router.push(
+            `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+          );
+          return;
+        }
+        if (newQuantity < 1) {
+          handleRemoveFromCart();
+        } else {
+          handleUpdateCartQuantity(newQuantity);
+        }
+      },
+      [user, showToast, router, handleRemoveFromCart, handleUpdateCartQuantity]
+    );
 
     // Handle favorite toggle
     const handleToggleLike = useCallback(
@@ -333,12 +333,12 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       [
         product.id,
         product.name,
-        isFavorited,
-        addFavoriteMutation.mutateAsync,
-        removeFavoriteMutation.mutateAsync,
-        showToast,
         user,
+        showToast,
         router,
+        isFavorited,
+        removeFavoriteMutation,
+        addFavoriteMutation,
       ]
     );
 
@@ -466,19 +466,19 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                     typeof product.images[0] === "string"
                       ? product.images[0]
                       : typeof product.images[0] === "object" &&
-                        product.images[0] !== null &&
-                        "url" in product.images[0]
-                      ? (product.images[0] as { url: string }).url
-                      : "/placeholder-product.png"
+                          product.images[0] !== null &&
+                          "url" in product.images[0]
+                        ? (product.images[0] as { url: string }).url
+                        : "/placeholder-product.png"
                   }
                   hoverSrc={
                     typeof product.images[1] === "string"
                       ? product.images[1]
                       : typeof product.images[1] === "object" &&
-                        product.images[1] !== null &&
-                        "url" in product.images[1]
-                      ? (product.images[1] as { url: string }).url
-                      : "/placeholder-product.png"
+                          product.images[1] !== null &&
+                          "url" in product.images[1]
+                        ? (product.images[1] as { url: string }).url
+                        : "/placeholder-product.png"
                   }
                   alt={product.name}
                 />
@@ -490,10 +490,10 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                         ? typeof product.images[0] === "string"
                           ? product.images[0]
                           : typeof product.images[0] === "object" &&
-                            product.images[0] !== null &&
-                            "url" in product.images[0]
-                          ? (product.images[0] as { url: string }).url
-                          : "/placeholder-product.png"
+                              product.images[0] !== null &&
+                              "url" in product.images[0]
+                            ? (product.images[0] as { url: string }).url
+                            : "/placeholder-product.png"
                         : "/placeholder-product.png"
                     }
                     alt={product.name}
@@ -517,17 +517,21 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
         </div>
       );
     }, [
-      product,
-      isFavorited,
-      handleToggleLike,
+      product.price,
+      product.list_price,
+      product.slug,
+      product.images,
+      product.name,
       selectedOptionData,
       sortedOptions,
-      quantity,
-      showQuantityControls,
-      showToast,
+      handleToggleLike,
       isLoading,
-      user,
-      router,
+      isFavorited,
+      showQuantityControls,
+      quantity,
+      handleRemoveFromCart,
+      handleQuantityChange,
+      handleUpdateCartQuantity,
     ]);
 
     const ProductDetails = useMemo(() => {
@@ -570,9 +574,12 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           </Link>
           <div className="flex gap-2">
             <Rating rating={product.avg_rating || 0} />
-            <span className="text-gray-600 text-sm">
-              ({product.num_reviews || 0})
-            </span>
+            {typeof product.num_reviews === "number" &&
+              product.num_reviews > 0 && (
+                <span className="text-gray-600 text-sm">
+                  ({product.num_reviews})
+                </span>
+              )}
           </div>
 
           <div className="flex flex-col">

@@ -48,7 +48,7 @@ export default function CredentialsSignInForm() {
 
   const { control, handleSubmit } = form;
 
-  const { mutateAsync, isLoading, error } = useMutation(signInMutation());
+  const { mutateAsync, status } = useMutation(signInMutation());
 
   const onSubmit = async (data: IUserSignIn) => {
     try {
@@ -57,7 +57,7 @@ export default function CredentialsSignInForm() {
         password: data.password,
       });
       showToast("Successfully signed in!", "success");
-      router.push(callbackUrl);
+      window.location.href = callbackUrl;
     } catch (error: any) {
       if (isRedirectError(error)) {
         throw error;
@@ -127,9 +127,11 @@ export default function CredentialsSignInForm() {
             <Button
               className="w-full py-4 text-base bg-[#E0E0E0] text-zinc-600 ring-1 ring-zinc-400 font-semibold hover:bg-[#1B6013] transition-all ease-in-out hover:text-white hover:duration-500 flex items-center justify-center gap-2"
               type="submit"
-              disabled={isLoading}
+              disabled={status === "pending"}
             >
-              {isLoading && <Loader2 className="w-5 h-5 animate-spin" />}
+              {status === "pending" && (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              )}
               Sign In
             </Button>
           </div>

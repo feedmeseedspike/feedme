@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { Badge } from "../ui/badge";
 import { StarIcon, ShoppingBagIcon, MapPinIcon } from "@heroicons/react/24/solid";
@@ -51,11 +52,11 @@ export default function VendorCard({ vendor }: { vendor: any }) {
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        {vendor.categories.slice(0, 3).map(category => (
+        {/* {vendor.categories.slice(0, 3).map(category => (
           <Badge key={category} variant="outline" className="text-xs">
             {category}
           </Badge>
-        ))}
+        ))} */}
       </div>
     </div>
   );

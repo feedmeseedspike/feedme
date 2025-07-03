@@ -58,7 +58,9 @@ const FavoritesContent: React.FC<FavoritesContentProps> = ({
     const previousProducts = favoriteProducts;
 
     // Optimistic update
-    setFavoriteProducts(favoriteProducts.filter((p) => p.id !== productId));
+    setFavoriteProducts(
+      favoriteProducts.filter((p) => !!p.id && p.id !== productId)
+    );
 
     try {
       await removeFavoriteMutation.mutateAsync(productId, {
@@ -118,75 +120,96 @@ const FavoritesContent: React.FC<FavoritesContentProps> = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {favoriteProducts.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell>
-                    <button
-                      onClick={() => handleRemoveFavorite(product.id)}
-                      disabled={isLoading}
-                      className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-                      aria-label="Remove from favorites"
-                    >
-                      {isLoading ? (
-                        <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-                      ) : (
-                        <Heart className="h-5 w-5 fill-red-500 text-red-500" />
-                      )}
-                    </button>
-                  </TableCell>
-                  <TableCell>
-                    {product.images?.[0] && (
-                      <Image
-                        src={product.images[0]}
-                        width={80}
-                        height={80}
-                        alt={product.name || "Product image"}
-                        className="rounded-md object-cover aspect-square"
-                        priority
-                      />
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {product.slug ? (
-                      <a
-                        href={`/products/${product.slug}`}
-                        className="hover:underline"
-                      >
-                        {product.name || "Unknown product"}
-                      </a>
-                    ) : (
-                      <span>{product.name || "Unknown product"}</span>
-                    )}
-                  </TableCell>
-                  <TableCell>{product.brand || "-"}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium">
-                        {product.price ? formatNaira(product.price) : "N/A"}
-                      </span>
-                      {product.list_price && (
-                        <span className="text-sm text-gray-500 line-through">
-                          {formatNaira(product.list_price)}
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs ${
-                        product.stock_status === "in_stock"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {product.stock_status || "unknown"}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {product.created_at ? formatDate(product.created_at) : "-"}
+              {favoriteProducts.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8">
+                    No favorite products found.
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                favoriteProducts
+                  .filter((product) => !!product.id)
+                  .map((product) => (
+                    <TableRow key={product.id!}>
+                      <TableCell>
+                        <button
+                          onClick={() =>
+                            product.id && handleRemoveFavorite(product.id)
+                          }
+                          disabled={isLoading}
+                          className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                          aria-label="Remove from favorites"
+                        >
+                          {isLoading ? (
+                            <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                          ) : (
+                            <Heart className="h-5 w-5 fill-red-500 text-red-500" />
+                          )}
+                        </button>
+                      </TableCell>
+                      <TableCell>
+                        {typeof product.images?.[0] === "string" &&
+                        product.images[0] ? (
+                          <Image
+                            src={product.images[0]}
+                            width={80}
+                            height={80}
+                            alt={product.name || "Product image"}
+                            className="rounded-md object-cover aspect-square"
+                            priority
+                          />
+                        ) : null}
+                      </TableCell>
+                      <TableCell>
+                        {product.slug ? (
+                          <a
+                            href={`/products/${product.slug}`}
+                            className="hover:underline"
+                          >
+                            {product.name || "Unknown product"}
+                          </a>
+                        ) : (
+                          <span>{product.name || "Unknown product"}</span>
+                        )}
+                      </TableCell>
+                      <TableCell>{product.brand || "-"}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium">
+                            {typeof product.price === "number"
+                              ? formatNaira(product.price)
+                              : "N/A"}
+                          </span>
+                          {typeof product.list_price === "number" &&
+                            product.list_price > 0 && (
+                              <span className="text-sm text-gray-500 line-through">
+                                {formatNaira(product.list_price)}
+                              </span>
+                            )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs ${
+                            product.stock_status === "in_stock"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {product.stock_status || "unknown"}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        {product.created_at
+                          ? formatDate(product.created_at)
+                          : "N/A"}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {/* Add more actions here if needed */}
+                      </TableCell>
+                    </TableRow>
+                  ))
+              )}
             </TableBody>
           </Table>
         </div>
