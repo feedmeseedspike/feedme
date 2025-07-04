@@ -278,8 +278,19 @@ const CheckoutForm = ({
     [items]
   );
 
+  // Service charge: 7.5% of subtotal (total orders) minus delivery fee
+  const serviceCharge = useMemo(() => {
+    // Only apply service charge if subtotal > 0
+    if (subtotal <= 0) return 0;
+    // Service charge is 7.5% of (subtotal - delivery fee)
+    // But delivery fee may not be selected yet, so use 0 if not
+    const delivery = formLocation ? cost : 0;
+    const base = subtotal - delivery;
+    return base > 0 ? 0.075 * base : 0;
+  }, [subtotal, formLocation, cost]);
+
   const totalAmount = subtotal;
-  const totalAmountPaid = subtotal + cost - voucherDiscount;
+  const totalAmountPaid = subtotal + cost + serviceCharge - voucherDiscount;
 
   const isReferralVoucher = isVoucherValid && voucherCode.startsWith("REF-");
 
@@ -948,6 +959,12 @@ const CheckoutForm = ({
                         <span>-{formatNaira(voucherDiscount)}</span>
                       </div>
                     )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Service Charge</span>
+                      <span className="font-medium">
+                        {formatNaira(serviceCharge)}
+                      </span>
+                    </div>
                   </div>
 
                   <Separator />
