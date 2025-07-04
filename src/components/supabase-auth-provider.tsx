@@ -114,7 +114,29 @@ export function SupabaseAuthProvider({
               "SupabaseAuthProvider: Error fetching user profile on auth change:",
               profileError
             );
-            setUser(null);
+            // Fallback: use the auth user if no profile row
+            setUser({
+              user_id: authenticatedUser.id,
+              display_name:
+                typeof authenticatedUser.user_metadata?.display_name ===
+                "string"
+                  ? authenticatedUser.user_metadata.display_name
+                  : typeof authenticatedUser.email === "string"
+                    ? authenticatedUser.email
+                    : null,
+              avatar_url:
+                typeof authenticatedUser.user_metadata?.avatar_url === "string"
+                  ? authenticatedUser.user_metadata.avatar_url
+                  : null,
+              birthday: null,
+              created_at:
+                typeof authenticatedUser.created_at === "string"
+                  ? authenticatedUser.created_at
+                  : null,
+              favorite_fruit: null,
+              role: null,
+              status: null,
+            });
           } else {
             setUser(userProfile);
           }

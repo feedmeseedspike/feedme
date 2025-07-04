@@ -20,12 +20,16 @@ export function authMiddleware(handler: Handler) {
         error,
       } = await supabase.auth.getUser(token);
 
+      // Debug: Log the user object
+      console.log("Auth middleware: user object", user);
+
       if (error || !user) {
         return NextResponse.json(
           { message: "Invalid or expired token" },
           { status: 401 }
         );
       }
+      
 
       return await handler(request, user.id);
     } catch (error: any) {

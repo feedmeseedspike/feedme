@@ -64,7 +64,7 @@ export default function BundlesClient({
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newSearch = e.target.value;
     setSearch(newSearch);
-    const newSearchParams = new URLSearchParams(searchParams.toString());
+    const newSearchParams = new URLSearchParams(searchParams?.toString() || "");
     if (newSearch) {
       newSearchParams.set("search", newSearch);
     } else {

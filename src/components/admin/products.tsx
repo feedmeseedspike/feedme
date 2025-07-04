@@ -58,15 +58,15 @@ export default function Product() {
   const { showToast } = useToast();
   const supabase = createClient();
 
-  const [search, setSearch] = useState(searchParams.get("search") || "");
+  const [search, setSearch] = useState(searchParams?.get("search") || "");
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
-    searchParams.getAll("category") || []
+    searchParams?.getAll("category") || []
   );
   const [selectedStock, setSelectedStock] = useState<string[]>(
-    searchParams.getAll("stock") || []
+    searchParams?.getAll("stock") || []
   );
   const [selectedPublished, setSelectedPublished] = useState<string[]>(
-    searchParams.getAll("published") || []
+    searchParams?.getAll("published") || []
   );
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -77,7 +77,7 @@ export default function Product() {
     {}
   );
 
-  const currentPage = Number(searchParams.get("page") || 1);
+  const currentPage = Number(searchParams?.get("page") || 1);
   const ITEMS_PER_PAGE = 10;
 
   // Use TanStack Query for products
@@ -154,7 +154,7 @@ export default function Product() {
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newSearch = e.target.value;
     setSearch(newSearch);
-    const newSearchParams = new URLSearchParams(searchParams.toString());
+    const newSearchParams = new URLSearchParams(searchParams?.toString() || "");
     if (newSearch) {
       newSearchParams.set("search", newSearch);
     } else {
@@ -168,12 +168,12 @@ export default function Product() {
     value: string,
     filterType: "category" | "stock" | "published"
   ) => {
-    const currentFilters = searchParams.getAll(filterType);
+    const currentFilters = searchParams?.getAll(filterType) || [];
     const newFilters = currentFilters.includes(value)
       ? currentFilters.filter((item) => item !== value)
       : [...currentFilters, value];
 
-    const newSearchParams = new URLSearchParams(searchParams.toString());
+    const newSearchParams = new URLSearchParams(searchParams?.toString() || "");
     newSearchParams.delete(filterType);
     newFilters.forEach((filter) => newSearchParams.append(filterType, filter));
     newSearchParams.set("page", "1");
@@ -365,7 +365,7 @@ export default function Product() {
                       setSelectedStock([]);
                       setSelectedPublished([]);
                       const newSearchParams = new URLSearchParams(
-                        searchParams.toString()
+                        searchParams?.toString() || ""
                       );
                       newSearchParams.delete("category");
                       newSearchParams.delete("stock");

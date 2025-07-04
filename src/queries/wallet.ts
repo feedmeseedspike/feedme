@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@utils/supabase/client";
+import axios from "axios";
 
 const supabase = createClient();
 
@@ -60,22 +61,20 @@ export const useAddFundsMutation = () => {
       const { data: { session }, error: authError } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (authError || !token) {
-        console.error("Add Funds Error: No authenticated session found", authError);
         throw new Error("Authentication required to add funds");
       }
-      const res = await fetch("/api/wallet/initialize", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ email, amount }),
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to initialize transaction");
-      }
-      return res.json();
+      const res = await axios.post(
+        "/api/wallet/initialize",
+        { email, amount },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (!res.data.authorization_url)
+        throw new Error(res.data.message || "Failed to initialize transaction");
+      return res.data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({

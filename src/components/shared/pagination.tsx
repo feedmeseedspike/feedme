@@ -28,7 +28,7 @@ const PaginationBar = ({
   const currentPage = Number(page);
 
   function getLink(pageNum: number) {
-    const newSearchParams = new URLSearchParams(searchParams.toString());
+    const newSearchParams = new URLSearchParams(searchParams?.toString() || "");
     newSearchParams.set(urlParamName, pageNum.toString());
     return `?${newSearchParams.toString()}`;
   }

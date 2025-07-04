@@ -10,7 +10,7 @@ const BottomNav = dynamic(() => import("@components/shared/BottomNav"), {
 export default function BottomNavClientWrapper() {
   const pathname = usePathname();
 
-  if (pathname.startsWith("/admin")) {
+  if (pathname?.startsWith("/admin")) {
     return null;
   }
 

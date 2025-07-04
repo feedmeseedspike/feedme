@@ -35,7 +35,11 @@ export default async function CheckoutPage() {
           <CustomBreadcrumb />
         </Container>
       </div>
-      <CheckoutForm addresses={addresses || []} walletBalance={walletBalance} />
+      <CheckoutForm
+        addresses={addresses || []}
+        walletBalance={walletBalance}
+        user={user}
+      />
     </>
   );
 }

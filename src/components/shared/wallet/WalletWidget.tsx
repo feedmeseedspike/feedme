@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { useWalletBalanceQuery } from "../../../queries/wallet";
 import { Skeleton } from "@components/ui/skeleton";
 import { useToast } from "src/hooks/useToast";
+import axios from "axios";
 
 function WalletWidget({
   recentTransactionCount = 0,
@@ -48,36 +49,32 @@ function WalletWidget({
     try {
       const amountToFund = 5000;
 
-      const response = await fetch("/api/wallet/initialize", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
+      const response = await axios.post(
+        "/api/wallet/initialize",
+        {
           email: session.user.email,
           amount: amountToFund,
-        }),
-      });
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
+      );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to initialize payment");
-      }
-
-      const data = await response.json();
-      if (data.authorization_url) {
-        router.push(data.authorization_url);
+      if (response.data.authorization_url) {
+        router.push(response.data.authorization_url);
       } else {
         showToast(
           "Payment initialization failed: Could not get authorization URL from Paystack.",
           "error"
         );
-        console.error("Payment initialization response:", data);
+        console.error("Payment initialization response:", response.data);
       }
     } catch (err: any) {
       showToast(
-        err.message || "An error occurred during payment initialization.",
+        err.response?.data?.message ||
+          "An error occurred during payment initialization.",
         "error"
       );
       console.error("Error initiating payment:", err);

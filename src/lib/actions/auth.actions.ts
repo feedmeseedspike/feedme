@@ -5,7 +5,6 @@ import { revalidatePath } from "next/cache";
 import { formatError } from "src/lib/utils";
 import { createClient } from "src/utils/supabase/server";
 import { Tables } from "src/utils/database.types";
-import { sendEmail } from '@/utils/email';
 import supabaseAdmin from '@/utils/supabase/admin';
 
 export interface AuthSuccess<T> { success: true; data: T; }
@@ -105,10 +104,24 @@ export async function getUser(): Promise<GetUserReturn> {
       .eq('user_id', user.id)
       .single();
 
-    if (!profile) return null;
+    if (profile) {
+      return { ...profile, email: user.email ?? null };
+    }
 
-    // Merge email from auth.users into the profile object
-    return { ...profile, email: user.email ?? null };
+    // Fallback: use the auth user if no profile row
+    return {
+      user_id: user.id,
+      display_name: typeof user.user_metadata?.display_name === 'string'
+        ? user.user_metadata.display_name
+        : (typeof user.email === 'string' ? user.email : null),
+      avatar_url: typeof user.user_metadata?.avatar_url === 'string' ? user.user_metadata.avatar_url : null,
+      birthday: null,
+      created_at: typeof user.created_at === 'string' ? user.created_at : null,
+      favorite_fruit: null,
+      role: null,
+      status: null,
+      email: user.email ?? null,
+    };
   } catch (error) {
     console.error('Error getting user:', error);
     return null;

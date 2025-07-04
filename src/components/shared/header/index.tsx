@@ -17,9 +17,6 @@ import Search from "./Search";
 import Link from "next/link";
 import LogoutButton from "./LogoutButton";
 import { Separator } from "@components/ui/separator";
-import { useQuery } from "@tanstack/react-query";
-import { getUserQuery } from "src/queries/auth";
-import { getAllCategoriesQuery } from "src/queries/categories";
 import { Skeleton } from "@components/ui/skeleton";
 import {
   Sheet,
@@ -40,23 +37,33 @@ type Category = Tables<"categories">;
 const Header = () => {
   const supabase = createClient();
   const { user, isLoading: isUserLoading } = useUser();
-  const isLoggedIn = !!user;
+  console.log("signed in user", user)
   const [openAccountSheet, setOpenAccountSheet] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
 
-  // Fetch categories
-  const {
-    data: categories,
-    isLoading: isCategoriesLoading,
-    error: categoriesError,
-  } = useQuery<Category[]>({
-    queryKey: ["categories"],
-    queryFn: async () => {
-      const { data, error } = await getAllCategoriesQuery(supabase).select("*");
-      if (error) throw error;
-      return data || [];
-    },
-    staleTime: 1000 * 60 * 5,
-  });
+  React.useEffect(() => {
+    const fetchCategories = async () => {
+      setIsCategoriesLoading(true);
+      setCategoriesError(null);
+      try {
+        const { data, error } = await supabase.from("categories").select("*");
+        if (error) throw error;
+        setCategories(data || []);
+      } catch (err: any) {
+        setCategoriesError(err.message || "Failed to load categories");
+      } finally {
+        setIsCategoriesLoading(false);
+      }
+    };
+    fetchCategories();
+  }, [supabase]);
+
+  if (isUserLoading) {
+    return null; // Or return a skeleton if you want a loading state
+  }
+  const isLoggedIn = !!user;
 
   return (
     <header className="top-0 left-0 right-0 z-50 sticky">
@@ -123,9 +130,7 @@ const Header = () => {
                               ))}
                           </div>
                         ) : categoriesError ? (
-                          <p className="text-red-300">
-                            Failed to load categories
-                          </p>
+                          <p className="text-red-300">{categoriesError}</p>
                         ) : (
                           <div className="space-y-2">
                             {categories?.map((category) => (

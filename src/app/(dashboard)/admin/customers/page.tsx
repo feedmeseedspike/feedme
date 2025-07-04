@@ -27,9 +27,10 @@ export default function CustomersPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [search, setSearch] = useState(searchParams.get("search") || "");
-  const currentPage = Number(searchParams.get("page")) || 1;
+  const [search, setSearch] = useState(searchParams?.get("search") || "");
+  const currentPage = Number(searchParams?.get("page")) || 1;
   const ITEMS_PER_PAGE = 10;
+  const newSearchParams = new URLSearchParams(searchParams?.toString() || "");
 
   const { data, isLoading, error } = useQuery<{
     data: FetchedCustomerData[] | null;
@@ -49,7 +50,6 @@ export default function CustomersPage() {
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
-    const newSearchParams = new URLSearchParams(searchParams.toString());
     if (e.target.value) {
       newSearchParams.set("search", e.target.value);
     } else {

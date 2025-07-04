@@ -147,18 +147,14 @@ const CartItemDisplay = React.memo(({ item }: CartItemDisplayProps) => {
 CartItemDisplay.displayName = "CartItemDisplay";
 
 function useDeliveryLocations() {
-  return useQuery<DeliveryLocation[], Error>({
+  const supabase = createClient();
+  return useQuery({
     queryKey: ["delivery-locations"],
     queryFn: async () => {
-      const supabase = createClient();
       const { data, error } = await supabase
         .from("delivery_locations")
-        .select("*")
-        .order("name", { ascending: true });
-      if (error) {
-        console.error("Error fetching delivery locations:", error);
-        throw new Error(error.message);
-      }
+        .select("*");
+      if (error) throw error;
       return data || [];
     },
   });
@@ -170,7 +166,7 @@ const shippingAddressDefaultValues =
         fullName: "Jeremiah Oyedele",
         street: "10, Yemisi Street",
         location: "Badagry",
-        phone: "+2348144602273",
+        phone: "08144602273",
       }
     : {
         fullName: "",
@@ -194,13 +190,15 @@ const steps = [
 interface CheckoutFormProps {
   addresses: AddressWithId[];
   walletBalance: number;
+  user: any; // Use the correct user type if available
 }
 
 const CheckoutForm = ({
   addresses,
   walletBalance,
-}: Omit<CheckoutFormProps, "user">) => {
-  const { user } = useUser();
+  user,
+}: CheckoutFormProps) => {
+  console.log("CheckoutForm: User:", user);
   const router = useRouter();
   const dispatch = useDispatch();
   const { data: cartItems, isLoading, isError, error } = useCartQuery();
@@ -554,15 +552,25 @@ const CheckoutForm = ({
             }
             result = await processWalletPayment(orderData);
           } else if (selectedPaymentMethod === "paystack") {
-            // Call the new API route to initialize Paystack payment for orders
+            // Call the wallet API route to initialize Paystack payment for wallet funding
             try {
-              const response = await fetch("/api/orders/initialize", {
+              // Try to get email from user object, fallback to display_name or show error
+              const userEmail =
+                user && "email" in user && user.email ? user.email : undefined;
+              if (!userEmail) {
+                showToast(
+                  "User email not found. Please log in again.",
+                  "error"
+                );
+                setIsSubmitting(false);
+                return;
+              }
+              const response = await fetch("/api/wallet/initialize", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  email: user.email,
+                  email: userEmail,
                   amount: totalAmountPaid,
-                  orderDetails: orderData,
                 }),
               });
               const data = await response.json();

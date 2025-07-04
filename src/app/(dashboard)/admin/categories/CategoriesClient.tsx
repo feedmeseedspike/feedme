@@ -85,7 +85,7 @@ export default function CategoriesClient({
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newSearch = e.target.value;
     setSearch(newSearch);
-    const newSearchParams = new URLSearchParams(searchParams.toString());
+    const newSearchParams = new URLSearchParams(searchParams?.toString() || "");
     if (newSearch) {
       newSearchParams.set("search", newSearch);
     } else {
@@ -102,7 +102,7 @@ export default function CategoriesClient({
       : [...selectedTags, value];
     setSelectedTags(newSelectedTags);
 
-    const newSearchParams = new URLSearchParams(searchParams.toString());
+    const newSearchParams = new URLSearchParams(searchParams?.toString() || "");
     newSearchParams.delete("tags");
     newSelectedTags.forEach((tag) => newSearchParams.append("tags", tag));
     newSearchParams.set("page", "1");
@@ -220,7 +220,7 @@ export default function CategoriesClient({
                     onClick={() => {
                       setSelectedTags([]);
                       const newSearchParams = new URLSearchParams(
-                        searchParams.toString()
+                        searchParams?.toString() || ""
                       );
                       newSearchParams.delete("tags");
                       newSearchParams.set("page", "1");

@@ -36,14 +36,13 @@ const ReferralPage = () => {
   const normalizedUser = user
     ? {
         id: (user as any).id || (user as any).user_id || "",
-        email: (user as any).email || "",
         ...user,
       }
     : null;
 
   // Use normalizedUser instead of user
   const userId = normalizedUser?.id;
-  const userEmail = normalizedUser?.email;
+  const userEmail = (normalizedUser as any)?.email;
 
   // Query to check referral status and get code
   const {

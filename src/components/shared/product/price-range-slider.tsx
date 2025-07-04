@@ -16,7 +16,7 @@ const PriceRangeSlider = ({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const priceParam = searchParams.get("price");
+  const priceParam = searchParams?.get("price");
   const isInitialMount = useRef(true);
 
   // Calculate step based on maxPrice
@@ -36,7 +36,7 @@ const PriceRangeSlider = ({
   const debouncedUpdateUrl = useMemo(
     () =>
       debounce((newValues: [number, number]) => {
-        const newParams = new URLSearchParams(searchParams.toString());
+        const newParams = new URLSearchParams(searchParams?.toString() || "");
         if (newValues[0] === 0 && newValues[1] === maxPrice) {
           newParams.delete("price");
         } else {

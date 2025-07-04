@@ -62,7 +62,7 @@ export default function AppSidebar({ user }: AppSidebarProps) {
     main: [
       {
         title: "Profile",
-        url: "/account",
+        url: "/account/profile",
         icon: User,
         description: "Manage your profile",
       },

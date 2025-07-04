@@ -50,7 +50,7 @@ type FetchedOrderDetails = Tables<"orders"> & {
 const OrderConfirmation = () => {
   const userObj = useUser();
   const searchParams = useSearchParams();
-  const orderId = searchParams.get("orderId");
+  const orderId = searchParams?.get("orderId");
   const [orderDetails, setOrderDetails] = useState<FetchedOrderDetails | null>(
     null
   );

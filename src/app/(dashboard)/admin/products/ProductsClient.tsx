@@ -165,7 +165,7 @@ export default function ProductsClient({
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newSearch = e.target.value;
     setSearch(newSearch);
-    const newSearchParams = new URLSearchParams(searchParams.toString());
+    const newSearchParams = new URLSearchParams(searchParams?.toString() || "");
     if (newSearch) {
       newSearchParams.set("search", newSearch);
     } else {
@@ -179,12 +179,12 @@ export default function ProductsClient({
     value: string,
     filterType: "category" | "stock" | "published"
   ) => {
-    const currentFilters = searchParams.getAll(filterType);
+    const newSearchParams = new URLSearchParams(searchParams?.toString() || "");
+    const currentFilters = searchParams?.getAll(filterType) || [];
     const newFilters = currentFilters.includes(value)
       ? currentFilters.filter((item) => item !== value)
       : [...currentFilters, value];
 
-    const newSearchParams = new URLSearchParams(searchParams.toString());
     newSearchParams.delete(filterType);
     newFilters.forEach((filter) => newSearchParams.append(filterType, filter));
     newSearchParams.set("page", "1");
@@ -372,7 +372,7 @@ export default function ProductsClient({
                       setSelectedStock([]);
                       setSelectedPublished([]);
                       const newSearchParams = new URLSearchParams(
-                        searchParams.toString()
+                        searchParams?.toString() || ""
                       );
                       newSearchParams.delete("category");
                       newSearchParams.delete("stock");
