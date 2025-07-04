@@ -109,7 +109,7 @@ export default function CustomerServicePage() {
               <p className="text-gray-600 mb-4">
                 Speak directly with our support team
               </p>
-              <p className="text-lg font-semibold">+234 800 123 4567</p>
+              <p className="text-lg font-semibold">+234 808 828 2487</p>
               <p className="text-sm text-gray-500 mt-2 flex items-center">
                 <Clock className="w-4 h-4 mr-1" /> Mon-Fri: 8am-6pm, Sat:
                 9am-4pm
@@ -128,25 +128,9 @@ export default function CustomerServicePage() {
               <p className="text-gray-600 mb-4">
                 Send us an email and we&apos;ll respond promptly
               </p>
-              <p className="text-lg font-semibold">support@seedspike.com</p>
+              <p className="text-lg font-semibold">seedspikelimited@gmail.com</p>
               <p className="text-sm text-gray-500 mt-2">
                 Average response time: 12 hours
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="">
-            <CardHeader>
-              <div className="bg-purple-100 w-12 h-12 rounded-full flex items-center justify-center mb-4">
-                <MessageSquare className="text-purple-600 w-6 h-6" />
-              </div>
-              <CardTitle>Live Chat</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 mb-4">Chat with us in real-time</p>
-              <Button className="w-full !bg-[#1B6013]">Start Chat Now</Button>
-              <p className="text-sm text-gray-500 mt-2 flex items-center">
-                <Clock className="w-4 h-4 mr-1" /> Available 24/7
               </p>
             </CardContent>
           </Card>

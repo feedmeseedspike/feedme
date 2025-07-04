@@ -43,9 +43,8 @@ const proxima = localFont({
 });
 const inter = Inter({ subsets: ["latin"] });
 
-
 export const metadata: Metadata = {
-  metadataBase: new URL("https://feedme.seedspikeafrica.com/"),
+  metadataBase: new URL("https://shopfeedme.com/"),
   title: {
     template: "%s - FeedMe",
     default: "FeedMe - Real Food, Real Fast, Delivered in 3 Hours",
@@ -57,7 +56,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://feedme.seedspikeafrica.com/",
+    url: "https://shopfeedme.com/",
     title: "FeedMe - Fresh Farm Produce Delivered in 3 Hours",
     description:
       "Shop fresh, authentic farm produce delivered to your doorstep in 3 hours or less! Explore high-quality fruits, vegetables, oils, peppers, tubers, sauces, and spices. FeedMe ensures unbeatable freshness and convenience for a superior farm-to-table experience. Start shopping now!",
@@ -103,13 +102,31 @@ export default async function RootLayout({
       .eq("user_id", authenticatedUser.id)
       .single();
 
-    if (profileError) {
-      console.error(
-        "RootLayout: Error fetching user profile on server:",
-        profileError
-      );
-    } else {
+    if (userProfile) {
       user = userProfile;
+    } else {
+      // Fallback: use the auth user if no profile row
+      user = {
+        user_id: authenticatedUser.id,
+        display_name:
+          typeof authenticatedUser.user_metadata?.display_name === "string"
+            ? authenticatedUser.user_metadata.display_name
+            : typeof authenticatedUser.email === "string"
+              ? authenticatedUser.email
+              : null,
+        avatar_url:
+          typeof authenticatedUser.user_metadata?.avatar_url === "string"
+            ? authenticatedUser.user_metadata.avatar_url
+            : null,
+        birthday: null,
+        created_at:
+          typeof authenticatedUser.created_at === "string"
+            ? authenticatedUser.created_at
+            : null,
+        favorite_fruit: null,
+        role: null,
+        status: null,
+      };
     }
 
     // Fetch referral status

@@ -128,7 +128,7 @@ export function AdminSidebar({ user }: AppSidebarProps) {
           <SidebarGroupContent>
             <SidebarMenu className="my-6 flex gap-2 overflow-y-auto max-h-[calc(100vh-200px)]">
               {routes.map((item) => {
-                const isActive = pathname.startsWith(item.url);
+                const isActive = pathname?.startsWith(item.url);
 
                 return (
                   <SidebarMenuItem key={item.title}>

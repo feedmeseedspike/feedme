@@ -30,6 +30,7 @@ const SPECIAL_TAGS = [
   "fresh-fruits",
   "fresh-vegetables",
   "todays-deal",
+  "trending",
 ];
 
 export default async function TagPage({
@@ -121,10 +122,12 @@ export default async function TagPage({
             ? "Fresh Vegetables"
             : tag === "todays-deal"
               ? "Today's Deal"
-              : tag
-                  .split("-")
-                  .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-                  .join(" ")
+              : tag === "trending"
+                ? "Trending"
+                : tag
+                    .split("-")
+                    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                    .join(" ")
     : promotionData?.title ||
       tag
         .split("-")

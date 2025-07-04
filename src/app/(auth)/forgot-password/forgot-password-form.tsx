@@ -24,7 +24,7 @@ const ForgotPasswordSchema = z.object({
 
 export default function ForgotPasswordForm() {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const callbackUrl = searchParams?.get("callbackUrl") || "/";
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const { showToast } = useToast();
@@ -42,7 +42,7 @@ export default function ForgotPasswordForm() {
     setLoading(true);
     try {
       const result = await requestPasswordReset(data.email);
-      console.log(result)
+      console.log(result);
       if (result.success) {
         showToast(
           "If this email exists, you will receive a password reset link.",

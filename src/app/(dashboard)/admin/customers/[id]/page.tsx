@@ -73,7 +73,7 @@ const progressOptions = [
 
 export default function CustomerDetailsPage() {
   const params = useParams();
-  const customerId = params.id as string; // Get customer ID from URL
+  const customerId = params?.id as string; // Get customer ID from URL
 
   // Fetch customer details using the hook
   const {

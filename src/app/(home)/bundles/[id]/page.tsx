@@ -27,7 +27,7 @@ import { CartItem } from "src/lib/actions/cart.actions";
 export default function BundleDetailPage() {
   // All hooks must be called unconditionally at the top level
   const params = useParams();
-  const bundleId = params.id as string;
+  const bundleId = params?.id as string;
   const { showToast } = useToast();
   const queryClient = useQueryClient();
   const updateCartMutation = useUpdateCartMutation();

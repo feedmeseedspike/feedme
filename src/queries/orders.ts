@@ -108,7 +108,6 @@ export async function fetchUserOrders(
     .select(
       `
       *,
-      profiles(display_name),
       order_items(*, products(name, images))
     `, { count: 'exact' } // Request exact count
     )

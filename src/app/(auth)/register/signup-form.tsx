@@ -42,8 +42,8 @@ const signUpDefaultValues =
 
 export default function CredentialsSignUpForm() {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/";
-  const urlReferralCode = searchParams.get("referral_code");
+  const callbackUrl = searchParams?.get("callbackUrl") || "/";
+  const urlReferralCode = searchParams?.get("referral_code");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -77,6 +77,46 @@ export default function CredentialsSignUpForm() {
     }
   }, [urlReferralCode]);
 
+  const onSubmit = async (data: IUserSignUp) => {
+    setLoading(true);
+    const { name, email, password, referralCode } = data;
+    try {
+      // Use server action for registration
+      const result = await registerUser({ name, email, password });
+      if (!result.success) {
+        const errorMsg =
+          typeof result.error === "string"
+            ? result.error
+            : result.error?.message || "Registration failed";
+        showToast(errorMsg, "error");
+        return;
+      }
+      const userId = result.data?.user?.id;
+      // Use applyReferral if referralCode is present and registration succeeded
+      const code =
+        (referralCode || localStorage.getItem("referral_code")) ?? "";
+      if (code && userId) {
+        await applyReferral(String(code), String(userId));
+        localStorage.removeItem("referral_code");
+      }
+      // Optionally, keep handleReferral for other referral logic
+      showToast("Registration successful!", "success");
+      return router.push(`/login`);
+    } catch (error: any) {
+      let errorMsg = "An error occurred during registration";
+      if (typeof error === "string") {
+        errorMsg = error;
+      } else if (error && typeof error.message === "string") {
+        errorMsg = error.message;
+      }
+      console.error("Signup failed:", errorMsg);
+      showToast(errorMsg, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Restore applyReferral function
   const applyReferral = async (
     referrerEmail: string,
     referredUserId: string
@@ -100,101 +140,6 @@ export default function CredentialsSignUpForm() {
         "An unexpected error occurred during referral application.",
         "error"
       );
-    }
-  };
-
-  const onSubmit = async (data: IUserSignUp) => {
-    setLoading(true);
-    const { name, email, password, referralCode } = data;
-    const supabase = createClient();
-
-    try {
-      // First check if user exists
-      const {
-        data: { user: existingUser },
-        error: existingUserError,
-      } = await supabase.auth.getUser();
-
-
-      if (existingUser && !existingUserError) {
-        showToast("User already exists. Please login instead.", "error");
-        return router.push(
-          `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
-        );
-      }
-
-      // Create the user
-      const { data: signUpData, error: signUpError } =
-        await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { name },
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
-          },
-        });
-
-      if (signUpError) {
-        console.error("Signup error:", signUpError);
-        throw signUpError;
-      }
-
-      if (!signUpData.user) {
-        throw new Error("User creation failed - no user returned");
-      }
-
-      console.log("User created:", signUpData.user);
-
-      if (referralCode || localStorage.getItem("referral_code")) {
-        handleReferral(
-          signUpData.user.id,
-          referralCode,
-          signUpData.user.email!
-        ).catch((e) => console.error("Referral error:", e));
-      }
-
-      // Show success and redirect
-      showToast("Registration successful!", "success");
-
-      return router.push(
-        `/login`
-      );
-    } catch (error: any) {
-      console.error("Signup failed:", error);
-      showToast(
-        error.message || "An error occurred during registration",
-        "error"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Separate function for referral handling
-  const handleReferral = async (
-    userId: string,
-    referralCode?: string,
-    referredUserEmail?: string
-  ) => {
-    const code = referralCode || localStorage.getItem("referral_code");
-    if (!code || !referredUserEmail) return;
-
-    try {
-      const response = await fetch("/api/referral", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          referrerEmail: code,
-          referredUserId: userId,
-          referredUserEmail: referredUserEmail,
-        }),
-      });
-
-      if (!response.ok) throw new Error(await response.text());
-
-      localStorage.removeItem("referral_code");
-    } catch (error) {
-      console.error("Referral failed - continuing without referral:", error);
     }
   };
 

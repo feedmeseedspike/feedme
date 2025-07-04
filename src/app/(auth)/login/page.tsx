@@ -15,20 +15,26 @@ const reviews: ReviewSlide[] = [
   {
     imgSrc: "/loginBanner.jpeg",
     review:
-      "Absolutely love this store! Fast shipping and the products are top quality. Will shop again!",
-    customer: "Emily R.",
+      "I got the fruits. Thanks. The beef is good also. I'm satisfied. 👍🏽👍🏽👍🏽",
+    customer: "Mrs Ayodeji Tijani",
   },
   {
     imgSrc: "/loginBanner.jpeg",
     review:
-      "Customer service was so helpful and my order arrived earlier than expected. Highly recommend!",
-    customer: "James T.",
+      "Yes ooo! Thanks so much. Please you people should keep it up o. Don't let the naija factor make you drop your standards. God bless!",
+    customer: "Hannah Yavala",
   },
   {
     imgSrc: "/loginBanner.jpeg",
     review:
-      "Great selection and amazing prices. The checkout process was super easy, too!",
-    customer: "Priya S.",
+      "I received my order and everything was perfect! At first, I thought it might be a scam, but when my items arrived I was so surprised and amazed. Thank you for the extra carrot! Keep up the good work. Wow!",
+    customer: "Nkiruka Okonkwo",
+  },
+  {
+    imgSrc: "/loginBanner.jpeg",
+    review:
+      "I received my items in perfect condition and right on time. Thank you FeedMe for the great service!",
+    customer: "Unuigbe Ugha",
   },
 ];
 

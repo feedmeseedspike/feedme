@@ -16,6 +16,7 @@ import { TypedSupabaseClient } from "src/utils/types";
 import { getAllCategoriesQuery } from "src/queries/categories";
 import { createClient } from "src/utils/supabase/client";
 import { toSlug } from "src/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 // import { Tables } from "@utils/database.types";
 
 type CategoryListItem = {
@@ -73,32 +74,30 @@ const Icons = [
 
 const Footer = () => {
   const year = new Date().getFullYear();
-  const [categories, setCategories] = useState<CategoryListItem[]>([]);
+  const supabase = createClient();
 
-  useEffect(() => {
-    const supabase = createClient();
-    const fetchCategories = async () => {
-      const { data, error } = await getAllCategoriesQuery(supabase).select(
-        "id, title, thumbnail"
-      );
-      if (error) {
-        console.error("Error fetching categories:", error);
-      } else {
-        setCategories(
-          (data || []).map((cat) => ({
-            ...cat,
-            thumbnail:
-              typeof cat.thumbnail === "string" ||
-              typeof cat.thumbnail === "object" ||
-              cat.thumbnail === null
-                ? cat.thumbnail
-                : null,
-          }))
-        );
-      }
-    };
-    fetchCategories();
-  }, []);
+  const queryFn = async () => {
+    const queryBuilder = getAllCategoriesQuery(supabase);
+    const { data, error } = await queryBuilder.select("*");
+    if (error) throw error;
+    return data || [];
+  };
+
+  const {
+    data: categories,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["categories"],
+    queryFn,
+  });
+
+  if (isLoading) {
+    return <div>Loading categories...</div>;
+  }
+  if (error || !categories || !Array.isArray(categories)) {
+    return <div>Error loading categories or no categories found.</div>;
+  }
 
   return (
     <>
@@ -112,7 +111,7 @@ const Footer = () => {
           <div className="flex flex-col lg:flex-row gap-10 lg:gap-0 justify-between text-[#475467] font-semibold">
             <div className="flex flex-col gap-6 lg:w-[30%]">
               <Image
-                src="/footerlogo.png"
+                src="/Footerlogo.png"
                 alt="logo"
                 width={141}
                 height={40}

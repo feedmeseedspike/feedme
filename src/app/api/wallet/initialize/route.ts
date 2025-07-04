@@ -32,6 +32,10 @@ export const POST = authMiddleware(
         wallet = newWallet;
       }
 
+      // Debug: Check if Paystack secret key is present
+      console.log("Paystack Secret Key present:", !!process.env.PAYSTACK_SECRET_KEY);
+      console.log("Paystack Secret Key value (first 5 chars):", process.env.PAYSTACK_SECRET_KEY?.slice(0, 5));
+
       // Initialize Paystack transaction
       const callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL!}/account/wallet/success`;
       const transactionData = await paystack.initializeTransaction({

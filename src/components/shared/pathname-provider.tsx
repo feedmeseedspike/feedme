@@ -35,7 +35,7 @@ export function PathnameProvider({
 
   const hideOnPaths = ["/login", "/register", "/auth", "/admin"];
   const shouldHideNavAndBanner = hideOnPaths.some((path) =>
-    pathname.startsWith(path)
+    pathname?.startsWith(path)
   );
 
   return (

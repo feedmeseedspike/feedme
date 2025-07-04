@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@components/ui/dropdown-menu";
-import { ChevronDown, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getAllCategoriesQuery } from "src/queries/categories";
 import { createClient } from "src/utils/supabase/client";
@@ -23,19 +23,17 @@ interface Category {
 
 const Headertags = () => {
   const supabase = createClient();
-  const {
-    data: categories,
-    isLoading,
-    error,
-  } = useQuery<Category[]>({
-    queryKey: ["allCategories"],
-    queryFn: async () => {
-      const { data, error } =
-        await getAllCategoriesQuery(supabase).select("id, title");
-      if (error) throw error;
-      return data as Category[];
-    },
-    staleTime: Infinity,
+
+  const queryFn = async () => {
+    const queryBuilder = getAllCategoriesQuery(supabase);
+    const { data, error } = await queryBuilder.select("*");
+    if (error) throw error;
+    return data as Category[];
+  };
+
+  const { data: categories, isLoading, error } = useQuery<Category[]>({
+    queryKey: ["categories"],
+    queryFn,
   });
 
   return (
@@ -47,7 +45,6 @@ const Headertags = () => {
             <DropdownMenuTrigger className="flex items-center gap-1 text-sm h-7 rounded-md hover:bg-gray-100 transition-colors cursor-pointer">
               <Menu className="h-4 w-4" />
               Categories
-              {/* <ChevronDown className="h-4 w-4 text-gray-500" /> */}
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-48 bg-white shadow-lg rounded-md p-1">
               {isLoading && (

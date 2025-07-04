@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { Input } from "@components/ui/input";
@@ -35,6 +35,8 @@ import { formatNaira } from "src/lib/utils";
 import { Skeleton } from "@components/ui/skeleton";
 import PaginationBar from "@components/shared/pagination";
 import { Tables } from "src/utils/database.types";
+import { createClient } from "@utils/supabase/client";
+import axios from "axios";
 
 interface WalletClientProps {
   user: any;
@@ -60,6 +62,18 @@ export default function WalletClient({
     useState<Tables<"transactions"> | null>(null);
   const [isAddFundsOpen, setIsAddFundsOpen] = useState(false);
   const [amount, setAmount] = useState("");
+  const [addFundsLoading, setAddFundsLoading] = useState(false);
+  const [addFundsError, setAddFundsError] = useState<string | null>(null);
+
+  const supabase = createClient();
+  console.log(supabase);
+  supabase.auth.getSession().then(console.log);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      console.log("Supabase session in WalletClient:", data.session);
+    });
+  }, []);
 
   // Filtered transactions
   const filteredTransactions = (transactions || []).filter((transaction) => {
@@ -112,6 +126,38 @@ export default function WalletClient({
     return dateString
       ? new Date(dateString).toLocaleDateString(undefined, options)
       : "N/A";
+  };
+
+  const handleAddFunds = async () => {
+    setAddFundsLoading(true);
+    setAddFundsError(null);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        throw new Error("You are not authenticated. Please log in again.");
+      }
+      const res = await axios.post(
+        "/api/wallet/initialize",
+        { email: user.email, amount: parseFloat(amount) },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+      if (!res.data.authorization_url)
+        throw new Error(res.data.message || "Failed to initialize payment");
+      window.location.href = res.data.authorization_url;
+    } catch (err: any) {
+      setAddFundsError(
+        err.response?.data?.message || err.message || "Failed to add funds"
+      );
+    } finally {
+      setAddFundsLoading(false);
+    }
   };
 
   return (
@@ -190,12 +236,19 @@ export default function WalletClient({
                     </Button>
                     <Button
                       className="bg-[#1B6013] hover:bg-[#1B6013]/90"
-                      // onClick={handleAddFundsContinue} // TODO: Implement add funds logic
-                      disabled={!amount || parseFloat(amount) <= 0}
+                      disabled={
+                        !amount || parseFloat(amount) <= 0 || addFundsLoading
+                      }
+                      onClick={handleAddFunds}
                     >
-                      Continue
+                      {addFundsLoading ? "Processing..." : "Continue"}
                     </Button>
                   </DialogFooter>
+                  {addFundsError && (
+                    <div className="text-red-500 text-sm mt-2">
+                      {addFundsError}
+                    </div>
+                  )}
                 </DialogContent>
               </Dialog>
             </div>

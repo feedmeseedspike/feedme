@@ -36,7 +36,7 @@ const signInDefaultValues =
 
 export default function CredentialsSignInForm() {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const callbackUrl = searchParams?.get("callbackUrl") || "/";
   const [showPassword, setShowPassword] = useState(false);
   const { showToast } = useToast();
   const router = useRouter();
