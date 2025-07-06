@@ -64,8 +64,10 @@ export async function signInUser(credentials: { email: string; password: string 
       email: credentials.email,
       password: credentials.password,
     });
+    
     if (error) throw error;
-    // Do NOT manually set cookies here! Supabase SSR client will handle session cookies.
+
+
     return { success: true, data };
   } catch (error: any) {
     if (
