@@ -61,7 +61,7 @@ export default async function SignUpPage(props: {
       <div className="flex md:w-[60%] lg:w-[40%] w-full flex-col justify-cente px-4 md:px-8 h-screen overflow-y-auto py-6">
         <div className="px- pt-8 pb-4">
           <Link href="/">
-            <Image src="/footerLogo.png" alt="logo" width={200} height={52} />
+            <Image src="/FooterLogo.png" alt="logo" width={200} height={52} />
           </Link>
           <div className="flex flex-col gap-3 mt-4">
             <p className="h2-bold text-3xl text-[#1B6013]">

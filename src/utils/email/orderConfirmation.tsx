@@ -1,7 +1,4 @@
-"use server";
-// src/utils/email/orderConfirmation.tsx
 import React from "react";
-import { renderToStaticMarkup } from "react-dom/server";
 import {
   Body,
   Container,
@@ -43,7 +40,7 @@ const tableCellStyle: React.CSSProperties = {
   textAlign: "left",
 };
 
-export function CustomerOrder(props: CustomerOrderProps) {
+export default function CustomerOrder(props: CustomerOrderProps) {
   const {
     orderNumber,
     customerName,
@@ -156,6 +153,4 @@ export function CustomerOrder(props: CustomerOrderProps) {
   );
 }
 
-export function CustomerOrderTemplate(props: CustomerOrderProps): string {
-  return renderToStaticMarkup(<CustomerOrder {...props} />);
-}
+

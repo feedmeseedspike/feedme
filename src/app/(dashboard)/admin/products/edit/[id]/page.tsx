@@ -4,13 +4,19 @@ import { getProductById, getAllCategories } from "src/queries/products";
 import { notFound } from "next/navigation";
 
 function normalizeProduct(product: any) {
-  // Ensure options is always an array or []
+  // Robustly handle options: array, stringified array, or fallback
   let options = [];
   if (Array.isArray(product.options)) {
     options = product.options;
-  } else if (product.options && typeof product.options === "object") {
-    // If options is an object (legacy), flatten to array if possible, else []
-    options = Object.values(product.options).flat().filter(Boolean);
+  } else if (
+    typeof product.options === "string" &&
+    product.options.trim().startsWith("[")
+  ) {
+    try {
+      options = JSON.parse(product.options);
+    } catch (e) {
+      options = [];
+    }
   }
   // Ensure images is always an array of strings
   let images = [];

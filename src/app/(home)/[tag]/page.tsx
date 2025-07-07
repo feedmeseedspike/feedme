@@ -15,7 +15,7 @@ import {
   getPromotionByTag,
   getProductsByTag,
 } from "src/lib/actions/promotion.actions";
-import { createClient as createServerSupabaseClient } from "src/utils/supabase/server";
+import { createServerComponentClient } from "src/utils/supabase/server";
 
 const sortOrders = [
   { value: "price-low-to-high", name: "Price: Low to high" },
@@ -45,7 +45,7 @@ export default async function TagPage({
   const page = Number(searchParams.page) || 1;
   const isSpecialTag = SPECIAL_TAGS.includes(tag);
 
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerComponentClient();
 
   // Fetch all categories
   const { data: allCategoriesData, error: categoriesError } =

@@ -106,7 +106,7 @@ export const POST = authMiddleware(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             type: "admin",
-            to: process.env.ADMIN_ORDER_EMAIL || process.env.NODEMAILER_USER || "admin@yourdomain.com",
+            to: process.env.ADMIN_ORDER_EMAIL || "oyedelejeremiah.ng@gmail.com",
             subject: "Order Confirmation From FeedMe",
             orderProps: {
               orderNumber,

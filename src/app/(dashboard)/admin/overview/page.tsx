@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function OverviewPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.from("orders").select("*");
   if (error) {
     console.error("Error fetching orders:", error);

@@ -7,7 +7,7 @@ import { Tables } from "src/utils/database.types";
 export async function addAddressAction(addressData: Omit<Tables<"addresses">, "id" | "user_id" | "created_at" | "updated_at">) {
   const user = await getUser();
   if (!user) throw new Error("Not authenticated");
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("addresses")
     .insert([{ ...addressData, user_id: user.user_id }])
@@ -21,7 +21,7 @@ export async function addAddressAction(addressData: Omit<Tables<"addresses">, "i
 export async function updateAddressAction(id: string, updates: Partial<Tables<"addresses">>) {
   const user = await getUser();
   if (!user) throw new Error("Not authenticated");
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("addresses")
     .update(updates)
@@ -37,7 +37,7 @@ export async function updateAddressAction(id: string, updates: Partial<Tables<"a
 export async function deleteAddressAction(id: string) {
   const user = await getUser();
   if (!user) throw new Error("Not authenticated");
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("addresses")
     .delete()

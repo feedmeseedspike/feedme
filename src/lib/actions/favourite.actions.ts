@@ -48,7 +48,6 @@ export async function addToFavorite(productId: string): Promise<{ success: true 
 
     return { success: true };
   } catch (error: any) {
-    console.error('Add to favorite error:', error);
     return { 
       success: false, 
       error: error.message || "Failed to add to favorites" 
@@ -80,7 +79,6 @@ export async function removeFromFavorite(productId: string): Promise<{ success: 
 
     return { success: true };
   } catch (error: any) {
-    console.error('Remove from favorite error:', error);
     return { 
       success: false, 
       error: error.message || "Failed to remove from favorites" 
@@ -141,17 +139,17 @@ export async function getFavourites(): Promise<FavoritesSuccess | FavoritesFailu
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    console.log("Fetched favorites from Supabase:", favorites, "Error:", error); // Debugging line
-
     if (error) throw error;
 
     return { 
       success: true, 
-      data: favorites || [],
+      data: (favorites || []).map(fav => ({
+        ...fav,
+        products: Array.isArray(fav.products) && fav.products.length > 0 ? fav.products[0] : null,
+      })),
       error: null
     };
   } catch (error: any) {
-    console.error('Error fetching favorites:', error);
     return { 
       success: false, 
       error: error.message || "Failed to fetch favorites",

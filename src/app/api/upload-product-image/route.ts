@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const fileExt = (file as File).name.split(".").pop();
   const filePath = `${Date.now()}.${fileExt}`;
   const { error } = await supabase.storage

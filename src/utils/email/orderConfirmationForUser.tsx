@@ -1,6 +1,4 @@
-"use server";
 import React from "react";
-import { renderToStaticMarkup } from "react-dom/server";
 import {
   Body,
   Container,
@@ -30,6 +28,9 @@ export interface CustomerOrderReceivedProps {
   serviceCharge: number;
   totalAmount: number;
   totalAmountPaid: number;
+  paymentMethod?: string;
+  voucherDiscount?: number;
+  voucherCode?: string;
 }
 
 const tableHeaderStyle: React.CSSProperties = {
@@ -45,6 +46,10 @@ const tableCellStyle: React.CSSProperties = {
   textAlign: "left",
 };
 
+function formatNaira(amount: number) {
+  return amount.toLocaleString("en-NG", { style: "currency", currency: "NGN" });
+}
+
 export function CustomerOrderReceived(props: CustomerOrderReceivedProps) {
   const {
     orderNumber,
@@ -56,6 +61,9 @@ export function CustomerOrderReceived(props: CustomerOrderReceivedProps) {
     serviceCharge,
     totalAmount,
     totalAmountPaid,
+    paymentMethod,
+    voucherDiscount,
+    voucherCode,
   } = props;
   const previewText = `Order Confirmed! Your Fresh Produce is On Its Way`;
   return (
@@ -129,13 +137,9 @@ export function CustomerOrderReceived(props: CustomerOrderReceivedProps) {
                   return (
                     <tr key={index}>
                       <td style={tableCellStyle}>{item.title}</td>
-                      <td style={tableCellStyle}>
-                        ₦{item.price.toLocaleString()}
-                      </td>
+                      <td style={tableCellStyle}>{formatNaira(item.price)}</td>
                       <td style={tableCellStyle}>{item.quantity}</td>
-                      <td style={tableCellStyle}>
-                        ₦{subtotal.toLocaleString()}
-                      </td>
+                      <td style={tableCellStyle}>{formatNaira(subtotal)}</td>
                     </tr>
                   );
                 })}
@@ -144,7 +148,7 @@ export function CustomerOrderReceived(props: CustomerOrderReceivedProps) {
                     <strong>Total Cost Of Items:</strong>
                   </td>
                   <td style={tableCellStyle}>
-                    <strong>#{totalAmount}</strong>
+                    <strong>{formatNaira(totalAmount)}</strong>
                   </td>
                 </tr>
                 <tr>
@@ -152,14 +156,7 @@ export function CustomerOrderReceived(props: CustomerOrderReceivedProps) {
                     <strong>Discount Amount:</strong>
                   </td>
                   <td style={tableCellStyle}>
-                    <strong>
-                      {" "}
-                      - #
-                      {totalAmount +
-                        deliveryFee +
-                        serviceCharge -
-                        totalAmountPaid}
-                    </strong>
+                    <strong> - {formatNaira(voucherDiscount || 0)}</strong>
                   </td>
                 </tr>
                 <tr>
@@ -169,7 +166,7 @@ export function CustomerOrderReceived(props: CustomerOrderReceivedProps) {
                   <td style={tableCellStyle}>
                     <strong>
                       {" "}
-                      #{totalAmountPaid - (deliveryFee + serviceCharge)}
+                      {formatNaira(totalAmount - (voucherDiscount || 0))}
                     </strong>
                   </td>
                 </tr>
@@ -178,7 +175,7 @@ export function CustomerOrderReceived(props: CustomerOrderReceivedProps) {
                     <strong>Service Charge:</strong>
                   </td>
                   <td style={tableCellStyle}>
-                    <strong>₦{serviceCharge.toLocaleString()}</strong>
+                    <strong>{formatNaira(serviceCharge)}</strong>
                   </td>
                 </tr>
                 <tr>
@@ -186,7 +183,7 @@ export function CustomerOrderReceived(props: CustomerOrderReceivedProps) {
                     <strong>Delivery Fee:</strong>
                   </td>
                   <td style={tableCellStyle}>
-                    <strong>₦{deliveryFee.toLocaleString()}</strong>
+                    <strong>{formatNaira(deliveryFee)}</strong>
                   </td>
                 </tr>
                 <tr>
@@ -194,7 +191,7 @@ export function CustomerOrderReceived(props: CustomerOrderReceivedProps) {
                     <strong>Total:</strong>
                   </td>
                   <td style={tableCellStyle}>
-                    <strong>#{totalAmountPaid.toLocaleString()}</strong>
+                    <strong>{formatNaira(totalAmountPaid)}</strong>
                   </td>
                 </tr>
               </tbody>
@@ -239,8 +236,4 @@ export function CustomerOrderReceived(props: CustomerOrderReceivedProps) {
   );
 }
 
-export function CustomerOrderReceivedTemplate(
-  props: CustomerOrderReceivedProps
-): string {
-  return renderToStaticMarkup(<CustomerOrderReceived {...props} />);
-}
+export default CustomerOrderReceived;

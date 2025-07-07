@@ -1,7 +1,5 @@
 "use client";
 
-console.log("CheckoutForm: Top of component file.");
-
 import { Button } from "@components/ui/button";
 import {
   Form,
@@ -59,14 +57,12 @@ import { useUser } from "src/hooks/useUser";
 import { createClient } from "@/utils/supabase/client";
 import { DeliveryLocation } from "@/types/delivery-location";
 
-// Define a more specific type for grouped items
 interface GroupedCartItem {
   product?: CartItem["products"];
   bundle?: CartItem["bundles"];
   options: Record<string, CartItem>;
 }
 
-// New component for displaying a grouped product/bundle and its options
 interface CartProductGroupDisplayProps {
   productGroup: GroupedCartItem;
   productId: string;
@@ -191,12 +187,14 @@ interface CheckoutFormProps {
   addresses: AddressWithId[];
   walletBalance: number;
   user: any; // Use the correct user type if available
+  deliveryLocations: DeliveryLocation[];
 }
 
 const CheckoutForm = ({
   addresses,
   walletBalance,
   user,
+  deliveryLocations,
 }: CheckoutFormProps) => {
   console.log("CheckoutForm: User:", user);
   const router = useRouter();
@@ -252,11 +250,7 @@ const CheckoutForm = ({
   });
 
   const formLocation = shippingAddressForm.watch("location");
-  const {
-    data: locations = [],
-    isLoading: isLoadingLocations,
-    error: locationsError,
-  } = useDeliveryLocations();
+  const locations = deliveryLocations;
   const cost =
     locations.find((loc) => loc.name === formLocation)?.price || 2500;
 
@@ -624,6 +618,55 @@ const CheckoutForm = ({
                 );
               }
             }
+            // Send order confirmation emails to admin and user
+            try {
+              await fetch("/api/email/send-order-confirmation", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  adminEmail:
+                    process.env.NEXT_PUBLIC_ADMIN_EMAIL ||
+                    "oyedeletopy.uk@gmail.com",
+                  userEmail: user.email,
+                  adminOrderProps: {
+                    orderNumber: result.data.orderId,
+                    customerName:
+                      user.display_name ||
+                      shippingAddressForm.getValues().fullName,
+                    customerPhone: shippingAddressForm.getValues().phone,
+                    itemsOrdered: items.map((item) => ({
+                      title: item.products?.name || item.bundles?.name || "",
+                      price: item.price,
+                      quantity: item.quantity,
+                    })),
+                    deliveryAddress: shippingAddressForm.getValues().street,
+                    localGovernment: shippingAddressForm.getValues().location,
+                  },
+                  userOrderProps: {
+                    orderNumber: result.data.orderId,
+                    customerName:
+                      user.display_name ||
+                      shippingAddressForm.getValues().fullName,
+                    customerPhone: shippingAddressForm.getValues().phone,
+                    itemsOrdered: items.map((item) => ({
+                      title: item.products?.name || item.bundles?.name || "",
+                      price: item.price,
+                      quantity: item.quantity,
+                    })),
+                    deliveryAddress: shippingAddressForm.getValues().street,
+                    deliveryFee: cost,
+                    serviceCharge: serviceCharge,
+                    totalAmount: subtotal,
+                    totalAmountPaid: totalAmountPaid,
+                  },
+                }),
+              });
+            } catch (err) {
+              showToast(
+                "Order placed, but failed to send confirmation email.",
+                "error"
+              );
+            }
             // Clear voucher from localStorage after successful order
             localStorage.removeItem("voucherCode");
             localStorage.removeItem("voucherDiscount");
@@ -773,14 +816,9 @@ const CheckoutForm = ({
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                    {locationsError ? (
-                                      <div className="text-red-500 p-2">
-                                        Failed to load locations:{" "}
-                                        {locationsError.message}
-                                      </div>
-                                    ) : isLoadingLocations ? (
+                                    {locations.length === 0 ? (
                                       <div className="p-2 text-gray-500">
-                                        Loading locations...
+                                        No locations available.
                                       </div>
                                     ) : (
                                       locations.map((location) => (

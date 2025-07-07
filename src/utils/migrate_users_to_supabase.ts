@@ -74,7 +74,6 @@ async function main() {
       const batch = transformed.slice(i, i + BATCH_SIZE);
       const { data, error } = await insertBatch(batch);
       if (error) {
-        console.error(`Batch ${i / BATCH_SIZE + 1} failed, inserting one by one...`);
         for (const user of batch) {
           const singleResult = await insertSingle(user);
           if (singleResult.error) {
@@ -84,22 +83,18 @@ async function main() {
               ('code' in singleResult.error && singleResult.error.code === '23505') ||
               (typeof singleResult.error.message === 'string' && singleResult.error.message.includes('duplicate'))
             ) {
-              console.warn(`Duplicate skipped: ${user.email}`);
+              // console.warn(`Duplicate skipped: ${user.email}`);
             } else {
-              console.error(`Failed to insert user: ${user.email}`, singleResult.error);
+              // console.error(`Failed to insert user: ${user.email}`, singleResult.error);
             }
-          } else {
-            console.log(`Inserted: ${user.email}`);
           }
         }
-      } else {
-        console.log(`Inserted batch ${i / BATCH_SIZE + 1}:`, data);
       }
     }
     fs.writeFileSync('mongoIdToSupabaseUserId.json', JSON.stringify(mongoIdToSupabaseId, null, 2));
-    console.log('User migration complete!');
+    // console.log('User migration complete!');
   } catch (err) {
-    console.error('User migration failed:', err);
+    // console.error('User migration failed:', err);
   } finally {
     await mongo.close();
   }

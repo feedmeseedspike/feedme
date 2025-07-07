@@ -112,41 +112,25 @@ export async function updateProduct(id: string, product: any) {
   if (product.images && Array.isArray(product.images)) {
     product.images = product.images.map((img: any) => typeof img === 'string' ? img : (img.url || img));
   }
-  console.log("Attempting to update product with ID:", id, "with data:", product);
   const { data, error } = await supabase.from('products').update(product).eq('id', id).select();
-  if (error) {
-    console.error("Error updating product:", error);
-    throw error;
-  }
-  console.log("Product updated successfully with ID:", id, "data:", data);
+  if (error) throw error;
   return data?.[0];
 }
 
 export async function deleteProduct(id: string) {
-  console.log("Attempting to delete product with ID:", id);
-
   // First, delete dependent records in the 'favorites' table
-  console.log("Attempting to delete related favorites for product ID:", id);
   const { error: deleteFavoritesError } = await supabase
     .from('favorites')
     .delete()
     .eq('product_id', id);
 
   if (deleteFavoritesError) {
-    console.error("Error deleting related favorites:", deleteFavoritesError);
-    // Decide how to handle this error. Throwing it will stop the product deletion.
     throw deleteFavoritesError;
   }
-  console.log("Related favorites deleted successfully for product ID:", id);
 
   // Then, delete the product from the 'products' table
-  console.log("Attempting to delete product from products table with ID:", id);
   const { error: deleteProductError } = await supabase.from('products').delete().eq('id', id);
-  if (deleteProductError) {
-    console.error("Error deleting product:", deleteProductError);
-    throw deleteProductError;
-  }
-  console.log("Product deleted successfully with ID:", id);
+  if (deleteProductError) throw deleteProductError;
   return true;
 }
 
@@ -253,19 +237,16 @@ export async function uploadOptionImage(file: File, bucketName: string = 'option
   return data.url;
 }
 
-// Add a placeholder function for fetching a customer by ID
 export async function getCustomerById(customerId: string) {
-  console.warn(`Fetching customer (user with role 'buyer') with ID: ${customerId}`);
-  // Fetch from the 'users' table where id matches and role is 'buyer'
+  // Fetch from the 'profiles' table where id matches and role is 'buyer'
   const { data, error } = await supabase
-    .from('users')
+    .from('profiles')
     .select('*')
     .eq('id', customerId)
     .eq('role', 'buyer') // Ensure the user is a buyer
     .single(); // Expect a single result
 
   if (error) {
-    console.error("Error fetching customer by ID:", error);
     throw error;
   }
 

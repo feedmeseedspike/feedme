@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   const totalAmountParam = searchParams.get('totalAmount');
 
   // Get current user
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ success: false, error: 'User not authenticated.' }, { status: 401 });
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     const totalAmount = body.totalAmount;
 
     // Get current user
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ success: false, error: 'User not authenticated.' }, { status: 401 });

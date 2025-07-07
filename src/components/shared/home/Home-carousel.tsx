@@ -61,8 +61,6 @@ export const HomeCarousel = () => {
   const [imgIndex, setImgIndex] = useState(0);
   const [hasMounted, setHasMounted] = useState(false);
 
-  const dragX = useMotionValue(0);
-
   useEffect(() => {
     setHasMounted(true);
     console.log("HomeCarousel: hasMounted set to true");
@@ -72,29 +70,23 @@ export const HomeCarousel = () => {
     if (!hasMounted || !carouselBanners || carouselBanners.length === 0) return;
 
     const intervalRef = setInterval(() => {
-      const x = dragX.get();
-
-      if (x === 0) {
-        setImgIndex((pv) => {
-          if (pv === (carouselBanners?.length || 0) - 1) {
-            return 0;
-          }
-          return pv + 1;
-        });
-      }
+      setImgIndex((pv) => {
+        if (pv === (carouselBanners?.length || 0) - 1) {
+          return 0;
+        }
+        return pv + 1;
+      });
     }, AUTO_DELAY);
 
     return () => clearInterval(intervalRef);
-  }, [hasMounted, dragX, carouselBanners]);
+  }, [hasMounted, carouselBanners]);
 
-  const onDragEnd = () => {
-    const x = dragX.get();
-
+  const onDragEnd = (event: any, info: { offset: { x: number } }) => {
     if (!carouselBanners) return;
-
-    if (x <= -DRAG_BUFFER && imgIndex < (carouselBanners?.length || 0) - 1) {
+    const { x } = info.offset;
+    if (x < -DRAG_BUFFER && imgIndex < (carouselBanners?.length || 0) - 1) {
       setImgIndex((pv) => pv + 1);
-    } else if (x >= DRAG_BUFFER && imgIndex > 0) {
+    } else if (x > DRAG_BUFFER && imgIndex > 0) {
       setImgIndex((pv) => pv - 1);
     }
   };
@@ -120,21 +112,19 @@ export const HomeCarousel = () => {
   return (
     <div className="relative bg-white w-full overflow-hidden">
       <motion.div
+        key={imgIndex}
         drag="x"
-        dragConstraints={{
-          left: 0,
-          right: 0,
-        }}
+        dragConstraints={{ left: 0, right: 0 }}
         style={{
-          x: dragX,
-          transform: `translateX(-${imgIndex * 100}%)`,
+          width: `${carouselBanners.length * 100}%`,
+          display: "flex",
         }}
         animate={{
-          x: `-${imgIndex * 100}%`,
+          transform: `translateX(-${imgIndex * (100 / carouselBanners.length)}%)`,
         }}
         transition={SPRING_OPTIONS}
         onDragEnd={onDragEnd}
-        className="flex "
+        className=" size-full"
       >
         <Images carouselBanners={carouselBanners} imgIndex={imgIndex} />
       </motion.div>
@@ -177,7 +167,7 @@ const Images = ({
             <Link
               href={linkHref}
               key={banner.id!}
-              className="relative w-full max-w-[1200px] aspect-[70/35] md:aspect-[70/30] shrink-0 overflow-hidden hover:opacity-90 transition-opacity"
+              className="relative w-full max-w-[1200px] aspect-[70/35] md:aspect-[70/30] overflow-hidden hover:opacity-90 transition-opacity"
             >
               <motion.div
                 // animate={{

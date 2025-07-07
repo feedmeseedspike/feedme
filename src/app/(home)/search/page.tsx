@@ -135,7 +135,7 @@ const SearchPage = async (props: {
 
   // Fallback to first available category if still no category
   if (!relatedCategory && categories.length > 0) {
-    relatedCategory = categories[0];
+    relatedCategory = categories[0]?.title || "";
   }
 
   // Only fetch related products if we have a valid category
@@ -252,16 +252,20 @@ const SearchPage = async (props: {
                               </li>
                               {relevantCategories.map((c) => (
                                 <li
-                                  key={c}
+                                  key={typeof c === "string" ? c : c.id}
                                   className="border p-2 rounded-md border-gray-300"
                                 >
                                   <Link
                                     className={`${
                                       c === category && "text-green-600"
                                     }`}
-                                    href={getFilterUrl({ category: c, params })}
+                                    href={getFilterUrl({
+                                      category:
+                                        typeof c === "string" ? c : c.id,
+                                      params,
+                                    })}
                                   >
-                                    {c}
+                                    {typeof c === "string" ? c : c.title}
                                   </Link>
                                 </li>
                               ))}
@@ -366,14 +370,14 @@ const SearchPage = async (props: {
                     </Link>
                   </li> */}
                 {relevantCategories.map((c) => (
-                  <li key={c}>
+                  <li key={typeof c === "string" ? c : c.id}>
                     <Link
                       className={`${
                         c === category && "text-[#1B6013]"
                       } grid gap-2`}
-                      href={`/category/${c}`}
+                      href={`/category/${typeof c === "string" ? c : c.id}`}
                     >
-                      {c}
+                      {typeof c === "string" ? c : c.title}
                     </Link>
                   </li>
                 ))}

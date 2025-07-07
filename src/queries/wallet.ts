@@ -15,8 +15,6 @@ export const useWalletBalanceQuery = (userId: string) => {
         .eq("user_id", userId)
         .maybeSingle();
 
-        console.log("Wallet balance query data:", data, error);
-
       if (error) throw error;
       return data?.balance || 0;
     },
@@ -106,7 +104,6 @@ export const useWithdrawFundsMutation = () => {
       const { data: { session }, error: authError } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (authError || !token) {
-        console.error("Withdraw Funds Error: No authenticated session found", authError);
         throw new Error("Authentication required to withdraw funds");
       }
       const res = await fetch("/api/wallet/transfer", {

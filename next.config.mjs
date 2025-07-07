@@ -116,22 +116,13 @@ const nextConfig = {
         port: "",
         pathname: "**/*",
       },
-
-
-    ],
-  },
-  async headers() {
-    return [
       {
-        source: '/:path*',
-        headers: [
-          { key: "Access-Control-Allow-Credentials", value: "true" },
-          { key: "Access-Control-Allow-Origin", value: "*" },
-          { key: "Access-Control-Allow-Methods", value: "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
-          { key: "Access-Control-Allow-Headers", value: "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version" },
-        ],
+        protocol: "https",
+        hostname: "fyldgskqxrfmrhyluxmw.supabase.co",
+        port: "",
+        pathname: "**/*",
       },
-    ];
+    ],
   },
   webpack(config) {
     config.module.rules.push({
@@ -140,6 +131,13 @@ const nextConfig = {
     });
     return config;
   },
+  ignoreWarnings: [
+    (warning) =>
+      typeof warning.message === 'string' &&
+      warning.message.includes(
+        'Critical dependency: the request of a dependency is an expression'
+      ),
+  ],
 };
 
 export default nextConfig;

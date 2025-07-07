@@ -28,7 +28,7 @@ import Image from "next/image";
 import ProductDetailsClient from "@components/shared/product/product-details-client";
 import Link from "next/link";
 import { getAllCategoriesQuery } from "src/queries/categories";
-import { createClient } from "src/utils/supabase/server";
+import { createServerComponentClient } from "src/utils/supabase/server";
 import { Tables } from "src/utils/database.types";
 import {
   getAlsoViewedProducts,
@@ -48,7 +48,6 @@ export async function generateMetadata({
 
   try {
     const product = await getProductBySlug(slug);
-    console.log(product.id);
 
     if (product) {
       return {
@@ -106,7 +105,7 @@ const ProductDetails = async (props: {
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createServerComponentClient();
   const { data: categoriesData } =
     await getAllCategoriesQuery(supabase).select("id, title");
 

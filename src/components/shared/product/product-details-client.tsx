@@ -11,7 +11,6 @@ import Options from "../../../app/(home)/product/options";
 import Freshness from "@components/icons/freshness.svg";
 import FastDelivery from "@components/icons/fastDelivery.svg";
 import Security from "@components/icons/security.svg";
-import { formatNaira, generateId } from "src/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "src/store";
 import Link from "next/link";
@@ -19,7 +18,6 @@ import { setSelectedOption } from "src/store/features/optionsSlice";
 import { useToast } from "src/hooks/useToast";
 import { useCartQuery } from "src/queries/cart";
 import { Button } from "@components/ui/button";
-import { ShoppingCart } from "lucide-react";
 import { useUser } from "src/hooks/useUser";
 import { useRouter } from "next/navigation";
 

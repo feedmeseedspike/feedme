@@ -19,5 +19,23 @@ export default async function EditCategoryPage({
   if (!category) {
     return notFound();
   }
-  return <EditCategoryClient initialCategory={category} />;
+  return (
+    <EditCategoryClient
+      initialCategory={{
+        ...category,
+        products: (category as any).products ?? [],
+        thumbnail:
+          category.thumbnail &&
+          typeof category.thumbnail === "object" &&
+          "url" in category.thumbnail &&
+          "public_id" in category.thumbnail
+            ? (category.thumbnail as { url: string; public_id: string })
+            : { url: "", public_id: "" },
+        description: category.description ?? "",
+        keynotes: category.keynotes ?? [],
+        tags: category.tags ?? [],
+        banner_url: category.banner_url ?? "",
+      }}
+    />
+  );
 }

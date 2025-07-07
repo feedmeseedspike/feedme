@@ -19,7 +19,7 @@ interface IssueReferrerDiscountResult {
 }
 
 export async function issueReferrerDiscount(params: IssueReferrerDiscountParams): Promise<IssueReferrerDiscountResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   try {
     // Check if the referrer has already claimed this specific referral's discount
@@ -30,7 +30,6 @@ export async function issueReferrerDiscount(params: IssueReferrerDiscountParams)
       .single();
 
     if (fetchError || !existingReferral) {
-      console.error("Error fetching referral for discount issuance:", fetchError);
       return { success: false, message: 'Referral record not found.' };
     }
 
@@ -53,7 +52,6 @@ export async function issueReferrerDiscount(params: IssueReferrerDiscountParams)
     });
 
     if (!voucherResult.success) {
-      console.error('Failed to create voucher for referrer:', voucherResult.error);
       return { success: false, message: voucherResult.message, error: voucherResult.error };
     }
 
@@ -68,15 +66,12 @@ export async function issueReferrerDiscount(params: IssueReferrerDiscountParams)
       .eq('id', params.referralId);
 
     if (updateError) {
-      console.error("Error updating referral status after discount issuance:", updateError);
-      // This is a critical error, as voucher might be given but status not updated. Manual intervention might be needed.
       return { success: false, message: formatError(updateError.message) };
     }
 
     return { success: true, message: 'Referrer discount issued successfully!', voucherCode: voucherResult.voucherCode };
 
   } catch (error: any) {
-    console.error("Unexpected error in issueReferrerDiscount action:", error);
     return { success: false, message: formatError(error.message || 'An unexpected error occurred'), error: error };
   }
 } 
