@@ -201,7 +201,15 @@ export default function OrdersClient({
       });
     },
     placeholderData: (previousData) => previousData,
-    initialData: { data: initialOrders, count: totalOrdersCount },
+    initialData: {
+      data: initialOrders.map((order) => ({
+        ...order,
+        delivery_fee: order.delivery_fee ?? null,
+        local_government: order.local_government ?? null,
+        total_amount_paid: order.total_amount_paid ?? null,
+      })),
+      count: totalOrdersCount,
+    },
   });
 
   // Refactored: Use server actions for updating order status

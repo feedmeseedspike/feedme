@@ -10,6 +10,7 @@ interface UserDropdownContentProps {
     display_name?: string | null;
     email?: string | null;
     avatar_url?: string | null;
+    role?: string | null;
   };
 }
 
@@ -44,6 +45,14 @@ const UserDropdownContent: React.FC<UserDropdownContentProps> = ({ user }) => (
       >
         <Wallet className="mr-2 h-4 w-4" /> Wallet
       </Link>
+      {user && (user as any).role === "admin" && (
+        <Link
+          href="/admin/overview"
+          className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded transition-colors"
+        >
+          <Package className="mr-2 h-4 w-4" /> Admin
+        </Link>
+      )}
       <Link
         href="/account/favourites"
         className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded transition-colors"

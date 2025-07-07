@@ -18,7 +18,7 @@ export default async function WalletPage({
   console.log("walet user", user)
 
   // 2. Create server-side supabase client
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // 3. Fetch wallet balance
   const { data: wallet, error: walletError } = await supabase
@@ -26,6 +26,8 @@ export default async function WalletPage({
     .select("balance")
     .eq("user_id", user.user_id)
     .maybeSingle();
+
+    console.log("wallet", wallet)
 
   // 4. Fetch transactions (add pagination if needed)
   const page = Number(searchParams?.page || 1);
@@ -53,7 +55,7 @@ export default async function WalletPage({
   return (
     <WalletClient
       user={user}
-      walletBalance={wallet?.balance ?? 0}
+      walletBalance={wallet?.balance}
       transactions={transactions || []}
       totalTransactions={count || 0}
       currentPage={page}

@@ -29,7 +29,6 @@ export function usePromotionsQuery(filterOptions?: { isFeatured?: boolean }) {
     queryFn: async () => {
       const { data, error } = await queryBuilder;
       if (error) {
-        console.error("Error fetching promotions:", error);
         throw error;
       }
       return data;
@@ -52,7 +51,6 @@ export function useCreatePromotionMutation() {
       // Optionally, if adding a promotion might affect a product list, you could invalidate here too, but specific tags are better
     },
     onError: (error) => {
-      console.error("Error creating promotion:", error);
       // Optionally show a toast or other notification to the user
     },
   });
@@ -107,7 +105,6 @@ export function useUpdatePromotionMutation() {
       showToast('Promotion updated successfully!', 'success');
     },
     onError: (error) => {
-      console.error('Error updating promotion:', error);
       showToast(`Failed to update promotion: ${error.message}`, 'error');
     },
   });
@@ -133,7 +130,6 @@ export function useDeletePromotionMutation() {
       showToast('Promotion deleted successfully!', 'success');
     },
     onError: (error) => {
-      console.error('Error deleting promotion:', error);
       showToast(`Failed to delete promotion: ${error.message}`, 'error');
     },
   });
@@ -200,7 +196,6 @@ export function useAddProductToPromotionMutation() {
       }
     },
     onError: (error: Error) => { // Explicitly type error as Error
-      console.error('Error adding product to promotion:', error);
       showToast(`Failed to add product: ${error.message}`, 'error'); // error.message is safe here
     },
   });
@@ -229,7 +224,6 @@ export function useRemoveProductFromPromotionMutation() {
       showToast('Product removed from promotion!', 'success');
     },
     onError: (error: Error) => { // Explicitly type error as Error
-      console.error('Error removing product from promotion:', error);
       showToast(`Failed to remove product: ${error.message}`, 'error'); // error.message is safe here
     },
   });

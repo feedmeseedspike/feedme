@@ -1,15 +1,9 @@
-"use client";
 export const dynamic = "force-dynamic";
 
-import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
 import { fetchCustomers } from "../../../../queries/customers";
-import { useToast } from "../../../../hooks/useToast";
 import { Tables } from "../../../../utils/database.types";
 import { format } from "date-fns";
-import { FetchedCustomerData } from "../../../../queries/customers";
-
+import PaginationBar from "@components/shared/pagination";
 import {
   Table,
   TableHeader,
@@ -21,52 +15,35 @@ import {
 import { Input } from "@components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
 import { Search } from "lucide-react";
-import PaginationBar from "@components/shared/pagination";
+import Link from "next/link";
+import CustomersTable from "./CustomersTable";
 
-export default function CustomersPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const [search, setSearch] = useState(searchParams?.get("search") || "");
-  const currentPage = Number(searchParams?.get("page")) || 1;
+export default async function CustomersPage({
+  searchParams,
+}: {
+  searchParams: { page?: string; search?: string };
+}) {
+  const currentPage = Number(searchParams?.page) || 1;
   const ITEMS_PER_PAGE = 10;
-  const newSearchParams = new URLSearchParams(searchParams?.toString() || "");
+  const search = searchParams?.search || "";
 
-  const { data, isLoading, error } = useQuery<{
-    data: FetchedCustomerData[] | null;
-    count: number | null;
-  }>({
-    queryKey: ["customers", currentPage, search],
-    queryFn: () =>
-      fetchCustomers({
-        page: currentPage,
-        itemsPerPage: ITEMS_PER_PAGE,
-        search: search || undefined,
-      }),
-    placeholderData: (previousData) => previousData,
+  const { data, count } = await fetchCustomers({
+    page: currentPage,
+    itemsPerPage: ITEMS_PER_PAGE,
+    search: search || undefined,
   });
-
-  const totalPages = Math.ceil((data?.count || 0) / ITEMS_PER_PAGE);
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearch(e.target.value);
-    if (e.target.value) {
-      newSearchParams.set("search", e.target.value);
-    } else {
-      newSearchParams.delete("search");
-    }
-    newSearchParams.set("page", "1"); // Reset to first page on new search
-    router.push(`?${newSearchParams.toString()}`);
-  };
-
-  if (error) return <div>Error loading customers</div>;
+  const totalPages = Math.ceil((count || 0) / ITEMS_PER_PAGE);
 
   return (
     <div className="p-4">
       <h2 className="text-3xl font-semibold mb-4">Customers</h2>
 
       {/* Search Bar */}
-      <div className="flex items-center justify-between mb-4">
+      <form
+        className="flex items-center justify-between mb-4"
+        action=""
+        method="get"
+      >
         <div className="relative w-full max-w-sm">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -76,71 +53,38 @@ export default function CustomersPage() {
             type="text"
             placeholder="Search customers..."
             className="pl-10"
-            value={search}
-            onChange={handleSearchChange}
+            name="search"
+            defaultValue={search}
           />
         </div>
-      </div>
+        <button
+          type="submit"
+          className="ml-4 px-4 py-2 bg-[#1B6013] text-white rounded-lg font-semibold"
+        >
+          Search
+        </button>
+      </form>
 
       {/* Customers Table */}
       <div className="border rounded-lg overflow-hidden">
         <Table>
-          <TableHeader className="bg-gray-100">
+          <TableHeader>
             <TableRow>
-              <TableHead>Customer ID</TableHead>
-              <TableHead>Customer</TableHead>
+              <TableHead>ID</TableHead>
+              <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Phone</TableHead>
-              <TableHead>Join Date</TableHead>
-              <TableHead>Total Amount Spent</TableHead>
-              <TableHead>Total Orders</TableHead>
-              <TableHead>Location</TableHead>
+              <TableHead>Created At</TableHead>
+              <TableHead>Balance</TableHead>
+              <TableHead>Orders</TableHead>
+              <TableHead>City</TableHead>
               <TableHead>Birthday</TableHead>
               <TableHead>Favorite Fruit</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
-              // Skeleton loading rows
-              Array.from({ length: ITEMS_PER_PAGE }).map((_, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    <div className="h-4 bg-gray-200 rounded w-16"></div>
-                  </TableCell>
-                  <TableCell className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-gray-200"></div>
-                    <div className="h-4 bg-gray-200 rounded w-24"></div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-4 bg-gray-200 rounded w-32"></div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-4 bg-gray-200 rounded w-20"></div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-4 bg-gray-200 rounded w-24"></div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-4 bg-gray-200 rounded w-24"></div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-4 bg-gray-200 rounded w-16"></div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-4 bg-gray-200 rounded w-20"></div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-4 bg-gray-200 rounded w-20"></div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-4 bg-gray-200 rounded w-20"></div>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : data?.data && data.data.length > 0 ? (
-              (
-                data.data as import("../../../../queries/customers").FetchedCustomerData[]
-              ).map((customer) => {
+            {data && data.length > 0 ? (
+              data.map((customer: any) => {
                 const {
                   id = "",
                   display_name = "",
@@ -150,15 +94,20 @@ export default function CustomersPage() {
                   avatar_url = "",
                   created_at = "",
                   addresses = [],
-                } = customer as any;
+                } = customer;
                 return (
-                  <TableRow
-                    key={id}
-                    className="cursor-pointer hover:bg-gray-100"
-                    onClick={() => router.push(`/admin/customers/${id}`)}
-                  >
+                  <TableRow key={id} className="hover:bg-gray-100">
                     <TableCell>
-                      {id ? `${id.substring(0, 8)}...` : "N/A"}
+                      {id ? (
+                        <Link
+                          href={`/admin/customers/${id}`}
+                          className="text-blue-600 underline"
+                        >
+                          {id.substring(0, 8)}...
+                        </Link>
+                      ) : (
+                        "N/A"
+                      )}
                     </TableCell>
                     <TableCell className="flex items-center gap-3">
                       <Avatar>
@@ -178,7 +127,6 @@ export default function CustomersPage() {
                     </TableCell>
                     <TableCell>{email || "N/A"}</TableCell>
                     <TableCell>
-                      {/* Display phone from the first address if available */}
                       {addresses && addresses.length > 0 && addresses[0]?.phone
                         ? addresses[0].phone
                         : "N/A"}
@@ -191,7 +139,6 @@ export default function CustomersPage() {
                     </TableCell>
                     <TableCell>{Math.floor(Math.random() * 50)}</TableCell>
                     <TableCell>
-                      {/* Display city from the first address if available */}
                       {addresses && addresses.length > 0 && addresses[0]?.city
                         ? addresses[0].city
                         : "N/A"}
@@ -204,7 +151,6 @@ export default function CustomersPage() {
                 );
               })
             ) : (
-              // No customers message
               <TableRow>
                 <TableCell colSpan={10} className="text-center py-8">
                   No customers found.

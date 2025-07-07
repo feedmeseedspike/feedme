@@ -4,7 +4,7 @@ import { Tables } from "src/utils/database.types";
 
 // Add Delivery Location
 export async function addDeliveryLocationAction(locationData: Omit<Tables<"delivery_locations">, "id" | "created_at" | "updated_at">) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("delivery_locations")
     .insert([locationData])
@@ -16,7 +16,7 @@ export async function addDeliveryLocationAction(locationData: Omit<Tables<"deliv
 
 // Update Delivery Location
 export async function updateDeliveryLocationAction(id: string, updates: Partial<Tables<"delivery_locations">>) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("delivery_locations")
     .update(updates)
@@ -29,7 +29,7 @@ export async function updateDeliveryLocationAction(id: string, updates: Partial<
 
 // Delete Delivery Location
 export async function deleteDeliveryLocationAction(id: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("delivery_locations")
     .delete()

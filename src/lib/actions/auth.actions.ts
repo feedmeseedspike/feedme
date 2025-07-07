@@ -50,6 +50,11 @@ export async function registerUser(userData: { name: string; email: string; pass
       return { success: false, error: { message: 'Failed to create user account' } };
     }
 
+    // Create wallet for the new user
+    await supabase
+      .from('wallets')
+      .insert({ user_id: data.user.id, balance: 0, currency: 'NGN' });
+
     return { success: true, data };
   } catch (error: any) {
     return { success: false, error: { message: error?.message || 'Something went wrong' } };
@@ -58,6 +63,26 @@ export async function registerUser(userData: { name: string; email: string; pass
 
 // Sign In
 export async function signInUser(credentials: { email: string; password: string }): Promise<SignInUserReturn> {
+  // Enforce single sign-in method: block email/password login for Google users
+  try {
+    // Fetch the first page of users (up to 1000, adjust if needed)
+    const { data, error: userQueryError } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (userQueryError) {
+      return { success: false, error: { message: 'Error checking user provider.' } };
+    }
+    if (data && data.users && data.users.length > 0) {
+      const user = data.users.find((u: any) => u.email === credentials.email);
+      if (user) {
+        const providers = user.app_metadata?.providers;
+        if (providers && Array.isArray(providers) && providers.includes('google')) {
+          return { success: false, error: { message: 'Incorrect email or password.' } };
+        }
+      }
+    }
+  } catch (err) {
+    // Fallback: allow login if provider check fails
+  }
+
   const supabase = await createClient();
   try {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -107,7 +132,7 @@ export async function getUser(): Promise<GetUserReturn> {
       .single();
 
     if (profile) {
-      return { ...profile, email: user.email ?? null };
+    return { ...profile, email: user.email ?? null };
     }
 
     // Fallback: use the auth user if no profile row
@@ -125,7 +150,6 @@ export async function getUser(): Promise<GetUserReturn> {
       email: user.email ?? null,
     };
   } catch (error) {
-    console.error('Error getting user:', error);
     return null;
   }
 }
@@ -176,7 +200,6 @@ export async function requestPasswordReset(email: string) {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/reset-password`,
     });
-    console.log(process.env.NEXT_PUBLIC_SITE_URL + '/auth/reset-password');
     if (error) {
       return { success: false, error: error.message };
     }

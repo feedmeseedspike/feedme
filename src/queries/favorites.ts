@@ -13,7 +13,6 @@ export const getFavoritesQuery = () => ({
     const result: FavoritesSuccess | FavoritesFailure = await getFavourites(); // Use union type
     if (!result.success) {
       // Handle error or return an empty array if not logged in/error
-      console.error("Failed to fetch favorites:", result.error);
       return [];
     }
     // Access data now that we know it exists
@@ -40,7 +39,6 @@ export const useAddFavoriteMutation = () => {
   return useMutation({
     mutationFn: (productId: string) => addToFavorite(productId),
     onMutate: async (productId: string) => {
-      console.log('Optimistically adding product:', productId);
       // Cancel any outgoing refetches for both queries
       await queryClient.cancelQueries({ queryKey: ['favorites'] }); // Favorite IDs query
       await queryClient.cancelQueries({ queryKey: ['favoriteProducts'] }); // Favorite Products query
@@ -69,7 +67,6 @@ export const useAddFavoriteMutation = () => {
       queryClient.invalidateQueries({ queryKey: ['favoriteProducts'] }); // Favorite Products query
     },
     onError: (error, productId, context) => {
-      console.error("Failed to add to favorites, rolling back:", error);
       // Rollback favorite IDs list on error
       if (context?.previousFavorites) {
         queryClient.setQueryData<Favorite[] | null>(['favorites'], context.previousFavorites);
@@ -88,7 +85,6 @@ export const useRemoveFavoriteMutation = () => {
   return useMutation({
     mutationFn: (productId: string) => removeFromFavorite(productId),
      onMutate: async (productId: string) => {
-       console.log('Optimistically removing product:', productId);
       // Cancel any outgoing refetches for both queries
       await queryClient.cancelQueries({ queryKey: ['favorites'] }); // Favorite IDs query
       await queryClient.cancelQueries({ queryKey: ['favoriteProducts'] }); // Favorite Products query
@@ -117,7 +113,6 @@ export const useRemoveFavoriteMutation = () => {
       queryClient.invalidateQueries({ queryKey: ['favoriteProducts'] }); // Favorite Products query
     },
      onError: (error, productId, context) => {
-      console.error("Failed to remove from favorites, rolling back:", error);
       // Rollback favorite IDs list on error
       if (context?.previousFavorites) {
         queryClient.setQueryData<Favorite[] | null>(['favorites'], context.previousFavorites);

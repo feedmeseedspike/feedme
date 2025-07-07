@@ -9,14 +9,12 @@ import NextTopLoader from "nextjs-toploader";
 import { ToastProvider } from "src/hooks/useToast";
 import CartMergeProvider from "@providers/CartMergeProvider";
 import dynamic from "next/dynamic";
-import { Suspense } from "react";
 import { SupabaseAuthProvider } from "../components/supabase-auth-provider";
 import { ReactQueryClientProvider } from "@providers/ReactQueryClientProvider";
-import { createClient as createServerSupabaseClient } from "@utils/supabase/server";
-import { User, Session } from "@supabase/supabase-js";
+import { createServerComponentClient } from "@utils/supabase/server";
+import { User } from "@supabase/supabase-js";
 import { PathnameProvider } from "@components/shared/pathname-provider";
 import { getReferralStatus } from "@/queries/referrals";
-import { cookies } from "next/headers";
 
 const DynamicReferralBanner = dynamic(
   () => import("@components/shared/ReferralBanner"),
@@ -41,6 +39,7 @@ const proxima = localFont({
   ],
   variable: "--font-proxima",
 });
+
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -84,72 +83,83 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const supabase = createServerSupabaseClient();
-
-  const { data: userData, error: authError } = await supabase.auth.getUser();
-
-  const authenticatedUser: User | null = userData.user ?? null;
-  console.log("SSR user:", authenticatedUser);
-
+  let authenticatedUser: User | null = null;
   let user = null;
   let session = null;
   let hasReferralStatus = false;
 
-  if (authenticatedUser) {
-    const { data: userProfile, error: profileError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("user_id", authenticatedUser.id)
-      .single();
+  try {
+    const supabase = await createServerComponentClient();
 
-    if (userProfile) {
-      user = userProfile;
+    if (supabase) {
+      const { data: userData, error: authError } = await supabase.auth.getUser();
+      console.log(userData)
+      
+      // Only process if we have valid user data and no critical errors
+      if (userData?.user && (!authError || authError.name === "AuthSessionMissingError")) {
+        authenticatedUser = userData.user;
+        console.log("SSR user:", authenticatedUser);
+
+        try {
+          // Try to fetch user profile
+          const { data: userProfile, error: profileError } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("user_id", authenticatedUser.id)
+            .single();
+
+          if (userProfile && !profileError) {
+            user = userProfile;
+          } else {
+            // Fallback: create user object from auth user
+            user = {
+              user_id: authenticatedUser.id,
+              display_name:
+                typeof authenticatedUser.user_metadata?.display_name === "string"
+                  ? authenticatedUser.user_metadata.display_name
+                  : typeof authenticatedUser.email === "string"
+                    ? authenticatedUser.email
+                    : null,
+              avatar_url:
+                typeof authenticatedUser.user_metadata?.avatar_url === "string"
+                  ? authenticatedUser.user_metadata.avatar_url
+                  : null,
+              birthday: null,
+              created_at:
+                typeof authenticatedUser.created_at === "string"
+                  ? authenticatedUser.created_at
+                  : null,
+              favorite_fruit: null,
+              role: null,
+              status: null,
+              email: authenticatedUser.email || null,
+            };
+          }
+
+          // Try to fetch referral status
+          try {
+            const { data: referralData, message: referralMessage } = await getReferralStatus();
+            if (referralData) {
+              hasReferralStatus = true;
+            }
+          } catch (referralError) {
+            console.warn("Could not fetch referral status:", referralError);
+            // Continue without referral status
+          }
+
+        } catch (profileError) {
+          console.warn("Error fetching user profile:", profileError);
+          // Continue with auth user only
+        }
+      } else if (authError && authError.name !== "AuthSessionMissingError") {
+        console.error("RootLayout: Auth error:", authError.message);
+      }
     } else {
-      // Fallback: use the auth user if no profile row
-      user = {
-        user_id: authenticatedUser.id,
-        display_name:
-          typeof authenticatedUser.user_metadata?.display_name === "string"
-            ? authenticatedUser.user_metadata.display_name
-            : typeof authenticatedUser.email === "string"
-              ? authenticatedUser.email
-              : null,
-        avatar_url:
-          typeof authenticatedUser.user_metadata?.avatar_url === "string"
-            ? authenticatedUser.user_metadata.avatar_url
-            : null,
-        birthday: null,
-        created_at:
-          typeof authenticatedUser.created_at === "string"
-            ? authenticatedUser.created_at
-            : null,
-        favorite_fruit: null,
-        role: null,
-        status: null,
-      };
+      console.warn("Failed to create Supabase client in layout");
     }
-
-    // Fetch referral status
-    const { data: referralData, message: referralMessage } =
-      await getReferralStatus();
-    if (referralData) {
-      hasReferralStatus = true;
-    }
-  }
-
-  // Only log unexpected errors, not missing session
-  if (authError && authError.name !== "AuthSessionMissingError") {
-    console.error(
-      "RootLayout: Unexpected auth error fetching user/session on server:",
-      authError
-    );
-    console.log(
-      "RootLayout: Auth error details:",
-      authError.message,
-      authError.stack
-    );
-    session = null;
-    user = null;
+  } catch (error) {
+    console.error("Error in RootLayout:", error);
+    // Continue with null user/session
   }
 
   return (
@@ -173,9 +183,6 @@ export default async function RootLayout({
                   </SupabaseAuthProvider>
                 </CartMergeProvider>
               </ToastProvider>
-              {/* <Suspense fallback={null}>
-                <TawkToWidget />
-              </Suspense> */}
             </ReduxProvider>
           </ReactQueryClientProvider>
         </LocationProvider>

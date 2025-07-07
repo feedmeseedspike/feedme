@@ -47,7 +47,7 @@ export function PathnameProvider({
       {!shouldHideNavAndBanner && <BottomNav />}
       {!shouldHideNavAndBanner && (
         <DynamicWhatsAppButton
-          phoneNumber="+2348144602273"
+          phoneNumber="+2348088282487"
           message="Hello! I have a question about your products."
         />
       )}

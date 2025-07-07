@@ -21,16 +21,11 @@ const getGoogleAction = (provider: Provider) => async (referralCode?: string) =>
     },
   })
 
-  console.log(data)
-
   if(error) {
-    console.error("Error during OAuth sign-in:", error);
-    // Handle error, e.g., redirect to an error page or throw
     throw error; // Or redirect to an error page
   }
 
   if (!data.url) {
-    console.error("No URL returned from OAuth sign-in.");
     throw new Error("OAuth sign-in did not return a redirect URL.");
   }
 

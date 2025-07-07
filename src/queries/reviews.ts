@@ -148,7 +148,6 @@ export const getReviews = async ({
       totalPages,
     };
   } catch (error) {
-    console.error("Error in getReviews:", error);
     return {
       data: [],
       totalPages: 1,
@@ -213,7 +212,6 @@ export const createUpdateReview = async ({
       };
     }
   } catch (error: any) {
-    console.error("Error creating/updating review:", error);
     throw new Error(error.message || "Failed to create/update review");
   }
 };
@@ -240,7 +238,6 @@ export const addHelpfulVote = async ({
     );
     if (updateError) throw updateError;
   } catch (error: any) {
-    console.error("Error adding helpful vote:", error);
     throw new Error(error.message || "Failed to add helpful vote");
   }
 };
@@ -269,7 +266,6 @@ export const removeHelpfulVote = async ({
     );
     if (updateError) throw updateError;
   } catch (error: any) {
-    console.error("Error removing helpful vote:", error);
     throw new Error(error.message || "Failed to remove helpful vote");
   }
 };
@@ -316,7 +312,6 @@ export const addReport = async ({
       message: "Review reported successfully",
     };
   } catch (error: any) {
-    console.error("Error adding report:", error);
     throw new Error(error.message || "Failed to add report");
   }
 };
@@ -347,7 +342,6 @@ export const deleteReview = async ({
       message: "Review deleted successfully",
     };
   } catch (error: any) {
-    console.error("Error deleting review:", error);
     throw new Error(error.message || "Failed to delete review");
   }
 };

@@ -7,7 +7,7 @@ import { Database } from "src/utils/database.types";
 const ITEMS_PER_PAGE = 10; 
 
 export async function getPromotions() {
-  const supabase = createClient();
+  const supabase = await await createClient();
 
   const { data: promotions, error } = await supabase
     .from("promotions")
@@ -15,7 +15,6 @@ export async function getPromotions() {
     .eq("is_active", true); 
 
   if (error) {
-    console.error("Error fetching promotions:", error.message);
     // Depending on how you want to handle errors, you might throw it
     // throw new Error("Failed to fetch promotions.");
     return []; // Return empty array on error for now
@@ -25,7 +24,7 @@ export async function getPromotions() {
 }
 
 export async function createPromotion(promotionData: Database['public']['Tables']['promotions']['Insert']) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // Remove the id from the insert data, as it has a default value in the DB
   const { id, ...insertData } = promotionData;
@@ -37,8 +36,8 @@ export async function createPromotion(promotionData: Database['public']['Tables'
     .single(); // Get the newly created row
 
   if (error) {
-    console.error("Error creating promotion:", error.message);
-    throw new Error("Failed to create promotion."); // Throw the error to be caught by mutation hook
+    // Throw the error to be caught by mutation hook
+    throw new Error("Failed to create promotion.");
   }
 
   return newPromotion;
@@ -53,7 +52,7 @@ export async function getProductsByTag({
   page?: number;
   sort?: string;
 }) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // Determine sorting order and column
   let sortColumn = 'created_at';
@@ -90,8 +89,8 @@ export async function getProductsByTag({
     .single();
 
   if (promotionError || !promotionData) {
-    console.error("Error finding promotion by tag:", promotionError?.message || 'Promotion not found');
-    return { products: [], totalCount: 0 }; // Return empty array and count if promotion not found or error occurs
+    // Return empty array and count if promotion not found or error occurs
+    return { products: [], totalCount: 0 };
   }
 
   const promotionId = promotionData.id;
@@ -103,7 +102,6 @@ export async function getProductsByTag({
     .eq("promotion_id", promotionId);
 
   if (ppError) {
-    console.error("Error fetching promotion products:", ppError.message);
     return { products: [], totalCount: 0 };
   }
 
@@ -126,7 +124,6 @@ export async function getProductsByTag({
     .range(startIndex, endIndex);
 
   if (productsError) {
-    console.error("Error fetching products by IDs with pagination/sorting:", productsError.message);
     return { products: [], totalCount: count || 0 };
   }
 
@@ -134,7 +131,7 @@ export async function getProductsByTag({
 }
 
 export async function getPromotionByTag(tag: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: promotion, error } = await supabase
     .from("promotions")
@@ -143,7 +140,6 @@ export async function getPromotionByTag(tag: string) {
     .single();
 
   if (error) {
-    console.error("Error fetching promotion by tag:", error.message);
     // Depending on how you want to handle errors, you might throw it
     // throw new Error("Failed to fetch promotion.");
     return null; // Return null if promotion not found or error occurs
@@ -153,12 +149,11 @@ export async function getPromotionByTag(tag: string) {
 }
 
 export async function deletePromotion(id: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase.from('promotions').delete().eq('id', id);
 
   if (error) {
-    console.error('Error deleting promotion:', error);
     // Depending on your error handling strategy, you might throw the error
     // throw new Error("Failed to delete promotion.");
     return { success: false, error: error.message };
@@ -168,7 +163,7 @@ export async function deletePromotion(id: string) {
 }
 
 export async function updatePromotion(promotionData: Database['public']['Tables']['promotions']['Update']) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   if (!promotionData.id) {
     throw new Error("Promotion ID is required for updating.");
@@ -184,7 +179,6 @@ export async function updatePromotion(promotionData: Database['public']['Tables'
     .single();
 
   if (error) {
-    console.error('Error updating promotion:', error.message);
     throw new Error(`Failed to update promotion: ${error.message}`);
   }
 
@@ -192,7 +186,7 @@ export async function updatePromotion(promotionData: Database['public']['Tables'
 }
 
 export async function addProductToPromotion(promotionId: string, productId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('promotion_products')
@@ -203,10 +197,8 @@ export async function addProductToPromotion(promotionId: string, productId: stri
   if (error) {
     // Handle case where the product is already linked (duplicate key error)
     if (error.code === '23505') { // Unique violation error code for PostgreSQL
-      console.warn(`Product ${productId} is already linked to promotion ${promotionId}.`);
       return { success: false, error: 'Product is already linked to this promotion.' };
     } else {
-      console.error('Error adding product to promotion:', error.message);
       throw new Error(`Failed to add product to promotion: ${error.message}`);
     }
   }
@@ -215,7 +207,7 @@ export async function addProductToPromotion(promotionId: string, productId: stri
 }
 
 export async function removeProductFromPromotion(promotionId: string, productId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from('promotion_products')
@@ -224,7 +216,6 @@ export async function removeProductFromPromotion(promotionId: string, productId:
     .eq('product_id', productId);
 
   if (error) {
-    console.error('Error removing product from promotion:', error.message);
     throw new Error(`Failed to remove product from promotion: ${error.message}`);
   }
 
@@ -232,7 +223,7 @@ export async function removeProductFromPromotion(promotionId: string, productId:
 }
 
 export async function getLinkedProductsForPromotion(promotionId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // Fetch promotion_products entries for the given promotionId and join with the products table
   const { data, error } = await supabase
@@ -241,7 +232,6 @@ export async function getLinkedProductsForPromotion(promotionId: string) {
     .eq('promotion_id', promotionId);
 
   if (error) {
-    console.error('Error fetching linked products:', error.message);
     throw new Error(`Failed to fetch linked products: ${error.message}`);
   }
 
@@ -251,7 +241,7 @@ export async function getLinkedProductsForPromotion(promotionId: string) {
 }
 
 export async function searchProducts(searchTerm: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // Perform a case-insensitive search on the product name
   // You might want to add more fields to search on (e.g., description, SKU)
@@ -261,7 +251,6 @@ export async function searchProducts(searchTerm: string) {
     .ilike('name', `%${searchTerm}%`); // Case-insensitive search
 
   if (error) {
-    console.error('Error searching products:', error.message);
     throw new Error(`Failed to search products: ${error.message}`);
   }
 

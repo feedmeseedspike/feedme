@@ -25,7 +25,7 @@ interface CreateVoucherResult {
 }
 
 export async function createVoucher(params: CreateVoucherParams): Promise<CreateVoucherResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   try {
     const voucherCode = params.code || `REF-${uuidv4().split('-')[0].toUpperCase()}`;

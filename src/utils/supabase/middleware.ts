@@ -25,8 +25,6 @@ export async function updateSession(request: NextRequest) {
         err?.message?.toLowerCase().includes('refresh token not found'))
     ) {
       // Ignore
-    } else {
-      console.error('Supabase auth error in middleware:', err)
     }
   }
 }

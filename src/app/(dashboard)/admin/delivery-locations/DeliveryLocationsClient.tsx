@@ -22,7 +22,6 @@ interface DeliveryLocationsClientProps {
 const DeliveryLocationsClient: React.FC<DeliveryLocationsClientProps> = ({
   locations: initialLocations,
 }) => {
-  console.log("DELIVERY LOCATIONS:", initialLocations);
   const [locations, setLocations] =
     useState<DeliveryLocation[]>(initialLocations);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -87,7 +86,7 @@ const DeliveryLocationsClient: React.FC<DeliveryLocationsClientProps> = ({
                   <td className="py-2 px-4 border-b">
                     ₦{loc.price.toLocaleString()}
                   </td>
-                  <td className="py-2 px-4 border-b">
+                  <td className="py-2 px-4 border-b flex justify-center items-center">
                     <Link href={`/admin/delivery-locations/edit/${loc.id}`}>
                       <Button variant="outline" size="sm" className="mr-2">
                         Edit

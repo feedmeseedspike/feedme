@@ -1,6 +1,4 @@
-"use client";
-
-import React, { useEffect, useState } from "react";
+import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import Container from "./Container";
@@ -12,17 +10,16 @@ import {
 import { SlSocialInstagram } from "react-icons/sl";
 import Waitlist from "@components/shared/WaitList";
 import { ContactModal } from "@components/shared/ContactModal";
-import { TypedSupabaseClient } from "src/utils/types";
 import { getAllCategoriesQuery } from "src/queries/categories";
-import { createClient } from "src/utils/supabase/client";
+import { createClient } from "src/utils/supabase/server";
 import { toSlug } from "src/lib/utils";
-import { useQuery } from "@tanstack/react-query";
+// import { useQuery } from "@tanstack/react-query";
 // import { Tables } from "@utils/database.types";
 
 type CategoryListItem = {
   id: string;
   title: string;
-  thumbnail: string | object | null; // thumbnail can be object (Json) or string (url)
+  thumbnail: any; // Accept any type to match the query result
 };
 
 const footerData = [
@@ -72,31 +69,18 @@ const Icons = [
   },
 ];
 
-const Footer = () => {
+export default async function Footer() {
   const year = new Date().getFullYear();
-  const supabase = createClient();
-
-  const queryFn = async () => {
+  const supabase = await createClient();
+  let categories: CategoryListItem[] = [];
+  let error: string | null = null;
+  try {
     const queryBuilder = getAllCategoriesQuery(supabase);
-    const { data, error } = await queryBuilder.select("*");
-    if (error) throw error;
-    return data || [];
-  };
-
-  const {
-    data: categories,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["categories"],
-    queryFn,
-  });
-
-  if (isLoading) {
-    return <div>Loading categories...</div>;
-  }
-  if (error || !categories || !Array.isArray(categories)) {
-    return <div>Error loading categories or no categories found.</div>;
+    const { data, error: fetchError } = await queryBuilder.select("*");
+    if (fetchError) throw fetchError;
+    categories = (data || []) as CategoryListItem[];
+  } catch (err: any) {
+    error = err.message || "Failed to fetch categories";
   }
 
   return (
@@ -127,18 +111,24 @@ const Footer = () => {
                     Categories
                   </h3>
                   <ul className="space-y-2">
-                    {categories
-                      .filter((category) => !!category.id)
-                      .map((category) => (
-                        <li key={category.id!} className="text-sm">
-                          <Link
-                            href={`/category/${toSlug(category?.title)}`}
-                            className="hover:underline hover:underline-offset-2"
-                          >
-                            {category.title}
-                          </Link>
-                        </li>
-                      ))}
+                    {error ? (
+                      <li>Error loading categories.</li>
+                    ) : categories.length === 0 ? (
+                      <li>No categories found.</li>
+                    ) : (
+                      categories
+                        .filter((category) => !!category.id)
+                        .map((category) => (
+                          <li key={category.id} className="text-sm">
+                            <Link
+                              href={`/category/${toSlug(category?.title)}`}
+                              className="hover:underline hover:underline-offset-2"
+                            >
+                              {category.title}
+                            </Link>
+                          </li>
+                        ))
+                    )}
                   </ul>
                   <Link href="/categories">
                     <button className="mt-4 text-orange-600 hover:underline">
@@ -195,6 +185,4 @@ const Footer = () => {
       </Container>
     </>
   );
-};
-
-export default Footer;
+}

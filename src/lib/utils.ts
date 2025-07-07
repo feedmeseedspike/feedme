@@ -175,23 +175,18 @@ export function showToast(message: string, type: 'success' | 'error' | 'info' | 
   // For now, we can just console log or use a basic alert if no toast library is set up
   switch (type) {
     case 'success':
-      console.log(`SUCCESS: ${message}`);
       // toast.success(message); // Uncomment if using a toast library
       break;
     case 'error':
-      console.error(`ERROR: ${message}`);
       // toast.error(message); // Uncomment if using a toast library
       break;
     case 'info':
-      console.info(`INFO: ${message}`);
       // toast.info(message); // Uncomment if using a toast library
       break;
     case 'warning':
-      console.warn(`WARNING: ${message}`);
       // toast.warning(message); // Uncomment if using a toast library
       break;
     default:
-      console.log(message);
       // toast(message); // Uncomment if using a toast library
   }
 }

@@ -3,7 +3,7 @@ import { createClient } from "@utils/supabase/server";
 import DeliveryLocationsClient from "./DeliveryLocationsClient";
 
 export default async function DeliveryLocationsPage() {
-  const supabase = createClient();
+  const supabase =  await createClient();
   const { data: locations, error } = await supabase
     .from("delivery_locations")
     .select("*")

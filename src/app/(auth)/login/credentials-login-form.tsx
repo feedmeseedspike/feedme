@@ -37,6 +37,7 @@ const signInDefaultValues =
 export default function CredentialsSignInForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams?.get("callbackUrl") || "/";
+  const justSignedUp = searchParams?.get("justSignedUp");
   const [showPassword, setShowPassword] = useState(false);
   const { showToast } = useToast();
   const router = useRouter();
@@ -74,6 +75,18 @@ export default function CredentialsSignInForm() {
       <form onSubmit={handleSubmit(onSubmit)}>
         <input type="hidden" name="callbackUrl" value={callbackUrl} />
         <div className="space-y-6">
+          {justSignedUp && (
+            <div
+              className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative"
+              role="alert"
+            >
+              <strong className="font-bold">Welcome!</strong>
+              <span className="block sm:inline ml-2">
+                Your account was created successfully. Please log in to
+                continue.
+              </span>
+            </div>
+          )}
           <FormField
             control={control}
             name="email"

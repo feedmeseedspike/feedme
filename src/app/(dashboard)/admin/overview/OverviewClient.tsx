@@ -700,11 +700,11 @@ const OverviewClient: React.FC<OverviewClientProps> = ({
           yAxisKey="orders"
         />
       </div>
-      <div className="grid grid-cols-1 gap-6">
+      {/* <div className="grid grid-cols-1 gap-6">
         <BestSellingProducts />
         <BestSellingBundles />
-      </div>
-      <PendingOrders initialData={pendingOrdersData} />
+      </div> */}
+      {/* <PendingOrders initialData={pendingOrdersData} /> */}
     </div>
   );
 };
