@@ -4,8 +4,8 @@ import { createVoucher } from 'src/lib/actions/voucher.actions';
 import { TablesInsert } from 'src/utils/database.types'; // Import TablesInsert
 
 export async function POST(request: Request) {
-  const supabase = createClient();
-  const supabaseAdmin = createClient();
+  const supabase = await createClient();
+  const supabaseAdmin = await createClient();
 
   const { referrerEmail, referredUserId, referredUserEmail } = await request.json();
 
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     // 1. Validate referrer email and get referrer_user_id
     // Use Supabase Admin API to get user by email
     const { data: users, error: referrerUserError } = await supabaseAdmin.auth.admin.listUsers();
-    const referrerUser = users?.users?.find((u) => u.email === referrerEmail);
+    const referrerUser = users?.users?.find((u: any) => u.email === referrerEmail);
 
     if (referrerUserError || !referrerUser) {
       console.error('Referrer email not found or error fetching referrer:', referrerUserError);
@@ -62,21 +62,21 @@ export async function POST(request: Request) {
 
     // 2. Check if this referredUserId has already applied a referral
     console.log('Checking if referred user ID has already applied a referral...');
-    const { data: existingReferral, error: existingReferralError } = await supabase
+    const { data: referral, error: referralError } = await supabase
       .from('referrals')
-      .select('id')
+      .select('*')
       .eq('referred_user_id', referredUserId)
       .single();
 
-    console.log('Existing referred user referral check result:', { existingReferral, existingReferralError });
+    console.log('Existing referred user referral check result:', { referral, referralError });
 
-    if (existingReferral) {
+    if (referral) {
       console.log('This user has already applied a referral code (409).');
       return NextResponse.json({ message: 'This user has already applied a referral code.' }, { status: 409 });
     }
 
-    if (existingReferralError && existingReferralError.code !== 'PGRST116') { // PGRST116 means no rows found
-      console.error('Error checking existing referral:', existingReferralError);
+    if (referralError && referralError.code !== 'PGRST116') { // PGRST116 means no rows found
+      console.error('Error checking existing referral:', referralError);
       return NextResponse.json({ message: 'Error processing referral.' }, { status: 500 });
     }
 

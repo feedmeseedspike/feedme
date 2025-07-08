@@ -39,7 +39,6 @@ export const useCartQuery = () => {
     queryFn: async () => {
       const result = await getCart();
       if (!result.success) {
-        console.error('useCartQuery: Failed to fetch cart:', result.error);
         return []; 
       }
       return result.data;
@@ -106,8 +105,6 @@ export const useUpdateCartMutation = () => {
       queryClient.invalidateQueries({ queryKey: cartQueryKey });
     },
     onError: (error, variables, context) => {
-      console.error('useUpdateCartMutation: Failed to update cart, rolling back:', error);
-      // Rollback to the previous state on error
       if (context?.previousCart) {
         queryClient.setQueryData<CartItem[]>(cartQueryKey, context.previousCart);
       }
@@ -131,8 +128,6 @@ export const useRemoveFromCartMutation = () => {
   return useMutation<RemoveFromCartSuccess | RemoveFromCartFailure, Error, string, { previousCart: CartItem[] | undefined }>({
     mutationFn: (cartItemId) => removeFromCart(cartItemId),
     onMutate: async (cartItemId) => {
-       console.log('Optimistically removing cart item:', cartItemId);
-      // Cancel any outgoing refetches for the cart query
       await queryClient.cancelQueries({ queryKey: cartQueryKey });
 
       // Snapshot the previous value
@@ -150,8 +145,6 @@ export const useRemoveFromCartMutation = () => {
       queryClient.invalidateQueries({ queryKey: cartQueryKey });
     },
     onError: (error, variables, context) => {
-      console.error('Failed to remove from cart, rolling back:', error);
-      // Rollback to the previous state on error
       if (context?.previousCart) {
         queryClient.setQueryData<CartItem[]>(cartQueryKey, context.previousCart);
       }
@@ -176,20 +169,12 @@ export const useClearCartMutation = () => {
       return { previousCart };
     },
     onSuccess: () => {
-      console.log('Cart cleared successfully, invalidating query.');
-      // Invalidate the cart query to refetch and ensure consistency
       queryClient.invalidateQueries({ queryKey: cartQueryKey });
-      // Optionally show a success toast
-      // showToast('Cart cleared!', 'success'); // Assuming showToast is available/imported
     },
     onError: (error, variables, context) => {
-      console.error('Failed to clear cart, rolling back:', error);
-      // Rollback to the previous state on error
       if (context?.previousCart) {
         queryClient.setQueryData<CartItem[]>(cartQueryKey, context.previousCart);
       }
-       // Optionally show an error toast
-      // showToast(error.message || 'Failed to clear cart.', 'error'); // Assuming showToast is available/imported
     },
   });
 };
@@ -204,7 +189,6 @@ export const usePrefetchCart = () => {
       queryFn: async () => {
         const result = await getCart();
         if (!result.success) {
-          console.error('Failed to prefetch cart:', result.error);
           return [];
         }
         return result.data;

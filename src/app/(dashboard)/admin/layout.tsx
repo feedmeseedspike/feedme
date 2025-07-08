@@ -16,9 +16,9 @@ const Dashboard = async ({ children }: { children: React.ReactNode }) => {
   }
 
   // Redirect if not admin
-  // if (user && user.role !== "admin") {
-  //   redirect("/");
-  // }
+  if (user && user.role !== "admin") {
+    redirect("/");
+  }
 
   return (
     <SidebarProvider>

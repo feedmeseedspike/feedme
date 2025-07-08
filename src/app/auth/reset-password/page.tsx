@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/useToast";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { createClient } from "@supabase/supabase-js";
 
 const ResetPasswordSchema = z
   .object({
@@ -21,6 +22,11 @@ const ResetPasswordSchema = z
   });
 
 type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -43,9 +49,20 @@ export default function ResetPasswordPage() {
   const onSubmit = async (data: ResetPasswordInput) => {
     setLoading(true);
     try {
-      // Example:
-      // const res = await fetch("/api/reset-password", { ... })
-      // ...
+      // Use Supabase's built-in password reset flow
+      const { data: updateData, error: updateError } =
+        await supabase.auth.updateUser({
+          password: data.password,
+        });
+      if (updateError) {
+        showToast(
+          "Failed to reset password: " +
+            (updateError.message || "Unknown error"),
+          "error"
+        );
+        setLoading(false);
+        return;
+      }
       showToast("Password reset successful! You can now log in.", "success");
       form.reset();
       setTimeout(() => router.push("/login"), 2000);

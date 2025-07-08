@@ -49,28 +49,48 @@ export async function fetchCustomers({
 }: FetchCustomersParams): Promise<{ data: FetchedCustomerData[] | null; count: number | null }> {
   const supabase = createClient();
 
-  // Select all profiles columns and related addresses' phone and city
-  let query = supabase.from('profiles').select('*, addresses(phone, city)', { count: 'exact' });
-
+  // 1. Fetch profiles (with count)
+  let profilesQuery = supabase.from('profiles').select('*', { count: 'exact' });
   if (search) {
-     query = query.or(
-       `display_name.ilike.%${search}%, email.ilike.%${search}%`
-     );
+    profilesQuery = profilesQuery.or(
+      `display_name.ilike.%${search}%, email.ilike.%${search}%`
+    );
   }
-
   const start = (page - 1) * itemsPerPage;
   const end = start + itemsPerPage - 1;
-  query = query.range(start, end);
-
-  const { data, error, count } = await query;
-
-  if (error) {
-    console.error('Error fetching customers:', error);
-    throw error;
+  profilesQuery = profilesQuery.range(start, end);
+  const { data: profiles, error: profilesError, count } = await profilesQuery;
+  if (profilesError) {
+    throw profilesError;
+  }
+  if (!profiles || profiles.length === 0) {
+    return { data: [], count };
   }
 
-  // The data structure returned should now include the nested addresses array
-  return { data: data as unknown as FetchedCustomerData[] | null, count };
+  // 2. Fetch addresses for all user_ids
+  const userIds = profiles.map((p: any) => p.user_id).filter((id: string | null | undefined) => !!id);
+  const { data: addresses, error: addressesError } = await supabase
+    .from('addresses')
+    .select('user_id, phone, city');
+  if (addressesError) {
+    throw addressesError;
+  }
+
+  // 3. Merge addresses into profiles
+  const addressesByUserId: Record<string, Array<{ phone: string | null; city: string | null }>> = {};
+  (addresses || []).forEach(addr => {
+    if (addr.user_id) {
+      if (!addressesByUserId[addr.user_id]) addressesByUserId[addr.user_id] = [];
+      addressesByUserId[addr.user_id].push({ phone: addr.phone, city: addr.city });
+    }
+  });
+
+  const merged: FetchedCustomerData[] = (profiles as any[]).map(profile => ({
+    ...profile,
+    addresses: profile.user_id ? (addressesByUserId[profile.user_id] || []) : [],
+  }));
+
+  return { data: merged, count };
 }
 
 // Hook to use the customer query

@@ -14,10 +14,8 @@ import {
   dehydrate,
   HydrationBoundary,
 } from "@tanstack/react-query";
-import { prefetchQuery } from "@supabase-cache-helpers/postgrest-react-query";
 
-import { createClient } from "src/utils/supabase/server";
-import { cookies } from "next/headers";
+import { createServerComponentClient } from "src/utils/supabase/server";
 
 import { getAllCategoriesQuery } from "src/queries/categories";
 import {
@@ -26,12 +24,10 @@ import {
 } from "src/queries/products";
 import { mapSupabaseProductToIProductInput, CategoryData } from "src/lib/utils";
 import { IProductInput } from "src/types";
-import { Tables } from "src/utils/database.types";
 
 export default async function Home() {
   const queryClient = new QueryClient();
-  const cookieStore = cookies();
-  const supabase = await createClient();
+  const supabase = await createServerComponentClient();
 
   await Promise.all([
     queryClient.prefetchQuery({

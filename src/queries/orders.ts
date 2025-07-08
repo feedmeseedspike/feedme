@@ -40,7 +40,7 @@ export async function fetchOrders({
   const supabase = createClient();
   let query = supabase
     .from("orders")
-    .select("*, users:profiles(user_id, display_name)", { count: "exact" })
+    .select("*, users:user_id(display_name)", { count: "exact" })
     .order("created_at", { ascending: false })
     .range((page - 1) * itemsPerPage, page * itemsPerPage - 1);
 
@@ -89,7 +89,6 @@ export async function fetchOrderById(orderId: string) {
     .single();
 
   if (error) {
-    console.error("Error fetching order by ID:", error);
     throw error;
   }
 
@@ -122,7 +121,6 @@ export async function fetchUserOrders(
   const { data, error, count } = await query;
 
   if (error) {
-    console.error("Error fetching user orders:", error);
     throw error;
   }
 
@@ -148,7 +146,6 @@ export async function addPurchase(body: AddPurchaseBody) {
         .eq('id', body.voucherId)
         .single();
       if (voucherError || !voucher) {
-        console.error('Voucher not found or error:', voucherError);
         return { success: false, error: 'Voucher not found or invalid.' };
       }
       // Check usage limit
@@ -192,18 +189,13 @@ export async function addPurchase(body: AddPurchaseBody) {
         .eq('id', voucherToUse.id)
         .eq('used_count', voucherToUse.used_count || 0); // Optimistic concurrency
       if (voucherUpdateError) {
-        console.error('Failed to increment voucher usage:', voucherUpdateError);
-        // Optionally: Rollback order or alert admin
         return { success: false, error: 'Failed to update voucher usage. Please try again.' };
       }
-      console.log(`[VOUCHER] Voucher ${voucherToUse.code} used_count incremented to ${(voucherToUse.used_count || 0) + 1}`);
       // Insert into voucher_usages for per-user tracking
       const { error: usageInsertError } = await supabase
         .from('voucher_usages')
         .insert({ user_id: body.userId, voucher_id: voucherToUse.id });
       if (usageInsertError) {
-        console.error('Failed to insert voucher usage record:', usageInsertError);
-        // Optionally: Rollback order or alert admin
         return { success: false, error: 'Failed to record voucher usage. Please try again.' };
       }
     }
@@ -217,7 +209,6 @@ export async function addPurchase(body: AddPurchaseBody) {
       .maybeSingle();
 
     if (referralFetchError) {
-      console.error("Error fetching referral during purchase tracking:", referralFetchError);
       // Continue processing, as referral tracking is secondary to order completion
     }
 
@@ -233,7 +224,6 @@ export async function addPurchase(body: AddPurchaseBody) {
         updateData.referred_discount_given = true;
         updateData.status = 'completed';
         newStatus = 'completed';
-        console.log(`[REFERRAL] Referral for user ${body.userId} marked as completed and referred_discount_given=true.`);
       }
       // If purchase amount qualifies for referrer reward
       if (newReferredPurchaseAmount >= 5000 && referral.status === 'applied') {
@@ -246,24 +236,15 @@ export async function addPurchase(body: AddPurchaseBody) {
           referralId: referral.id,
           discountAmount: 2000, // ₦2,000 discount for the referrer
         });
-        if (!referrerDiscountResult.success) {
-          console.error("Failed to issue referrer discount:", referrerDiscountResult.error);
-        } else {
-          console.log("Referrer discount issued successfully for referral:", referral.id);
-        }
       }
       const { error: updateError } = await supabase
         .from('referrals')
         .update(updateData)
         .eq('id', referral.id);
-      if (updateError) {
-        console.error("Error updating referral purchase amount:", updateError);
-      }
     }
 
     return { success: true, data: { orderId: order.id } };
   } catch (error: any) {
-    console.error('Error in addPurchase:', error);
     return { success: false, error: formatError(error.message) };
   }
 }
@@ -289,7 +270,6 @@ export async function fetchPendingOrdersCount(): Promise<number> {
     .eq("status", "order confirmed"); // Assuming 'order confirmed' is the pending status
 
   if (error) {
-    console.error("Error fetching pending orders count:", error);
     throw error;
   }
 
@@ -301,7 +281,7 @@ export async function getUnviewedOrdersCount() {
   const supabase = createClient();
   const { count, error } = await supabase
     .from('orders')
-    .select('id', { count: 'exact', head: true })
+    .select('id', { count: 'exact' })
     .eq('admin_viewed', false);
   if (error) throw error;
   return count || 0;

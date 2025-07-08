@@ -19,7 +19,7 @@ export default async function CartPage() {
   }
 
   // 2. Create server-side supabase client
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // 3. Fetch cart items
   const cartResult = await getCart();

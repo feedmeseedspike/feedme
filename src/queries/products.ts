@@ -25,7 +25,6 @@ export async function getAllProducts(client: TypedSupabaseClient, {
   sort?: string;
   timeout?: number;
 }) {
-  console.log("Executing getAllProducts from src/queries/products.ts with params:", { query, limit, page, category, tag, price, rating, sort, timeout });
   let queryBuilder = client
     .from('products')
     .select('*')
@@ -37,54 +36,16 @@ export async function getAllProducts(client: TypedSupabaseClient, {
     // Do NOT filter by tags for new-arrival, just sort by created_at
   } else if (tag && tag !== 'all') {
     queryBuilder = queryBuilder.contains('tags', [tag]);
-    console.log(`getAllProducts: Applying tag filter - tag: '${tag}'`);
   }
 
-  // console.log(`getAllProducts: Current tag value before filter: '${tag}'`);
-  // if (tag && tag !== 'all') {
-  //   queryBuilder = queryBuilder.contains('tags', [tag]);
-  //   console.log(`getAllProducts: Applying tag filter - tag: '${tag}'`);
-  // }
-
-  // Commenting out other filters for debugging
-  // if (query && query !== 'all') {
-  //   queryBuilder = queryBuilder.ilike('name', `%${query}%`);
-  // }
-
-  // if (category && category !== 'all') {
-  //   queryBuilder = queryBuilder.contains('category_ids', [category]);
-  // }
-
-  // if (rating && rating !== 'all') {
-  //   queryBuilder = queryBuilder.gte('avg_rating', Number(rating));
-  // }
-
-  // if (price && price !== 'all') {
-  //   const [minPrice, maxPrice] = price.split('-').map(Number);
-  //   queryBuilder = queryBuilder.gte('price', minPrice).lte('price', maxPrice);
-  // }
-
-  // const sortingOptions: Record<string, { column: string; ascending: boolean }> = {
-  //   'best-selling': { column: 'num_sales', ascending: false },
-  //   'price-low-to-high': { column: 'price', ascending: true },
-  //   'price-high-to-low': { column: 'price', ascending: false },
-  //   'avg-customer-review': { column: 'avg_rating', ascending: false },
-  // };
-
-  // if (sort && sortingOptions[sort]) {
-  //   queryBuilder = queryBuilder.order(sortingOptions[sort].column, { ascending: sortingOptions[sort].ascending });
-  // } else {
   queryBuilder = queryBuilder.order('id', { ascending: true }); // Keep a default order
-  // }
 
   // Apply limit and pagination after all filters and sorts
   const from = (page - 1) * limit;
   const to = from + limit - 1;
   queryBuilder = queryBuilder.range(from, to);
-  console.log(`getAllProducts: Applying range from ${from} to ${to} with limit ${limit} and page ${page}`);
 
   let data, error;
-  console.log("Supabase queryBuilder before await (with all filters applied - inspect this object for the URL in browser console):", queryBuilder);
 
   try {
     const timeoutPromise = new Promise<never>((_, reject) =>
@@ -102,18 +63,15 @@ export async function getAllProducts(client: TypedSupabaseClient, {
     error = result.error;
 
   } catch (e) {
-    console.error("Error during Supabase query execution (caught by try-catch or timeout):", e);
     throw e; // Re-throw to propagate the error
   }
 
   if (error) {
-    console.error("Error executing getAllProducts query:", error);
     throw error;
   }
 
   // Handle data being null
   if (data === null) {
-    console.warn("getAllProducts from src/queries/products.ts returned null data. Returning empty array.");
     return {
       products: [],
       totalPages: 0,
@@ -132,11 +90,8 @@ export async function getAllProducts(client: TypedSupabaseClient, {
   }
   const { count: totalCount, error: countError } = await countQuery;
   if (countError) {
-    console.error("Error fetching total product count:", countError);
     // Decide how to handle this - either throw or return a partial result
   }
-
-  console.log("getAllProducts from src/queries/products.ts returning data:", data);
 
   return {
     products: data,
@@ -149,7 +104,6 @@ export async function getAllProducts(client: TypedSupabaseClient, {
 
 // Query function for getting products by tag
 export function getProductsByTagQuery(client: TypedSupabaseClient, tag: string, limit: number = 20) {
-  console.log("getProductsByTagQuery: Processing tag:", tag);
   let query = client
     .from('products')
     .select('*')
@@ -158,24 +112,19 @@ export function getProductsByTagQuery(client: TypedSupabaseClient, tag: string, 
   // For new-arrival, do NOT filter by tags, just sort by created_at
   if (tag === 'new-arrival') {
     query = query.order('created_at', { ascending: false });
-    console.log("getProductsByTagQuery: Applying new-arrival order (no tag filter).");
   } else if (tag && tag !== 'all') {
     query = query.contains('tags', [tag]);
-    console.log("getProductsByTagQuery: Applying tag filter with contains for tag:", tag);
   }
 
   // Apply specific sorting if applicable
   if (tag === 'best-seller') {
     query = query.order('num_sales', { ascending: false });
-    console.log("getProductsByTagQuery: Applying best-seller order.");
   }
 
   if (limit) {
     query = query.limit(limit);
-    console.log("getProductsByTagQuery: Applying limit:", limit);
   }
 
-  console.log("getProductsByTagQuery: Final query builder before return:", query);
   return query;
 }
 
@@ -198,7 +147,6 @@ export async function fetchProductsForBundleModal(client: TypedSupabaseClient, {
   const { data, error } = await queryBuilder;
 
   if (error) {
-    console.error('Error fetching products for bundle modal:', error);
     throw error;
   }
 
@@ -264,7 +212,6 @@ export async function getCategoryById(id: string) {
   const { data, error } = await supabase.from("categories").select("*").eq("id", id).single();
 
   if (error) {
-    console.error("Error fetching category by ID:", error);
     throw error;
   }
   return data;
@@ -277,7 +224,6 @@ export async function getUsersPurchasedProductIds(client: TypedSupabaseClient, u
     .eq('orders.user_id', userId);
 
   if (error) {
-    console.error('Error fetching purchased product IDs:', error);
     throw error;
   }
 
@@ -295,7 +241,6 @@ export async function getAlsoViewedProducts(client: TypedSupabaseClient, current
     .limit(5);
 
   if (historyError) {
-    console.error('Error fetching browsing history:', historyError);
     // Optionally, handle this error more gracefully, e.g., return empty array or fewer recommendations
   }
 
@@ -313,7 +258,6 @@ export async function getAlsoViewedProducts(client: TypedSupabaseClient, current
     .limit(5); // Ensure we only get up to 5 recommended products
 
   if (productsError) {
-    console.error('Error fetching also viewed products:', productsError);
     throw productsError;
   }
 
@@ -329,7 +273,6 @@ export async function getAlsoBoughtProducts(client: TypedSupabaseClient, current
     .limit(10); // Limit to recent orders for performance
 
   if (orderItemsError) {
-    console.error('Error fetching order items for also bought products:', orderItemsError);
     // Optionally, handle this error more gracefully
   }
 
@@ -348,7 +291,6 @@ export async function getAlsoBoughtProducts(client: TypedSupabaseClient, current
     .limit(10); // Limit results for performance
 
   if (otherOrderItemsError) {
-    console.error('Error fetching other order items for also bought products:', otherOrderItemsError);
     // Optionally, handle this error more gracefully
   }
 
@@ -367,7 +309,6 @@ export async function getAlsoBoughtProducts(client: TypedSupabaseClient, current
     .limit(5); // Ensure we only get up to 5 recommended products
 
   if (productsError) {
-    console.error('Error fetching details for also bought products:', productsError);
     throw productsError;
   }
 
@@ -376,15 +317,11 @@ export async function getAlsoBoughtProducts(client: TypedSupabaseClient, current
 
 export async function deleteProduct(id: string) {
   const supabase = createClient();
-  console.log("[queries/products.ts] Attempting to delete product with ID:", id);
 
   // Only delete the product from the 'products' table
-  console.log("[queries/products.ts] Attempting to delete product from products table with ID:", id);
   const { error: deleteProductError } = await supabase.from('products').delete().eq('id', id);
   if (deleteProductError) {
-    console.error("[queries/products.ts] Error deleting product:", deleteProductError);
     throw deleteProductError;
   }
-  console.log("[queries/products.ts] Product deleted successfully with ID:", id);
   return true;
 }

@@ -162,6 +162,49 @@ export default function AppSidebar({ user }: AppSidebarProps) {
                   </SidebarMenuItem>
                 );
               })}
+              {/* Admin menu item, only for admin users */}
+              {user?.role === "admin" && (
+                <SidebarMenuItem key="Admin">
+                  <SidebarMenuButton asChild>
+                    <Link
+                      href="/admin/overview"
+                      className={`group relative flex items-center gap-3 px-4 py-4 rounded-md transition-all duration-200 ${
+                        pathname.startsWith("/admin")
+                          ? "bg-gray-100 text-[#1B6013]"
+                          : "hover:bg-gray-100 text-gray-700 hover:text-gray-900"
+                      }`}
+                    >
+                      <div
+                        className={`p-1 rounded-lg ${
+                          pathname.startsWith("/admin")
+                            ? "bg-white"
+                            : "bg-gray-100 group-hover:bg-white"
+                        }`}
+                      >
+                        <Grid
+                          className={`w-4 h-4 ${
+                            pathname.startsWith("/admin")
+                              ? "text-[#1B6013]"
+                              : "text-gray-600 group-hover:text-[#1B6013]"
+                          }`}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">Admin</span>
+                        </div>
+                      </div>
+                      <ChevronRight
+                        className={`w-4 h-4 transition-transform ${
+                          pathname.startsWith("/admin")
+                            ? "text-[#1B6013]/60 rotate-90"
+                            : "text-gray-400 group-hover:text-gray-600 group-hover:translate-x-1"
+                        }`}
+                      />
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

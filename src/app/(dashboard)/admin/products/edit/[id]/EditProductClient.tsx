@@ -185,10 +185,7 @@ export default function EditProductClient({
           ? product.stock_status
           : "In Stock",
       selectedCategories: initialCategories,
-      variation:
-        Array.isArray(product.options) && product.options.length > 0
-          ? "Yes"
-          : "No",
+      variation: "Yes",
       images: [],
       options: Array.isArray(product.options) ? product.options : [],
       is_published: product.is_published,
@@ -421,26 +418,22 @@ export default function EditProductClient({
     }
   };
   const onSubmit = (data: ProductFormValues) => {
-    // Ensure all option images are serializable
+    // Ensure all option images are serializable URLs and only correct fields are present
     const serializableOptions = (data.options || []).map((opt) => {
-      const { name, price, stockStatus, image } = opt;
+      let image = opt.image;
+      if (image instanceof File) {
+        image = null;
+      }
       return {
-        name,
-        price,
-        stockStatus,
+        name: opt.name,
+        price: opt.price,
+        stock_status:
+          opt.stockStatus === "In Stock" ? "in_stock" : "out_of_stock",
         image: typeof image === "string" ? image : null,
       };
     });
     const finalData = { ...data, options: serializableOptions };
-    console.log(
-      "[DEBUG] onSubmit called with:",
-      JSON.stringify(finalData, null, 2)
-    );
-    // Add this log to confirm mutation is being called
-    console.log(
-      "[DEBUG] About to call updateProductMutation.mutate with:",
-      finalData
-    );
+    console.log("[DEBUG] onSubmit options (final):", finalData.options);
     updateProductMutation.mutate(finalData);
   };
 
@@ -701,8 +694,8 @@ export default function EditProductClient({
                   const options = form.watch("options") || [];
                   return (
                     <div className="mb-4 grid grid-cols-9">
-                      <div className="col-span-2"></div>
-                      <div className="col-span-7">
+                      <div className="md:col-span-2"></div>
+                      <div className="col-span-9 md:col-span-7">
                         {options.length > 0 && (
                           <div className="border border-gray-200 rounded-lg overflow-hidden mb-4">
                             <Table>
@@ -810,6 +803,12 @@ export default function EditProductClient({
                                 [...currentOptions, newOption],
                                 { shouldValidate: true }
                               );
+                              setTimeout(() => {
+                                console.log(
+                                  "[DEBUG] Options after add:",
+                                  form.getValues("options")
+                                );
+                              }, 100);
                               setIsDialogOpen(false);
                               showToast(
                                 "Option added successfully!",

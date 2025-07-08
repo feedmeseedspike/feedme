@@ -41,13 +41,15 @@ const reviews: ReviewSlide[] = [
 const Signin = async (props: {
   searchParams: Promise<{
     callbackUrl?: string;
+    justSignedUp?: boolean;
   }>;
 }) => {
   const searchParams = await props.searchParams;
   const callbackUrl = searchParams.callbackUrl || "/";
+  const justSignedUp = searchParams.justSignedUp;
 
   const user = await getUser();
-  if (user) {
+  if (user && !justSignedUp) {
     return redirect(callbackUrl);
   }
 
@@ -59,7 +61,7 @@ const Signin = async (props: {
         <div className="pb-6">
           <div className="flex flex-col gap-7">
             <Link href="/">
-              <Image src="/footerLogo.png" alt="logo" width={200} height={52} />
+              <Image src="/FooterLogo.png" alt="logo" width={200} height={52} />
             </Link>
             <div className="flex flex-col gap-3">
               <p className="h2-bold text-3xl text-[#1B6013]">

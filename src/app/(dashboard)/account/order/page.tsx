@@ -11,7 +11,7 @@ export default async function OrdersPage({
   const currentPage = Number(searchParams?.page) || 1;
   const ordersPerPage = 5;
 
-  let orders = [];
+  let orders: any[] = [];
   let totalOrdersCount = 0;
   let fetchError = null;
 

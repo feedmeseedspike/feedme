@@ -1,7 +1,6 @@
-// "use client";
+"use client";
 
 import React, { useEffect, useState } from "react";
-// import Down from "../icons/Down";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FcDown } from "react-icons/fc";

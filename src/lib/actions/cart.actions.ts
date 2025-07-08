@@ -88,7 +88,6 @@ export async function getCart(): Promise<GetCartSuccess | GetCartFailure> {
     return { success: true, data: typedData, error: null };
 
   } catch (error: any) {
-    console.error('getCart: Error fetching cart:', error);
     return { success: false, data: null, error: error.message || "Failed to fetch cart" };
   }
 }
@@ -131,7 +130,6 @@ export async function updateCartItems(items: ItemToUpdate[]): Promise<UpdateCart
     return { success: true };
 
   } catch (error: any) {
-    console.error('Error updating cart items:', error);
     return { success: false, error: error.message || "Failed to update cart items" };
   }
 }
@@ -264,7 +262,6 @@ export async function addToCart(
     return { success: true };
 
   } catch (error: any) {
-    console.error('Error adding to cart:', error);
     return { success: false, error: error.message || "Failed to add to cart" };
   }
 }
@@ -298,7 +295,6 @@ export async function removeFromCart(cartItemId: string): Promise<RemoveFromCart
     return { success: true };
 
   } catch (error: any) {
-    console.error('Error removing from cart:', error);
     return { success: false, error: error.message || "Failed to remove from cart" };
   }
 }
@@ -337,7 +333,6 @@ export async function updateCartItemQuantity(cartItemId: string, quantity: numbe
     return { success: true };
 
   } catch (error: any) {
-    console.error('Error updating cart item quantity:', error);
     return { success: false, error: error.message || "Failed to update cart item quantity" };
   }
 }
@@ -370,7 +365,6 @@ export async function clearCart(): Promise<ClearCartSuccess | ClearCartFailure> 
     return { success: true };
 
   } catch (error: any) {
-    console.error('Error clearing cart:', error);
     return { success: false, error: error.message || "Failed to clear cart" };
   }
 } 

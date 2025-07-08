@@ -132,21 +132,23 @@ export default function WalletClient({
     setAddFundsLoading(true);
     setAddFundsError(null);
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-      if (!accessToken) {
-        throw new Error("You are not authenticated. Please log in again.");
-      }
+      console.log('trying...')
+      // const {
+      //   data: { session },
+      // } = await supabase.auth.getSession();
+      // const accessToken = session?.access_token;
+      // if (!accessToken) {
+      //   throw new Error("You are not authenticated. Please log in again.");
+      // }
+      // console.log("get session => ", accessToken);
       const res = await axios.post(
         "/api/wallet/initialize",
         { email: user.email, amount: parseFloat(amount) },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
+        // {
+        //   headers: {
+        //     Authorization: `Bearer ${accessToken}`,
+        //   },
+        // }
       );
       if (!res.data.authorization_url)
         throw new Error(res.data.message || "Failed to initialize payment");
@@ -182,8 +184,7 @@ export default function WalletClient({
               variant="ghost"
               size="sm"
               onClick={() => setShowBalance(!showBalance)}
-              className="text-white hover:bg-white/20"
-            >
+              className="text-white hover:bg-white/20">
               {showBalance ? (
                 <EyeOff className="w-4 h-4" />
               ) : (
@@ -230,8 +231,7 @@ export default function WalletClient({
                   <DialogFooter>
                     <Button
                       variant="outline"
-                      onClick={() => setIsAddFundsOpen(false)}
-                    >
+                      onClick={() => setIsAddFundsOpen(false)}>
                       Cancel
                     </Button>
                     <Button
@@ -239,8 +239,7 @@ export default function WalletClient({
                       disabled={
                         !amount || parseFloat(amount) <= 0 || addFundsLoading
                       }
-                      onClick={handleAddFunds}
-                    >
+                      onClick={handleAddFunds}>
                       {addFundsLoading ? "Processing..." : "Continue"}
                     </Button>
                   </DialogFooter>
@@ -296,8 +295,7 @@ export default function WalletClient({
                 <div key={transaction.id}>
                   <div
                     className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
-                    onClick={() => setSelectedTransaction(transaction)}
-                  >
+                    onClick={() => setSelectedTransaction(transaction)}>
                     <div className="flex items-center gap-4">
                       <div className="p-2 bg-gray-100 rounded-full">
                         {getTransactionIcon(transaction.amount)}
@@ -317,8 +315,7 @@ export default function WalletClient({
                             <Badge
                               className={getStatusColor(
                                 transaction.payment_status
-                              )}
-                            >
+                              )}>
                               {transaction.payment_status}
                             </Badge>
                           )}
@@ -331,8 +328,7 @@ export default function WalletClient({
                           transaction.amount >= 0
                             ? "text-green-600"
                             : "text-red-600"
-                        }`}
-                      >
+                        }`}>
                         {transaction.amount >= 0 ? "+" : "-"}
                         {formatNaira(Math.abs(transaction.amount))}
                       </p>
@@ -356,8 +352,7 @@ export default function WalletClient({
       {selectedTransaction && (
         <Dialog
           open={!!selectedTransaction}
-          onOpenChange={() => setSelectedTransaction(null)}
-        >
+          onOpenChange={() => setSelectedTransaction(null)}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Transaction Details</DialogTitle>
@@ -374,8 +369,7 @@ export default function WalletClient({
                     selectedTransaction.amount >= 0
                       ? "text-green-600"
                       : "text-red-600"
-                  }`}
-                >
+                  }`}>
                   {selectedTransaction.amount >= 0 ? "+" : "-"}
                   {formatNaira(Math.abs(selectedTransaction.amount))}
                 </span>
@@ -386,8 +380,7 @@ export default function WalletClient({
                   <Badge
                     className={getStatusColor(
                       selectedTransaction.payment_status
-                    )}
-                  >
+                    )}>
                     {selectedTransaction.payment_status}
                   </Badge>
                 )}
@@ -416,8 +409,7 @@ export default function WalletClient({
             <DialogFooter>
               <Button
                 variant="outline"
-                onClick={() => setSelectedTransaction(null)}
-              >
+                onClick={() => setSelectedTransaction(null)}>
                 Close
               </Button>
             </DialogFooter>

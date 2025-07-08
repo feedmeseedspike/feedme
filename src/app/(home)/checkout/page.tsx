@@ -8,6 +8,7 @@ import Container from "@components/shared/Container";
 import CustomBreadcrumb from "@components/shared/breadcrumb";
 import { getUserAddresses } from "src/queries/addresses";
 import { getWalletBalanceServer } from "src/lib/actions/wallet.actions";
+import { createClient } from "@/utils/supabase/server";
 
 export const metadata: Metadata = {
   title: "Checkout",
@@ -28,6 +29,15 @@ export default async function CheckoutPage() {
     ? await getWalletBalanceServer(user.user_id)
     : 0;
 
+  // Fetch delivery locations server-side
+  const supabase = await createClient();
+  const { data: locations, error: locationsError } = await supabase
+    .from("delivery_locations")
+    .select("*");
+
+  console.log(addresses)
+  const deliveryLocations = locations || [];
+
   return (
     <>
       <div className="bg-white py-4">
@@ -39,6 +49,7 @@ export default async function CheckoutPage() {
         addresses={addresses || []}
         walletBalance={walletBalance}
         user={user}
+        deliveryLocations={deliveryLocations}
       />
     </>
   );

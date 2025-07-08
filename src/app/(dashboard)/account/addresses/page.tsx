@@ -11,7 +11,7 @@ export default async function AddressesPage() {
     return redirect("/login?callbackUrl=/account/addresses");
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: addresses, error } = await supabase
     .from("addresses")

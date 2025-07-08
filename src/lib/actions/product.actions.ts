@@ -22,7 +22,7 @@ import { createClient } from '../../utils/supabase/server';
 // }
 
 export async function getTrendingProducts({ limit = 10 }: { limit?: number }) {
-  const supabase = createClient(); // Initialize client inside the function
+  const supabase =await createClient(); // Initialize client inside the function
   const { data, error } = await supabase
     .from('products')
     .select('*')
@@ -34,7 +34,7 @@ export async function getTrendingProducts({ limit = 10 }: { limit?: number }) {
 }
 
 export async function getFreshFruits({ limit = 10 }: { limit?: number }) {
-  const supabase = createClient(); // Initialize client inside the function
+  const supabase =await createClient(); // Initialize client inside the function
   const { data, error } = await supabase
     .from('products')
     .select('*')
@@ -46,7 +46,7 @@ export async function getFreshFruits({ limit = 10 }: { limit?: number }) {
 }
 
 export async function getFreshVegetables({ limit = 10 }: { limit?: number }) {
-  const supabase = createClient(); // Initialize client inside the function
+  const supabase =await createClient(); // Initialize client inside the function
   const { data, error } = await supabase
     .from('products')
     .select('*')
@@ -58,7 +58,7 @@ export async function getFreshVegetables({ limit = 10 }: { limit?: number }) {
 }
 
 export async function getProductsByTag({ tag, limit = 10 }: { tag: string; limit?: number }) {
-  const supabase = createClient(); // Initialize client inside the function
+  const supabase =await createClient(); // Initialize client inside the function
   const { data, error } = await supabase
     .from('products')
     .select('*')
@@ -71,7 +71,7 @@ export async function getProductsByTag({ tag, limit = 10 }: { tag: string; limit
 
 export async function getProductBySlug(slug: string) {
   try {
-    const supabase = createClient(); // Initialize client inside the function
+    const supabase =await createClient(); // Initialize client inside the function
     const { data, error } = await supabase
       .from('products')
       .select('*')
@@ -79,13 +79,11 @@ export async function getProductBySlug(slug: string) {
       .single();
 
     if (error) {
-      console.error("Error fetching product by slug from Supabase:", error);
       throw error;
     }
 
     return data;
   } catch (error) {
-    console.error("Unhandled error in getProductBySlug:", error);
     throw error; // Re-throw to ensure the error propagates
   }
 }
@@ -101,7 +99,7 @@ export async function getRelatedProductsByCategory({
   limit?: number;
   page: number;
 }) {
-  const supabase = createClient(); // Initialize client inside the function
+  const supabase =await createClient(); // Initialize client inside the function
   const { data, error } = await supabase
     .from('products')
     .select('*')
@@ -136,7 +134,7 @@ export async function getProductsServer({
   rating?: string;
   sort?: string;
 }) {
-  const supabase = createClient(); // Initialize client inside the function
+  const supabase = await createClient(); // Initialize client inside the function
   // Build the base query for counting
   let countQuery = supabase
     .from('products')
@@ -162,7 +160,6 @@ export async function getProductsServer({
 
   const { count, error: countError } = await countQuery;
   if (countError) {
-    console.error("Error counting products:", countError);
     throw countError;
   }
 
@@ -204,7 +201,6 @@ export async function getProductsServer({
 
   const { data, error } = await queryBuilder.range((page - 1) * limit, page * limit - 1);
   if (error) {
-    console.error("Error executing getProductsServer query:", error);
     throw error;
   }
 
@@ -218,7 +214,7 @@ export async function getProductsServer({
 }
 
 export async function getAllTags() {
-  const supabase = createClient(); // Initialize client inside the function
+  const supabase =await createClient(); // Initialize client inside the function
   const allProductsResponse = await getProductsServer({});
   const allProducts = allProductsResponse?.products || [];
   return Array.from(
@@ -234,37 +230,34 @@ export async function getAllTags() {
 }
 
 export async function addProduct(product: any) {
-  const supabase = createClient(); 
+  const supabase =await createClient(); 
   const { data, error } = await supabase.from('products').insert([product]).select();
   if (error) {
-    console.error("Error adding product:", error);
     throw error;
   }
   return data?.[0];
 }
 
 export async function updateProduct(id: string, product: any) {
-  const supabase = createClient(); // Initialize client inside the function
+  const supabase =await createClient(); // Initialize client inside the function
   const { data, error } = await supabase.from('products').update(product).eq('id', id).select();
   if (error) {
-    console.error("Error updating product:", error);
     throw error;
   }
   return data?.[0];
 }
 
 export async function deleteProduct(id: string) {
-  const supabase = createClient();
+  const supabase =await createClient();
   const { error } = await supabase.from('products').delete().eq('id', id);
   if (error) {
-    console.error("Error deleting product:", error);
     throw error;
   }
   return true;
 }
 
 export async function getProductsBySearch(query: string, limit = 10) {
-  const supabase = createClient();
+  const supabase =await createClient();
   const { data, error } = await supabase
     .from('products')
     .select('id, slug, name, images')

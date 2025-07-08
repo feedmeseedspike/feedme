@@ -7,7 +7,7 @@ import { Database } from "@/utils/database.types";
 export async function updateOrderStatusAction(orderId: string, newStatus: Database["public"]["Enums"]["order_status_enum"]) {
   const user = await getUser();
   if (!user || user.role !== "admin") throw new Error("Not authorized");
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("orders")
     .update({ status: newStatus })
@@ -20,7 +20,7 @@ export async function updateOrderStatusAction(orderId: string, newStatus: Databa
 export async function updatePaymentStatusAction(orderId: string, newStatus: Database["public"]["Enums"]["payment_status_enum"]) {
   const user = await getUser();
   if (!user || user.role !== "admin") throw new Error("Not authorized");
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("orders")
     .update({ payment_status: newStatus })

@@ -12,7 +12,7 @@ export default async function HomeLayout({
   params: { slug: string };
 }) {
   const product = await getProductBySlug(params.slug);
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: categoriesData } = await getAllCategoriesQuery(supabase);
 
   // Find the category name from categoriesData using the first category_id

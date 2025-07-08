@@ -88,7 +88,10 @@ export default function CredentialsSignUpForm() {
           typeof result.error === "string"
             ? result.error
             : result.error?.message || "Registration failed";
+        // Set error on the email field
+        form.setError("email", { type: "manual", message: errorMsg });
         showToast(errorMsg, "error");
+        setLoading(false);
         return;
       }
       const userId = result.data?.user?.id;
@@ -101,7 +104,8 @@ export default function CredentialsSignUpForm() {
       }
       // Optionally, keep handleReferral for other referral logic
       showToast("Registration successful!", "success");
-      return router.push(`/login`);
+      window.location.href = "/login?justSignedUp=true";
+      return;
     } catch (error: any) {
       let errorMsg = "An error occurred during registration";
       if (typeof error === "string") {
