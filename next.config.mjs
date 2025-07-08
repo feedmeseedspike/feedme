@@ -123,19 +123,20 @@ const nextConfig = {
         pathname: "**/*",
       },
     ],
-  },
+    domains: ["images.unsplash.com", "images.pexels.com"],
+ },
   webpack(config) {
     config.module.rules.push({
       test: /\.svg$/,
-      use: ['@svgr/webpack'],
+      use: ["@svgr/webpack"],
     });
     return config;
   },
   ignoreWarnings: [
     (warning) =>
-      typeof warning.message === 'string' &&
+      typeof warning.message === "string" &&
       warning.message.includes(
-        'Critical dependency: the request of a dependency is an expression'
+        "Critical dependency: the request of a dependency is an expression"
       ),
   ],
 };
