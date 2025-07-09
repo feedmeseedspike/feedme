@@ -50,7 +50,7 @@ const Dashboard = async ({ children }: { children: React.ReactNode }) => {
       <div className="bg-[#F9FAFB]">
         <Header />
         <Container className="py-4 bg-white">
-          <CustomBreadcrumb />
+          <CustomBreadcrumb accountHref="/account/profile" />
         </Container>
         <Container className="flex flex-col lg:flex-row">
           <div className="hidden lg:block">

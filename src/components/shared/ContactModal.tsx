@@ -28,13 +28,43 @@ const formSchema = z.object({
 type ContactFormValues = z.infer<typeof formSchema>;
 export function ContactModal() {
   const [step, setStep] = useState<"default" | "form">("default");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
 
   const form = useForm<ContactFormValues>({
     resolver: zodResolver(formSchema),
   });
 
-  const onSubmit = (data: ContactFormValues) => {
-    // console.log(data);
+  const onSubmit = async (data: ContactFormValues) => {
+    setLoading(true);
+    setResult(null);
+    try {
+      const res = await fetch("/api/email/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setResult({ success: true, message: "Message sent successfully!" });
+        form.reset();
+      } else {
+        setResult({
+          success: false,
+          message: json.error || "Failed to send message.",
+        });
+      }
+    } catch (err: any) {
+      setResult({
+        success: false,
+        message: err.message || "Failed to send message.",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -97,7 +127,13 @@ export function ContactModal() {
               <div className="bg-green-50 text-sm text-gray-800 px-3 py-1 rounded-md border border-green-200">
                 All fields are <strong>required</strong> unless marked optional.
               </div>
-
+              {result && (
+                <div
+                  className={`text-sm px-3 py-2 rounded-md border ${result.success ? "bg-green-100 border-green-300 text-green-800" : "bg-red-100 border-red-300 text-red-800"}`}
+                >
+                  {result.message}
+                </div>
+              )}
               <div className="flex gap-4">
                 <Input
                   placeholder="First Name"
@@ -134,8 +170,9 @@ export function ContactModal() {
               <Button
                 type="submit"
                 className="w-full !bg-[#1B6013] hover:!bg-[#1B6013]/90 rounded-full py-4"
+                disabled={loading}
               >
-                Send Message
+                {loading ? "Sending..." : "Send Message"}
               </Button>
             </motion.form>
           )}

@@ -16,12 +16,14 @@ interface CustomBreadcrumbProps {
   hideCategorySegment?: boolean;
   category?: string;
   productName?: string;
+  accountHref?: string;
 }
 
 const CustomBreadcrumb = ({
   hideCategorySegment = false,
   category,
   productName,
+  accountHref,
 }: CustomBreadcrumbProps) => {
   const paths = usePathname() ?? "";
   const pathNames = paths.split("/").filter((path) => path);
@@ -42,10 +44,24 @@ const CustomBreadcrumb = ({
             <Link href="/">Home</Link>
           </BreadcrumbLink>
         </BreadcrumbItem>
-        {displayPathNames.length > 0 && (
+        {accountHref && (
           <>
             <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link href={accountHref}>Account</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            {displayPathNames.length > 1 && <BreadcrumbSeparator />}
+          </>
+        )}
+        {displayPathNames.length > 0 && (
+          <>
+            {/* If accountHref is set, skip the first path as it's replaced by Account */}
+            {!accountHref && <BreadcrumbSeparator />}
             {displayPathNames.map((link, index) => {
+              // If accountHref is set, skip the first path segment
+              if (accountHref && index === 0) return null;
               const isLast = index === displayPathNames.length - 1;
               // Build href for category, but not for product name
               const href = index === 0 ? `/category/${link}` : undefined;

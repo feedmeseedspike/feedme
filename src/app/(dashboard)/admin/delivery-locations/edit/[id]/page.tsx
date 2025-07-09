@@ -38,11 +38,11 @@ export default async function EditDeliveryLocationPage({
       <form className="space-y-4">
         <div>
           <label className="block mb-1 font-medium">Location Name</label>
-          <Input value={data.name} readOnly placeholder="e.g. Ikeja" />
+          <Input value={data.name} placeholder="e.g. Ikeja" />
         </div>
         <div>
           <label className="block mb-1 font-medium">Price (₦)</label>
-          <Input type="number" value={data.price} readOnly min={0} />
+          <Input type="number" value={data.price} min={0} />
         </div>
         <div className="flex gap-2">
           <Button type="submit" className="bg-[#1B6013] text-white" disabled>
