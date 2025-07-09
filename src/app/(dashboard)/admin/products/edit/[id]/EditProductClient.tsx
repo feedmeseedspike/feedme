@@ -52,9 +52,6 @@ import { formatNaira, showToast, toSlug } from "src/lib/utils";
 import Edit from "@components/icons/edit.svg";
 import Trash from "@components/icons/trash.svg";
 import { useToast } from "src/hooks/useToast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import CustomBreadcrumb from "@components/shared/breadcrumb";
-import { Skeleton } from "@components/ui/skeleton";
 import { Label } from "@components/ui/label";
 import {
   Breadcrumb,
@@ -64,7 +61,6 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@components/ui/breadcrumb";
-import { createClient } from "src/utils/supabase/client";
 import Image from "next/image";
 import { updateProductAction, uploadProductImageAction } from "./actions";
 
@@ -113,13 +109,45 @@ const formSchema = z
     is_published: z.boolean().default(false),
   })
   .superRefine((data, ctx) => {
+    // console.log("[DEBUG] superRefine validation - data:", data);
+    // console.log("[DEBUG] superRefine validation - variation:", data.variation);
+    // console.log("[DEBUG] superRefine validation - options:", data.options);
+
     if (data.variation === "Yes") {
       if (!data.options || data.options.length === 0) {
+        // console.log("[DEBUG] Validation failed: No options provided");
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["options"],
           message:
             "At least one option is required when product has variations",
+        });
+      } else {
+        // console.log("[DEBUG] Validating options:", data.options);
+        // Validate each option individually
+        data.options.forEach((option, index) => {
+          // console.log(`[DEBUG] Validating option ${index}:`, option);
+          if (!option.name || option.name.trim() === "") {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["options", index, "name"],
+              message: "Option name is required",
+            });
+          }
+          if (!option.price || option.price < 50) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["options", index, "price"],
+              message: "Option price must be at least ₦50",
+            });
+          }
+          if (!option.stockStatus) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["options", index, "stockStatus"],
+              message: "Option stock status is required",
+            });
+          }
         });
       }
     } else {
@@ -152,7 +180,6 @@ export default function EditProductClient({
   allCategories,
 }: EditProductClientProps) {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
@@ -163,6 +190,16 @@ export default function EditProductClient({
   );
   const { showToast } = useToast();
   const [optionModalLoading, setOptionModalLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Debug product data
+  // console.log("[DEBUG] Product data received:", product);
+  // console.log("[DEBUG] Product options:", product.options);
+  // console.log("[DEBUG] Product options type:", typeof product.options);
+  // console.log(
+  //   "[DEBUG] Product options isArray:",
+  //   Array.isArray(product.options)
+  // );
 
   // Prepare initial categories for react-select
   const productCategoryIds = Array.isArray(product.category_ids)
@@ -185,12 +222,26 @@ export default function EditProductClient({
           ? product.stock_status
           : "In Stock",
       selectedCategories: initialCategories,
-      variation: "Yes",
+      variation:
+        Array.isArray(product.options) && product.options.length > 0
+          ? "Yes"
+          : "No",
       images: [],
       options: Array.isArray(product.options) ? product.options : [],
       is_published: product.is_published,
     },
   });
+
+  // Debug form state
+  const formState = form.watch();
+  // console.log("[DEBUG] Form state:", formState);
+  // console.log("[DEBUG] Form errors:", form.formState.errors);
+  // console.log(
+  //   "[DEBUG] Form errors details:",
+  //   JSON.stringify(form.formState.errors, null, 2)
+  // );
+  // console.log("[DEBUG] Form is valid:", form.formState.isValid);
+  // console.log("[DEBUG] Form is dirty:", form.formState.isDirty);
 
   // Set image previews from existing product images
   useEffect(() => {
@@ -232,145 +283,6 @@ export default function EditProductClient({
       setImagePreviews([]);
     }
   }, [product.images]);
-
-  // --- Mutations ---
-  const updateProductMutation = useMutation({
-    mutationFn: async (formData: ProductFormValues) => {
-      console.log(
-        "[DEBUG] updateProductMutation mutationFn called with:",
-        JSON.stringify(formData, null, 2)
-      );
-      // if (imagesToDelete.length > 0) {
-      //   await Promise.all(
-      //     imagesToDelete.map((url) => deleteImageFromStorage(url))
-      //   );
-      // }
-      let uploadedImageUrls: string[] = [];
-      if (filesToUpload.length > 0) {
-        uploadedImageUrls = await Promise.all(
-          filesToUpload.map((file) => uploadProductImageViaApi(file))
-        );
-      }
-      const originalExistingImageUrls = Array.isArray(product?.images)
-        ? product.images
-            .map((img: any) => {
-              if (typeof img === "string") return img;
-              if (
-                typeof img === "object" &&
-                img !== null &&
-                "url" in img &&
-                typeof (img as any).url === "string"
-              )
-                return (img as any).url;
-              return null;
-            })
-            .filter(
-              (url: any): url is string =>
-                url !== null && !imagesToDelete.includes(url)
-            )
-        : [];
-      const finalProductImages = [
-        ...originalExistingImageUrls,
-        ...uploadedImageUrls,
-      ];
-      const processedOptions = await Promise.all(
-        (formData.options || []).map(async (opt) => {
-          let imageUrl = opt.image;
-          if (opt.image instanceof File) {
-            imageUrl = await uploadProductImageViaApi(opt.image);
-          }
-          return {
-            ...opt,
-            stock_status: opt.stockStatus,
-            image: imageUrl,
-          };
-        })
-      );
-      const productData: any = {
-        name: formData.productName,
-        description: formData.description,
-        category_ids: formData.selectedCategories.map((c) => c.value),
-        images: finalProductImages.map((img) =>
-          typeof img === "string" ? img : img.url || img
-        ),
-        is_published: formData.is_published,
-        slug: toSlug(formData.productName),
-      };
-      if (formData.variation === "No") {
-        productData.price = formData.price ?? 0;
-        productData.stock_status =
-          formData.stockStatus === "In Stock" ? "in_stock" : "out_of_stock";
-        productData.options = [];
-      } else {
-        productData.price = null;
-        productData.stock_status = null;
-        productData.options = (processedOptions || []).map((opt) => ({
-          ...opt,
-          stock_status:
-            opt.stockStatus === "In Stock" ? "in_stock" : "out_of_stock",
-        }));
-      }
-      // Always include id for update
-      productData.id = product.id;
-      // Strict validation for required fields
-      if (
-        !productData.category_ids ||
-        !Array.isArray(productData.category_ids) ||
-        productData.category_ids.length === 0
-      ) {
-        showToast("At least one category is required.", "error");
-        throw new Error("Missing required field: category_ids");
-      }
-      if (!productData.name || typeof productData.name !== "string") {
-        showToast("Product name is required.", "error");
-        throw new Error("Missing required field: name");
-      }
-      if (!productData.slug || typeof productData.slug !== "string") {
-        showToast("Product slug is required.", "error");
-        throw new Error("Missing required field: slug");
-      }
-      if (
-        formData.variation === "No" &&
-        (productData.price === undefined || productData.price === null)
-      ) {
-        showToast("Product price is required.", "error");
-        throw new Error("Missing required field: price");
-      }
-      if (
-        formData.variation === "No" &&
-        (!productData.stock_status ||
-          typeof productData.stock_status !== "string")
-      ) {
-        showToast("Stock status is required.", "error");
-        throw new Error("Missing required field: stock_status");
-      }
-      // Detailed logging
-      console.log(
-        "[DEBUG] About to call updateProduct with:",
-        product.id,
-        productData
-      );
-      return await updateProductAction(product.id, productData);
-    },
-    onSuccess: (data) => {
-      console.log(
-        "[DEBUG] Mutation success, server returned:",
-        JSON.stringify(data, null, 2)
-      );
-      if (data && Array.isArray(data.options) && data.options.length === 0) {
-        showToast("Warning: Options array is empty after update!", "warning");
-      }
-      showToast("Product updated successfully!", "success");
-      queryClient.invalidateQueries({ queryKey: ["product", product.id] });
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      setFilesToUpload([]);
-      setImagesToDelete([]);
-    },
-    onError: (error: any) => {
-      console.error("Mutation error:", error);
-      showToast(error.message || "Failed to update product.", "error");
-    },
-  });
 
   // --- Handlers ---
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -417,24 +329,65 @@ export default function EditProductClient({
       setOptionIndexToDelete(null);
     }
   };
-  const onSubmit = (data: ProductFormValues) => {
-    // Ensure all option images are serializable URLs and only correct fields are present
-    const serializableOptions = (data.options || []).map((opt) => {
-      let image = opt.image;
-      if (image instanceof File) {
-        image = null;
-      }
-      return {
-        name: opt.name,
-        price: opt.price,
-        stock_status:
-          opt.stockStatus === "In Stock" ? "in_stock" : "out_of_stock",
-        image: typeof image === "string" ? image : null,
-      };
-    });
-    const finalData = { ...data, options: serializableOptions };
-    console.log("[DEBUG] onSubmit options (final):", finalData.options);
-    updateProductMutation.mutate(finalData);
+  const onSubmit = async (data: ProductFormValues) => {
+    // console.log("[DEBUG] ===== ONSUBMIT FUNCTION CALLED =====");
+    // console.log("[DEBUG] onSubmit called with data:", data);
+    // console.log("[DEBUG] data.options:", data.options);
+    // console.log("[DEBUG] data.variation:", data.variation);
+    // console.log("[DEBUG] Form values:", form.getValues());
+    // console.log("[DEBUG] Form errors:", form.formState.errors);
+    // console.log("[DEBUG] Form is valid:", form.formState.isValid);
+    // console.log("[DEBUG] About to call updateProductAction");
+
+    setIsSubmitting(true);
+
+    // Prepare the product data - let the server action handle all processing
+    const productData: any = {
+      name: data.productName,
+      description: data.description,
+      category_ids: data.selectedCategories.map((c) => c.value),
+      is_published: data.is_published,
+      slug: toSlug(data.productName),
+    };
+
+    if (data.variation === "No") {
+      productData.price = data.price ?? 0;
+      productData.stock_status =
+        data.stockStatus === "In Stock" ? "in_stock" : "out_of_stock";
+      productData.options = [];
+    } else {
+      productData.price = null;
+      productData.stock_status = null;
+      // Pass options as-is to the server action
+      productData.options = data.options || [];
+    }
+
+    // Always include id for update
+    productData.id = product.id;
+
+    // console.log(
+    //   "[DEBUG] About to call updateProduct with:",
+    //   product.id,
+    //   productData
+    // );
+
+    try {
+      // console.log("[DEBUG] Calling updateProductAction...");
+      // const response = await updateProductAction(product.id, productData);
+      // console.log(
+      //   "[DEBUG] Mutation success, server returned:",
+      //   JSON.stringify(response, null, 2)
+      // );
+      showToast("Product updated successfully!", "success");
+      router.push("/admin/products");
+      setFilesToUpload([]);
+      setImagesToDelete([]);
+    } catch (error: any) {
+      console.error("Mutation error:", error);
+      showToast(error.message || "Failed to update product.", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // --- UI ---
@@ -465,7 +418,32 @@ export default function EditProductClient({
       <Separator className="my-5" />
       <Form {...form}>
         <form
-          onSubmit={form.handleSubmit(onSubmit)}
+          onSubmit={(e) => {
+            // console.log("[DEBUG] ===== FORM ONSUBMIT EVENT =====");
+            // Prevent form submission if option modal is open
+            if (isDialogOpen) {
+              // console.log(
+              //   "[DEBUG] Form submission blocked - option modal is open"
+              // );
+              e.preventDefault();
+              return;
+            }
+
+            // console.log("[DEBUG] Form onSubmit event triggered");
+            // console.log("[DEBUG] Form event:", e);
+            // console.log("[DEBUG] Form state at submit:", form.getValues());
+            // console.log(
+            //   "[DEBUG] Form errors at submit:",
+            //   form.formState.errors
+            // );
+            // console.log(
+            //   "[DEBUG] Form is valid at submit:",
+            //   form.formState.isValid
+            // );
+
+            const result = form.handleSubmit(onSubmit)(e);
+            // console.log("[DEBUG] Form handleSubmit result:", result);
+          }}
           className="p-6 rounded-lg shadow-md bg-white flex flex-col gap-2"
         >
           {/* Product Name */}
@@ -786,35 +764,85 @@ export default function EditProductClient({
                           isOpen={isDialogOpen}
                           onClose={() => setIsDialogOpen(false)}
                           onSubmit={async (data) => {
+                            // console.log(
+                            //   "[DEBUG] OptionModal onSubmit called with data:",
+                            //   data
+                            // );
                             setOptionModalLoading(true);
                             try {
-                              let imageUrl = data.image;
-                              if (data.image instanceof File) {
-                                imageUrl = await uploadProductImageViaApi(
-                                  data.image,
-                                  "option-images"
-                                );
-                              }
-                              const newOption = { ...data, image: imageUrl };
+                              // Don't upload the image here - let the main mutation handle it
+                              const newOption = { ...data };
+                              // console.log(
+                              //   "[DEBUG] New option to add:",
+                              //   newOption
+                              // );
                               const currentOptions =
                                 form.watch("options") || [];
-                              form.setValue(
-                                "options",
-                                [...currentOptions, newOption],
-                                { shouldValidate: true }
+                              // console.log(
+                              //   "[DEBUG] Current options before adding:",
+                              //   currentOptions
+                              // );
+
+                              // If this is the first option, switch variation to "Yes"
+                              if (currentOptions.length === 0) {
+                                // console.log(
+                                //   "[DEBUG] First option added, switching variation to Yes"
+                                // );
+                                form.setValue("variation", "Yes", {
+                                  shouldValidate: true,
+                                });
+                              }
+
+                              const updatedOptions = [
+                                ...currentOptions,
+                                newOption,
+                              ];
+                              // console.log(
+                              //   "[DEBUG] Updated options after adding:",
+                              //   updatedOptions
+                              // );
+                              form.setValue("options", updatedOptions, {
+                                shouldValidate: true,
+                              });
+
+                              // Wait for form state to update
+                              await new Promise((resolve) =>
+                                setTimeout(resolve, 200)
                               );
-                              setTimeout(() => {
-                                console.log(
-                                  "[DEBUG] Options after add:",
-                                  form.getValues("options")
-                                );
-                              }, 100);
+
+                              // console.log(
+                              //   "[DEBUG] Options after add:",
+                              //   form.getValues("options")
+                              // );
+                              // console.log(
+                              //   "[DEBUG] Variation after add:",
+                              //   form.getValues("variation")
+                              // );
+                              // console.log(
+                              //   "[DEBUG] Form is valid after add:",
+                              //   form.formState.isValid
+                              // );
+
+                              // Close the modal FIRST
                               setIsDialogOpen(false);
+                              // console.log(
+                              //   "[DEBUG] Modal closed, isDialogOpen set to false"
+                              // );
+
+                              // Wait a bit more for the modal state to update
+                              await new Promise((resolve) =>
+                                setTimeout(resolve, 100)
+                              );
+
                               showToast(
                                 "Option added successfully!",
                                 "success"
                               );
                             } catch (err) {
+                              console.error(
+                                "[DEBUG] Error adding option:",
+                                err
+                              );
                               showToast(
                                 "Failed to add option: " +
                                   (err as Error).message,
@@ -840,7 +868,7 @@ export default function EditProductClient({
               type="button"
               variant="outline"
               className="w-full sm:w-auto"
-              disabled={updateProductMutation.isPending}
+              disabled={isSubmitting}
               onClick={() => router.push("/admin/products")}
             >
               Cancel
@@ -848,9 +876,19 @@ export default function EditProductClient({
             <Button
               type="submit"
               className="w-full sm:w-auto bg-[#1B6013] text-white"
-              disabled={updateProductMutation.isPending}
+              disabled={isSubmitting || optionModalLoading || isDialogOpen}
+              onClick={() => {
+                // console.log(
+                //   "[DEBUG] ===== UPDATE PRODUCT BUTTON CLICKED ====="
+                // );
+                // console.log("[DEBUG] Button disabled state:", {
+                //   isSubmitting,
+                //   optionModalLoading,
+                //   isDialogOpen,
+                // });
+              }}
             >
-              {updateProductMutation.isPending ? (
+              {isSubmitting ? (
                 <span className="flex items-center gap-2">
                   <svg
                     className="animate-spin h-4 w-4 text-white"
@@ -873,6 +911,30 @@ export default function EditProductClient({
                     ></path>
                   </svg>{" "}
                   Updating...
+                </span>
+              ) : optionModalLoading ? (
+                <span className="flex items-center gap-2">
+                  <svg
+                    className="animate-spin h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8z"
+                    ></path>
+                  </svg>{" "}
+                  Processing Option...
                 </span>
               ) : (
                 "Update Product"
@@ -909,20 +971,4 @@ export default function EditProductClient({
       </Dialog>
     </div>
   );
-}
-
-async function uploadProductImageViaApi(
-  file: File,
-  bucket: string = "product-images"
-): Promise<string> {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("bucket", bucket);
-  const res = await fetch("/api/upload-product-image", {
-    method: "POST",
-    body: formData,
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Upload failed");
-  return data.url;
 }

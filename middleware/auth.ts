@@ -9,7 +9,7 @@ export function authMiddleware(handler: Handler) {
     try {
       // Get the Supabase auth cookie using the project ID from environment variables
       const authCookie = request.headers.get("cookie")?.split("=")[1];
-      console.log("auth header => ", authCookie);
+      // console.log("auth header => ", authCookie);
 
       // Check if the cookie exists
       if (!authCookie) {
@@ -33,7 +33,7 @@ export function authMiddleware(handler: Handler) {
 
       // Extract the access_token from the decoded cookie
       const { access_token } = authData;
-      console.log("accessttooken =>", access_token);
+      // console.log("accessttooken =>", access_token);
       // Verify the token with Supabase to get the user
       const {
         data: { user },
@@ -42,7 +42,7 @@ export function authMiddleware(handler: Handler) {
 
       // Log user data in development mode for debugging
       if (process.env.NODE_ENV === "development") {
-        console.log("Auth middleware: user object", user);
+        // console.log("Auth middleware: user object", user);
       }
 
       // Handle errors from Supabase

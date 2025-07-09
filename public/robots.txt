@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /admin
+Disallow: /account
+Sitemap: https://shopfeedme.com/api/sitemap.xml
+Allow: /

@@ -116,12 +116,7 @@ export default function ProductDetailsClient({
   }, [product._id, cartItems, selectedOptionData]);
 
   // Compute images to display based on selected option
-  const imagesToDisplay = useMemo(() => {
-    if (selectedOptionData && selectedOptionData.image) {
-      return [selectedOptionData.image];
-    }
-    return product.images;
-  }, [selectedOptionData, product.images]);
+  const imagesToDisplay = useMemo(() => product.images, [product.images]);
 
   const handleImageSelect = (index: number) => {
     setSelectedImageIndex(index);

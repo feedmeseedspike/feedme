@@ -15,7 +15,7 @@ export default async function WalletPage({
     return redirect("/login?callbackUrl=/account/wallet");
   }
 
-  console.log("walet user", user)
+  // console.log("walet user", user)
 
   // 2. Create server-side supabase client
   const supabase = await createClient();
@@ -27,7 +27,7 @@ export default async function WalletPage({
     .eq("user_id", user.user_id)
     .maybeSingle();
 
-    console.log("wallet", wallet)
+    // console.log("wallet", wallet)
 
   // 4. Fetch transactions (add pagination if needed)
   const page = Number(searchParams?.page || 1);

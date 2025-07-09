@@ -66,14 +66,14 @@ export default function WalletClient({
   const [addFundsError, setAddFundsError] = useState<string | null>(null);
 
   const supabase = createClient();
-  console.log(supabase);
-  supabase.auth.getSession().then(console.log);
+  // console.log(supabase);
+  // supabase.auth.getSession().then(console.log);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      console.log("Supabase session in WalletClient:", data.session);
-    });
-  }, []);
+  // useEffect(() => {
+  //   supabase.auth.getSession().then(({ data }) => {
+  //     console.log("Supabase session in WalletClient:", data.session);
+  //   });
+  // }, []);
 
   // Filtered transactions
   const filteredTransactions = (transactions || []).filter((transaction) => {
@@ -132,7 +132,7 @@ export default function WalletClient({
     setAddFundsLoading(true);
     setAddFundsError(null);
     try {
-      console.log('trying...')
+      // console.log('trying...')
       // const {
       //   data: { session },
       // } = await supabase.auth.getSession();

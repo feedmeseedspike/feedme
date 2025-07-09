@@ -56,8 +56,8 @@ export default function AddNewCategory() {
       if (error) {
         console.error("Supabase error fetching products:", error);
       }
-      console.log(allProducts);
-      console.log("Fetched products:", data);
+      // console.log(allProducts);
+      // console.log("Fetched products:", data);
       if (!error && data) setAllProducts(data);
     }
     fetchProducts();

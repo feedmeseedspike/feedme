@@ -59,10 +59,18 @@ export default async function EditProductPage({
   }
   // Normalize product data for the client
   const normalizedProduct = normalizeProduct(product);
+  // Debug log for options
+  console.log(
+    "[DEBUG] Product options after fetch:",
+    normalizedProduct
+  );
   return (
-    <EditProductClient
-      product={normalizedProduct}
-      allCategories={allCategories}
-    />
+    <>
+      {/* <pre>{JSON.stringify(normalizedProduct.options, null, 2)}</pre> */}
+      <EditProductClient
+        product={normalizedProduct}
+        allCategories={allCategories}
+      />
+    </>
   );
 }

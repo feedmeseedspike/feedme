@@ -8,30 +8,31 @@ import { redirect } from "next/navigation";
 import { PreloadResource, ReviewSlide } from "../preload-resources";
 import { signinWithGoogle } from "@utils/google-action";
 import GoogleButton from "src/components/GoogleButton";
+import { LOGIN_BANNER_IMAGE } from "src/constants/images";
 
 export const metadata = { title: "Sign In" };
 
 const reviews: ReviewSlide[] = [
   {
-    imgSrc: "/loginBanner.jpeg",
+    imgSrc: LOGIN_BANNER_IMAGE,
     review:
       "I got the fruits. Thanks. The beef is good also. I'm satisfied. 👍🏽👍🏽👍🏽",
     customer: "Mrs Ayodeji Tijani",
   },
   {
-    imgSrc: "/loginBanner.jpeg",
+    imgSrc: LOGIN_BANNER_IMAGE,
     review:
       "Yes ooo! Thanks so much. Please you people should keep it up o. Don't let the naija factor make you drop your standards. God bless!",
     customer: "Hannah Yavala",
   },
   {
-    imgSrc: "/loginBanner.jpeg",
+    imgSrc: LOGIN_BANNER_IMAGE,
     review:
       "I received my order and everything was perfect! At first, I thought it might be a scam, but when my items arrived I was so surprised and amazed. Thank you for the extra carrot! Keep up the good work. Wow!",
     customer: "Nkiruka Okonkwo",
   },
   {
-    imgSrc: "/loginBanner.jpeg",
+    imgSrc: LOGIN_BANNER_IMAGE,
     review:
       "I received my items in perfect condition and right on time. Thank you FeedMe for the great service!",
     customer: "Unuigbe Ugha",
@@ -41,15 +42,15 @@ const reviews: ReviewSlide[] = [
 const Signin = async (props: {
   searchParams: Promise<{
     callbackUrl?: string;
-    justSignedUp?: boolean;
+    reset?: string;
   }>;
 }) => {
   const searchParams = await props.searchParams;
   const callbackUrl = searchParams.callbackUrl || "/";
-  const justSignedUp = searchParams.justSignedUp;
+  const reset = searchParams.reset;
 
   const user = await getUser();
-  if (user && !justSignedUp) {
+  if (user) {
     return redirect(callbackUrl);
   }
 
@@ -61,12 +62,25 @@ const Signin = async (props: {
         <div className="pb-6">
           <div className="flex flex-col gap-7">
             <Link href="/">
-              <Image src="/FooterLogo.png" alt="logo" width={200} height={52} />
+              <Image src="/Footerlogo.png" alt="logo" width={200} height={52} />
             </Link>
             <div className="flex flex-col gap-3">
               <p className="h2-bold text-3xl text-[#1B6013]">
                 Log in to your account
               </p>
+              {reset === "success" && (
+                <div
+                  className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-2"
+                  role="alert"
+                >
+                  <strong className="font-bold">
+                    Password reset successful!
+                  </strong>
+                  <span className="block sm:inline ml-2">
+                    Please log in with your new password.
+                  </span>
+                </div>
+              )}
               <p className="font-semibold text-lg">
                 Don&apos;t have an account?
                 <Link
