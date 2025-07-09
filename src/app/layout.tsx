@@ -121,7 +121,12 @@ export default async function RootLayout({
         userData?.user &&
         (!authError || authError.name === "AuthSessionMissingError")
       ) {
+      if (
+        userData?.user &&
+        (!authError || authError.name === "AuthSessionMissingError")
+      ) {
         authenticatedUser = userData.user;
+        // console.log("SSR user:", authenticatedUser);
         // console.log("SSR user:", authenticatedUser);
 
         try {
@@ -139,6 +144,8 @@ export default async function RootLayout({
             user = {
               user_id: authenticatedUser.id,
               display_name:
+                typeof authenticatedUser.user_metadata?.display_name ===
+                "string"
                 typeof authenticatedUser.user_metadata?.display_name ===
                 "string"
                   ? authenticatedUser.user_metadata.display_name
@@ -200,8 +207,30 @@ export default async function RootLayout({
     ],
   };
 
+  // JSON-LD for Organization
+  const organizationJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "FeedMe",
+    url: "https://shopfeedme.com/",
+    logo: "https://res.cloudinary.com/ahisi/image/upload/v1731071676/logo_upovep.png",
+    sameAs: [
+      "https://www.facebook.com/shopfeedme",
+      "https://www.instagram.com/shopfeedme",
+      "https://x.com/Seedspike15427",
+    ],
+  };
+
   return (
     <html lang="en" className={proxima.variable}>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationJsonLd),
+          }}
+        />
+      </head>
       <head>
         <script
           type="application/ld+json"
@@ -236,3 +265,4 @@ export default async function RootLayout({
     </html>
   );
 }
+
