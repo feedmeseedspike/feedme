@@ -22,6 +22,7 @@ import CustomBreadcrumb from "@components/shared/breadcrumb";
 import ErrorBoundary from "@components/shared/ErrorBoundary";
 import { getAllCategories } from "src/lib/api";
 import { Tables } from "../../../../utils/database.types"; // Corrected import path
+import Head from "next/head";
 
 type Product = Tables<"products">;
 
@@ -81,7 +82,7 @@ async function CategoryContent({
   categoryName,
   sort,
   page,
-  allCategories, // Added allCategories prop
+  allCategories, 
 }: {
   categoryId: string;
   categoryName: string;
@@ -175,47 +176,73 @@ export default async function CategoryPage({
     q: "all",
   };
 
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://shopfeedme.com/",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: categoryObj.title,
+        item: `https://shopfeedme.com/category/${categorySlug}`,
+      },
+    ],
+  };
   return (
-    <main>
-      <div className="md:border-b shadow-sm">
-        <div className="bg-white py-4">
+    <>
+      <Head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        />
+      </Head>
+      <main>
+        <div className="md:border-b shadow-sm">
+          <div className="bg-white py-4">
+            <Container>
+              <CustomBreadcrumb hideCategorySegment={true} />
+            </Container>
+          </div>
           <Container>
-            <CustomBreadcrumb hideCategorySegment={true} />
-          </Container>
-        </div>
-        <Container>
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <h1 className="text-[#1B6013] text-2xl md:text-3xl !leading-3 font-bold">
-                {categoryName.charAt(0).toUpperCase() + categoryName.slice(1)}
-              </h1>
-            </div>
-            <div className="flex items-center">
-              <div className="rounded-2xl px-4">
-                <ProductSortSelector
-                  sortOrders={sortOrders}
-                  sort={sort}
-                  params={filterParams}
-                />
+            <div className="flex justify-between items-center py-4">
+              <div className="flex items-center">
+                <h1 className="text-[#1B6013] text-2xl md:text-3xl !leading-3 font-bold">
+                  {categoryName.charAt(0).toUpperCase() + categoryName.slice(1)}
+                </h1>
+              </div>
+              <div className="flex items-center">
+                <div className="rounded-2xl px-4">
+                  <ProductSortSelector
+                    sortOrders={sortOrders}
+                    sort={sort}
+                    params={filterParams}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        </Container>
-      </div>
+          </Container>
+        </div>
 
-      <Container className="py-8">
-        <ErrorBoundary>
-          <Suspense fallback={<ProductSkeletonGrid count={12} />}>
-            <CategoryContent
-              categoryId={categoryId}
-              categoryName={categoryName}
-              sort={sort}
-              page={page}
-              allCategories={allCategories}
-            />
-          </Suspense>
-        </ErrorBoundary>
-      </Container>
-    </main>
+        <Container className="py-8">
+          <ErrorBoundary>
+            <Suspense fallback={<ProductSkeletonGrid count={12} />}>
+              <CategoryContent
+                categoryId={categoryId}
+                categoryName={categoryName}
+                sort={sort}
+                page={page}
+                allCategories={allCategories}
+              />
+            </Suspense>
+          </ErrorBoundary>
+        </Container>
+      </main>
+    </>
   );
 }

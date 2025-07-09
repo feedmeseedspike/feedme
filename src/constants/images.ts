@@ -1,0 +1,1 @@
+export const LOGIN_BANNER_IMAGE = "/loginBanner.jpg"; 

@@ -36,6 +36,7 @@ import {
 } from "src/queries/products";
 import { IProductInput } from "src/types";
 import { mapSupabaseProductToIProductInput, CategoryData } from "src/lib/utils";
+import Head from "next/head";
 
 type ProductType = Tables<"products">;
 
@@ -241,6 +242,21 @@ const ProductDetails = async (props: {
 
   return (
     <>
+      <Head>
+        <ProductJsonLd
+          product={{
+            name: product.name || "",
+            images: product.images || [],
+            description: product.description || "",
+            brand: product.brand || undefined,
+            slug: product.slug || "",
+            price: product.price || 0,
+            countInStock: product.count_in_stock || 0,
+            numReviews: product.num_reviews || 0,
+            avgRating: product.avg_rating || 0,
+          }}
+        />
+      </Head>
       <section>
         <Container>
           {/* {productCategory && (

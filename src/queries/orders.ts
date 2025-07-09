@@ -278,23 +278,29 @@ export async function fetchPendingOrdersCount(): Promise<number> {
 
 // Fetch count of unviewed orders for admin notification badge
 export async function getUnviewedOrdersCount() {
-  const supabase = createClient();
-  const { count, error } = await supabase
-    .from('orders')
-    .select('id', { count: 'exact' })
-    .eq('admin_viewed', false);
-  if (error) throw error;
-  return count || 0;
+  // Temporarily disabled due to missing admin_viewed column
+  return 0;
+  
+  // const supabase = createClient();
+  // const { count, error } = await supabase
+  //   .from('orders')
+  //   .select('id', { count: 'exact' })
+  //   .eq('admin_viewed', false);
+  // if (error) throw error;
+  // return count || 0;
 }
 
 // Mark orders as viewed (by ID or all)
 export async function markOrdersAsViewed(orderIds?: string[]) {
-  const supabase = createClient();
-  let query = supabase.from('orders').update({ admin_viewed: true });
-  if (orderIds && orderIds.length > 0) {
-    query = query.in('id', orderIds);
-  }
-  const { error } = await query;
-  if (error) throw error;
+  // Temporarily disabled due to missing admin_viewed column
   return true;
+  
+  // const supabase = createClient();
+  // let query = supabase.from('orders').update({ admin_viewed: true });
+  // if (orderIds && orderIds.length > 0) {
+  //   query = query.in('id', orderIds);
+  // }
+  // const { error } = await query;
+  // if (error) throw error;
+  // return true;
 } 

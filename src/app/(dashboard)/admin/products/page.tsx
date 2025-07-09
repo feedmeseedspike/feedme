@@ -26,12 +26,20 @@ export default async function ProductsPage({
       ? [searchParams.published]
       : [];
 
+  // Handle sort parameters
+  const sortBy = searchParams?.sortBy || "created_at";
+  const sortOrder = searchParams?.sortOrder || "desc";
+
   const { data: initialProducts, count: totalProductsCount } =
     await getProducts({
       page: currentPage,
       limit: itemsPerPage,
       search: initialSearch,
-      category: initialCategories[0] || undefined,
+      category: initialCategories[0] || "",
+      stockStatus: initialStock[0] || "",
+      publishedStatus: initialPublished[0] || "",
+      sortBy,
+      sortOrder: sortOrder as "asc" | "desc",
     });
 
   // Collect all unique category IDs from products
@@ -68,6 +76,8 @@ export default async function ProductsPage({
       initialPublished={initialPublished}
       categoryNames={categoryNames}
       allCategories={allCategories}
+      initialSortBy={sortBy}
+      initialSortOrder={sortOrder}
     />
   );
 }

@@ -10,6 +10,7 @@ import { PreloadResource, ReviewSlide } from "../preload-resources";
 import { signinWithGoogle } from "@utils/google-action";
 import React from "react";
 import GoogleButton from "src/components/GoogleButton";
+import { LOGIN_BANNER_IMAGE } from "src/constants/images";
 
 export const metadata: Metadata = {
   title: "Create Account",
@@ -61,7 +62,7 @@ export default async function SignUpPage(props: {
       <div className="flex md:w-[60%] lg:w-[40%] w-full flex-col justify-cente px-4 md:px-8 h-screen overflow-y-auto py-6">
         <div className="px- pt-8 pb-4">
           <Link href="/">
-            <Image src="/FooterLogo.png" alt="logo" width={200} height={52} />
+            <Image src="/Footerlogo.png" alt="logo" width={200} height={52} />
           </Link>
           <div className="flex flex-col gap-3 mt-4">
             <p className="h2-bold text-3xl text-[#1B6013]">

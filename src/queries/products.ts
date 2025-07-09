@@ -158,25 +158,67 @@ export async function getProducts({
   limit = 10,
   search = "",
   category = "",
+  stockStatus = "",
+  publishedStatus = "",
+  sortBy = "created_at",
+  sortOrder = "desc",
 }: {
   page?: number;
   limit?: number;
   search?: string;
   category?: string;
+  stockStatus?: string;
+  publishedStatus?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }) {
   const offset = (page - 1) * limit;
 
-  // Only select from products, do not join categories
+  // Build the query
   let query = supabase.from("products").select("*", { count: "exact" });
 
+  // Apply search filter - search across name, description, and brand
   if (search) {
-    query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+    query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%,brand.ilike.%${search}%`);
   }
 
+  // Apply category filter
   if (category) {
     query = query.contains("category_ids", [category]);
   }
 
+  // Apply stock status filter
+  if (stockStatus) {
+    if (stockStatus === "In stock") {
+      query = query.eq("stock_status", "in_stock");
+    } else if (stockStatus === "Out of stock") {
+      query = query.eq("stock_status", "out_of_stock");
+    }
+  }
+
+  // Apply published status filter
+  if (publishedStatus) {
+    if (publishedStatus === "Published") {
+      query = query.eq("is_published", true);
+    } else if (publishedStatus === "Archived") {
+      query = query.eq("is_published", false);
+    }
+  }
+
+  // Apply sorting
+  const validSortFields = [
+    "name", "price", "created_at", "updated_at", "num_sales", 
+    "num_reviews", "avg_rating", "stock_status", "is_published"
+  ];
+  
+  if (validSortFields.includes(sortBy)) {
+    query = query.order(sortBy, { ascending: sortOrder === "asc" });
+  } else {
+    // Default sorting by created_at desc
+    query = query.order("created_at", { ascending: false });
+  }
+
+  // Apply pagination
   const { data, error, count } = await query.range(offset, offset + limit - 1);
 
   if (error) throw error;
