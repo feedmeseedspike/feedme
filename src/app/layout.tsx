@@ -49,7 +49,7 @@ export const metadata: Metadata = {
     default: "FeedMe - Real Food, Real Fast, Delivered in 3 Hours",
   },
   keywords:
-    "fresh produce, farm-fresh delivery, organic food, grocery online shopping, healthy eating",
+    ["fresh produce", "farm-fresh delivery", "organic food", "grocery online shopping", "healthy eating"],
   description:
     "Shop fresh, authentic farm produce delivered to your doorstep in 3 hours or less! Explore high-quality fruits, vegetables, oils, peppers, tubers, sauces, and spices. FeedMe ensures unbeatable freshness and convenience for a superior farm-to-table experience. Start shopping now!",
   openGraph: {
