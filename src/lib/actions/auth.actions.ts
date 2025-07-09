@@ -209,4 +209,17 @@ export async function requestPasswordReset(email: string) {
   }
 }
 
-// oyedelejeremiah.ng@gmail.com
+export async function resetPassword(newPassword: string): Promise<UpdatePasswordReturn> {
+  const supabase = await createClient();
+  try {
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    if (error) {
+      return { success: false, error: { message: error.message } };
+    }
+    return { success: true, data };
+  } catch (error: any) {
+    return { success: false, error: { message: error?.message || "Failed to reset password." } };
+  }
+}

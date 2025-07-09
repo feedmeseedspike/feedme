@@ -1,6 +1,6 @@
 "use client";
-import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Loader2 } from "lucide-react";
@@ -24,10 +24,25 @@ const ForgotPasswordSchema = z.object({
 
 export default function ForgotPasswordForm() {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams?.get("callbackUrl") || "/";
+  const router = useRouter();
+  const callbackUrl = searchParams.get("callbackUrl") || "/";
   const [loading, setLoading] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
   const { showToast } = useToast();
+  const reset = searchParams.get("reset");
+
+  useEffect(() => {
+    if (
+      reset === "sent" &&
+      typeof window !== "undefined" &&
+      sessionStorage.getItem("justSubmittedForgot")
+    ) {
+      showToast(
+        "If this email exists, you will receive a password reset link.",
+        "success"
+      );
+      sessionStorage.removeItem("justSubmittedForgot");
+    }
+  }, [reset, showToast]);
 
   const form = useForm<z.infer<typeof ForgotPasswordSchema>>({
     resolver: zodResolver(ForgotPasswordSchema),
@@ -42,13 +57,11 @@ export default function ForgotPasswordForm() {
     setLoading(true);
     try {
       const result = await requestPasswordReset(data.email);
-      console.log(result);
       if (result.success) {
-        showToast(
-          "If this email exists, you will receive a password reset link.",
-          "success"
+        sessionStorage.setItem("justSubmittedForgot", "1");
+        router.replace(
+          `?reset=sent&callbackUrl=${encodeURIComponent(callbackUrl)}`
         );
-        setEmailSent(true);
       } else {
         showToast(
           result.error || "Failed to send reset email. Please try again.",
@@ -97,12 +110,6 @@ export default function ForgotPasswordForm() {
               Send Reset Link
             </Button>
           </div>
-
-          {emailSent && (
-            <div className="text-green-600 text-center pt-4">
-              If this email exists, you will receive a password reset link.
-            </div>
-          )}
         </div>
       </form>
     </Form>

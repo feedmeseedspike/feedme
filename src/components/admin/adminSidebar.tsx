@@ -54,8 +54,10 @@ export function AdminSidebar({ user }: AppSidebarProps) {
   useEffect(() => {
     async function fetchBadge() {
       try {
-        const count = await getUnviewedOrdersCount();
-        setUnviewedOrders(count);
+        // Temporarily disabled due to missing admin_viewed column
+        // const count = await getUnviewedOrdersCount();
+        // setUnviewedOrders(count);
+        setUnviewedOrders(0);
       } catch (e) {
         setUnviewedOrders(0);
       }
@@ -74,18 +76,19 @@ export function AdminSidebar({ user }: AppSidebarProps) {
           table: "orders",
         },
         (payload) => {
+          // Temporarily disabled due to missing admin_viewed column
           // Only refetch if a new order is inserted or admin_viewed changes to false
-          if (
-            payload.eventType === "INSERT" ||
-            (payload.eventType === "UPDATE" &&
-              payload.new.admin_viewed === false)
-          ) {
-            fetchBadge();
-            showToast("New order received!", "info");
-            // Play notification sound
-            const audio = new Audio("/notification.mp3");
-            audio.play();
-          }
+          // if (
+          //   payload.eventType === "INSERT" ||
+          //   (payload.eventType === "UPDATE" &&
+          //     payload.new.admin_viewed === false)
+          // ) {
+          //   fetchBadge();
+          //   showToast("New order received!", "info");
+          //   // Play notification sound
+          //   const audio = new Audio("/notification.mp3");
+          //   audio.play();
+          // }
         }
       )
       .subscribe();

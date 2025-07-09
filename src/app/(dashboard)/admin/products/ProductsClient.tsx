@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Table,
   TableHeader,
@@ -20,6 +20,8 @@ import {
   X,
   Eye,
   Trash2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import {
   Sheet,
@@ -29,6 +31,13 @@ import {
   SheetTitle,
   SheetFooter,
 } from "@components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@components/ui/select";
 import { Checkbox } from "@components/ui/checkbox";
 import { formatNaira } from "src/lib/utils";
 import { BiEdit } from "react-icons/bi";
@@ -50,6 +59,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "src/utils/supabase/client";
 import { getCategoryById } from "src/queries/categories";
+import { debounce } from "lodash";
 
 function getImageSrc(src: string) {
   if (!src) return "/placeholder-product.png";
@@ -64,6 +74,18 @@ function getImageSrc(src: string) {
   return "/" + src;
 }
 
+// Sort options configuration
+const sortOptions = [
+  { value: "created_at:desc", label: "Newest First", icon: ChevronDown },
+  { value: "created_at:asc", label: "Oldest First", icon: ChevronUp },
+  { value: "name:asc", label: "Name A-Z", icon: ChevronUp },
+  { value: "name:desc", label: "Name Z-A", icon: ChevronDown },
+  { value: "price:asc", label: "Price Low to High", icon: ChevronUp },
+  { value: "price:desc", label: "Price High to Low", icon: ChevronDown },
+  { value: "num_sales:desc", label: "Best Selling", icon: ChevronDown },
+  { value: "avg_rating:desc", label: "Highest Rated", icon: ChevronDown },
+];
+
 export default function ProductsClient({
   initialProducts,
   totalProductsCount,
@@ -75,6 +97,8 @@ export default function ProductsClient({
   initialPublished,
   categoryNames,
   allCategories,
+  initialSortBy,
+  initialSortOrder,
 }: {
   initialProducts: any[];
   totalProductsCount: number;
@@ -86,12 +110,15 @@ export default function ProductsClient({
   initialPublished: string[];
   categoryNames: Record<string, string>;
   allCategories: { id: string; title: string }[];
+  initialSortBy: string;
+  initialSortOrder: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
   const supabase = createClient();
 
+  // State management
   const [search, setSearch] = useState(initialSearch || "");
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     initialCategories || []
@@ -102,13 +129,56 @@ export default function ProductsClient({
   const [selectedPublished, setSelectedPublished] = useState<string[]>(
     initialPublished || []
   );
-  const [showAllCategories, setShowAllCategories] = useState(false);
+  const [sortBy, setSortBy] = useState(initialSortBy || "created_at");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(
+    (initialSortOrder as "asc" | "desc") || "desc"
+  );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<any>(null);
 
   const page = currentPage;
 
-  // Use TanStack Query for products
+  // URL update helper
+  const updateURL = useCallback(
+    (updates: Record<string, any>) => {
+      const newSearchParams = new URLSearchParams(
+        searchParams?.toString() || ""
+      );
+
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value === "" || value === null || value === undefined) {
+          newSearchParams.delete(key);
+        } else if (Array.isArray(value)) {
+          newSearchParams.delete(key);
+          value.forEach((v) => newSearchParams.append(key, v));
+        } else {
+          newSearchParams.set(key, String(value));
+        }
+      });
+
+      router.push(`?${newSearchParams.toString()}`);
+    },
+    [searchParams, router]
+  );
+
+  // Debounced search function
+  const debouncedSearch = useRef(
+    debounce((searchTerm: string) => {
+      updateURL({ search: searchTerm, page: 1 });
+    }, 300)
+  );
+
+  useEffect(() => {
+    // Recreate debounced function if updateURL changes
+    debouncedSearch.current = debounce((searchTerm: string) => {
+      updateURL({ search: searchTerm, page: 1 });
+    }, 300);
+    return () => {
+      debouncedSearch.current.cancel?.();
+    };
+  }, [updateURL]);
+
+  // Use TanStack Query for products with all filters
   const {
     data: productsData,
     isLoading,
@@ -122,35 +192,46 @@ export default function ProductsClient({
       selectedCategories,
       selectedStock,
       selectedPublished,
+      sortBy,
+      sortOrder,
     ],
     queryFn: async () => {
-      const categoryFilter =
-        selectedCategories.length > 0 ? selectedCategories[0] : "";
       const { data, count } = await getProducts({
         page: page,
         limit: itemsPerPage,
         search: search,
-        category: categoryFilter,
+        category: selectedCategories[0] || "",
+        stockStatus: selectedStock[0] || "",
+        publishedStatus: selectedPublished[0] || "",
+        sortBy,
+        sortOrder,
       });
+
       // Fetch category names for each product
-      const categoryIds = data
-        ?.map((p: any) => p.category_ids?.[0])
-        .filter(Boolean);
-      if (categoryIds && categoryIds.length > 0) {
-        const uniqueCategoryIds = [...new Set(categoryIds)];
-        const fetchedCategoryNames: Record<string, string> = {};
-        const fetchPromises = uniqueCategoryIds.map(async (id) => {
-          try {
-            const category = await getCategoryById(supabase, id);
-            if (category) {
-              fetchedCategoryNames[id] = category.title;
-            }
-          } catch (error) {
-            console.error(`Failed to fetch category with ID ${id}:`, error);
-          }
-        });
-        await Promise.all(fetchPromises);
+      if (data && data.length > 0) {
+        const categoryIds = data
+          .map((p: any) => p.category_ids?.[0])
+          .filter(Boolean);
+
+        if (categoryIds.length > 0) {
+          const uniqueCategoryIds = [...new Set(categoryIds)];
+          const fetchedCategoryNames: Record<string, string> = {};
+
+          await Promise.all(
+            uniqueCategoryIds.map(async (id) => {
+              try {
+                const category = await getCategoryById(supabase, id);
+                if (category) {
+                  fetchedCategoryNames[id] = category.title;
+                }
+              } catch (error) {
+                console.error(`Failed to fetch category with ID ${id}:`, error);
+              }
+            })
+          );
+        }
       }
+
       return data || [];
     },
     placeholderData: (prev) => prev,
@@ -162,33 +243,66 @@ export default function ProductsClient({
   const stockStatuses = ["In stock", "Out of stock"];
   const publishedStatuses = ["Published", "Archived"];
 
+  // Event handlers
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newSearch = e.target.value;
     setSearch(newSearch);
-    const newSearchParams = new URLSearchParams(searchParams?.toString() || "");
-    if (newSearch) {
-      newSearchParams.set("search", newSearch);
-    } else {
-      newSearchParams.delete("search");
-    }
-    newSearchParams.set("page", "1");
-    router.push(`?${newSearchParams.toString()}`);
+    debouncedSearch.current(newSearch);
+  };
+
+  const handleSortChange = (value: string) => {
+    const [field, order] = value.split(":");
+    setSortBy(field);
+    setSortOrder(order as "asc" | "desc");
+    updateURL({ sortBy: field, sortOrder: order, page: 1 });
   };
 
   const toggleFilter = (
     value: string,
     filterType: "category" | "stock" | "published"
   ) => {
-    const newSearchParams = new URLSearchParams(searchParams?.toString() || "");
-    const currentFilters = searchParams?.getAll(filterType) || [];
+    let currentFilters: string[];
+    let setFilters: (filters: string[]) => void;
+
+    switch (filterType) {
+      case "category":
+        currentFilters = selectedCategories;
+        setFilters = setSelectedCategories;
+        break;
+      case "stock":
+        currentFilters = selectedStock;
+        setFilters = setSelectedStock;
+        break;
+      case "published":
+        currentFilters = selectedPublished;
+        setFilters = setSelectedPublished;
+        break;
+    }
+
     const newFilters = currentFilters.includes(value)
       ? currentFilters.filter((item) => item !== value)
       : [...currentFilters, value];
 
-    newSearchParams.delete(filterType);
-    newFilters.forEach((filter) => newSearchParams.append(filterType, filter));
-    newSearchParams.set("page", "1");
-    router.push(`?${newSearchParams.toString()}`);
+    setFilters(newFilters);
+    updateURL({ [filterType]: newFilters, page: 1 });
+  };
+
+  const clearAllFilters = () => {
+    setSelectedCategories([]);
+    setSelectedStock([]);
+    setSelectedPublished([]);
+    setSearch("");
+    setSortBy("created_at");
+    setSortOrder("desc");
+    updateURL({
+      category: [],
+      stock: [],
+      published: [],
+      search: "",
+      sortBy: "created_at",
+      sortOrder: "desc",
+      page: 1,
+    });
   };
 
   const handleDeleteClick = (product: any) => {
@@ -199,9 +313,7 @@ export default function ProductsClient({
   const handleDeleteConfirm = async () => {
     if (!productToDelete) return;
     try {
-      console.log("Attempting to delete product:", productToDelete);
-      const result = await deleteProduct(productToDelete.id);
-      console.log("deleteProduct result:", result);
+      await deleteProduct(productToDelete.id);
       showToast("Product deleted successfully!", "success");
       await refetch();
     } catch (err: any) {
@@ -213,6 +325,11 @@ export default function ProductsClient({
   };
 
   const totalPages = Math.ceil((totalProductsCount || 0) / itemsPerPage);
+
+  // Get current sort option display
+  const currentSortOption =
+    sortOptions.find((option) => option.value === `${sortBy}:${sortOrder}`) ||
+    sortOptions[0];
 
   if (error)
     return (
@@ -243,24 +360,53 @@ export default function ProductsClient({
           />
           <input
             type="text"
-            placeholder="Search for products"
+            placeholder="Search products by name, description, or brand..."
             className="w-full pl-9 pr-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-gray-300 shadow-[0px_1px_3px_0px_rgba(16,24,40,0.10)]"
             value={search}
             onChange={handleSearchChange}
           />
         </div>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-1 px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-100 shadow-[0px_1px_3px_0px_rgba(16,24,40,0.10)]">
-            <ArrowUpDown size={16} />
-            Sort
-          </button>
+          <Select
+            value={`${sortBy}:${sortOrder}`}
+            onValueChange={handleSortChange}
+          >
+            <SelectTrigger className="w-[180px]">
+              <div className="flex items-center gap-2">
+                <ArrowUpDown size={16} />
+                <SelectValue placeholder="Sort by" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              {sortOptions.map((option) => {
+                const Icon = option.icon;
+                return (
+                  <SelectItem key={option.value} value={option.value}>
+                    <div className="flex items-center gap-2">
+                      <Icon size={14} />
+                      {option.label}
+                    </div>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
 
           <Sheet>
             <SheetTrigger asChild>
-              <button className="flex items-center gap-1 px-6 py-2 border rounded-md text-gray-700 hover:bg-gray-100 shadow-[0px_1px_3px_0px_rgba(16,24,40,0.10)]">
+              <Button variant="outline" className="flex items-center gap-2">
                 <ListFilter size={16} />
                 Filters
-              </button>
+                {(selectedCategories.length > 0 ||
+                  selectedStock.length > 0 ||
+                  selectedPublished.length > 0) && (
+                  <Badge variant="secondary" className="ml-1">
+                    {selectedCategories.length +
+                      selectedStock.length +
+                      selectedPublished.length}
+                  </Badge>
+                )}
+              </Button>
             </SheetTrigger>
             <SheetContent side="right" className="!px-0">
               <SheetHeader className="px-4">
@@ -367,19 +513,7 @@ export default function ProductsClient({
                 <div className="font-semibold text-sm flex justify-between items-end px-4">
                   <div
                     className="text-[#B42318] cursor-pointer"
-                    onClick={() => {
-                      setSelectedCategories([]);
-                      setSelectedStock([]);
-                      setSelectedPublished([]);
-                      const newSearchParams = new URLSearchParams(
-                        searchParams?.toString() || ""
-                      );
-                      newSearchParams.delete("category");
-                      newSearchParams.delete("stock");
-                      newSearchParams.delete("published");
-                      newSearchParams.set("page", "1");
-                      router.push(`?${newSearchParams.toString()}`);
-                    }}
+                    onClick={clearAllFilters}
                   >
                     Clear all filters
                   </div>
@@ -411,6 +545,90 @@ export default function ProductsClient({
           </Sheet>
         </div>
       </div>
+
+      {/* Active filters display */}
+      {(selectedCategories.length > 0 ||
+        selectedStock.length > 0 ||
+        selectedPublished.length > 0 ||
+        search) && (
+        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium text-gray-700">
+              Active filters:
+            </span>
+            {search && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                Search: {search}
+                <button
+                  onClick={() => {
+                    setSearch("");
+                    updateURL({ search: "", page: 1 });
+                  }}
+                  className="ml-1 hover:text-red-500"
+                >
+                  <X size={12} />
+                </button>
+              </Badge>
+            )}
+            {selectedCategories.map((catId) => {
+              const cat = allCategories.find((c) => c.id === catId);
+              return (
+                <Badge
+                  key={catId}
+                  variant="secondary"
+                  className="flex items-center gap-1"
+                >
+                  Category: {cat?.title || catId}
+                  <button
+                    onClick={() => toggleFilter(catId, "category")}
+                    className="ml-1 hover:text-red-500"
+                  >
+                    <X size={12} />
+                  </button>
+                </Badge>
+              );
+            })}
+            {selectedStock.map((status) => (
+              <Badge
+                key={status}
+                variant="secondary"
+                className="flex items-center gap-1"
+              >
+                Stock: {status}
+                <button
+                  onClick={() => toggleFilter(status, "stock")}
+                  className="ml-1 hover:text-red-500"
+                >
+                  <X size={12} />
+                </button>
+              </Badge>
+            ))}
+            {selectedPublished.map((status) => (
+              <Badge
+                key={status}
+                variant="secondary"
+                className="flex items-center gap-1"
+              >
+                Status: {status}
+                <button
+                  onClick={() => toggleFilter(status, "published")}
+                  className="ml-1 hover:text-red-500"
+                >
+                  <X size={12} />
+                </button>
+              </Badge>
+            ))}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearAllFilters}
+              className="text-red-600 hover:text-red-700"
+            >
+              Clear all
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="border rounded-lg shadow-sm">
         <Table>
@@ -500,12 +718,14 @@ export default function ProductsClient({
                   <TableCell>
                     <Badge
                       className={
-                        product.stock_status === "In stock"
+                        product.stock_status === "in_stock"
                           ? "bg-green-100 text-green-800"
                           : "bg-orange-100 text-orange-800"
                       }
                     >
-                      {product.stock_status || "N/A"}
+                      {product.stock_status === "in_stock"
+                        ? "In stock"
+                        : "Out of stock"}
                     </Badge>
                   </TableCell>
                   <TableCell>

@@ -19,10 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@components/ui/select";
-import { CloudUpload, Plus } from "lucide-react";
+import { CloudUpload } from "lucide-react";
 import Option from "@components/icons/option.svg";
 import { OptionSchema } from "src/lib/validator";
-import { uploadOptionImage } from "src/lib/api";
 import Image from "next/image";
 
 type OptionFormValues = z.infer<typeof OptionSchema>;
@@ -51,8 +50,6 @@ export default function OptionModal({
   });
 
   const [image, setImage] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -63,24 +60,13 @@ export default function OptionModal({
   };
 
   const submitForm = async (data: OptionFormValues) => {
-    setUploadError(null);
-    let imageUrl = data.image;
-    if (image && image instanceof File) {
-      setUploading(true);
-      try {
-        imageUrl = await uploadOptionImage(image);
-      } catch (err: any) {
-        setUploadError(err.message || "Failed to upload image");
-        setUploading(false);
-        return;
-      }
-      setUploading(false);
-    }
+    // Pass the File object directly instead of uploading here
     const formData = {
       ...data,
       price: parseFloat(String(data.price)), // Ensure price is a number
-      image: imageUrl,
+      image: image, // Pass the File object directly
     };
+
     if (onSubmit) onSubmit(formData);
     onClose();
   };
@@ -195,21 +181,13 @@ export default function OptionModal({
             )}
           </div>
 
-          {uploadError && (
-            <p className="text-red-500 text-sm mt-1">{uploadError}</p>
-          )}
-
           {/* Buttons */}
           <div className="flex w-full space-x-2">
             <Button variant="outline" onClick={onClose} className="w-full">
               Cancel
             </Button>
-            <Button
-              type="submit"
-              className="w-full bg-[#1B6013]"
-              disabled={uploading}
-            >
-              {uploading ? "Uploading..." : "Add Option"}
+            <Button type="submit" className="w-full bg-[#1B6013]">
+              Add Option
             </Button>
           </div>
         </form>

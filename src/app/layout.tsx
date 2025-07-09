@@ -92,13 +92,17 @@ export default async function RootLayout({
     const supabase = await createServerComponentClient();
 
     if (supabase) {
-      const { data: userData, error: authError } = await supabase.auth.getUser();
-      console.log(userData)
-      
+      const { data: userData, error: authError } =
+        await supabase.auth.getUser();
+      // console.log(userData);
+
       // Only process if we have valid user data and no critical errors
-      if (userData?.user && (!authError || authError.name === "AuthSessionMissingError")) {
+      if (
+        userData?.user &&
+        (!authError || authError.name === "AuthSessionMissingError")
+      ) {
         authenticatedUser = userData.user;
-        console.log("SSR user:", authenticatedUser);
+        // console.log("SSR user:", authenticatedUser);
 
         try {
           // Try to fetch user profile
@@ -115,7 +119,8 @@ export default async function RootLayout({
             user = {
               user_id: authenticatedUser.id,
               display_name:
-                typeof authenticatedUser.user_metadata?.display_name === "string"
+                typeof authenticatedUser.user_metadata?.display_name ===
+                "string"
                   ? authenticatedUser.user_metadata.display_name
                   : typeof authenticatedUser.email === "string"
                     ? authenticatedUser.email
@@ -138,7 +143,8 @@ export default async function RootLayout({
 
           // Try to fetch referral status
           try {
-            const { data: referralData, message: referralMessage } = await getReferralStatus();
+            const { data: referralData, message: referralMessage } =
+              await getReferralStatus();
             if (referralData) {
               hasReferralStatus = true;
             }
@@ -146,7 +152,6 @@ export default async function RootLayout({
             console.warn("Could not fetch referral status:", referralError);
             // Continue without referral status
           }
-
         } catch (profileError) {
           console.warn("Error fetching user profile:", profileError);
           // Continue with auth user only
@@ -162,8 +167,30 @@ export default async function RootLayout({
     // Continue with null user/session
   }
 
+  // JSON-LD for Organization
+  const organizationJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "FeedMe",
+    url: "https://shopfeedme.com/",
+    logo: "https://res.cloudinary.com/ahisi/image/upload/v1731071676/logo_upovep.png",
+    sameAs: [
+      "https://www.facebook.com/shopfeedme",
+      "https://www.instagram.com/shopfeedme",
+      "https://x.com/Seedspike15427",
+    ],
+  };
+
   return (
     <html lang="en" className={proxima.variable}>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationJsonLd),
+          }}
+        />
+      </head>
       <body className="font-custom">
         <NextTopLoader showSpinner={false} color="#F0800F" shadow="0" />
         <LocationProvider>

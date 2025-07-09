@@ -1,15 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Loader2, Eye, EyeOff } from "lucide-react";
-import { useToast } from "@/hooks/useToast";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createClient } from "@supabase/supabase-js";
+import { z } from "zod";
+import { signOutUser, resetPassword } from "src/lib/actions/auth.actions";
+import { useToast } from "src/hooks/useToast";
+import { useState } from "react";
 
 const ResetPasswordSchema = z
   .object({
@@ -23,115 +21,125 @@ const ResetPasswordSchema = z
 
 type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+declare global {
+  interface Window {
+    supabase: any;
+  }
+}
 
 export default function ResetPasswordPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const { showToast } = useToast();
-  const [show, setShow] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-
   const form = useForm<ResetPasswordInput>({
     resolver: zodResolver(ResetPasswordSchema),
     defaultValues: { password: "", confirm: "" },
   });
-
   const {
     handleSubmit,
     register,
     formState: { errors },
   } = form;
+  const { showToast } = useToast();
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Check if the user is authenticated
+    // (You may want to keep this or handle with middleware)
+  }, [router]);
 
   const onSubmit = async (data: ResetPasswordInput) => {
     setLoading(true);
-    try {
-      // Use Supabase's built-in password reset flow
-      const { data: updateData, error: updateError } =
-        await supabase.auth.updateUser({
-          password: data.password,
-        });
-      if (updateError) {
-        showToast(
-          "Failed to reset password: " +
-            (updateError.message || "Unknown error"),
-          "error"
-        );
-        setLoading(false);
-        return;
-      }
-      showToast("Password reset successful! You can now log in.", "success");
-      form.reset();
-      setTimeout(() => router.push("/login"), 2000);
-    } catch (err: any) {
-      showToast(
-        "Failed to reset password: " + (err.message || "Unknown error"),
-        "error"
-      );
-    } finally {
-      setLoading(false);
+    const result = await resetPassword(data.password);
+    if (!result.success) {
+      const errorMsg =
+        typeof result.error === "string" ? result.error : result.error?.message;
+      showToast(errorMsg || "Failed to reset password.", "error");
+    } else {
+      showToast("Password reset successful! Please log in.", "success");
+      await signOutUser();
+      router.push("/login?reset=success");
     }
+    setLoading(false);
   };
 
   return (
-    <div className="max-w-md mx-auto mt-16 p-6 bg-white rounded shadow">
-      <h1 className="text-2xl font-bold mb-4">Reset Your Password</h1>
-      <p className="text-gray-600 mb-6">Enter your new password below.</p>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div className="relative">
-          <Input
-            type={show ? "text" : "password"}
-            placeholder="Enter your new password"
-            {...register("password")}
-          />
+    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] px-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8 md:p-10 flex flex-col gap-6">
+        <div className="flex flex-col items-center gap-2 mb-2">
+          <h1 className="text-2xl font-bold text-[#1B6013]">
+            Reset Your Password
+          </h1>
+          <p className="text-gray-600 text-center">
+            Enter your new password below.
+          </p>
+        </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
+          <div>
+            <label className="block text-sm font-semibold text-[#1B6013] mb-1">
+              New Password
+            </label>
+            <input
+              type="password"
+              placeholder="Enter your new password"
+              {...register("password")}
+              className="w-full px-4 py-3 border border-[#E0E0E0] rounded-lg focus:ring-2 focus:ring-[#1B6013] focus:outline-none"
+            />
+            {errors.password && (
+              <div className="text-xs text-rose-500 mt-1">
+                {errors.password.message}
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-[#1B6013] mb-1">
+              Confirm Password
+            </label>
+            <input
+              type="password"
+              placeholder="Confirm your new password"
+              {...register("confirm")}
+              className="w-full px-4 py-3 border border-[#E0E0E0] rounded-lg focus:ring-2 focus:ring-[#1B6013] focus:outline-none"
+            />
+            {errors.confirm && (
+              <div className="text-xs text-rose-500 mt-1">
+                {errors.confirm.message}
+              </div>
+            )}
+          </div>
           <button
-            type="button"
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-            onClick={() => setShow((s) => !s)}
-            tabIndex={-1}
-            aria-label={show ? "Hide password" : "Show password"}
+            type="submit"
+            className="w-full py-3 mt-2 bg-[#1B6013]/90 text-white font-semibold rounded-lg hover:bg-[#1B6013] transition-colors"
+            disabled={loading}
           >
-            {show ? (
-              <EyeOff className="w-5 h-5" />
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg
+                  className="animate-spin h-5 w-5 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v8z"
+                  ></path>
+                </svg>
+                Resetting...
+              </span>
             ) : (
-              <Eye className="w-5 h-5" />
+              "Reset Password"
             )}
           </button>
-        </div>
-        {errors.password && (
-          <div className="text-sm text-rose-500">{errors.password.message}</div>
-        )}
-        <div className="relative">
-          <Input
-            type={showConfirm ? "text" : "password"}
-            placeholder="Confirm your new password"
-            {...register("confirm")}
-          />
-          <button
-            type="button"
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-            onClick={() => setShowConfirm((s) => !s)}
-            tabIndex={-1}
-            aria-label={showConfirm ? "Hide password" : "Show password"}
-          >
-            {showConfirm ? (
-              <EyeOff className="w-5 h-5" />
-            ) : (
-              <Eye className="w-5 h-5" />
-            )}
-          </button>
-        </div>
-        {errors.confirm && (
-          <div className="text-sm text-rose-500">{errors.confirm.message}</div>
-        )}
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading && <Loader2 className="w-5 h-5 animate-spin" />} Reset
-          Password
-        </Button>
-      </form>
+        </form>
+      </div>
     </div>
   );
 }

@@ -307,14 +307,15 @@ export default function OrdersClient({
 
   // After data is loaded, mark all visible unviewed orders as viewed
   useEffect(() => {
-    if (data && data.data) {
-      const unviewedIds = data.data
-        .filter((order) => order.admin_viewed === false)
-        .map((order) => order.id);
-      if (unviewedIds.length > 0) {
-        markOrdersAsViewed(unviewedIds);
-      }
-    }
+    // Temporarily disabled due to missing admin_viewed column
+    // if (data && data.data) {
+    //   const unviewedIds = data.data
+    //     .filter((order) => order.admin_viewed === false)
+    //     .map((order) => order.id);
+    //   if (unviewedIds.length > 0) {
+    //     markOrdersAsViewed(unviewedIds);
+    //   }
+    // }
   }, [data]);
 
   console.log("[TABLE DATA]", data?.data);
@@ -567,9 +568,11 @@ export default function OrdersClient({
                 <TableRow
                   key={order.id}
                   className={
-                    order.admin_viewed === false
-                      ? "border-2 border-gray-400"
-                      : ""
+                    // Temporarily disabled due to missing admin_viewed column
+                    // order.admin_viewed === false
+                    //   ? "border-2 border-gray-400"
+                    //   : ""
+                    ""
                   }
                 >
                   <TableCell>{order.id?.substring(0, 8) || "N/A"}</TableCell>
