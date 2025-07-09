@@ -570,7 +570,7 @@ const CheckoutForm = ({
                 setIsSubmitting(false);
                 return;
               }
-              const response = await fetch("/api/wallet/initialize", {
+              const response = await fetch("/api/wallet/initialize/paystack", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
