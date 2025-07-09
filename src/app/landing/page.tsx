@@ -1,6 +1,6 @@
+/* eslint-disable react/no-unescaped-entities */
 "use client";
 
-import Head from "next/head";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import axios from "axios";
@@ -33,7 +33,7 @@ export default function Home() {
       setFormData({ name: "", phone: "", email: "" });
     } catch (error: any) {
       setFormStatus({
-        message: "Error submitting form. Try again." + error.message,
+        message: "Error submitting form. Try again: " + error.message,
         success: false,
       });
     }
@@ -47,50 +47,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Head>
-        <title>FeedMe - Fresh, Affordable Food Delivered in Lagos</title>
-        <meta
-          name="description"
-          content="Shop fresh, affordable food with FeedMe. Fast delivery of grains, oils, meat, and vegetables anywhere in Lagos. Join our list for exclusive deals!"
-        />
-        <meta
-          name="keywords"
-          content="FeedMe, food delivery, Lagos, affordable groceries, bulk food"
-        />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta
-          property="og:title"
-          content="FeedMe - Fresh Food Delivered in Lagos"
-        />
-        <meta
-          property="og:description"
-          content="Get quality food items at unbeatable prices with fast delivery in Lagos."
-        />
-        <meta property="og:image" content="/og-image.jpg" />{" "}
-        {/* Add an image in /public */}
-        <meta property="og:url" content="https://your-site.vercel.app" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "LocalBusiness",
-              name: "FeedMe",
-              description:
-                "Online food store delivering fresh, affordable food in Lagos.",
-              url: "https://your-site.vercel.app",
-              address: {
-                "@type": "PostalAddress",
-                addressLocality: "Lagos",
-                addressCountry: "NG",
-              },
-              telephone: "+234-123-456-7890",
-            }),
-          }}
-        />
-      </Head>
-
       {/* Hero Section */}
       <motion.section
         initial="hidden"
@@ -143,8 +99,10 @@ export default function Home() {
           </p>
         </div>
       </motion.section>
+
       {/* Product Showcase */}
       <ProductCarousel />
+
       {/* Why Choose FeedMe? */}
       <motion.section
         initial="hidden"
@@ -172,6 +130,7 @@ export default function Home() {
           </ul>
         </div>
       </motion.section>
+
       {/* Testimonials Section */}
       <motion.section className="py-12 bg-white">
         <div className="container mx-auto px-4">
@@ -195,9 +154,7 @@ export default function Home() {
               <div
                 key={testimonial.name}
                 className="bg-gray-100 rounded-lg shadow-md p-6">
-                <p className="text-black italic mb-4">
-                  &quot;{testimonial.quote}&quot;
-                </p>
+                <p className="text-black italic mb-4">"{testimonial.quote}"</p>
                 <p className="font-semibold text-black">
                   {testimonial.name}
                   {testimonial.business ? `, ${testimonial.business}` : ""}
@@ -324,19 +281,42 @@ export default function Home() {
       {/* Footer */}
       <footer className="bg-green-600 text-white py-8 text-center">
         <div className="container mx-auto px-4">
-          <p>&copy; 2025 FeedMe. All rights reserved.</p>
+          <p>© 2025 FeedMe. All rights reserved.</p>
           <p className="mt-2">
             Contact us:{" "}
-            <a href="tel:+2341234567890" className="underline">
-              +234 123 456 7890
+            <a href="tel:+2348088282487" className="underline">
+              +234 808 828 2487
             </a>{" "}
             |{" "}
-            <a href="mailto:support@feedme.com" className="underline">
+            <a
+              href="mailto:orders.feedmeafrica@gmail.com"
+              className="underline">
               support@feedme.com
             </a>
           </p>
         </div>
       </footer>
+
+      {/* JSON-LD Schema */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "LocalBusiness",
+            name: "FeedMe",
+            description:
+              "Online food store delivering fresh, affordable food in Lagos.",
+            url: "https://www.shopfeedme.com",
+            address: {
+              "@type": "PostalAddress",
+              addressLocality: "Lagos",
+              addressCountry: "NG",
+            },
+            telephone: "+234-808-828-2487",
+          }),
+        }}
+      />
     </div>
   );
 }
