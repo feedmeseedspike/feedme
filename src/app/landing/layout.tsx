@@ -18,18 +18,6 @@ export default function LandingLayout({
     <html lang="en">
       <head>
         {/* Google Analytics */}
-        <Script
-          async
-          src="https://www.googletagmanager.com/gtag/js?id=G-DT105JV69M"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-DT105JV69M');
-          `}
-        </Script>
 
         {/* Google Tag Manager */}
         <Script id="google-tag-manager" strategy="afterInteractive">
@@ -66,6 +54,18 @@ export default function LandingLayout({
           />
         </noscript>
       </head>
+      <Script
+        async
+        src="https://www.googletagmanager.com/gtag/js?id=G-DT105JV69M"
+      />
+      <Script id="google-analytics" strategy="afterInteractive">
+        {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-DT105JV69M');
+          `}
+      </Script>
       <body>
         {/* Google Tag Manager (noscript) */}
         <noscript>
