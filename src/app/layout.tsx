@@ -253,14 +253,6 @@ export default async function RootLayout({
             fbq('track', 'PageView');
           `}
         </Script>
-        <noscript>
-          <img
-            height="1"
-            width="1"
-            style={{ display: "none" }}
-            src="https://www.facebook.com/tr?id=781786040868058&ev=PageView&noscript=1"
-          />
-        </noscript>
       </head>
       <body className="font-custom">
         {/* Google Tag Manager (noscript) */}
@@ -270,6 +262,14 @@ export default async function RootLayout({
             height="0"
             width="0"
             style={{ display: "none", visibility: "hidden" }}></iframe>
+        </noscript>
+        <noscript>
+          <img
+            height="1"
+            width="1"
+            style={{ display: "none" }}
+            src="https://www.facebook.com/tr?id=781786040868058&ev=PageView&noscript=1"
+          />
         </noscript>
         <NextTopLoader showSpinner={false} color="#F0800F" shadow="0" />
         <LocationProvider>
