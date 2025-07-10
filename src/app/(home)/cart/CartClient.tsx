@@ -390,137 +390,171 @@ const CartClient: React.FC<CartClientProps> = ({
               {/* Cart Items */}
               <div className="md:col-span-2 space-y-6">
                 {Object.entries(groupedItems).map(
-                  ([groupKey, productGroup]: [string, GroupedCartItem]) => (
-                    <Card
-                      key={groupKey}
-                      className="p-6 bg-white rounded-xl shadow-sm border border-gray-100"
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-bold text-primary">
-                          {productGroup.product?.name ||
-                            productGroup.bundle?.name || (
-                              <span className="text-gray-400">Unnamed</span>
-                            )}
-                        </h2>
-                        <Trash2Icon
-                          className="size-5 cursor-pointer text-gray-400 hover:text-red-500 transition-colors"
-                          onClick={() => {
-                            const itemToRemove = Object.values(
-                              productGroup.options
-                            )[0];
-                            if (itemToRemove) handleRemoveItem(itemToRemove);
-                          }}
-                          aria-label="Remove all items in this group"
-                        />
-                      </div>
-                      <div className="space-y-4">
-                        {Object.entries(productGroup.options).map(
-                          ([optionKey, item]: [string, CartItem], idx, arr) => (
-                            <div key={item.id}>
-                              <div className="flex items-center gap-4">
-                                <Link
-                                  href={`/product/${
-                                    item.products?.slug || item.bundles?.id
-                                  }`}
-                                  className="block"
-                                >
-                                  <Image
-                                    width={80}
-                                    height={80}
-                                    src={
-                                      (item.option as ProductOption)?.image ||
-                                      item.products?.images?.[0] ||
-                                      item.bundles?.thumbnail_url ||
-                                      "/placeholder.png"
-                                    }
-                                    alt={
-                                      item.products?.name ||
-                                      item.bundles?.name ||
-                                      "Item image"
-                                    }
-                                    className="h-20 w-20 rounded-lg object-cover border border-gray-200"
-                                  />
-                                </Link>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex justify-between items-start">
-                                    <div>
-                                      <p className="font-semibold text-primary text-base truncate">
-                                        {item.option
-                                          ? (item.option as ProductOption).name
-                                          : item.products?.name}
-                                      </p>
-                                      <p className="text-muted-foreground text-xs mt-1">
-                                        {Array.isArray(
-                                          (item.products as any)?.category
-                                        )
-                                          ? (
-                                              item.products as any
-                                            ).category.join(", ")
-                                          : Array.isArray(
+                  ([groupKey, productGroup]: [string, GroupedCartItem]) => {
+                    const optionEntries = Object.entries(productGroup.options);
+                    const isSingleItem = optionEntries.length === 1;
+                    return (
+                      <Card
+                        key={groupKey}
+                        className="p-6 bg-white rounded-xl shadow-sm border border-gray-100"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <h2 className="text-xl font-bold text-primary">
+                            {productGroup.product?.name ||
+                              productGroup.bundle?.name || (
+                                <span className="text-gray-400">Unnamed</span>
+                              )}
+                          </h2>
+                          {/* Show group Trash2Icon only if more than one item, or always if only one item */}
+                          {isSingleItem || optionEntries.length > 1 ? (
+                            <Trash2Icon
+                              className="size-5 cursor-pointer text-gray-400 hover:text-red-500 transition-colors"
+                              onClick={() => {
+                                const itemToRemove = optionEntries[0][1];
+                                if (itemToRemove)
+                                  handleRemoveItem(itemToRemove);
+                              }}
+                              aria-label="Remove all items in this group"
+                            />
+                          ) : null}
+                        </div>
+                        <div className="space-y-4">
+                          {optionEntries.map(
+                            (
+                              [optionKey, item]: [string, CartItem],
+                              idx,
+                              arr
+                            ) => (
+                              <div key={item.id}>
+                                <div className="flex items-center gap-4">
+                                  <Link
+                                    href={`/product/${
+                                      item.products?.slug || item.bundles?.id
+                                    }`}
+                                    className="block"
+                                  >
+                                    <Image
+                                      width={80}
+                                      height={80}
+                                      src={
+                                        (item.option as ProductOption)?.image ||
+                                        item.products?.images?.[0] ||
+                                        item.bundles?.thumbnail_url ||
+                                        "/placeholder.png"
+                                      }
+                                      alt={
+                                        item.products?.name ||
+                                        item.bundles?.name ||
+                                        "Item image"
+                                      }
+                                      className="h-20 w-20 rounded-lg object-cover border border-gray-200"
+                                    />
+                                  </Link>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-start">
+                                      <div>
+                                        <p className="font-semibold text-primary text-base truncate">
+                                          {item.option
+                                            ? (item.option as ProductOption)
+                                                .name
+                                            : item.products?.name}
+                                        </p>
+                                        <p className="text-muted-foreground text-xs mt-1">
+                                          {(() => {
+                                            // Get category IDs from product
+                                            let categoryIds: string[] = [];
+                                            if (
+                                              Array.isArray(
+                                                (item.products as any)?.category
+                                              )
+                                            ) {
+                                              categoryIds = (
+                                                item.products as any
+                                              ).category;
+                                            } else if (
+                                              Array.isArray(
                                                 (item.products as any)
                                                   ?.category_ids
                                               )
-                                            ? (
+                                            ) {
+                                              categoryIds = (
                                                 item.products as any
-                                              ).category_ids.join(", ")
-                                            : ""}
-                                      </p>
-                                    </div>
-                                    <Trash2Icon
-                                      className="size-4 cursor-pointer text-gray-400 hover:text-red-500 transition-colors ml-2"
-                                      onClick={() => handleRemoveItem(item)}
-                                      aria-label="Remove individual item"
-                                    />
-                                  </div>
-                                  <div className="flex items-center justify-between mt-2">
-                                    <div className="flex items-center gap-2">
-                                      <Button
-                                        variant="outline"
-                                        size="icon"
-                                        className="size-8 rounded-full border-primary text-primary border-2"
-                                        onClick={() =>
-                                          handleQuantityChange(item, false)
-                                        }
-                                      >
-                                        <AiOutlineMinus className="size-4" />
-                                      </Button>
-                                      <span className="font-medium text-lg text-primary">
-                                        {item.quantity}
-                                      </span>
-                                      <Button
-                                        variant="outline"
-                                        size="icon"
-                                        className="size-8 rounded-full border-primary text-primary border-2"
-                                        onClick={() =>
-                                          handleQuantityChange(item, true)
-                                        }
-                                      >
-                                        <AiOutlinePlus className="size-4" />
-                                      </Button>
-                                    </div>
-                                    <span className="font-bold text-lg text-primary">
-                                      {formatNaira(
-                                        ((item.option as ProductOption)
-                                          ?.price ??
-                                          item.price ??
-                                          0) * item.quantity
+                                              ).category_ids;
+                                            }
+                                            // Map IDs to names using allCategories
+                                            const categoryNames = categoryIds
+                                              .map((catId) => {
+                                                const cat = allCategories.find(
+                                                  (c: any) => c.id === catId
+                                                );
+                                                return cat ? cat.title : catId;
+                                              })
+                                              .filter(Boolean);
+                                            return categoryNames.length > 0
+                                              ? categoryNames.join(", ")
+                                              : "";
+                                          })()}
+                                        </p>
+                                      </div>
+                                      {/* Only show individual Trash2Icon if more than one item in group */}
+                                      {!isSingleItem && (
+                                        <Trash2Icon
+                                          className="size-4 cursor-pointer text-gray-400 hover:text-red-500 transition-colors ml-2"
+                                          onClick={() => handleRemoveItem(item)}
+                                          aria-label="Remove individual item"
+                                        />
                                       )}
-                                    </span>
+                                    </div>
+                                    <div className="flex items-center justify-between mt-2">
+                                      <div className="flex items-center gap-2">
+                                        <Button
+                                          variant="outline"
+                                          size="icon"
+                                          className="size-8 rounded-full border-primary text-primary border-2"
+                                          onClick={() =>
+                                            handleQuantityChange(item, false)
+                                          }
+                                        >
+                                          <AiOutlineMinus className="size-4" />
+                                        </Button>
+                                        <span className="font-medium text-lg text-primary">
+                                          {item.quantity}
+                                        </span>
+                                        <Button
+                                          variant="outline"
+                                          size="icon"
+                                          className="size-8 rounded-full border-primary text-primary border-2"
+                                          onClick={() =>
+                                            handleQuantityChange(item, true)
+                                          }
+                                        >
+                                          <AiOutlinePlus className="size-4" />
+                                        </Button>
+                                      </div>
+                                      <span className="font-bold text-lg text-primary">
+                                        {formatNaira(
+                                          ((item.option as ProductOption)
+                                            ?.price ??
+                                            item.price ??
+                                            0) * item.quantity
+                                        )}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
+                                {idx !== arr.length - 1 && (
+                                  <Separator className="my-4" />
+                                )}
                               </div>
-                              {idx !== arr.length - 1 && (
-                                <Separator className="my-4" />
-                              )}
-                            </div>
-                          )
-                        )}
-                      </div>
-                    </Card>
-                  )
+                            )
+                          )}
+                        </div>
+                      </Card>
+                    );
+                  }
                 )}
                 {/* Recommended Products Section */}
-                {recommendedProducts && recommendedProducts.length > 0 && (
+                {/* {recommendedProducts && recommendedProducts.length > 0 && (
                   <div className="mt-12">
                     <h2 className="text-2xl font-bold mb-4 text-primary">
                       Recommended for You
@@ -531,7 +565,7 @@ const CartClient: React.FC<CartClientProps> = ({
                       hideDetails={false}
                     />
                   </div>
-                )}
+                )} */}
               </div>
 
               {/* Order Summary */}
@@ -573,7 +607,7 @@ const CartClient: React.FC<CartClientProps> = ({
           {/* Recommended Products */}
           {recommendedProducts && recommendedProducts.length > 0 && (
             <section className="mt-16">
-              <div className="text-center mb-8">
+              <div className=" mb-8">
                 <h2 className="text-2xl font-bold text-primary mb-2">
                   Recommended for You
                 </h2>

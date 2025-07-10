@@ -9,7 +9,10 @@ export function authMiddleware(handler: Handler) {
     try {
       // Get the Supabase auth cookie using the project ID from environment variables
       const authCookies = request.headers.get("cookie")?.split(";")[1];
-      const authCookie = authCookies?.split("=")[1];
+      const authCookie =
+        process.env.NEXT_PUBLIC_ENVIRONMENT! === "local"
+          ? request.headers.get("cookie")?.split("=")[1]
+          : authCookies?.split("=")[1];
       console.log("authorizer => ", request.headers.get("cookie"));
       console.log("auth header => ", authCookie);
 

@@ -6,12 +6,12 @@ import { NextResponse } from "next/server";
 export const POST = authMiddleware(
   async (request: Request, user_id: string) => {
     try {
-      const { email, amount } = await request.json();
+      const { email, amount, orderId } = await request.json();
 
       // Validate input
-      if (!email || !amount) {
+      if (!email || !amount || !orderId) {
         return NextResponse.json(
-          { message: "Missing required fields: email and amount" },
+          { message: "Missing required fields: email, amount, and orderId" },
           { status: 400 }
         );
       }
@@ -23,23 +23,13 @@ export const POST = authMiddleware(
         );
       }
 
-      // Debug: Check Paystack secret key
-      console.log(
-        "Paystack Secret Key present:",
-        !!process.env.PAYSTACK_SECRET_KEY
-      );
-      console.log(
-        "Paystack Secret Key value (first 5 chars):",
-        process.env.PAYSTACK_SECRET_KEY?.slice(0, 5)
-      );
-
       // Initialize Paystack transaction
-      const callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL!}/account/wallet/success`;
+      const callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL!}/order/order-confirmation?orderId=${orderId}`;
       const transactionData = await paystack.initializeTransaction({
         email,
         amount,
         callback_url: callbackUrl,
-        metadata: { user_id },
+        metadata: { user_id, orderId },
       });
 
       const { error: txError } = await supabase.from("transactions").insert({

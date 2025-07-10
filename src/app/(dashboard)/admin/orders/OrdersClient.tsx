@@ -207,6 +207,7 @@ export default function OrdersClient({
         delivery_fee: order.delivery_fee ?? null,
         local_government: order.local_government ?? null,
         total_amount_paid: order.total_amount_paid ?? null,
+        profiles: (order as any).profiles ?? null, // Ensure profiles is always present
       })),
       count: totalOrdersCount,
     },
@@ -585,8 +586,8 @@ export default function OrdersClient({
                   <TableCell className="flex items-center gap-2">
                     <Avatar>
                       <AvatarFallback>
-                        {order.users?.display_name
-                          ? order.users.display_name
+                        {order.profiles?.display_name
+                          ? order.profiles.display_name
                               .split(" ")
                               .map((n: string) => n[0])
                               .join("")
@@ -597,7 +598,7 @@ export default function OrdersClient({
                     </Avatar>
                     <div>
                       <p className="font-medium">
-                        {order.users?.display_name || "Unknown User"}
+                        {order.profiles?.display_name || "Unknown User"}
                       </p>
                     </div>
                   </TableCell>

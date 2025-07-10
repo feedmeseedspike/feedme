@@ -47,15 +47,9 @@ function WalletWidget({
     }
 
     setIsInitializingPayment(true);
-    console.log("Starting payment initialization...");
 
     try {
       const amountToFund = 5000;
-      console.log(
-        "Sending request to /api/wallet/initialize",
-        session.user.email,
-        amountToFund
-      );
 
       const response = await axios.post(
         "/api/wallet/initialize",
@@ -70,7 +64,6 @@ function WalletWidget({
         }
       );
 
-      console.log("Response from /api/wallet/initialize:", response);
 
       if (response.data.authorization_url) {
         console.log("Redirecting to:", response.data.authorization_url);

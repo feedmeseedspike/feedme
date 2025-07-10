@@ -96,51 +96,6 @@ const CareerPage = () => {
   return (
     <div className="bg-white text-gray-900">
       {/* Navigation */}
-      <nav className="py-5 px-4 md:px-14 lg:px-28 bg-white border-b border-gray-200">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center">
-            <span className="text-2xl font-bold text-indigo-600">Seedspike</span>
-          </div>
-          
-          <div className="hidden lg:flex items-center space-x-8">
-            <a href="#" className="text-gray-700 hover:text-indigo-600">Home</a>
-            <a href="#" className="text-gray-700 hover:text-indigo-600">About us</a>
-            
-            <div className="relative group">
-              <button className="flex items-center text-gray-700 hover:text-indigo-600">
-                Products <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-              </button>
-              <div className="absolute hidden group-hover:block bg-white shadow-lg rounded-lg p-4 w-64 mt-2">
-                <h6 className="font-medium text-gray-900 mb-2">Features</h6>
-                <a href="#" className="block py-2 hover:text-indigo-600">Notification</a>
-                <a href="#" className="block py-2 hover:text-indigo-600">Analytics</a>
-                <a href="#" className="block py-2 hover:text-indigo-600">Integrations</a>
-              </div>
-            </div>
-            
-            <div className="relative group">
-              <button className="flex items-center text-gray-700 hover:text-indigo-600">
-                Features <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-              </button>
-              <div className="absolute hidden group-hover:block bg-white shadow-lg rounded-lg p-4 w-64 mt-2">
-                <h6 className="font-medium text-gray-900 mb-2">Features</h6>
-                <a href="#" className="block py-2 hover:text-indigo-600">Security</a>
-                <a href="#" className="block py-2 hover:text-indigo-600">Documentation</a>
-                <a href="#" className="block py-2 hover:text-indigo-600">Support</a>
-              </div>
-            </div>
-          </div>
-          
-          <div className="hidden lg:flex items-center space-x-4">
-            <button className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-full hover:bg-indigo-700">Login</button>
-            <button className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-full hover:bg-gray-800">Sign up</button>
-          </div>
-          
-          <button className="lg:hidden text-gray-500">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-          </button>
-        </div>
-      </nav>
 
       {/* Hero Section */}
       <div className="py-12 px-4 md:px-14 lg:px-28 text-center">
@@ -218,61 +173,6 @@ const CareerPage = () => {
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 pt-12 pb-8 px-4 md:px-14 lg:px-28">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8">
-          <div className="col-span-2 mb-8 lg:mb-0">
-            <div className="text-2xl font-bold text-indigo-600 mb-4">Seedspike</div>
-            <p className="text-gray-500 text-sm mb-6">
-              Trusted in more than 100 countries & 5 million customers. Have any query?
-            </p>
-            <button className="px-4 py-2 bg-indigo-600 text-white text-xs font-medium rounded-full hover:bg-indigo-700">
-              Contact us
-            </button>
-          </div>
-          
-          {footerLinks.map((section, index) => (
-            <div key={index} className="mb-8 md:mb-0">
-              <h4 className="text-lg font-medium mb-4">{section.title}</h4>
-              <ul className="space-y-3">
-                {section.links.map((link, linkIndex) => (
-                  <li key={linkIndex}>
-                    <a href="#" className="flex items-center text-sm text-gray-600 hover:text-indigo-600">
-                      {link.icon} {link.name}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-        
-        <div className="border-t border-gray-200 mt-12 pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <p className="text-sm text-gray-500 mb-4 md:mb-0">
-              © Seedspike {year}, All rights reserved.
-            </p>
-            
-            <div className="flex space-x-4">
-              <a href="#" className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-white hover:bg-indigo-600">
-                <FiTwitter className="w-4 h-4" />
-              </a>
-              <a href="#" className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-white hover:bg-indigo-600">
-                <FaFacebookF className="w-4 h-4" />
-              </a>
-              <a href="#" className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-white hover:bg-indigo-600">
-                <FiLinkedin className="w-4 h-4" />
-              </a>
-              <a href="#" className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-white hover:bg-indigo-600">
-                <FiInstagram className="w-4 h-4" />
-              </a>
-              <a href="#" className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-white hover:bg-indigo-600">
-                <FiYoutube className="w-4 h-4" />
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };
