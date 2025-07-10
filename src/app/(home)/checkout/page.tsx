@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { getUser } from "src/lib/actions/auth.actions";
 import Container from "@components/shared/Container";
 import CustomBreadcrumb from "@components/shared/breadcrumb";
-import { getUserAddresses } from "src/queries/addresses";
+import { getAddressesForCurrentUser } from "@/app/(dashboard)/account/addresses/actions";
 import { getWalletBalanceServer } from "src/lib/actions/wallet.actions";
 import { createClient } from "@/utils/supabase/server";
 
@@ -24,7 +24,7 @@ export default async function CheckoutPage() {
   }
 
   // Fetch addresses and wallet balance server-side
-  const addresses = user?.user_id ? await getUserAddresses(user.user_id) : [];
+  const addresses = user ? await getAddressesForCurrentUser() : [];
   const walletBalance = user?.user_id
     ? await getWalletBalanceServer(user.user_id)
     : 0;
@@ -35,7 +35,7 @@ export default async function CheckoutPage() {
     .from("delivery_locations")
     .select("*");
 
-  console.log(addresses)
+  console.log(addresses);
   const deliveryLocations = locations || [];
 
   return (

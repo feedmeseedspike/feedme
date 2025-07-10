@@ -197,6 +197,8 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
   const prefetchCart = usePrefetchCart();
   const queryClient = useQueryClient();
 
+  const [open, setOpen] = useState(false); 
+
   const items: CartItem[] = useMemo(() => cartItems || [], [cartItems]);
 
   const subtotal = useMemo(
@@ -332,6 +334,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
   const clearCartMutation = useClearCartMutation();
 
   const handleCheckout = () => {
+    setOpen(false);
     router.push("/checkout");
   };
 
@@ -489,9 +492,13 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
 
   // Desktop: show modal
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <div className="relative cursor-pointer" onMouseEnter={prefetchCart}>
+        <div
+          className="relative cursor-pointer"
+          onMouseEnter={prefetchCart}
+          onClick={() => setOpen(true)}
+        >
           <ShoppingCart className="size-[24px]" />
           {items.length > 0 && (
             <span

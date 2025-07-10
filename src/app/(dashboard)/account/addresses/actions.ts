@@ -45,6 +45,30 @@ export async function deleteAddressAction(id: string) {
     .eq("user_id", user.user_id);
   if (error) throw error;
   return { success: true };
+}
+
+// Fetch all addresses for the current user (server-side)
+export async function getAddressesForCurrentUser() {
+  const user = await getUser();
+  if (!user) throw new Error("Not authenticated");
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("addresses")
+    .select("*")
+    .eq("user_id", user.user_id)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  // Map nulls to empty strings to match AddressWithId type
+  return (data || []).map((addr: any) => ({
+    id: addr.id,
+    label: addr.label ?? "",
+    street: addr.street ?? "",
+    city: addr.city ?? "",
+    state: addr.state ?? "",
+    zip: addr.zip ?? "",
+    country: addr.country ?? "",
+    phone: addr.phone ?? "",
+  }));
 } 
  
  

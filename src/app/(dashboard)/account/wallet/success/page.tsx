@@ -10,9 +10,13 @@ import { motion } from "framer-motion";
 
 export default function WalletSuccessPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const session = useSupabaseSession();
-  const { showToast } = useToast();
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      router.push("/account/wallet");
+    }, 2500);
+    return () => clearTimeout(timeout);
+  }, [router]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-4 text-center">
@@ -20,7 +24,7 @@ export default function WalletSuccessPage() {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
-        className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full"
+        className=" p-8 max-w-md w-full"
       >
         <CheckCircle className="text-green-500 w-16 h-16 mx-auto mb-4" />
         <h1 className="text-2xl font-bold text-gray-800 mb-2">

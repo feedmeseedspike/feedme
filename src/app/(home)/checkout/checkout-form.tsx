@@ -33,7 +33,7 @@ import { useAddPurchaseMutation } from "src/queries/orders";
 import { useVoucherValidationMutation } from "src/queries/vouchers";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { Badge } from "@components/ui/badge";
-import { Loader2, Truck } from "lucide-react";
+import { Truck } from "lucide-react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getUserAddresses } from "src/queries/addresses";
@@ -56,6 +56,20 @@ import type { ShippingAddress } from "src/types/index";
 import { useUser } from "src/hooks/useUser";
 import { createClient } from "@/utils/supabase/client";
 import { DeliveryLocation } from "@/types/delivery-location";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@components/ui/dialog";
+import {
+  addAddressAction,
+  deleteAddressAction,
+} from "@/app/(dashboard)/account/addresses/actions";
+import { Pencil, Trash2, Loader2 } from "lucide-react";
+import { clearCart } from "src/store/features/cartSlice";
+import { useClearCartMutation } from "src/queries/cart";
 
 interface GroupedCartItem {
   product?: CartItem["products"];
@@ -197,6 +211,7 @@ const CheckoutForm = ({
   deliveryLocations,
 }: CheckoutFormProps) => {
   console.log("CheckoutForm: User:", user);
+  console.log("CheckoutForm: addresses:", addresses);
   const router = useRouter();
   const dispatch = useDispatch();
   const { data: cartItems, isLoading, isError, error } = useCartQuery();
@@ -217,6 +232,7 @@ const CheckoutForm = ({
   const { mutateAsync: addPurchaseMutation } = useAddPurchaseMutation();
   const { mutateAsync: validateVoucherMutation } =
     useVoucherValidationMutation();
+  const clearCartMutation = useClearCartMutation();
 
   const { showToast } = useToast();
   const queryClient = useQueryClient();
@@ -239,15 +255,71 @@ const CheckoutForm = ({
   console.log("CheckoutForm: User prop received:", user);
   console.log("CheckoutForm: isLoadingAddresses (before useQuery result log):");
 
-  const userAddresses = addresses;
+  const [userAddresses, setUserAddresses] =
+    useState<AddressWithId[]>(addresses);
   const isLoadingAddresses = false;
   const isLoadingWalletBalance = false;
+
+  // New state for modal and address selection
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
+    userAddresses && userAddresses.length > 0 ? userAddresses[0].id : null
+  );
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [showAddNewForm, setShowAddNewForm] = useState(false);
+  const [isAddingAddress, setIsAddingAddress] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<AddressWithId | null>(
+    null
+  );
+
+  // Add state for delete confirmation dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [addressToDelete, setAddressToDelete] = useState<AddressWithId | null>(
+    null
+  );
+  const [isDeletingAddress, setIsDeletingAddress] = useState(false);
+
+  // Get the selected address object
+  const selectedAddress =
+    userAddresses?.find((addr) => addr.id === selectedAddressId) || null;
+
+  // When selectedAddressId changes, update the form values
+  useEffect(() => {
+    if (selectedAddress) {
+      shippingAddressForm.reset({
+        fullName: user?.display_name || selectedAddress.label || "",
+        street: selectedAddress.street,
+        location: selectedAddress.city,
+        phone: selectedAddress.phone,
+      });
+    }
+  }, [selectedAddressId]);
 
   const shippingAddressForm = useForm<ShippingAddress>({
     resolver: zodResolver(ShippingAddressSchema),
     defaultValues: shippingAddressDefaultValues,
     mode: "onChange",
   });
+  // Add effect to load form state from localStorage if no saved addresses
+  useEffect(() => {
+    if (!userAddresses || userAddresses.length === 0) {
+      const savedForm = localStorage.getItem("checkoutAddressForm");
+      if (savedForm) {
+        try {
+          const parsed = JSON.parse(savedForm);
+          shippingAddressForm.reset(parsed);
+        } catch {}
+      }
+    }
+  }, [userAddresses, shippingAddressForm]);
+  // Save form state to localStorage on change if no saved addresses
+  useEffect(() => {
+    if (!userAddresses || userAddresses.length === 0) {
+      const subscription = shippingAddressForm.watch((values) => {
+        localStorage.setItem("checkoutAddressForm", JSON.stringify(values));
+      });
+      return () => subscription.unsubscribe();
+    }
+  }, [userAddresses, shippingAddressForm]);
 
   const formLocation = shippingAddressForm.watch("location");
   const locations = deliveryLocations;
@@ -272,16 +344,13 @@ const CheckoutForm = ({
     [items]
   );
 
-  // Service charge: 7.5% of subtotal (total orders) minus delivery fee
+  // Service charge: 7.5% of subtotal (total orders), do not subtract delivery fee
   const serviceCharge = useMemo(() => {
     // Only apply service charge if subtotal > 0
     if (subtotal <= 0) return 0;
-    // Service charge is 7.5% of (subtotal - delivery fee)
-    // But delivery fee may not be selected yet, so use 0 if not
-    const delivery = formLocation ? cost : 0;
-    const base = subtotal - delivery;
-    return base > 0 ? 0.075 * base : 0;
-  }, [subtotal, formLocation, cost]);
+    // Service charge is 7.5% of subtotal (total order), do not include delivery fee
+    return 0.075 * subtotal;
+  }, [subtotal]);
 
   const totalAmount = subtotal;
   const totalAmountPaid = subtotal + cost + serviceCharge - voucherDiscount;
@@ -500,6 +569,7 @@ const CheckoutForm = ({
   };
 
   const handleOrderSubmission = async () => {
+    if (isSubmitting) return;
     try {
       setIsSubmitting(true);
       const isFormValid = await shippingAddressForm.trigger();
@@ -556,43 +626,169 @@ const CheckoutForm = ({
               return;
             }
             result = await processWalletPayment(orderData);
+            if (result.success) {
+              // After successful order, update referral record if needed
+              if (autoAppliedReferralVoucher && user?.user_id) {
+                try {
+                  await fetch(`/api/referral/status`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      userId: user.user_id,
+                      status: "qualified",
+                      referred_discount_given: true,
+                    }),
+                  });
+                } catch (err) {
+                  console.error(
+                    "Failed to update referral status after order:",
+                    err
+                  );
+                }
+              }
+              // Send order confirmation emails to admin and user
+              try {
+                const emailRes = await fetch(
+                  "/api/email/send-order-confirmation",
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      adminEmail:
+                        process.env.NODEMAILER_USER ||
+                        "oyedeletopy.uk@gmail.com",
+                      userEmail: user.email,
+                      adminOrderProps: {
+                        orderNumber: result.data.orderId,
+                        customerName:
+                          user.display_name ||
+                          shippingAddressForm.getValues().fullName,
+                        customerPhone: shippingAddressForm.getValues().phone,
+                        itemsOrdered: items.map((item) => ({
+                          title:
+                            item.products?.name || item.bundles?.name || "",
+                          price: item.price,
+                          quantity: item.quantity,
+                        })),
+                        deliveryAddress: shippingAddressForm.getValues().street,
+                        localGovernment:
+                          shippingAddressForm.getValues().location,
+                      },
+                      userOrderProps: {
+                        orderNumber: result.data.orderId,
+                        customerName:
+                          user.display_name ||
+                          shippingAddressForm.getValues().fullName,
+                        customerPhone: shippingAddressForm.getValues().phone,
+                        itemsOrdered: items.map((item) => ({
+                          title:
+                            item.products?.name || item.bundles?.name || "",
+                          price: item.price,
+                          quantity: item.quantity,
+                        })),
+                        deliveryAddress: shippingAddressForm.getValues().street,
+                        deliveryFee: cost,
+                        serviceCharge: serviceCharge,
+                        totalAmount: subtotal,
+                        totalAmountPaid: totalAmountPaid,
+                      },
+                    }),
+                  }
+                );
+                const emailData = await emailRes.json();
+                console.log("Order confirmation email response:", emailData);
+                if (emailRes.ok && emailData.success) {
+                  showToast("Order confirmation email sent!", "success");
+                } else {
+                  showToast(
+                    emailData.error ||
+                      "Order placed, but failed to send confirmation email.",
+                    "error"
+                  );
+                }
+              } catch (err) {
+                showToast(
+                  "Order placed, but failed to send confirmation email.",
+                  "error"
+                );
+              }
+              // Clear voucher from localStorage after successful order
+              localStorage.removeItem("voucherCode");
+              localStorage.removeItem("voucherDiscount");
+              dispatch(clearCart());
+              localStorage.removeItem("cart");
+              await clearCartMutation.mutateAsync();
+              showToast("Order created successfully!", "success");
+              router.push(
+                `/order/order-confirmation?orderId=${result.data.orderId}`
+              );
+            } else {
+              showToast(result.error || "Failed to process order.", "error");
+            }
+            setIsSubmitting(false);
+            return;
           } else if (selectedPaymentMethod === "paystack") {
-            // Call the wallet API route to initialize Paystack payment for wallet funding
-            try {
-              // Try to get email from user object, fallback to display_name or show error
-              const userEmail =
-                user && "email" in user && user.email ? user.email : undefined;
-              if (!userEmail) {
-                showToast(
-                  "User email not found. Please log in again.",
-                  "error"
-                );
-                setIsSubmitting(false);
-                return;
+            // For Paystack, create the order first, then pass orderId to the payment initializer
+            // GUARD: Ensure user.user_id is defined
+            if (!user?.user_id) {
+              showToast("User not found. Please log in again.", "error");
+              setIsSubmitting(false);
+              return;
+            }
+            // Create the order in the backend (simulate processWalletPayment but for paystack)
+            const orderRes = await fetch("/api/orders/initialize", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: user.email,
+                amount: totalAmountPaid,
+                orderDetails: orderData,
+              }),
+            });
+            const orderResult = await orderRes.json();
+            if (
+              !orderRes.ok ||
+              !orderResult.success ||
+              !orderResult.data?.orderId
+            ) {
+              showToast(
+                orderResult.error || "Failed to create order.",
+                "error"
+              );
+              setIsSubmitting(false);
+              return;
+            }
+            // Now initialize Paystack with the orderId
+            const userEmail =
+              user && "email" in user && user.email ? user.email : undefined;
+            if (!userEmail) {
+              showToast("User email not found. Please log in again.", "error");
+              setIsSubmitting(false);
+              return;
+            }
+            const response = await fetch("/api/wallet/initialize/paystack", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: userEmail,
+                amount: totalAmountPaid,
+                orderId: orderResult.data.orderId,
+              }),
+            });
+            const data = await response.json();
+            if (response.ok && data.authorization_url) {
+              // Store orderId for use after Paystack redirect (optional, for fallback)
+              if (orderResult.data.orderId) {
+                localStorage.setItem("lastOrderId", orderResult.data.orderId);
               }
-              const response = await fetch("/api/wallet/initialize/paystack", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  email: userEmail,
-                  amount: totalAmountPaid,
-                }),
-              });
-              const data = await response.json();
-              if (response.ok && data.authorization_url) {
-                // Redirect to Paystack
-                window.location.href = data.authorization_url;
-                return; // Stop further execution
-              } else {
-                showToast(
-                  data.message || "Failed to initialize Paystack payment.",
-                  "error"
-                );
-                setIsSubmitting(false);
-                return;
-              }
-            } catch (err) {
-              showToast("Failed to connect to payment gateway.", "error");
+              window.location.href = data.authorization_url;
+              setIsSubmitting(false);
+              return; // Stop further execution
+            } else {
+              showToast(
+                data.message || "Failed to initialize Paystack payment.",
+                "error"
+              );
               setIsSubmitting(false);
               return;
             }
@@ -620,47 +816,60 @@ const CheckoutForm = ({
             }
             // Send order confirmation emails to admin and user
             try {
-              await fetch("/api/email/send-order-confirmation", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  adminEmail:
-                    process.env.NEXT_PUBLIC_ADMIN_EMAIL ||
-                    "oyedeletopy.uk@gmail.com",
-                  userEmail: user.email,
-                  adminOrderProps: {
-                    orderNumber: result.data.orderId,
-                    customerName:
-                      user.display_name ||
-                      shippingAddressForm.getValues().fullName,
-                    customerPhone: shippingAddressForm.getValues().phone,
-                    itemsOrdered: items.map((item) => ({
-                      title: item.products?.name || item.bundles?.name || "",
-                      price: item.price,
-                      quantity: item.quantity,
-                    })),
-                    deliveryAddress: shippingAddressForm.getValues().street,
-                    localGovernment: shippingAddressForm.getValues().location,
-                  },
-                  userOrderProps: {
-                    orderNumber: result.data.orderId,
-                    customerName:
-                      user.display_name ||
-                      shippingAddressForm.getValues().fullName,
-                    customerPhone: shippingAddressForm.getValues().phone,
-                    itemsOrdered: items.map((item) => ({
-                      title: item.products?.name || item.bundles?.name || "",
-                      price: item.price,
-                      quantity: item.quantity,
-                    })),
-                    deliveryAddress: shippingAddressForm.getValues().street,
-                    deliveryFee: cost,
-                    serviceCharge: serviceCharge,
-                    totalAmount: subtotal,
-                    totalAmountPaid: totalAmountPaid,
-                  },
-                }),
-              });
+              const emailRes = await fetch(
+                "/api/email/send-order-confirmation",
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    adminEmail:
+                      process.env.NODEMAILER_USER || "oyedeletopy.uk@gmail.com",
+                    userEmail: user.email,
+                    adminOrderProps: {
+                      orderNumber: result.data.orderId,
+                      customerName:
+                        user.display_name ||
+                        shippingAddressForm.getValues().fullName,
+                      customerPhone: shippingAddressForm.getValues().phone,
+                      itemsOrdered: items.map((item) => ({
+                        title: item.products?.name || item.bundles?.name || "",
+                        price: item.price,
+                        quantity: item.quantity,
+                      })),
+                      deliveryAddress: shippingAddressForm.getValues().street,
+                      localGovernment: shippingAddressForm.getValues().location,
+                    },
+                    userOrderProps: {
+                      orderNumber: result.data.orderId,
+                      customerName:
+                        user.display_name ||
+                        shippingAddressForm.getValues().fullName,
+                      customerPhone: shippingAddressForm.getValues().phone,
+                      itemsOrdered: items.map((item) => ({
+                        title: item.products?.name || item.bundles?.name || "",
+                        price: item.price,
+                        quantity: item.quantity,
+                      })),
+                      deliveryAddress: shippingAddressForm.getValues().street,
+                      deliveryFee: cost,
+                      serviceCharge: serviceCharge,
+                      totalAmount: subtotal,
+                      totalAmountPaid: totalAmountPaid,
+                    },
+                  }),
+                }
+              );
+              const emailData = await emailRes.json();
+              console.log("Order confirmation email response:", emailData);
+              if (emailRes.ok && emailData.success) {
+                showToast("Order confirmation email sent!", "success");
+              } else {
+                showToast(
+                  emailData.error ||
+                    "Order placed, but failed to send confirmation email.",
+                  "error"
+                );
+              }
             } catch (err) {
               showToast(
                 "Order placed, but failed to send confirmation email.",
@@ -670,6 +879,9 @@ const CheckoutForm = ({
             // Clear voucher from localStorage after successful order
             localStorage.removeItem("voucherCode");
             localStorage.removeItem("voucherDiscount");
+            dispatch(clearCart());
+            localStorage.removeItem("cart");
+            await clearCartMutation.mutateAsync();
             showToast("Order created successfully!", "success");
             router.push(
               `/order/order-confirmation?orderId=${result.data.orderId}`
@@ -710,162 +922,430 @@ const CheckoutForm = ({
                       Shipping Information
                     </h2>
 
-                    {/* Saved Addresses Select */}
-                    {isLoadingAddresses ? (
-                      <p>Loading addresses...</p>
-                    ) : (
-                      userAddresses &&
-                      userAddresses.length > 0 && (
-                        <div className="mb-6">
-                          <div className="space-y-2">
-                            <Label className="text-gray-700">
-                              Select a Saved Address
-                            </Label>
-                            <Select onValueChange={handleSelectSavedAddress}>
-                              <SelectTrigger className="rounded-lg p-3 border-gray-300">
-                                <SelectValue placeholder="Select a saved address" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {userAddresses.map((address: AddressWithId) => (
-                                  <SelectItem
-                                    key={address.id}
-                                    value={address.id}
-                                    className="hover:bg-gray-100 px-4 py-2"
-                                  >
-                                    {`${address.street}, ${address.city}, ${address.country}`}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <p className="text-sm text-gray-500 mt-2">
-                              Or enter a new address below.
-                            </p>
+                    {/* Address Summary Card */}
+                    {selectedAddress ? (
+                      <div className="border rounded-lg p-4 mb-6 bg-gray-50 flex flex-col gap-2">
+                        <div className="flex justify-between items-center">
+                          <span className="flex items-center gap-2 text-green-600 font-semibold">
+                            <span className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center text-white text-xs">
+                              ✔
+                            </span>
+                            1. CUSTOMER ADDRESS
+                          </span>
+                          <button
+                            className="text-blue-600 hover:underline text-sm"
+                            onClick={() => {
+                              setShowAddressModal(true);
+                              setShowAddNewForm(false);
+                            }}
+                          >
+                            Change
+                          </button>
+                        </div>
+                        <div className="mt-2">
+                          <div className="font-semibold text-lg">
+                            {selectedAddress.label || user?.display_name}
+                          </div>
+                          <div className="text-gray-700 text-sm">
+                            {selectedAddress.street}, {selectedAddress.city} |{" "}
+                            {selectedAddress.phone}
                           </div>
                         </div>
-                      )
-                    )}
+                      </div>
+                    ) : null}
 
-                    <Form {...shippingAddressForm}>
-                      <form
-                        onSubmit={shippingAddressForm.handleSubmit(
-                          onSubmitShippingAddress
-                        )}
-                        className="space-y-6"
-                      >
-                        <div className="grid grid-cols-1 gap-6">
-                          <FormField
-                            control={shippingAddressForm.control}
-                            name="fullName"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-gray-700">
-                                  Full Name
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder="Enter full name"
-                                    {...field}
-                                    className="rounded-lg p-3 border-gray-300 "
-                                    disabled={isSubmitting}
-                                  />
-                                </FormControl>
-                                <FormMessage className="text-red-500" />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={shippingAddressForm.control}
-                            name="street"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-gray-700">
-                                  Address
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder="Enter street address"
-                                    {...field}
-                                    className="rounded-lg p-3 border-gray-300 "
-                                    disabled={isSubmitting}
-                                  />
-                                </FormControl>
-                                <FormMessage className="text-red-500" />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={shippingAddressForm.control}
-                            name="location"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-gray-700">
-                                  Location
-                                </FormLabel>
-                                <Select
-                                  value={field.value}
-                                  onValueChange={(value) => {
-                                    field.onChange(value);
-                                  }}
-                                  disabled={isSubmitting}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger className="rounded-lg p-3 border-gray-300 ">
-                                      <SelectValue placeholder="Select your location" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {locations.length === 0 ? (
-                                      <div className="p-2 text-gray-500">
-                                        No locations available.
+                    {/* Modal for address selection/addition */}
+                    <Dialog
+                      open={showAddressModal}
+                      onOpenChange={setShowAddressModal}
+                    >
+                      <DialogContent className="max-w-md w-full max-h-[90vh]">
+                        <DialogHeader>
+                          <DialogTitle>Select Delivery Address</DialogTitle>
+                        </DialogHeader>
+                        {!showAddNewForm ? (
+                          <div
+                            className="space-y-4 overflow-y-auto"
+                            style={{ maxHeight: "70vh" }}
+                          >
+                            {userAddresses && userAddresses.length > 0 ? (
+                              <div className="space-y-2">
+                                {userAddresses.map((address) => (
+                                  <label
+                                    key={address.id}
+                                    className={`flex items-start gap-2 p-2 rounded border cursor-pointer ${selectedAddressId === address.id ? "border-green-600 bg-green-50" : "border-gray-300"}`}
+                                  >
+                                    <input
+                                      type="radio"
+                                      checked={selectedAddressId === address.id}
+                                      onChange={() =>
+                                        setSelectedAddressId(address.id)
+                                      }
+                                      className="mt-1"
+                                    />
+                                    <div className="flex-1">
+                                      <div className="font-semibold">
+                                        {address.label || user?.display_name}
                                       </div>
-                                    ) : (
-                                      locations.map((location) => (
-                                        <SelectItem
-                                          key={location.name}
-                                          value={location.name}
-                                          className="hover:bg-gray-100 px-4 py-2"
-                                        >
-                                          <div className="flex justify-between items-center">
-                                            <span>{location.name}</span>
-                                            <span className="text-sm text-gray-500">
-                                              {formatNaira(location.price)}
-                                            </span>
-                                          </div>
-                                        </SelectItem>
-                                      ))
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage className="text-red-500" />
-                              </FormItem>
+                                      <div className="text-sm text-gray-700">
+                                        {address.street}, {address.city} |{" "}
+                                        {address.phone}
+                                      </div>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      className="ml-2 text-blue-600 hover:text-blue-800"
+                                      onClick={() => {
+                                        setEditingAddress(address);
+                                        setShowAddNewForm(true);
+                                      }}
+                                      title="Edit"
+                                    >
+                                      <Pencil size={16} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="ml-1 text-red-600 hover:text-red-800"
+                                      onClick={() => {
+                                        setAddressToDelete(address);
+                                        setDeleteDialogOpen(true);
+                                      }}
+                                      title="Delete"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </label>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-gray-500">
+                                No saved addresses found.
+                              </div>
                             )}
-                          />
+                            <button
+                              className="w-full mt-2 py-2 border border-dashed border-green-600 rounded text-green-700 hover:bg-green-50"
+                              onClick={() => {
+                                setShowAddNewForm(true);
+                                setEditingAddress(null);
+                                shippingAddressForm.reset({
+                                  fullName: "",
+                                  street: "",
+                                  location: "",
+                                  phone: "",
+                                });
+                              }}
+                            >
+                              + Add New Address
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="mt-2">
+                            <Form {...shippingAddressForm}>
+                              <form
+                                onSubmit={shippingAddressForm.handleSubmit(
+                                  async (values) => {
+                                    setIsAddingAddress(true);
+                                    try {
+                                      let address: AddressWithId;
+                                      if (editingAddress) {
+                                        // For now, just remove and re-add (implement updateAddressAction if needed)
+                                        // address = await updateAddressAction(editingAddress.id, { ...values });
+                                        // For demo, just add as new
+                                        address = await addAddressAction({
+                                          label: values.fullName || "Home",
+                                          street: values.street,
+                                          city: values.location,
+                                          state: "",
+                                          zip: "",
+                                          country: "",
+                                          phone: values.phone,
+                                        });
+                                        setUserAddresses((prev) =>
+                                          prev.map((a) =>
+                                            a.id === editingAddress.id
+                                              ? address
+                                              : a
+                                          )
+                                        );
+                                      } else {
+                                        address = await addAddressAction({
+                                          label: values.fullName || "Home",
+                                          street: values.street,
+                                          city: values.location,
+                                          state: "",
+                                          zip: "",
+                                          country: "",
+                                          phone: values.phone,
+                                        });
+                                        setUserAddresses((prev) => [
+                                          ...prev,
+                                          address,
+                                        ]);
+                                      }
+                                      setSelectedAddressId(address.id);
+                                      showToast(
+                                        editingAddress
+                                          ? "Address updated!"
+                                          : "Address added!",
+                                        "success"
+                                      );
+                                      setShowAddNewForm(false);
+                                      setShowAddressModal(false);
+                                      setEditingAddress(null);
+                                      localStorage.removeItem(
+                                        "checkoutAddressForm"
+                                      );
+                                    } catch (err: any) {
+                                      showToast(
+                                        err.message || "Failed to add address",
+                                        "error"
+                                      );
+                                    } finally {
+                                      setIsAddingAddress(false);
+                                    }
+                                  }
+                                )}
+                                className="space-y-4"
+                              >
+                                <FormField
+                                  control={shippingAddressForm.control}
+                                  name="fullName"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Full Name</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          placeholder="Enter full name"
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={shippingAddressForm.control}
+                                  name="street"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Address</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          placeholder="Enter street address"
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={shippingAddressForm.control}
+                                  name="location"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Location</FormLabel>
+                                      <Select
+                                        value={field.value}
+                                        onValueChange={field.onChange}
+                                      >
+                                        <FormControl>
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select your location" />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          {deliveryLocations.map((location) => (
+                                            <SelectItem
+                                              key={location.name}
+                                              value={location.name}
+                                            >
+                                              {location.name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={shippingAddressForm.control}
+                                  name="phone"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Phone Number</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          placeholder="Enter phone number"
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <DialogFooter>
+                                  <Button
+                                    type="submit"
+                                    className="bg-[#1B6013]/90 text-white"
+                                    disabled={isAddingAddress}
+                                  >
+                                    {isAddingAddress ? (
+                                      <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                                    ) : null}
+                                    {editingAddress
+                                      ? "Update Address"
+                                      : "Save Address"}
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setShowAddNewForm(false);
+                                      setEditingAddress(null);
+                                    }}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </DialogFooter>
+                              </form>
+                            </Form>
+                          </div>
+                        )}
+                        {!showAddNewForm && (
+                          <DialogFooter>
+                            <Button
+                              type="button"
+                              className="bg-gray-100 text-gray-700 w-full hover:bg-gray-200"
+                              onClick={() => setShowAddressModal(false)}
+                            >
+                              Use Selected Address
+                            </Button>
+                          </DialogFooter>
+                        )}
+                      </DialogContent>
+                    </Dialog>
 
-                          <FormField
-                            control={shippingAddressForm.control}
-                            name="phone"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-gray-700">
-                                  Phone Number
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder="Enter phone number"
-                                    {...field}
-                                    className="rounded-lg p-3 border-gray-300 "
+                    {/* If no address is selected, show the form inline (first time user) */}
+                    {!selectedAddress && (
+                      <Form {...shippingAddressForm}>
+                        <form
+                          onSubmit={shippingAddressForm.handleSubmit(
+                            onSubmitShippingAddress
+                          )}
+                          className="space-y-6"
+                        >
+                          <div className="grid grid-cols-1 gap-6">
+                            <FormField
+                              control={shippingAddressForm.control}
+                              name="fullName"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-gray-700">
+                                    Full Name
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Enter full name"
+                                      {...field}
+                                      className="rounded-lg p-3 border-gray-300 "
+                                      disabled={isSubmitting}
+                                    />
+                                  </FormControl>
+                                  <FormMessage className="text-red-500" />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={shippingAddressForm.control}
+                              name="street"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-gray-700">
+                                    Address
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Enter street address"
+                                      {...field}
+                                      className="rounded-lg p-3 border-gray-300 "
+                                      disabled={isSubmitting}
+                                    />
+                                  </FormControl>
+                                  <FormMessage className="text-red-500" />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={shippingAddressForm.control}
+                              name="location"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-gray-700">
+                                    Location
+                                  </FormLabel>
+                                  <Select
+                                    value={field.value}
+                                    onValueChange={field.onChange}
                                     disabled={isSubmitting}
-                                  />
-                                </FormControl>
-                                <FormMessage className="text-red-500" />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                      </form>
-                    </Form>
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger className="rounded-lg p-3 border-gray-300 ">
+                                        <SelectValue placeholder="Select your location" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {deliveryLocations.length === 0 ? (
+                                        <div className="p-2 text-gray-500">
+                                          No locations available.
+                                        </div>
+                                      ) : (
+                                        deliveryLocations.map((location) => (
+                                          <SelectItem
+                                            key={location.name}
+                                            value={location.name}
+                                            className="hover:bg-gray-100 px-4 py-2"
+                                          >
+                                            <div className="flex justify-between items-center">
+                                              <span>{location.name}</span>
+                                              <span className="text-sm text-gray-500">
+                                                {formatNaira(location.price)}
+                                              </span>
+                                            </div>
+                                          </SelectItem>
+                                        ))
+                                      )}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage className="text-red-500" />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={shippingAddressForm.control}
+                              name="phone"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-gray-700">
+                                    Phone Number
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Enter phone number"
+                                      {...field}
+                                      className="rounded-lg p-3 border-gray-300 "
+                                      disabled={isSubmitting}
+                                    />
+                                  </FormControl>
+                                  <FormMessage className="text-red-500" />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </form>
+                      </Form>
+                    )}
                   </div>
                 </Step>
 
@@ -1102,6 +1582,65 @@ const CheckoutForm = ({
           </div>
         </div>
       </Container>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-sm w-full">
+          <DialogHeader>
+            <DialogTitle>Delete Address</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-gray-700">
+            Are you sure you want to delete this address?
+            <div className="mt-2 text-sm text-gray-500">
+              {addressToDelete && (
+                <>
+                  <div className="font-semibold">
+                    {addressToDelete.label || user?.display_name}
+                  </div>
+                  <div>
+                    {addressToDelete.street}, {addressToDelete.city} |{" "}
+                    {addressToDelete.phone}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="bg-[#1B6013]/90 text-white hover:bg-[#1B6013]"
+              disabled={isDeletingAddress}
+              onClick={async () => {
+                if (addressToDelete) {
+                  setIsDeletingAddress(true);
+                  await deleteAddressAction(addressToDelete.id);
+                  setUserAddresses((prev) =>
+                    prev.filter((a) => a.id !== addressToDelete.id)
+                  );
+                  if (selectedAddressId === addressToDelete.id)
+                    setSelectedAddressId(userAddresses[0]?.id || null);
+                  showToast("Address deleted!", "success");
+                  setDeleteDialogOpen(false);
+                  setAddressToDelete(null);
+                  setIsDeletingAddress(false);
+                }
+              }}
+            >
+              {isDeletingAddress ? (
+                <Loader2 className="animate-spin mr-2 h-4 w-4" />
+              ) : null}
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 };

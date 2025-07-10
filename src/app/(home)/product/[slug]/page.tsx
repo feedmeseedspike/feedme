@@ -57,11 +57,17 @@ export async function generateMetadata({
           product.description || ""
         } Buy fresh and premium-quality ${
           product.name
-        } online at FeedMe Nigeria today. Enjoy competitive prices in Naira, swift delivery, and the convenience of cash on delivery. Shop now and bring nature's goodness to your kitchen!`,
+        } online in Lagos with FeedMe. Enjoy competitive prices in Naira, swift delivery in Lagos, and the convenience of cash on delivery. Shop now and bring nature's goodness to your kitchen in Lagos, Ikeja, Lekki, Victoria Island, and more!`,
         openGraph: {
           title: product.name,
           description: product.description || "",
-          images: product.images?.[0] || "/logo.png",
+          images: product.images?.[0] || "/opengraph-image.jpg",
+        },
+        twitter: {
+          card: "summary_large_image",
+          title: product.name,
+          description: product.description || "",
+          images: [product.images?.[0] || "/opengraph-image.jpg"],
         },
       };
     }

@@ -1,3 +1,5 @@
+"use client";
+
 import { Separator } from "@components/ui/separator";
 import {
   Table,
@@ -8,44 +10,95 @@ import {
   TableRow,
 } from "@components/ui/table";
 import Image from "next/image";
-import { notFound } from "next/navigation";
-import { fetchOrderById } from "src/queries/orders";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { formatNaira } from "src/lib/utils";
 import { Badge } from "@components/ui/badge";
-import { Tables, Json } from "src/utils/database.types";
-import Link from "next/link";
 
-// If you need a client review form, import it here
-// import ProductReviewForm from "./ProductReviewForm";
-
-// Server component
-export default async function OrderConfirmationPage({
+function OrderConfirmationClientWrapper({
   searchParams,
 }: {
   searchParams: { orderId?: string };
 }) {
-  const orderId = searchParams?.orderId;
-  if (!orderId) return notFound();
+  const [orderId, setOrderId] = useState<string | undefined>(
+    searchParams?.orderId
+  );
+  const [missingOrderId, setMissingOrderId] = useState(false);
+  const [order, setOrder] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  let orderDetails: any = null;
-  try {
-    orderDetails = await fetchOrderById(orderId);
-  } catch (err) {
+  useEffect(() => {
+    let id = orderId;
+    if (!id && typeof window !== "undefined") {
+      id = localStorage.getItem("lastOrderId") || undefined;
+      if (id) localStorage.removeItem("lastOrderId");
+    }
+    if (!id) {
+      setMissingOrderId(true);
+      setLoading(false);
+      return;
+    }
+    setOrderId(id);
+    setLoading(true);
+    fetch(`/api/orders/${id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) setError(data.error);
+        else setOrder(data);
+      })
+      .catch(() => setError("Failed to load order"))
+      .finally(() => setLoading(false));
+  }, [orderId]);
+
+  console.log(order)
+
+  if (loading) return <div className="p-8 text-center">Loading...</div>;
+  if (missingOrderId) {
     return (
-      <div className="p-4 md:p-8 max-w-4xl mx-auto text-center text-red-500">
-        Error loading order details.
+      <div className="p-8 text-center text-red-600">
+        We could not find your order. If you just completed a payment, please
+        contact support.
       </div>
     );
   }
-  if (!orderDetails) {
-    return (
-      <div className="p-4 md:p-8 max-w-4xl mx-auto text-center">
-        No order details found.
-      </div>
-    );
+  if (error) {
+    return <div className="p-8 text-center text-red-600">{error}</div>;
+  }
+  if (!order) return null;
+
+  if (order) {
+    const isSuccess =
+      ["Paid", "Confirmed", "order confirmed"].includes(order.status) &&
+      order.payment_status === "Paid";
+    if (!isSuccess) {
+      return (
+        <div className="max-w-xl mx-auto mt-16 bg-white rounded-lg shadow p-8 text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">
+            Payment Not Successful
+          </h2>
+          <p className="mb-6 text-gray-700">
+            Your payment was not successful or is still processing. Please try
+            again or contact support if you believe this is an error.
+          </p>
+          <div className="flex justify-center gap-4">
+            <Link href="/" passHref>
+              <button className="bg-[#1B6013] hover:bg-[#14510f] text-white font-semibold py-3 px-8 rounded-lg shadow transition-all duration-200">
+                Continue Shopping
+              </button>
+            </Link>
+            <Link href="/account/order" passHref>
+              <button className="bg-white border border-[#1B6013] text-[#1B6013] font-semibold py-3 px-8 rounded-lg shadow transition-all duration-200 hover:bg-[#f6fef7]">
+                View My Orders
+              </button>
+            </Link>
+          </div>
+        </div>
+      );
+    }
   }
 
-  const items: any[] = orderDetails.order_items || [];
+  const items: any[] = order.order_items || [];
   const subtotal = items.reduce((acc: number, item: any) => {
     const itemPrice =
       (item.option?.price !== undefined && item.option?.price !== null
@@ -55,13 +108,12 @@ export default async function OrderConfirmationPage({
   }, 0);
 
   const deliveryFee =
-    orderDetails.delivery_fee !== undefined &&
-    orderDetails.delivery_fee !== null
-      ? orderDetails.delivery_fee
+    order.delivery_fee !== undefined && order.delivery_fee !== null
+      ? order.delivery_fee
       : 0;
   const voucherDiscount = 0;
   const totalAmountPaid =
-    orderDetails.total_amount_paid || subtotal + deliveryFee - voucherDiscount;
+    order.total_amount_paid || subtotal + deliveryFee - voucherDiscount;
 
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto">
@@ -84,42 +136,42 @@ export default async function OrderConfirmationPage({
 
       <div className="flex justify-center">
         <div className="w-full">
-          <div className="grid grid-cols-1 md:grid-cols-3 bg-[#1B6013] w-full rounded-md px-6 py-4 text-white mb-6 gap-4">
-        <div className="grid gap-2 text-center md:text-left">
-          <p className="font-semibold text-xs md:text-sm text-gray-300">
-            Order ID
-          </p>
-          <p className="text-sm md:text-base font-mono tracking-wider">
-            {orderDetails.id?.slice(-8)}
-          </p>
-        </div>
-        <div className="grid gap-2 text-center md:text-left">
-          <p className="font-semibold text-xs md:text-sm text-gray-300">
-            Payment Method
-          </p>
-          <p className="text-sm md:text-base capitalize">
-            {orderDetails.payment_method}
-          </p>
-        </div>
-        <div className="grid gap-2 text-center md:text-left">
-          <p className="font-semibold text-xs md:text-sm text-gray-300">
-            Total Amount
-          </p>
-          <p className="text-sm md:text-base font-bold">
-            {formatNaira(totalAmountPaid)}
-          </p>
-        </div>
-      </div>
+          <div className="grid grid-cols-3 bg-[#1B6013] w-full rounded-md px-6 py-4 text-white mb-6 gap-4">
+            <div className="grid gap-2 text-center md:text-left">
+              <p className="font-semibold text-xs md:text-sm text-gray-300">
+                Order ID
+              </p>
+              <p className="text-sm md:text-base font-mono tracking-wider">
+                {order.id?.slice(-8)}
+              </p>
+            </div>
+            <div className="grid gap-2 text-center md:text-left">
+              <p className="font-semibold text-xs md:text-sm text-gray-300">
+                Payment Method
+              </p>
+              <p className="text-sm md:text-base capitalize">
+                {order.payment_method}
+              </p>
+            </div>
+            <div className="grid gap-2 text-center md:text-left">
+              <p className="font-semibold text-xs md:text-sm text-gray-300">
+                Total Amount
+              </p>
+              <p className="text-sm md:text-base font-bold">
+                {formatNaira(totalAmountPaid)}
+              </p>
+            </div>
+          </div>
 
           <div className="bg-white rounded-lg shadow-md p-6 mb-8 flex flex-col items-center">
             <h2 className="text-md font-semibold py-4 text-center">
               Order Details
             </h2>
-          <Separator />
+            <Separator />
             <div className="w-full overflow-x-auto">
               <Table className="border-none w-full mx-auto mt-4">
-            <TableHeader>
-              <TableRow className="text-base border-b-0">
+                <TableHeader>
+                  <TableRow className="text-base border-b-0">
                     <TableHead className="font-semibold text-center">
                       Products
                     </TableHead>
@@ -127,78 +179,89 @@ export default async function OrderConfirmationPage({
                       Quantity
                     </TableHead>
                     <TableHead className="font-bold text-center">
-                  Price
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+                      Price
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {items.map((item: any) => (
-                  <TableRow key={item.id} className="border-b-0">
+                    <TableRow key={item.id} className="border-b-0">
                       <TableCell className="border-b-0 flex items-center gap-2 justify-center">
-                      <Image
-                        src={
-                          Array.isArray(item.products?.images) &&
-                          item.products?.images?.[0]
-                            ? item.products.images[0]
+                        <Image
+                          src={
+                            Array.isArray(item.products?.images) &&
+                            item.products?.images?.[0]
+                              ? item.products.images[0]
                               : item.bundles?.thumbnail_url ||
                                 "/placeholder.png"
-                        }
-                        alt={item.products?.name || item.bundles?.name}
-                        width={48}
-                        height={48}
-                        className="w-12 h-12 object-cover rounded-md"
-                      />
-                      <span>{item.products?.name || item.bundles?.name}</span>
-                    </TableCell>
-                    <TableCell className="border-b-0 text-center">
-                      {item.quantity}
-                    </TableCell>
+                          }
+                          alt={item.products?.name || item.bundles?.name}
+                          width={48}
+                          height={48}
+                          className="w-12 h-12 object-cover rounded-md"
+                        />
+                        <span>{item.products?.name || item.bundles?.name}</span>
+                      </TableCell>
                       <TableCell className="border-b-0 text-center">
-                      {formatNaira(
-                        (item.option?.price !== undefined &&
-                        item.option?.price !== null
-                          ? item.option.price
-                          : item.price) || 0
-                      )}
-                    </TableCell>
-                  </TableRow>
+                        {item.quantity}
+                      </TableCell>
+                      <TableCell className="border-b-0 text-center">
+                        {formatNaira(
+                          (item.option?.price !== undefined &&
+                          item.option?.price !== null
+                            ? item.option.price
+                            : item.price) || 0
+                        )}
+                      </TableCell>
+                    </TableRow>
                   ))}
-            </TableBody>
-          </Table>
-        </div>
+                </TableBody>
+              </Table>
+            </div>
             <div className="w-full mt-6 space-y-2">
-            <div className="flex justify-between">
-              <span>Subtotal</span>
-              <span>{formatNaira(subtotal)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Delivery Fee</span>
-              <span>{formatNaira(deliveryFee)}</span>
-            </div>
-            {voucherDiscount > 0 && (
-              <div className="flex justify-between text-green-600">
-                <span>Voucher Discount</span>
-                <span>-{formatNaira(voucherDiscount)}</span>
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span>{formatNaira(subtotal)}</span>
               </div>
-            )}
-            <Separator className="my-2" />
-            <div className="flex justify-between font-bold">
-              <span>Total</span>
-              <span>{formatNaira(totalAmountPaid)}</span>
+              <div className="flex justify-between">
+                <span>Delivery Fee</span>
+                <span>{formatNaira(deliveryFee)}</span>
+              </div>
+              {voucherDiscount > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Voucher Discount</span>
+                  <span>-{formatNaira(voucherDiscount)}</span>
+                </div>
+              )}
+              <Separator className="my-2" />
+              <div className="flex justify-between font-bold">
+                <span>Total</span>
+                <span>{formatNaira(totalAmountPaid)}</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
-          </div>
 
       {/* Centered button below the table */}
-      <div className="flex justify-center mt-8">
+      <div className="flex justify-center mt-8 gap-4">
         <Link href="/" passHref>
           <button className="bg-[#1B6013] hover:bg-[#14510f] text-white font-semibold py-3 px-8 rounded-lg shadow transition-all duration-200">
             Continue Shopping
           </button>
         </Link>
+        <Link href="/account/order" passHref>
+          <button className="bg-white border border-[#1B6013] text-[#1B6013] font-semibold py-3 px-8 rounded-lg shadow transition-all duration-200 hover:bg-[#f6fef7]">
+            View My Orders
+          </button>
+        </Link>
       </div>
     </div>
   );
+}
+
+export default function PageWrapper(props: {
+  searchParams: { orderId?: string };
+}) {
+  return <OrderConfirmationClientWrapper {...props} />;
 }

@@ -45,34 +45,37 @@ export async function generateMetadata({
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 
+  const categoryImage = process.env.NEXT_PUBLIC_SUPABASE_URL
+    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/category-images/${categorySlug}.jpg`
+    : "/opengraph-image.jpg";
+
   return {
     title: `${categoryName}`,
-    description: `Browse our selection of ${categoryName.toLowerCase()} products. Find the best deals on ${categoryName} at FeedMe.`,
+    description: `Browse our selection of ${categoryName.toLowerCase()} products in Lagos, Nigeria. Find the best deals on ${categoryName} at FeedMe. Fast delivery in Lagos, Ikeja, Lekki, Victoria Island, and more!`,
     keywords: [
       `${categoryName}`,
       "food",
       "grocery",
       "online shopping",
       "delivery",
+      `${categoryName} Lagos`,
+      `${categoryName} delivery Lagos`,
+      `${categoryName} Ikeja`,
+      `${categoryName} Lekki`,
+      `${categoryName} Victoria Island`,
     ],
     openGraph: {
       title: `${categoryName}`,
-      description: `Discover our ${categoryName.toLowerCase()} collection. Shop now for the best prices and fast delivery.`,
+      description: `Discover our ${categoryName.toLowerCase()} collection. Shop now for the best prices and fast delivery in Lagos and beyond.`,
       type: "website",
       url: `/category/${categorySlug}`,
-      images: [
-        {
-          url: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/category-images/${categorySlug}.jpg`,
-          width: 1200,
-          height: 630,
-          alt: `${categoryName} products`,
-        },
-      ],
+      images: [categoryImage || "/opengraph-image.jpg"],
     },
     twitter: {
       card: "summary_large_image",
       title: `${categoryName} | FeedMe`,
-      description: `Explore our ${categoryName.toLowerCase()} selection. Quality products at great prices.`,
+      description: `Explore our ${categoryName.toLowerCase()} selection in Lagos. Quality products at great prices, delivered fast in Lagos, Ikeja, Lekki, Victoria Island, and more.`,
+      images: [categoryImage || "/opengraph-image.jpg"],
     },
   };
 }

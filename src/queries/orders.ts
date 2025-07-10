@@ -40,14 +40,14 @@ export async function fetchOrders({
   const supabase = createClient();
   let query = supabase
     .from("orders")
-    .select("*, users:user_id(display_name)", { count: "exact" })
+    .select("*, profiles:user_id(display_name)", { count: "exact" })
     .order("created_at", { ascending: false })
     .range((page - 1) * itemsPerPage, page * itemsPerPage - 1);
 
   // Search by order id or user display_name
   if (search) {
     query = query.or(
-      `id.ilike.%${search}%,users.display_name.ilike.%${search}%`
+      `id.ilike.%${search}%,profiles.display_name.ilike.%${search}%`
     );
   }
   if (status && status.length > 0) {
@@ -78,7 +78,7 @@ export async function fetchOrderById(orderId: string) {
     .select(
       `
       *,
-      users(display_name),
+      profiles(display_name),
       order_items(*,
         products(name, images),
         bundles(name, thumbnail_url)

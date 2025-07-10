@@ -130,11 +130,11 @@ export default async function Footer() {
                         ))
                     )}
                   </ul>
-                  <Link href="/categories">
+                  {/* <Link href="/categories">
                     <button className="mt-4 text-orange-600 hover:underline">
                       See More
                     </button>
-                  </Link>
+                  </Link> */}
                 </div>
                 {footerData.map((section, index) => (
                   <div key={index}>

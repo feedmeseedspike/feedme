@@ -48,8 +48,25 @@ export const metadata: Metadata = {
     template: "%s - FeedMe",
     default: "FeedMe - Real Food, Real Fast, Delivered in 3 Hours",
   },
-  keywords:
-    ["fresh produce", "farm-fresh delivery", "organic food", "grocery online shopping", "healthy eating"],
+  keywords: [
+    "fresh produce Lagos",
+    "farm-fresh delivery Lagos",
+    "organic food Lagos Nigeria",
+    "grocery online shopping Lagos",
+    "healthy eating Lagos",
+    "buy fruits online Lagos",
+    "vegetable delivery Victoria Island",
+    "grocery delivery Ikeja",
+    "farm-to-table Lekki",
+    "order fresh fruits online in Lagos",
+    "best grocery delivery service in Lagos",
+    "affordable farm produce Lagos",
+    "grocery delivery Yaba",
+    "farm produce Surulere",
+    "organic vegetables Ikoyi",
+    "delivered in 3 hours Lagos",
+    "cash on delivery Lagos",
+  ],
   description:
     "Shop fresh, authentic farm produce delivered to your doorstep in 3 hours or less! Explore high-quality fruits, vegetables, oils, peppers, tubers, sauces, and spices. FeedMe ensures unbeatable freshness and convenience for a superior farm-to-table experience. Start shopping now!",
   openGraph: {
@@ -61,7 +78,7 @@ export const metadata: Metadata = {
       "Shop fresh, authentic farm produce delivered to your doorstep in 3 hours or less! Explore high-quality fruits, vegetables, oils, peppers, tubers, sauces, and spices. FeedMe ensures unbeatable freshness and convenience for a superior farm-to-table experience. Start shopping now!",
     images: [
       {
-        url: "/opengraph-image.png",
+        url: "/opengraph-image.jpg",
         width: 1200,
         height: 630,
         alt: "FeedMe - Fresh Farm Produce Delivered in 3 Hours",
@@ -74,7 +91,10 @@ export const metadata: Metadata = {
     title: "FeedMe - Fresh Farm Produce Delivered in 3 Hours",
     description:
       "Shop fresh, authentic farm produce delivered to your doorstep in 3 hours or less! Explore high-quality fruits, vegetables, oils, peppers, tubers, sauces, and spices. FeedMe ensures unbeatable freshness and convenience for a superior farm-to-table experience.",
-    images: ["/opengraph-image.png"],
+    images: ["/opengraph-image.jpg"],
+  },
+  icons: {
+    icon: "/favicon.ico",
   },
 };
 
@@ -94,7 +114,7 @@ export default async function RootLayout({
     if (supabase) {
       const { data: userData, error: authError } =
         await supabase.auth.getUser();
-      // console.log(userData);
+      console.log(userData);
 
       // Only process if we have valid user data and no critical errors
       if (
@@ -143,8 +163,7 @@ export default async function RootLayout({
 
           // Try to fetch referral status
           try {
-            const { data: referralData, message: referralMessage } =
-              await getReferralStatus();
+            const { data: referralData, message: referralMessage } = await getReferralStatus();
             if (referralData) {
               hasReferralStatus = true;
             }

@@ -121,7 +121,7 @@ export function AdminSidebar({ user }: AppSidebarProps) {
           <Circles />
           <Link href={"/"}>
             <Image
-              src="/footerlogo.png"
+              src="/Footerlogo.png"
               alt="logo"
               width={141}
               height={40}

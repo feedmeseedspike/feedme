@@ -27,25 +27,47 @@ export const POST = authMiddleware(
         metadata: { user_id, ...orderDetails },
       });
 
-      // Save pending order/transaction
-      const { error: txError } = await supabase.from("orders").insert({
-        user_id,
-        transaction_id: transactionData.data.reference,
-        amount,
-        currency: "NGN",
-        payment_status: "pending",
-        reference: transactionData.data.reference,
-        ...orderDetails,
-      });
-      if (txError) throw txError;
-
-      // Fetch the order just created
-      const { data: order, error: orderFetchError } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("reference", transactionData.data.reference)
+      // Ensure user_id exists in profiles
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .eq('user_id', user_id)
         .single();
-      if (orderFetchError || !order) throw orderFetchError;
+      if (profileError || !profile) {
+        return NextResponse.json(
+          { message: "User profile not found for order creation." },
+          { status: 400 }
+        );
+      }
+      // Save pending order/transaction and get the inserted order
+      const { data: order, error: txError } = await supabase.from("orders").insert({
+        user_id: profile.user_id,
+        total_amount: amount,
+        total_amount_paid: orderDetails.totalAmountPaid,
+        delivery_fee: orderDetails.deliveryFee,
+        local_government: orderDetails.local_government,
+        voucher_id: orderDetails.voucherId,
+        payment_method: orderDetails.paymentMethod,
+        shipping_address: orderDetails.shippingAddress,
+        payment_status: "Pending",
+      }).select().single();
+      if (txError || !order) throw txError;
+
+      // Insert order items
+      const orderItemsToInsert = (orderDetails.cartItems || []).map((item: any) => ({
+        order_id: order.id,
+        product_id: item.productId || null,
+        bundle_id: item.bundleId || null,
+        quantity: item.quantity,
+        price: item.price,
+        option: item.option || null,
+      }));
+      if (orderItemsToInsert.length > 0) {
+        const { error: orderItemsError } = await supabase
+          .from('order_items')
+          .insert(orderItemsToInsert);
+        if (orderItemsError) throw orderItemsError;
+      }
 
       // Fetch order items
       const { data: orderItems, error: orderItemsError } = await supabase
@@ -88,7 +110,7 @@ export const POST = authMiddleware(
         : order.shipping_address;
 
       // Prepare email fields
-      const orderNumber = order.reference || order.id;
+      const orderNumber = order.id;
       const customerName = shipping?.fullName || "";
       const customerPhone = shipping?.phone || "";
       const deliveryAddress = shipping?.street || "";
@@ -99,54 +121,16 @@ export const POST = authMiddleware(
       const serviceCharge = 0; // Set this as needed
 
       // Send order confirmation emails (admin and customer)
-      try {
-        // Send to admin
-        await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ""}/api/email/send-order-confirmation`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "admin",
-            to: process.env.ADMIN_ORDER_EMAIL || "oyedelejeremiah.ng@gmail.com",
-            subject: "Order Confirmation From FeedMe",
-            orderProps: {
-              orderNumber,
-              customerName,
-              customerPhone,
-              itemsOrdered,
-              deliveryAddress,
-              localGovernment,
-            },
-          }),
-        });
-        // Send to customer
-        await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ""}/api/email/send-order-confirmation`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "customer",
-            to: email,
-            subject: "Order Confirmation From FeedMe",
-            orderProps: {
-              orderNumber,
-              customerName,
-              customerPhone,
-              itemsOrdered,
-              deliveryAddress,
-              deliveryFee,
-              serviceCharge,
-              totalAmount,
-              totalAmountPaid,
-            },
-          }),
-        });
-      } catch (emailError) {
-        console.error("Order confirmation email error:", emailError);
-      }
+      // (Optional) Email sending moved to webhook after payment confirmation
 
       return NextResponse.json({
-        access_code: transactionData.data.access_code,
-        authorization_url: transactionData.data.authorization_url,
-        reference: transactionData.data.reference,
+        success: true,
+        data: {
+          orderId: order.id,
+          access_code: transactionData.data.access_code,
+          authorization_url: transactionData.data.authorization_url,
+          reference: transactionData.data.reference,
+        }
       });
     } catch (error: any) {
       console.error(error);
