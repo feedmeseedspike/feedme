@@ -51,7 +51,7 @@ function OrderConfirmationClientWrapper({
       .finally(() => setLoading(false));
   }, [orderId]);
 
-  console.log(order)
+  console.log(order);
 
   if (loading) return <div className="p-8 text-center">Loading...</div>;
   if (missingOrderId) {
@@ -67,35 +67,25 @@ function OrderConfirmationClientWrapper({
   }
   if (!order) return null;
 
-  if (order) {
-    const isSuccess =
-      ["Paid", "Confirmed", "order confirmed"].includes(order.status) &&
-      order.payment_status === "Paid";
-    if (!isSuccess) {
-      return (
-        <div className="max-w-xl mx-auto mt-16 bg-white rounded-lg shadow p-8 text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">
-            Payment Not Successful
-          </h2>
-          <p className="mb-6 text-gray-700">
-            Your payment was not successful or is still processing. Please try
-            again or contact support if you believe this is an error.
-          </p>
-          <div className="flex justify-center gap-4">
-            <Link href="/" passHref>
-              <button className="bg-[#1B6013] hover:bg-[#14510f] text-white font-semibold py-3 px-8 rounded-lg shadow transition-all duration-200">
-                Continue Shopping
-              </button>
-            </Link>
-            <Link href="/account/order" passHref>
-              <button className="bg-white border border-[#1B6013] text-[#1B6013] font-semibold py-3 px-8 rounded-lg shadow transition-all duration-200 hover:bg-[#f6fef7]">
-                View My Orders
-              </button>
-            </Link>
-          </div>
-        </div>
-      );
-    }
+  // Payment status badge logic
+  let paymentStatusLabel = "Unknown";
+  let paymentStatusColor = "bg-gray-400 text-white";
+  if (order.payment_status === "Paid") {
+    paymentStatusLabel = "Paid";
+    paymentStatusColor = "bg-green-600 text-white";
+  } else if (
+    ["Pending", "Processing", "Awaiting Payment"].includes(order.payment_status)
+  ) {
+    paymentStatusLabel = "Pending";
+    paymentStatusColor = "bg-yellow-500 text-white";
+  } else if (
+    ["Failed", "Declined", "Cancelled", "Error"].includes(order.payment_status)
+  ) {
+    paymentStatusLabel = "Failed";
+    paymentStatusColor = "bg-red-600 text-white";
+  } else if (order.payment_status) {
+    paymentStatusLabel = order.payment_status;
+    paymentStatusColor = "bg-gray-400 text-white";
   }
 
   const items: any[] = order.order_items || [];
@@ -129,9 +119,27 @@ function OrderConfirmationClientWrapper({
         <h1 className="text-2xl md:text-3xl font-bold md:mb-2 text-center text-green-900">
           Your order is completed!
         </h1>
-        <p className="mb-8 text-sm text-gray-500 text-center">
+        <p className="mb-2 text-sm text-gray-500 text-center">
           Thank you. Your Order has been received.
         </p>
+        {/* Payment status badge */}
+        <div className="flex justify-center mb-4">
+          <span
+            className={`inline-block px-4 py-1 rounded-full text-sm font-semibold ${paymentStatusColor}`}
+          >
+            {paymentStatusLabel}
+          </span>
+        </div>
+        {/* Optionally, show a message for failed or pending payments */}
+        {paymentStatusLabel !== "Paid" && (
+          <div className="mb-4 text-center text-red-600 text-sm">
+            {paymentStatusLabel === "Failed"
+              ? "Your payment was not successful. Please try again or contact support."
+              : paymentStatusLabel === "Pending"
+                ? "Your payment is still processing. If you have any issues, please contact support."
+                : null}
+          </div>
+        )}
       </div>
 
       <div className="flex justify-center">

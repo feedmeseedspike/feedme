@@ -2,13 +2,10 @@ import { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import Image from "next/image";
-import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
 import CredentialsSignUpForm from "./signup-form";
 import { getUser } from "src/lib/actions/auth.actions";
 import { PreloadResource, ReviewSlide } from "../preload-resources";
-import { signinWithGoogle } from "@utils/google-action";
-import React from "react";
 import GoogleButton from "src/components/GoogleButton";
 import { LOGIN_BANNER_IMAGE } from "src/constants/images";
 
@@ -18,25 +15,25 @@ export const metadata: Metadata = {
 
 const reviews: ReviewSlide[] = [
   {
-    imgSrc: "/loginBanner.jpeg",
+    imgSrc: LOGIN_BANNER_IMAGE,
     review:
       "I got the fruits. Thanks. The beef is good also. I'm satisfied. 👍🏽👍🏽👍🏽",
     customer: "Mrs Ayodeji Tijani",
   },
   {
-    imgSrc: "/loginBanner.jpeg",
+    imgSrc: LOGIN_BANNER_IMAGE,
     review:
       "Yes ooo! Thanks so much. Please you people should keep it up o. Don't let the naija factor make you drop your standards. God bless!",
     customer: "Hannah Yavala",
   },
   {
-    imgSrc: "/loginBanner.jpeg",
+    imgSrc: LOGIN_BANNER_IMAGE,
     review:
       "I received my order and everything was perfect! At first, I thought it might be a scam, but when my items arrived I was so surprised and amazed. Thank you for the extra carrot! Keep up the good work. Wow!",
     customer: "Nkiruka Okonkwo",
   },
   {
-    imgSrc: "/loginBanner.jpeg",
+    imgSrc: LOGIN_BANNER_IMAGE,
     review:
       "I received my items in perfect condition and right on time. Thank you FeedMe for the great service!",
     customer: "Unuigbe Ugha",

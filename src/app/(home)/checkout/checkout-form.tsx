@@ -251,9 +251,11 @@ const CheckoutForm = ({
       enabled: !!user?.user_id,
     });
 
-  console.log("CheckoutForm: Component rendering.");
-  console.log("CheckoutForm: User prop received:", user);
-  console.log("CheckoutForm: isLoadingAddresses (before useQuery result log):");
+    const shippingAddressForm = useForm<ShippingAddress>({
+      resolver: zodResolver(ShippingAddressSchema),
+      defaultValues: shippingAddressDefaultValues,
+      mode: "onChange",
+    });
 
   const [userAddresses, setUserAddresses] =
     useState<AddressWithId[]>(addresses);
@@ -292,13 +294,14 @@ const CheckoutForm = ({
         phone: selectedAddress.phone,
       });
     }
-  }, [selectedAddressId]);
+  }, [
+    selectedAddressId,
+    selectedAddress,
+    shippingAddressForm,
+    user?.display_name,
+  ]);
 
-  const shippingAddressForm = useForm<ShippingAddress>({
-    resolver: zodResolver(ShippingAddressSchema),
-    defaultValues: shippingAddressDefaultValues,
-    mode: "onChange",
-  });
+
   // Add effect to load form state from localStorage if no saved addresses
   useEffect(() => {
     if (!userAddresses || userAddresses.length === 0) {
@@ -998,6 +1001,12 @@ const CheckoutForm = ({
                                       onClick={() => {
                                         setEditingAddress(address);
                                         setShowAddNewForm(true);
+                                        shippingAddressForm.reset({
+                                          fullName: address.label || "",
+                                          street: address.street,
+                                          location: address.city,
+                                          phone: address.phone,
+                                        });
                                       }}
                                       title="Edit"
                                     >
@@ -1228,32 +1237,61 @@ const CheckoutForm = ({
                     </Dialog>
 
                     {/* If no address is selected, show the form inline (first time user) */}
-                    {!selectedAddress && (
-                      <Form {...shippingAddressForm}>
-                        <form
-                          onSubmit={shippingAddressForm.handleSubmit(
-                            onSubmitShippingAddress
-                          )}
-                          className="space-y-6"
-                        >
-                          <div className="grid grid-cols-1 gap-6">
+                    {userAddresses.length === 0 && (
+                      <div className="mt-2">
+                        <Form {...shippingAddressForm}>
+                          <form
+                            onSubmit={shippingAddressForm.handleSubmit(
+                              async (values) => {
+                                setIsAddingAddress(true);
+                                try {
+                                  const address = await addAddressAction({
+                                    label: values.fullName || "Home",
+                                    street: values.street,
+                                    city: values.location,
+                                    state: "",
+                                    zip: "",
+                                    country: "",
+                                    phone: values.phone,
+                                  });
+                                  setUserAddresses((prev) => [
+                                    ...prev,
+                                    address,
+                                  ]);
+                                  setSelectedAddressId(address.id);
+                                  showToast("Address added!", "success");
+                                  setShowAddNewForm(false);
+                                  setShowAddressModal(false);
+                                  setEditingAddress(null);
+                                  localStorage.removeItem(
+                                    "checkoutAddressForm"
+                                  );
+                                } catch (err: any) {
+                                  showToast(
+                                    err.message || "Failed to add address",
+                                    "error"
+                                  );
+                                } finally {
+                                  setIsAddingAddress(false);
+                                }
+                              }
+                            )}
+                            className="space-y-4"
+                          >
                             <FormField
                               control={shippingAddressForm.control}
                               name="fullName"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel className="text-gray-700">
-                                    Full Name
-                                  </FormLabel>
+                                  <FormLabel>Full Name</FormLabel>
                                   <FormControl>
                                     <Input
                                       placeholder="Enter full name"
                                       {...field}
-                                      className="rounded-lg p-3 border-gray-300 "
-                                      disabled={isSubmitting}
+                                      disabled={isAddingAddress}
                                     />
                                   </FormControl>
-                                  <FormMessage className="text-red-500" />
+                                  <FormMessage />
                                 </FormItem>
                               )}
                             />
@@ -1262,18 +1300,15 @@ const CheckoutForm = ({
                               name="street"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel className="text-gray-700">
-                                    Address
-                                  </FormLabel>
+                                  <FormLabel>Address</FormLabel>
                                   <FormControl>
                                     <Input
                                       placeholder="Enter street address"
                                       {...field}
-                                      className="rounded-lg p-3 border-gray-300 "
-                                      disabled={isSubmitting}
+                                      disabled={isAddingAddress}
                                     />
                                   </FormControl>
-                                  <FormMessage className="text-red-500" />
+                                  <FormMessage />
                                 </FormItem>
                               )}
                             />
@@ -1282,43 +1317,29 @@ const CheckoutForm = ({
                               name="location"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel className="text-gray-700">
-                                    Location
-                                  </FormLabel>
+                                  <FormLabel>Location</FormLabel>
                                   <Select
                                     value={field.value}
                                     onValueChange={field.onChange}
-                                    disabled={isSubmitting}
+                                    disabled={isAddingAddress}
                                   >
                                     <FormControl>
-                                      <SelectTrigger className="rounded-lg p-3 border-gray-300 ">
+                                      <SelectTrigger>
                                         <SelectValue placeholder="Select your location" />
                                       </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                      {deliveryLocations.length === 0 ? (
-                                        <div className="p-2 text-gray-500">
-                                          No locations available.
-                                        </div>
-                                      ) : (
-                                        deliveryLocations.map((location) => (
-                                          <SelectItem
-                                            key={location.name}
-                                            value={location.name}
-                                            className="hover:bg-gray-100 px-4 py-2"
-                                          >
-                                            <div className="flex justify-between items-center">
-                                              <span>{location.name}</span>
-                                              <span className="text-sm text-gray-500">
-                                                {formatNaira(location.price)}
-                                              </span>
-                                            </div>
-                                          </SelectItem>
-                                        ))
-                                      )}
+                                      {deliveryLocations.map((location) => (
+                                        <SelectItem
+                                          key={location.name}
+                                          value={location.name}
+                                        >
+                                          {location.name}
+                                        </SelectItem>
+                                      ))}
                                     </SelectContent>
                                   </Select>
-                                  <FormMessage className="text-red-500" />
+                                  <FormMessage />
                                 </FormItem>
                               )}
                             />
@@ -1327,24 +1348,33 @@ const CheckoutForm = ({
                               name="phone"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel className="text-gray-700">
-                                    Phone Number
-                                  </FormLabel>
+                                  <FormLabel>Phone Number</FormLabel>
                                   <FormControl>
                                     <Input
                                       placeholder="Enter phone number"
                                       {...field}
-                                      className="rounded-lg p-3 border-gray-300 "
-                                      disabled={isSubmitting}
+                                      disabled={isAddingAddress}
                                     />
                                   </FormControl>
-                                  <FormMessage className="text-red-500" />
+                                  <FormMessage />
                                 </FormItem>
                               )}
                             />
-                          </div>
-                        </form>
-                      </Form>
+                            <DialogFooter>
+                              <Button
+                                type="submit"
+                                className="bg-[#1B6013]/90 text-white"
+                                disabled={isAddingAddress}
+                              >
+                                {isAddingAddress ? (
+                                  <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                                ) : null}
+                                Save Address
+                              </Button>
+                            </DialogFooter>
+                          </form>
+                        </Form>
+                      </div>
                     )}
                   </div>
                 </Step>

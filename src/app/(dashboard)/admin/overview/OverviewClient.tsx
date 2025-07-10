@@ -465,7 +465,17 @@ const OverviewClient: React.FC<OverviewClientProps> = ({
         0
       ),
     });
-  }, [compareTo, date, initialOrders]);
+  }, [
+    compareTo,
+    date,
+    initialOrders,
+    deliveredOrdersChartData,
+    prevDeliveredOrdersMetrics.total,
+    prevTotalOrdersMetrics.total,
+    prevTotalRevenueMetrics.total,
+    totalOrdersChartData,
+    totalRevenueChartData,
+  ]);
 
   const handleApply = () => {
     if (date?.from) {

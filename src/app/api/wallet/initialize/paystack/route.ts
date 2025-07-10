@@ -32,6 +32,16 @@ export const POST = authMiddleware(
         metadata: { user_id, orderId },
       });
 
+      // Update the order with the Paystack reference
+      const { error: orderUpdateError } = await supabase
+        .from("orders")
+        .update({ reference: transactionData.data.reference })
+        .eq("id", orderId);
+
+      if (orderUpdateError) {
+        console.error("Failed to update order with Paystack reference:", orderUpdateError);
+      }
+
       const { error: txError } = await supabase.from("transactions").insert({
         user_id,
         transaction_id: transactionData.data.reference,
