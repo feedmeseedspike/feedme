@@ -10,16 +10,16 @@ console.log("[Nodemailer ENV]", {
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
-  port: Number(process.env.NODEMAILER_PORT),
-  host: process.env.NODEMAILER_HOST,
+  port: Number(process.env.NODEMAILER_PORT!),
+  host: process.env.NODEMAILER_HOST!,
   auth: {
-    user: process.env.NODEMAILER_USER,
-    pass: process.env.NODEMAILER_PASS,
+    user: process.env.NODEMAILER_USER!,
+    pass: process.env.NODEMAILER_PASS!,
   },
   tls: {
     rejectUnauthorized: false,
   },
-  from: process.env.NODEMAILER_USER,
+  from: process.env.NODEMAILER_USER!,
   secure: true,
 });
 

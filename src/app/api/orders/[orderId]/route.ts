@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { fetchOrderById } from "@/queries/orders";
 
 export async function GET(req: Request, { params }: { params: { orderId: string } }) {
+  console.log('orderId => ',params, params.orderId)
   try {
     const order = await fetchOrderById(params.orderId);
     if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });

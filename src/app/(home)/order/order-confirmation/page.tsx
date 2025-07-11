@@ -44,7 +44,9 @@ function OrderConfirmationClientWrapper({
     fetch(`/api/orders/${id}`)
       .then((res) => res.json())
       .then((data) => {
+        console.log("mine data => ", data);
         if (data.error) setError(data.error);
+          
         else setOrder(data);
       })
       .catch(() => setError("Failed to load order"))
