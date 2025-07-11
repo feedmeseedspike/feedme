@@ -251,11 +251,11 @@ const CheckoutForm = ({
       enabled: !!user?.user_id,
     });
 
-    const shippingAddressForm = useForm<ShippingAddress>({
-      resolver: zodResolver(ShippingAddressSchema),
-      defaultValues: shippingAddressDefaultValues,
-      mode: "onChange",
-    });
+  const shippingAddressForm = useForm<ShippingAddress>({
+    resolver: zodResolver(ShippingAddressSchema),
+    defaultValues: shippingAddressDefaultValues,
+    mode: "onChange",
+  });
 
   const [userAddresses, setUserAddresses] =
     useState<AddressWithId[]>(addresses);
@@ -703,11 +703,11 @@ const CheckoutForm = ({
                 if (emailRes.ok && emailData.success) {
                   showToast("Order confirmation email sent!", "success");
                 } else {
-                  showToast(
+                showToast(
                     emailData.error ||
                       "Order placed, but failed to send confirmation email.",
-                    "error"
-                  );
+                  "error"
+                );
                 }
               } catch (err) {
                 showToast(
@@ -766,32 +766,32 @@ const CheckoutForm = ({
               user && "email" in user && user.email ? user.email : undefined;
             if (!userEmail) {
               showToast("User email not found. Please log in again.", "error");
-              setIsSubmitting(false);
-              return;
-            }
-            const response = await fetch("/api/wallet/initialize/paystack", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                email: userEmail,
-                amount: totalAmountPaid,
+                setIsSubmitting(false);
+                return;
+              }
+              const response = await fetch("/api/wallet/initialize/paystack", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  email: userEmail,
+                  amount: totalAmountPaid,
                 orderId: orderResult.data.orderId,
-              }),
-            });
-            const data = await response.json();
-            if (response.ok && data.authorization_url) {
+                }),
+              });
+              const data = await response.json();
+              if (response.ok && data.authorization_url) {
               // Store orderId for use after Paystack redirect (optional, for fallback)
               if (orderResult.data.orderId) {
                 localStorage.setItem("lastOrderId", orderResult.data.orderId);
               }
-              window.location.href = data.authorization_url;
+                window.location.href = data.authorization_url;
               setIsSubmitting(false);
-              return; // Stop further execution
-            } else {
-              showToast(
-                data.message || "Failed to initialize Paystack payment.",
-                "error"
-              );
+                return; // Stop further execution
+              } else {
+                showToast(
+                  data.message || "Failed to initialize Paystack payment.",
+                  "error"
+                );
               setIsSubmitting(false);
               return;
             }
@@ -822,44 +822,44 @@ const CheckoutForm = ({
               const emailRes = await fetch(
                 "/api/email/send-order-confirmation",
                 {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    adminEmail:
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  adminEmail:
                       process.env.NODEMAILER_USER || "oyedeletopy.uk@gmail.com",
-                    userEmail: user.email,
-                    adminOrderProps: {
-                      orderNumber: result.data.orderId,
-                      customerName:
-                        user.display_name ||
-                        shippingAddressForm.getValues().fullName,
-                      customerPhone: shippingAddressForm.getValues().phone,
-                      itemsOrdered: items.map((item) => ({
-                        title: item.products?.name || item.bundles?.name || "",
-                        price: item.price,
-                        quantity: item.quantity,
-                      })),
-                      deliveryAddress: shippingAddressForm.getValues().street,
-                      localGovernment: shippingAddressForm.getValues().location,
-                    },
-                    userOrderProps: {
-                      orderNumber: result.data.orderId,
-                      customerName:
-                        user.display_name ||
-                        shippingAddressForm.getValues().fullName,
-                      customerPhone: shippingAddressForm.getValues().phone,
-                      itemsOrdered: items.map((item) => ({
-                        title: item.products?.name || item.bundles?.name || "",
-                        price: item.price,
-                        quantity: item.quantity,
-                      })),
-                      deliveryAddress: shippingAddressForm.getValues().street,
-                      deliveryFee: cost,
-                      serviceCharge: serviceCharge,
-                      totalAmount: subtotal,
-                      totalAmountPaid: totalAmountPaid,
-                    },
-                  }),
+                  userEmail: user.email,
+                  adminOrderProps: {
+                    orderNumber: result.data.orderId,
+                    customerName:
+                      user.display_name ||
+                      shippingAddressForm.getValues().fullName,
+                    customerPhone: shippingAddressForm.getValues().phone,
+                    itemsOrdered: items.map((item) => ({
+                      title: item.products?.name || item.bundles?.name || "",
+                      price: item.price,
+                      quantity: item.quantity,
+                    })),
+                    deliveryAddress: shippingAddressForm.getValues().street,
+                    localGovernment: shippingAddressForm.getValues().location,
+                  },
+                  userOrderProps: {
+                    orderNumber: result.data.orderId,
+                    customerName:
+                      user.display_name ||
+                      shippingAddressForm.getValues().fullName,
+                    customerPhone: shippingAddressForm.getValues().phone,
+                    itemsOrdered: items.map((item) => ({
+                      title: item.products?.name || item.bundles?.name || "",
+                      price: item.price,
+                      quantity: item.quantity,
+                    })),
+                    deliveryAddress: shippingAddressForm.getValues().street,
+                    deliveryFee: cost,
+                    serviceCharge: serviceCharge,
+                    totalAmount: subtotal,
+                    totalAmountPaid: totalAmountPaid,
+                  },
+                }),
                 }
               );
               const emailData = await emailRes.json();
@@ -972,7 +972,7 @@ const CheckoutForm = ({
                             style={{ maxHeight: "70vh" }}
                           >
                             {userAddresses && userAddresses.length > 0 ? (
-                              <div className="space-y-2">
+                          <div className="space-y-2">
                                 {userAddresses.map((address) => (
                                   <label
                                     key={address.id}
@@ -1161,19 +1161,19 @@ const CheckoutForm = ({
                                         <FormControl>
                                           <SelectTrigger>
                                             <SelectValue placeholder="Select your location" />
-                                          </SelectTrigger>
+                              </SelectTrigger>
                                         </FormControl>
-                                        <SelectContent>
+                              <SelectContent>
                                           {deliveryLocations.map((location) => (
-                                            <SelectItem
+                                  <SelectItem
                                               key={location.name}
                                               value={location.name}
-                                            >
+                                  >
                                               {location.name}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                                       <FormMessage />
                                     </FormItem>
                                   )}
@@ -1239,9 +1239,9 @@ const CheckoutForm = ({
                     {/* If no address is selected, show the form inline (first time user) */}
                     {userAddresses.length === 0 && (
                       <div className="mt-2">
-                        <Form {...shippingAddressForm}>
-                          <form
-                            onSubmit={shippingAddressForm.handleSubmit(
+                    <Form {...shippingAddressForm}>
+                      <form
+                        onSubmit={shippingAddressForm.handleSubmit(
                               async (values) => {
                                 setIsAddingAddress(true);
                                 try {
@@ -1278,57 +1278,57 @@ const CheckoutForm = ({
                             )}
                             className="space-y-4"
                           >
-                            <FormField
-                              control={shippingAddressForm.control}
-                              name="fullName"
-                              render={({ field }) => (
-                                <FormItem>
+                          <FormField
+                            control={shippingAddressForm.control}
+                            name="fullName"
+                            render={({ field }) => (
+                              <FormItem>
                                   <FormLabel>Full Name</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder="Enter full name"
-                                      {...field}
+                                <FormControl>
+                                  <Input
+                                    placeholder="Enter full name"
+                                    {...field}
                                       disabled={isAddingAddress}
-                                    />
-                                  </FormControl>
+                                  />
+                                </FormControl>
                                   <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={shippingAddressForm.control}
-                              name="street"
-                              render={({ field }) => (
-                                <FormItem>
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={shippingAddressForm.control}
+                            name="street"
+                            render={({ field }) => (
+                              <FormItem>
                                   <FormLabel>Address</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder="Enter street address"
-                                      {...field}
+                                <FormControl>
+                                  <Input
+                                    placeholder="Enter street address"
+                                    {...field}
                                       disabled={isAddingAddress}
-                                    />
-                                  </FormControl>
+                                  />
+                                </FormControl>
                                   <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={shippingAddressForm.control}
-                              name="location"
-                              render={({ field }) => (
-                                <FormItem>
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={shippingAddressForm.control}
+                            name="location"
+                            render={({ field }) => (
+                              <FormItem>
                                   <FormLabel>Location</FormLabel>
-                                  <Select
-                                    value={field.value}
+                                <Select
+                                  value={field.value}
                                     onValueChange={field.onChange}
                                     disabled={isAddingAddress}
-                                  >
-                                    <FormControl>
+                                >
+                                  <FormControl>
                                       <SelectTrigger>
-                                        <SelectValue placeholder="Select your location" />
-                                      </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
+                                      <SelectValue placeholder="Select your location" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
                                       {deliveryLocations.map((location) => (
                                         <SelectItem
                                           key={location.name}
@@ -1337,29 +1337,29 @@ const CheckoutForm = ({
                                           {location.name}
                                         </SelectItem>
                                       ))}
-                                    </SelectContent>
-                                  </Select>
+                                  </SelectContent>
+                                </Select>
                                   <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={shippingAddressForm.control}
-                              name="phone"
-                              render={({ field }) => (
-                                <FormItem>
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={shippingAddressForm.control}
+                            name="phone"
+                            render={({ field }) => (
+                              <FormItem>
                                   <FormLabel>Phone Number</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder="Enter phone number"
-                                      {...field}
+                                <FormControl>
+                                  <Input
+                                    placeholder="Enter phone number"
+                                    {...field}
                                       disabled={isAddingAddress}
-                                    />
-                                  </FormControl>
+                                  />
+                                </FormControl>
                                   <FormMessage />
-                                </FormItem>
-                              )}
-                            />
+                              </FormItem>
+                            )}
+                          />
                             <DialogFooter>
                               <Button
                                 type="submit"
@@ -1372,8 +1372,8 @@ const CheckoutForm = ({
                                 Save Address
                               </Button>
                             </DialogFooter>
-                          </form>
-                        </Form>
+                      </form>
+                    </Form>
                       </div>
                     )}
                   </div>
