@@ -7,13 +7,21 @@ type Handler = (request: Request, user_id: string) => Promise<NextResponse>;
 export function authMiddleware(handler: Handler) {
   return async (request: Request) => {
     try {
-      // Get the Supabase auth cookie using the project ID from environment variables
-      const authCookies = request.headers.get("cookie")?.split(";")[1];
-      const authCookie =
-        process.env.NEXT_PUBLIC_ENVIRONMENT! === "local"
-          ? request.headers.get("cookie")?.split("=")[1]
-          : authCookies?.split("=")[1];
-      console.log("authorizer => ", request.headers.get("cookie"));
+      // Robustly extract the Supabase auth cookie by name
+      function getCookieValue(cookieHeader: string | null, cookieName: string) {
+        if (!cookieHeader) return null;
+        const cookies = cookieHeader.split(';').map(c => c.trim());
+        for (const cookie of cookies) {
+          if (cookie.startsWith(cookieName + '=')) {
+            return cookie.substring(cookieName.length + 1);
+          }
+        }
+        return null;
+      }
+      const cookieHeader = request.headers.get("cookie");
+      const cookieName = `sb-${process.env.NEXT_PUBLIC_SUPABASE_PROJECT_ID || process.env.SUPABASE_PROJECT_ID || "fyldgskqxrfmrhyluxmw"}-auth-token`;
+      const authCookie = getCookieValue(cookieHeader, cookieName);
+      console.log("authorizer => ", cookieHeader);
       console.log("auth header => ", authCookie);
 
       // Check if the cookie exists
