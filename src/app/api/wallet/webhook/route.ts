@@ -80,7 +80,7 @@ export async function POST(request: Request) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              adminEmail: process.env.NODEMAILER_USER || "oyedeletopy.uk@gmail.com",
+              adminEmail: "orders.feedmeafricak@gmail.com",
               userEmail: metadata.email,
               adminOrderProps,
               userOrderProps,
@@ -115,7 +115,7 @@ export async function POST(request: Request) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          to: process.env.NODEMAILER_USER || "oyedelejeremiah.ng@gmail.com",
+          to: "orders.feedmeafrica@gmail.com",
           subject: "Order Payment Failed (Admin)",
           orderReference: reference,
           reason: "Payment failed",
@@ -146,7 +146,7 @@ export async function POST(request: Request) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          to: process.env.NODEMAILER_USER || "oyedelejeremiah.ng@gmail.com",
+          to: "orders.feedmeafrica@gmail.com",
           subject: "Order Payment Cancelled (Admin)",
           orderReference: reference,
           reason: "Payment cancelled",

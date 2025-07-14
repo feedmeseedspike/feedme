@@ -166,7 +166,8 @@ export default async function RootLayout({
 
           // Try to fetch referral status
           try {
-            const { data: referralData, message: referralMessage } = await getReferralStatus();
+            const { data: referralData, message: referralMessage } =
+              await getReferralStatus();
             if (referralData) {
               hasReferralStatus = true;
             }
@@ -261,7 +262,8 @@ export default async function RootLayout({
             src="https://www.googletagmanager.com/ns.html?id=GTM-W8L93RRF"
             height="0"
             width="0"
-            style={{ display: "none", visibility: "hidden" }}></iframe>
+            style={{ display: "none", visibility: "hidden" }}
+          ></iframe>
         </noscript>
         <noscript>
           <img
@@ -279,7 +281,8 @@ export default async function RootLayout({
                 <CartMergeProvider>
                   <SupabaseAuthProvider
                     initialSession={session}
-                    initialUser={user}>
+                    initialUser={user}
+                  >
                     <CustomScrollbar>
                       <PathnameProvider hasReferralStatus={hasReferralStatus}>
                         {children}

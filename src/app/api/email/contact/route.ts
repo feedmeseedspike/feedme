@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     console.log(body)
     const { firstName, lastName, email, subject, message } = body;
 
-    const adminEmail = process.env.NODEMAILER_USER!;
+    const adminEmail = "orders.feedmeafrica@gmail.com";
     if (!adminEmail) {
       throw new Error("No admin/support email configured in CONTACT_EMAIL or NODEMAILER_USER env variable.");
     }
