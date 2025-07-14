@@ -167,3 +167,20 @@ export async function getCustomerOrdersAction(customerId: string) {
     throw new Error(error.message || "Failed to fetch customer orders");
   }
 }
+
+export async function updateStaffStatus(userId: string, isStaff: boolean) {
+  const supabase = await createClient();
+  try {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ is_staff: isStaff })
+      .eq("user_id", userId);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    revalidatePath("/admin/customers");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Unknown error" };
+  }
+}

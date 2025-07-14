@@ -52,9 +52,7 @@ export async function fetchCustomers({
   // 1. Fetch profiles (with count)
   let profilesQuery = supabase.from('profiles').select('*', { count: 'exact' });
   if (search) {
-    profilesQuery = profilesQuery.or(
-      `display_name.ilike.%${search}%, email.ilike.%${search}%`
-    );
+    profilesQuery = profilesQuery.ilike('display_name', `%${search}%`);
   }
   const start = (page - 1) * itemsPerPage;
   const end = start + itemsPerPage - 1;
@@ -67,16 +65,17 @@ export async function fetchCustomers({
     return { data: [], count };
   }
 
-  // 2. Fetch addresses for all user_ids
+  // 2. Fetch emails from profiles (now that email column exists)
+  // No need to join with users, just use profile.email
   const userIds = profiles.map((p: any) => p.user_id).filter((id: string | null | undefined) => !!id);
+
+  // 3. Fetch addresses for all user_ids
   const { data: addresses, error: addressesError } = await supabase
     .from('addresses')
     .select('user_id, phone, city');
   if (addressesError) {
     throw addressesError;
   }
-
-  // 3. Merge addresses into profiles
   const addressesByUserId: Record<string, Array<{ phone: string | null; city: string | null }>> = {};
   (addresses || []).forEach(addr => {
     if (addr.user_id) {
@@ -85,9 +84,30 @@ export async function fetchCustomers({
     }
   });
 
+  // 4. Fetch orders for all user_ids (for total orders and total amount spent)
+  let ordersByUserId: Record<string, { totalOrders: number; totalAmountSpent: number }> = {};
+  if (userIds.length > 0) {
+    const { data: orders, error: ordersError } = await supabase
+      .from('orders')
+      .select('user_id, total_amount');
+    if (!ordersError && orders) {
+      userIds.forEach((userId: string) => {
+        const userOrders = orders.filter((o: any) => o.user_id === userId);
+        ordersByUserId[userId] = {
+          totalOrders: userOrders.length,
+          totalAmountSpent: userOrders.reduce((sum: number, o: any) => sum + (o.total_amount || 0), 0),
+        };
+      });
+    }
+  }
+
+  // 5. Merge all data
   const merged: FetchedCustomerData[] = (profiles as any[]).map(profile => ({
     ...profile,
+    // email is now directly on profile
     addresses: profile.user_id ? (addressesByUserId[profile.user_id] || []) : [],
+    totalOrders: ordersByUserId[profile.user_id]?.totalOrders || 0,
+    totalAmountSpent: ordersByUserId[profile.user_id]?.totalAmountSpent || 0,
   }));
 
   return { data: merged, count };

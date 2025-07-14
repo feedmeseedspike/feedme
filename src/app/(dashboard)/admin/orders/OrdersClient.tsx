@@ -74,6 +74,7 @@ type OrderRow = Omit<Order, "created_at" | "updated_at"> & {
   delivery_fee?: number | null;
   local_government?: string | null;
   total_amount_paid?: number | null;
+  reference?: string | null;
 };
 
 const progressOptions: Database["public"]["Enums"]["order_status_enum"][] = [
@@ -208,6 +209,7 @@ export default function OrdersClient({
         local_government: order.local_government ?? null,
         total_amount_paid: order.total_amount_paid ?? null,
         profiles: (order as any).profiles ?? null, // Ensure profiles is always present
+        reference: order.reference ?? null, // Ensure reference is always present
       })),
       count: totalOrdersCount,
     },

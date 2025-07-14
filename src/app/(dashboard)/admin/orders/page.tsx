@@ -59,6 +59,7 @@ export default async function OrdersPage({
     delivery_fee: order.delivery_fee ?? null,
     local_government: order.local_government ?? null,
     total_amount_paid: order.total_amount_paid ?? null,
+    reference: order.reference ?? null, // Ensure reference is always present
   }));
 
   return (

@@ -9,8 +9,34 @@ import {
 } from "@components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
 import { format } from "date-fns";
+import { useState, useEffect } from "react";
+import { Checkbox } from "@components/ui/checkbox";
 
 export default function CustomersTable({ data }: { data: any[] }) {
+  console.log("CustomersTable data:", data);
+  const [updating, setUpdating] = useState<string | null>(null);
+  const [localStaff, setLocalStaff] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setLocalStaff({});
+  }, [data]);
+
+  const handleStaffToggle = async (userId: string, current: boolean) => {
+    setUpdating(userId);
+    setLocalStaff((prev) => ({ ...prev, [userId]: !current }));
+    try {
+      await fetch("/api/admin/update-staff-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, isStaff: !current }),
+      });
+    } catch (e) {
+      // Optionally show error
+    } finally {
+      setUpdating(null);
+    }
+  };
+
   return (
     <Table>
       <TableHeader className="bg-gray-100">
@@ -25,13 +51,14 @@ export default function CustomersTable({ data }: { data: any[] }) {
           <TableHead>Location</TableHead>
           <TableHead>Birthday</TableHead>
           <TableHead>Favorite Fruit</TableHead>
+          <TableHead>Staff</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {data && data.length > 0 ? (
           data.map((customer: any) => {
             const {
-              id = "",
+              user_id = "",
               display_name = "",
               email = "",
               birthday = "",
@@ -39,16 +66,25 @@ export default function CustomersTable({ data }: { data: any[] }) {
               avatar_url = "",
               created_at = "",
               addresses = [],
+              is_staff = false,
+              totalOrders = 0,
+              totalAmountSpent = 0,
             } = customer;
+            const staffValue =
+              localStaff[user_id] !== undefined
+                ? localStaff[user_id]
+                : is_staff;
             return (
               <TableRow
-                key={id}
+                key={user_id}
                 className="cursor-pointer hover:bg-gray-100"
                 onClick={() =>
-                  (window.location.href = `/admin/customers/${id}`)
+                  (window.location.href = `/admin/customers/${user_id}`)
                 }
               >
-                <TableCell>{id ? `${id.substring(0, 8)}...` : "N/A"}</TableCell>
+                <TableCell>
+                  {user_id ? `${user_id.substring(0, 8)}...` : "N/A"}
+                </TableCell>
                 <TableCell className="flex items-center gap-3">
                   <Avatar>
                     <AvatarImage src={avatar_url || ""} alt="Avatar" />
@@ -75,10 +111,8 @@ export default function CustomersTable({ data }: { data: any[] }) {
                 <TableCell>
                   {created_at ? format(new Date(created_at), "PPP") : "N/A"}
                 </TableCell>
-                <TableCell>
-                  ₦{Math.floor(Math.random() * 100000).toLocaleString()}
-                </TableCell>
-                <TableCell>{Math.floor(Math.random() * 50)}</TableCell>
+                <TableCell>₦{totalAmountSpent.toLocaleString()}</TableCell>
+                <TableCell>{totalOrders}</TableCell>
                 <TableCell>
                   {/* Display city from the first address if available */}
                   {addresses && addresses.length > 0 && addresses[0]?.city
@@ -89,12 +123,24 @@ export default function CustomersTable({ data }: { data: any[] }) {
                   {birthday ? format(new Date(birthday), "PPP") : "N/A"}
                 </TableCell>
                 <TableCell>{favorite_fruit || "N/A"}</TableCell>
+                <TableCell>
+                  <Checkbox
+                    checked={!!staffValue}
+                    onCheckedChange={() =>
+                      handleStaffToggle(user_id, !!staffValue)
+                    }
+                    disabled={updating === user_id}
+                    aria-label="Toggle staff status"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  />
+                </TableCell>
               </TableRow>
             );
           })
         ) : (
           <TableRow>
-            <TableCell colSpan={10} className="text-center py-8">
+            <TableCell colSpan={11} className="text-center py-8">
               No customers found.
             </TableCell>
           </TableRow>

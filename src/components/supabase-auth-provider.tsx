@@ -117,25 +117,14 @@ export function SupabaseAuthProvider({
             // Fallback: use the auth user if no profile row
             setUser({
               user_id: authenticatedUser.id,
-              display_name:
-                typeof authenticatedUser.user_metadata?.display_name ===
-                "string"
-                  ? authenticatedUser.user_metadata.display_name
-                  : typeof authenticatedUser.email === "string"
-                    ? authenticatedUser.email
-                    : null,
-              avatar_url:
-                typeof authenticatedUser.user_metadata?.avatar_url === "string"
-                  ? authenticatedUser.user_metadata.avatar_url
-                  : null,
-              birthday: null,
-              created_at:
-                typeof authenticatedUser.created_at === "string"
-                  ? authenticatedUser.created_at
-                  : null,
-              favorite_fruit: null,
-              role: null,
-              status: null,
+              display_name: user?.display_name ?? null,
+              avatar_url: user?.avatar_url ?? null,
+              birthday: user?.birthday ?? null,
+              created_at: user?.created_at ?? null,
+              favorite_fruit: user?.favorite_fruit ?? null,
+              is_staff: user?.is_staff ?? null, // Add this line
+              role: user?.role ?? null,
+              status: user?.status ?? null,
             });
           } else {
             setUser(userProfile);
@@ -155,7 +144,20 @@ export function SupabaseAuthProvider({
     return () => {
       subscription.unsubscribe();
     };
-  }, [router, supabase, queryClient, initialSession]);
+  }, [
+    router,
+    supabase,
+    queryClient,
+    initialSession,
+    user?.display_name,
+    user?.avatar_url,
+    user?.birthday,
+    user?.created_at,
+    user?.favorite_fruit,
+    user?.is_staff,
+    user?.role,
+    user?.status,
+  ]);
 
   return (
     <SupabaseContext.Provider value={{ session, user }}>
