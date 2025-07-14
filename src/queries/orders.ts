@@ -38,17 +38,37 @@ export async function fetchOrders({
   endDate,
 }: FetchOrdersParams) {
   const supabase = createClient();
+  const offset = (page - 1) * itemsPerPage;
+
+  let userIds: string[] = [];
+  // If searching, find user_ids whose display_name matches
+  if (search) {
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("user_id")
+      .ilike("display_name", `%${search}%`);
+    if (profileData) {
+      userIds = profileData.map((p: any) => p.user_id);
+    }
+  }
+
   let query = supabase
     .from("orders")
     .select("*, profiles:user_id(display_name)", { count: "exact" })
     .order("created_at", { ascending: false })
-    .range((page - 1) * itemsPerPage, page * itemsPerPage - 1);
+    .range(offset, offset + itemsPerPage - 1);
 
-  // Search by order id or user display_name
+  // Main search: order id, payment_method, status
   if (search) {
-    query = query.or(
-      `id.ilike.%${search}%,profiles.display_name.ilike.%${search}%`
-    );
+    const orParts = [
+      `id.ilike.%${search}%`,
+      `payment_method.ilike.%${search}%`,
+      `status.ilike.%${search}%`,
+    ];
+    if (userIds.length > 0) {
+      orParts.push(`user_id.in.(${userIds.join(",")})`);
+    }
+    query = query.or(orParts.join(","));
   }
   if (status && status.length > 0) {
     query = query.in("status", status);

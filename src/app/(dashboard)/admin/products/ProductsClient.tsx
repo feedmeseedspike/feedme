@@ -58,7 +58,7 @@ import {
 } from "@components/ui/dialog";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "src/utils/supabase/client";
-import { getCategoryById } from "src/queries/categories";
+import { getCategoryById, getAllCategoriesQuery } from "src/queries/categories";
 import { debounce } from "lodash";
 
 function getImageSrc(src: string) {
@@ -95,7 +95,7 @@ export default function ProductsClient({
   initialCategories,
   initialStock,
   initialPublished,
-  categoryNames,
+  categoryNames: initialCategoryNames,
   allCategories,
   initialSortBy,
   initialSortOrder,
@@ -118,8 +118,26 @@ export default function ProductsClient({
   const { showToast } = useToast();
   const supabase = createClient();
 
-  // State management
-  const [search, setSearch] = useState(initialSearch || "");
+  // Local state for the input field
+  const [inputValue, setInputValue] = useState(initialSearch || "");
+
+  // Always sync inputValue with the URL param
+  useEffect(() => {
+    const urlSearch = searchParams?.get("search") || "";
+    setInputValue(urlSearch);
+  }, [searchParams]);
+
+  // Helper to get array params from URL
+  const getArrayParam = (param: string) => {
+    const values = searchParams?.getAll(param) || [];
+    return values.length > 0 ? values : [];
+  };
+  // Helper to get string param from URL with fallback
+  const getStringParam = (param: string, fallback: string) => {
+    return searchParams?.get(param) || fallback;
+  };
+
+  // Filter and sort state always in sync with URL
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     initialCategories || []
   );
@@ -133,8 +151,52 @@ export default function ProductsClient({
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">(
     (initialSortOrder as "asc" | "desc") || "desc"
   );
+
+  // Sync filter and sort state with URL params
+  useEffect(() => {
+    setSelectedCategories(getArrayParam("category"));
+    setSelectedStock(getArrayParam("stock"));
+    setSelectedPublished(getArrayParam("published"));
+    setSortBy(getStringParam("sortBy", "created_at"));
+    setSortOrder(getStringParam("sortOrder", "desc") as "asc" | "desc");
+  }, [searchParams]);
+
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<any>(null);
+  const [categoryNames, setCategoryNames] = useState<Record<string, string>>(
+    initialCategoryNames || {}
+  );
+
+  // State for all categories mapping
+  const [allCategoryMap, setAllCategoryMap] = useState<Record<string, string>>(
+    {}
+  );
+
+  // DEBUG: Log allCategoryMap keys on every render
+  useEffect(() => {
+    if (Object.keys(allCategoryMap).length > 0) {
+      console.log("allCategoryMap keys:", Object.keys(allCategoryMap));
+    }
+  }, [allCategoryMap]);
+
+  // Fetch all categories on mount
+  useEffect(() => {
+    async function fetchAllCategories() {
+      try {
+        const client = createClient();
+        const { data, error } = await getAllCategoriesQuery(client);
+        if (error) throw error;
+        const map: Record<string, string> = {};
+        (data || []).forEach((cat: { id: string; title: string }) => {
+          map[String(cat.id)] = cat.title;
+        });
+        setAllCategoryMap(map);
+      } catch (err) {
+        console.error("Failed to fetch all categories", err);
+      }
+    }
+    fetchAllCategories();
+  }, []);
 
   const page = currentPage;
 
@@ -162,23 +224,29 @@ export default function ProductsClient({
   );
 
   // Debounced search function
-  const debouncedSearch = useRef(
+  const debouncedUpdateURL = useRef(
     debounce((searchTerm: string) => {
       updateURL({ search: searchTerm, page: 1 });
     }, 300)
   );
 
   useEffect(() => {
-    // Recreate debounced function if updateURL changes
-    debouncedSearch.current = debounce((searchTerm: string) => {
+    debouncedUpdateURL.current = debounce((searchTerm: string) => {
       updateURL({ search: searchTerm, page: 1 });
     }, 300);
     return () => {
-      debouncedSearch.current.cancel?.();
+      debouncedUpdateURL.current.cancel?.();
     };
   }, [updateURL]);
 
-  // Use TanStack Query for products with all filters
+  const urlSearch = searchParams?.get("search") || "";
+  const urlCategories = searchParams?.getAll("category") || [];
+  const urlStock = searchParams?.getAll("stock") || [];
+  const urlPublished = searchParams?.getAll("published") || [];
+  const urlSortBy = searchParams?.get("sortBy") || "created_at";
+  const urlSortOrder =
+    (searchParams?.get("sortOrder") as "asc" | "desc") || "desc";
+
   const {
     data: productsData,
     isLoading,
@@ -188,47 +256,55 @@ export default function ProductsClient({
     queryKey: [
       "products",
       page,
-      search,
-      selectedCategories,
-      selectedStock,
-      selectedPublished,
-      sortBy,
-      sortOrder,
+      urlSearch,
+      urlCategories,
+      urlStock,
+      urlPublished,
+      urlSortBy,
+      urlSortOrder,
     ],
     queryFn: async () => {
       const { data, count } = await getProducts({
         page: page,
         limit: itemsPerPage,
-        search: search,
-        category: selectedCategories[0] || "",
-        stockStatus: selectedStock[0] || "",
-        publishedStatus: selectedPublished[0] || "",
-        sortBy,
-        sortOrder,
+        search: urlSearch,
+        category: urlCategories[0] || "",
+        stockStatus: urlStock[0] || "",
+        publishedStatus: urlPublished[0] || "",
+        sortBy: urlSortBy,
+        sortOrder: urlSortOrder,
       });
 
       // Fetch category names for each product
       if (data && data.length > 0) {
         const categoryIds = data
-          .map((p: any) => p.category_ids?.[0])
+          .flatMap((p: any) => p.category_ids || [])
           .filter(Boolean);
 
         if (categoryIds.length > 0) {
-          const uniqueCategoryIds = [...new Set(categoryIds)];
-          const fetchedCategoryNames: Record<string, string> = {};
-
-          await Promise.all(
-            uniqueCategoryIds.map(async (id) => {
-              try {
-                const category = await getCategoryById(supabase, id);
-                if (category) {
-                  fetchedCategoryNames[id] = category.title;
-                }
-              } catch (error) {
-                console.error(`Failed to fetch category with ID ${id}:`, error);
-              }
-            })
+          const uniqueCategoryIds = [...new Set(categoryIds)].filter(
+            (id) => !(id in categoryNames)
           );
+          if (uniqueCategoryIds.length > 0) {
+            const fetchedCategoryNames: Record<string, string> = {};
+            await Promise.all(
+              uniqueCategoryIds.map(async (id) => {
+                try {
+                  const category = await getCategoryById(supabase, id);
+                  if (category) {
+                    fetchedCategoryNames[id] = category.title;
+                  }
+                } catch (error) {
+                  console.error(
+                    `Failed to fetch category with ID ${id}:`,
+                    error
+                  );
+                }
+              })
+            );
+            // Update local state with new category names
+            setCategoryNames((prev) => ({ ...prev, ...fetchedCategoryNames }));
+          }
         }
       }
 
@@ -245,9 +321,9 @@ export default function ProductsClient({
 
   // Event handlers
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newSearch = e.target.value;
-    setSearch(newSearch);
-    debouncedSearch.current(newSearch);
+    const newValue = e.target.value;
+    setInputValue(newValue);
+    debouncedUpdateURL.current(newValue);
   };
 
   const handleSortChange = (value: string) => {
@@ -291,7 +367,7 @@ export default function ProductsClient({
     setSelectedCategories([]);
     setSelectedStock([]);
     setSelectedPublished([]);
-    setSearch("");
+    setInputValue("");
     setSortBy("created_at");
     setSortOrder("desc");
     updateURL({
@@ -362,7 +438,7 @@ export default function ProductsClient({
             type="text"
             placeholder="Search products by name, description, or brand..."
             className="w-full pl-9 pr-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-gray-300 shadow-[0px_1px_3px_0px_rgba(16,24,40,0.10)]"
-            value={search}
+            value={inputValue}
             onChange={handleSearchChange}
           />
         </div>
@@ -550,18 +626,18 @@ export default function ProductsClient({
       {(selectedCategories.length > 0 ||
         selectedStock.length > 0 ||
         selectedPublished.length > 0 ||
-        search) && (
+        inputValue) && (
         <div className="mb-4 p-3 bg-gray-50 rounded-lg">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-gray-700">
               Active filters:
             </span>
-            {search && (
+            {inputValue && (
               <Badge variant="secondary" className="flex items-center gap-1">
-                Search: {search}
+                Search: {inputValue}
                 <button
                   onClick={() => {
-                    setSearch("");
+                    setInputValue("");
                     updateURL({ search: "", page: 1 });
                   }}
                   className="ml-1 hover:text-red-500"
@@ -709,10 +785,32 @@ export default function ProductsClient({
                     <div className="">{product.name}</div>
                   </TableCell>
                   <TableCell>
-                    {Array.isArray(product.category_ids) &&
-                    product.category_ids.length > 0
-                      ? categoryNames[product.category_ids[0]] || "N/A"
-                      : "N/A"}
+                    {(() => {
+                      if (
+                        Array.isArray(product.category_ids) &&
+                        product.category_ids.length > 0
+                      ) {
+                        // DEBUG: Log for each product row
+                        console.log(
+                          "Product:",
+                          product.name,
+                          "category_ids:",
+                          product.category_ids,
+                          "allCategoryMap keys:",
+                          Object.keys(allCategoryMap)
+                        );
+                        return product.category_ids
+                          .map(
+                            (catId: string) =>
+                              allCategoryMap[String(catId)] ||
+                              categoryNames[String(catId)] ||
+                              "Unknown Category"
+                          )
+                          .join(", ");
+                      } else {
+                        return "Uncategorized";
+                      }
+                    })()}
                   </TableCell>
                   <TableCell>{formatNaira(product.price)}</TableCell>
                   <TableCell>

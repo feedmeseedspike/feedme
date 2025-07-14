@@ -32,6 +32,13 @@ import {
 } from "@components/ui/breadcrumb";
 import { createClient } from "src/utils/supabase/client";
 import supabaseAdmin from "@/utils/supabase/admin";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@components/ui/dialog";
+import { useEffect } from "react";
 
 const supabase = createClient();
 
@@ -65,6 +72,23 @@ export default function EditCategoryClient({
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Add preview modal state
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  useEffect(() => {
+    const draftStr = localStorage.getItem(
+      `categoryDraft_${initialCategory.id}`
+    );
+    if (draftStr) {
+      const draft = JSON.parse(draftStr);
+      setTitle(draft.title || "");
+      setDescription(draft.description || "");
+      setTags(draft.tags || []);
+      setKeynotes(draft.keynotes || []);
+      if (draft.imageBase64) setImagePreview(draft.imageBase64);
+      if (draft.bannerBase64) setBannerPreview(draft.bannerBase64);
+    }
+  }, [initialCategory.id]);
 
   const handleAddTag = () => {
     if (tag.trim() && !tags.includes(tag.trim())) {
@@ -179,6 +203,35 @@ export default function EditCategoryClient({
     }
   };
 
+  // Add a function to save draft to localStorage (keyed by category ID)
+  const handleSaveDraft = async () => {
+    // Convert images to base64 for storage
+    const getBase64 = (file: File | null) =>
+      new Promise<string | null>((resolve) => {
+        if (!file) return resolve(null);
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+    const [imageBase64, bannerBase64] = await Promise.all([
+      getBase64(imageFile),
+      getBase64(bannerFile),
+    ]);
+    const draft = {
+      title,
+      description,
+      tags,
+      keynotes,
+      imageBase64: imageBase64 || imagePreview,
+      bannerBase64: bannerBase64 || bannerPreview,
+    };
+    localStorage.setItem(
+      `categoryDraft_${initialCategory.id}`,
+      JSON.stringify(draft)
+    );
+    showToast("Draft saved!", "success");
+  };
+
   return (
     <div className="p-4">
       <div className="mb-6">
@@ -201,7 +254,7 @@ export default function EditCategoryClient({
           {error}
         </div>
       )}
-      <form onSubmit={handleSubmit}>
+      <form id="edit-category-form" onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Basic Information */}
           <Card>
@@ -399,6 +452,16 @@ export default function EditCategoryClient({
           >
             Cancel
           </Button>
+          <Button type="button" variant="outline" onClick={handleSaveDraft}>
+            Save as Draft
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setPreviewOpen(true)}
+          >
+            Preview
+          </Button>
           <Button
             type="submit"
             className="bg-[#1B6013] text-white"
@@ -408,6 +471,74 @@ export default function EditCategoryClient({
           </Button>
         </CardFooter>
       </form>
+
+      {/* Add a preview modal component */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Category Preview</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex gap-4 items-center">
+              {imagePreview && (
+                <Image
+                  src={imagePreview}
+                  alt="Thumbnail"
+                  width={80}
+                  height={80}
+                  className="rounded"
+                />
+              )}
+              <div>
+                <h2 className="text-xl font-bold">{title}</h2>
+                <p className="text-gray-600">{description}</p>
+                <div className="flex gap-2 mt-2">
+                  {tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="bg-gray-200 px-2 py-1 rounded text-xs"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-2 mt-2">
+                  {keynotes.map((k) => (
+                    <span
+                      key={k}
+                      className="bg-green-100 px-2 py-1 rounded text-xs"
+                    >
+                      {k}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {bannerPreview && (
+              <Image
+                src={bannerPreview}
+                alt="Banner"
+                width={400}
+                height={100}
+                className="rounded"
+              />
+            )}
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setPreviewOpen(false)}>
+              Back to Edit
+            </Button>
+            {/* Publish button triggers the existing handleSubmit */}
+            <Button
+              type="submit"
+              form="edit-category-form"
+              disabled={submitting}
+            >
+              Publish
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -73,7 +73,7 @@ const HeaderClient = ({ categories, categoriesError }: any) => {
 
                   <SheetContent
                     side="left"
-                    className="w-[80%] bg-[#1B6013] text-white flex flex-col !px-4 !pb-0"
+                    className="w-[80%] bg-[#1B6013] text-white flex flex-col h-full !px-4 !pb-0"
                   >
                     <SheetHeader>
                       <SheetTitle>
@@ -91,7 +91,7 @@ const HeaderClient = ({ categories, categoriesError }: any) => {
                     </SheetHeader>
 
                     {/* Scrollable Categories Section */}
-                    <div className="flex-1 overflow-y-auto py-4">
+                    <div className="flex- overflow-y-aut py-4">
                       <div className="pb-4">
                         {isCategoriesLoading ? (
                           <div className="space-y-2">
@@ -124,109 +124,25 @@ const HeaderClient = ({ categories, categoriesError }: any) => {
                       </div>
                     </div>
 
-                    <div className="border-t border-white">
-                      {/* <Sheet
-                        open={openAccountSheet}
-                        onOpenChange={setOpenAccountSheet}
-                      >
-                        <SheetTrigger asChild>
-                          <button className="flex items-center gap-2 p-3 hover:bg-white/10 rounded transition-colors w-full">
-                            <User className="size-6" />
-                            <span>Your Account</span>
-                          </button>
-                        </SheetTrigger>
-                        <SheetContent
-                          side="left"
-                          className="w-[90%] bg-[#1B6013] text-white"
-                        >
-                          <Button
-                            variant="ghost"
-                            onClick={() => setOpenAccountSheet(false)}
-                            className="p-0 hover:bg-transparent absolute left-4 top-4"
+                    {/* Mobile Auth Footer */}
+                    {!isLoggedIn && (
+                      <div className="bg-[#1B6013] pb-4 pt-2">
+                        <div className="flex flex-col gap-2 px-2">
+                          <Link
+                            href="/login"
+                            className="block w-full text-center bg-white/10 py-3 rounded transition-colors"
                           >
-                            <ChevronLeft className="w-6 h-6" />
-                          </Button>
-
-                          <div className="pt-16">
-                            {isUserLoading ? (
-                              <div className="space-y-4">
-                                <Skeleton className="w-32 h-8 bg-white/30" />
-                                <Skeleton className="w-48 h-4 bg-white/30" />
-                              </div>
-                            ) : isLoggedIn ? (
-                              <>
-                                <div className="px-4 py-3 text-center">
-                                  <Avatar className="mx-auto size-16 mb-4">
-                                    <AvatarImage
-                                      src={user?.avatar_url ?? undefined}
-                                    />
-                                    <AvatarFallback>
-                                      {user?.display_name?.[0] || "U"}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <p className="font-semibold text-xl">
-                                    {user?.display_name || "User"}
-                                  </p>
-                                  <p className="text-sm text-white/80 truncate">
-                                    {user?.email}
-                                  </p>
-                                </div>
-                                <Separator className="bg-white/30 my-4" />
-                                <Link
-                                  href="/account"
-                                  className="flex items-center gap-2 p-4 hover:bg-white/10 rounded transition-colors"
-                                >
-                                  <User className="w-5 h-5" />
-                                  Account Settings
-                                </Link>
-                                <Link
-                                  href="/account/order"
-                                  className="flex items-center gap-2 p-4 hover:bg-white/10 rounded transition-colors"
-                                >
-                                  <Package className="w-5 h-5" />
-                                  My Orders
-                                </Link>
-                                <Link
-                                  href="/account/wallet"
-                                  className="flex items-center gap-2 p-4 hover:bg-white/10 rounded transition-colors"
-                                >
-                                  <Wallet className="w-5 h-5" />
-                                  Wallet
-                                </Link>
-                                <Link
-                                  href="/account/favourites"
-                                  className="flex items-center gap-2 p-4 hover:bg-white/10 rounded transition-colors"
-                                >
-                                  <Heart className="w-5 h-5" />
-                                  Favorites
-                                </Link>
-                                <div className="mt-8">
-                                  <LogoutButton />
-                                </div>
-                              </>
-                            ) : (
-                              <div className="space-y-4 pt-8">
-                                <p className="text-center">
-                                  Please sign in to access your account
-                                </p>
-                                <Link
-                                  href="/login"
-                                  className="block w-full text-center bg-white/10  py-3 rounded transition-colors"
-                                >
-                                  Sign In
-                                </Link>
-                                <Link
-                                  href="/register"
-                                  className="block w-full text-center bg-white text-[#1B6013] hover:bg-white/90 py-3 rounded transition-colors"
-                                >
-                                  Create Account
-                                </Link>
-                              </div>
-                            )}
-                          </div>
-                        </SheetContent>
-                      </Sheet> */}
-                    </div>
+                            Sign In
+                          </Link>
+                          <Link
+                            href="/register"
+                            className="block w-full text-center bg-white text-[#1B6013] hover:bg-white/90 py-3 rounded transition-colors"
+                          >
+                            Create Account
+                          </Link>
+                        </div>
+                      </div>
+                    )}
                   </SheetContent>
                 </Sheet>
 

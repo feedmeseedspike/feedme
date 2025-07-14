@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import Banner from "@components/shared/home/Home-banner";
 // import { HomeCarousel } from "@components/shared/home/Home-carousel";
 import TopCategories from "@components/shared/home/TopCategories";

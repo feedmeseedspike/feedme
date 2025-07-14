@@ -53,8 +53,24 @@ import Trash from "@components/icons/trash.svg";
 import { useToast } from "src/hooks/useToast";
 import { getAllCategories } from "../../../../../queries/products";
 import { Label } from "@/components/ui/label";
-import { addProduct, uploadProductImage } from "src/lib/api";
+import { addProduct } from "src/lib/api";
+import { supabase } from "src/lib/supabaseClient";
 const animatedComponents = makeAnimated();
+
+// Client-side image upload utility
+async function uploadProductImageClient(
+  file: File,
+  bucketName = "product-images"
+) {
+  const fileExt = file.name.split(".").pop();
+  const filePath = `${Date.now()}.${fileExt}`;
+  const { error } = await supabase.storage
+    .from(bucketName)
+    .upload(filePath, file);
+  if (error) throw new Error(error.message);
+  const { data } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+  return data.publicUrl;
+}
 
 const productSchema = z
   .object({
@@ -324,29 +340,54 @@ export default function AddProduct() {
     }
   };
   const onSubmit = async (data: ProductFormValues) => {
-    // console.log(data);
-    // return; // Keep for debugging form data if needed
-
     setLoading(true);
 
+    // 1. Upload product images to storage (client-side)
     let uploadedImageUrls: string[] = [];
     if (data.images && data.images.length > 0) {
       try {
-        // Upload each image in parallel and collect URLs
         const uploadPromises = data.images.map((imageFile) =>
-          uploadProductImage(imageFile, "product-images")
+          uploadProductImageClient(imageFile, "product-images")
         );
         uploadedImageUrls = await Promise.all(uploadPromises);
       } catch (err: any) {
         showToast(err.message || "Failed to upload product images", "error");
         setLoading(false);
-        return; // Stop submission if image upload fails
+        return;
       }
     }
 
-    // Determine if the product has variations based on the options array
-    const hasVariations = data.options && data.options.length > 0;
+    // 2. Handle options/variations: upload option images to storage (client-side)
+    let processedOptions: OptionType[] = [];
+    if (data.variation === "Yes" && data.options && data.options.length > 0) {
+      processedOptions = await Promise.all(
+        data.options.map(async (opt) => {
+          let imageUrl = opt.image;
+          if (opt.image instanceof File) {
+            try {
+              imageUrl = await uploadProductImageClient(
+                opt.image,
+                "option-images"
+              );
+            } catch (err: any) {
+              showToast(
+                err.message || "Failed to upload option image",
+                "error"
+              );
+              setLoading(false);
+              throw err;
+            }
+          }
+          return {
+            ...opt,
+            image: typeof imageUrl === "string" ? imageUrl : null,
+          };
+        })
+      );
+    }
 
+    // 3. Prepare product data for DB
+    const hasVariations = processedOptions.length > 0;
     const productData = {
       name: data.productName,
       slug: toSlug(data.productName),
@@ -360,18 +401,18 @@ export default function AddProduct() {
       images: uploadedImageUrls,
       is_published: data.is_published,
       category_ids: data.selectedCategories.map((cat) => cat.value),
-      options: hasVariations ? data.options : [],
+      options: hasVariations ? processedOptions : [],
     };
 
     try {
       await addProduct(productData);
       showToast("Product created successfully!", "success");
-      form.reset(); // Reset the form on success
-      setOptions([]); // Clear options state
-      setImagePreviews([]); // Clear image previews
-      // Clear local storage draft after successful submission
+      form.reset();
+      setOptions([]);
+      setImagePreviews([]);
       localStorage.removeItem("productDraft");
-      // router.push("/admin/products"); // Redirect to product list
+      // Redirect to product list after success
+      window.location.href = "/admin/products";
     } catch (err: any) {
       showToast(err.message || "Failed to create product", "error");
     } finally {

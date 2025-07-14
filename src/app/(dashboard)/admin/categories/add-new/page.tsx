@@ -20,13 +20,31 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@components/ui/badge";
 import { X } from "lucide-react";
 import Image from "next/image";
-import { addCategory, uploadImage } from "../../../../../lib/api";
+import { addCategory } from "../../../../../lib/api";
 import { useToast } from "../../../../../hooks/useToast";
-import supabaseAdmin from "@/utils/supabase/admin";
 import ReactSelect from "react-select";
-import { createClient } from "src/utils/supabase/client";
+import { supabase } from "src/lib/supabaseClient";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@components/ui/dialog";
 
-const supabase = createClient();
+// Client-side image upload utility
+async function uploadCategoryImageClient(
+  file: File,
+  bucketName = "category-images"
+) {
+  const fileExt = file.name.split(".").pop();
+  const filePath = `${Date.now()}.${fileExt}`;
+  const { error } = await supabase.storage
+    .from(bucketName)
+    .upload(filePath, file);
+  if (error) throw new Error(error.message);
+  const { data } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+  return { url: data.publicUrl, public_id: filePath };
+}
 
 export default function AddNewCategory() {
   const router = useRouter();
@@ -46,6 +64,8 @@ export default function AddNewCategory() {
   const [error, setError] = useState<string | null>(null); // State for errors
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
+  // Add preview modal state
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // Fetch all products for selection
   useEffect(() => {
@@ -62,6 +82,48 @@ export default function AddNewCategory() {
     }
     fetchProducts();
   }, [allProducts]);
+
+  // Add a function to save draft to localStorage
+  const handleSaveDraft = async () => {
+    // Convert images to base64 for storage
+    const getBase64 = (file: File | null) =>
+      new Promise<string | null>((resolve) => {
+        if (!file) return resolve(null);
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+    const [imageBase64, bannerBase64] = await Promise.all([
+      getBase64(imageFile),
+      getBase64(bannerFile),
+    ]);
+    const draft = {
+      title,
+      description,
+      tags,
+      keynotes,
+      imageBase64,
+      bannerBase64,
+      selectedProducts,
+    };
+    localStorage.setItem("categoryDraft", JSON.stringify(draft));
+    showToast("Draft saved!", "success");
+  };
+
+  // Add a function to load draft from localStorage on mount
+  useEffect(() => {
+    const draftStr = localStorage.getItem("categoryDraft");
+    if (draftStr) {
+      const draft = JSON.parse(draftStr);
+      setTitle(draft.title || "");
+      setDescription(draft.description || "");
+      setTags(draft.tags || []);
+      setKeynotes(draft.keynotes || []);
+      setSelectedProducts(draft.selectedProducts || []);
+      if (draft.imageBase64) setImagePreview(draft.imageBase64);
+      if (draft.bannerBase64) setBannerPreview(draft.bannerBase64);
+    }
+  }, []);
 
   const handleAddTag = () => {
     if (tag.trim() && !tags.includes(tag.trim())) {
@@ -123,23 +185,15 @@ export default function AddNewCategory() {
     let thumbnail = null;
     let banner_url = null;
     try {
-      const fileExt = imageFile.name.split(".").pop();
-      const filePath = `${Date.now()}.${fileExt}`;
-      await uploadImage(imageFile, "category-images");
-      const { data: publicUrlData } = supabaseAdmin.storage
-        .from("category-images")
-        .getPublicUrl(filePath);
-      thumbnail = publicUrlData.publicUrl
-        ? { url: publicUrlData.publicUrl, public_id: filePath }
-        : null;
+      // Upload thumbnail image client-side
+      thumbnail = await uploadCategoryImageClient(imageFile, "category-images");
       if (bannerFile) {
-        const bannerExt = bannerFile.name.split(".").pop();
-        const bannerPath = `banner_${Date.now()}.${bannerExt}`;
-        await uploadImage(bannerFile, "category-images");
-        const { data: bannerUrlData } = supabaseAdmin.storage
-          .from("category-images")
-          .getPublicUrl(bannerPath);
-        banner_url = bannerUrlData.publicUrl || null;
+        // Upload banner image client-side
+        const bannerObj = await uploadCategoryImageClient(
+          bannerFile,
+          "category-images"
+        );
+        banner_url = bannerObj.url;
       }
     } catch (err: any) {
       showToast(err.message || "Failed to upload image", "error");
@@ -211,7 +265,7 @@ export default function AddNewCategory() {
         </div>
       )}{" "}
       {/* Display submission errors */}
-      <form onSubmit={handleSubmit}>
+      <form id="category-form" onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Basic Information */}
           <Card>
@@ -449,15 +503,118 @@ export default function AddNewCategory() {
           >
             Cancel
           </Button>
-          <Button
-            type="submit"
-            className="bg-[#1B6013] text-white"
-            disabled={submitting}
-          >
-            {submitting ? "Creating..." : "Create Category"}
-          </Button>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={handleSaveDraft}>
+              Save as Draft
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setPreviewOpen(true)}
+            >
+              Preview
+            </Button>
+            <Button
+              type="submit"
+              className="bg-[#1B6013] text-white"
+              disabled={submitting}
+            >
+              {submitting ? "Creating..." : "Create Category"}
+            </Button>
+          </div>
         </CardFooter>
       </form>
+      {/* Add a preview modal component */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent
+          className="max-w-2xl"
+          style={{ height: "90vh", maxHeight: "90vh", overflowY: "auto" }}
+        >
+          <DialogHeader>
+            <DialogTitle>Category Preview</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex gap-4 items-center">
+              {imagePreview && (
+                <Image
+                  src={imagePreview}
+                  alt="Thumbnail"
+                  width={80}
+                  height={80}
+                  className="rounded"
+                />
+              )}
+              <div>
+                <h2 className="text-xl font-bold">{title}</h2>
+                <p className="text-gray-600">{description}</p>
+                <div className="flex gap-2 mt-2">
+                  {tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="bg-gray-200 px-2 py-1 rounded text-xs"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-2 mt-2">
+                  {keynotes.map((k) => (
+                    <span
+                      key={k}
+                      className="bg-green-100 px-2 py-1 rounded text-xs"
+                    >
+                      {k}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {bannerPreview && (
+              <Image
+                src={bannerPreview}
+                alt="Banner"
+                width={400}
+                height={100}
+                className="rounded"
+              />
+            )}
+            <div>
+              <h3 className="font-semibold mb-2">Products in this Category:</h3>
+              <div className="grid grid-cols-2 gap-4">
+                {selectedProducts.map((prod: any) => {
+                  const product = allProducts.find((p) => p.id === prod.value);
+                  return product ? (
+                    <div
+                      key={product.id}
+                      className="flex items-center gap-2 border p-2 rounded"
+                    >
+                      {product.images && product.images[0] && (
+                        <Image
+                          src={product.images[0]}
+                          alt={product.name}
+                          width={40}
+                          height={40}
+                          className="rounded"
+                        />
+                      )}
+                      <span>{product.name}</span>
+                    </div>
+                  ) : null;
+                })}
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setPreviewOpen(false)}>
+              Back to Edit
+            </Button>
+            {/* Publish button triggers the existing handleSubmit */}
+            <Button type="submit" form="category-form" disabled={submitting}>
+              Publish
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
