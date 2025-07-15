@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { getUser } from "src/lib/actions/auth.actions";
 import { fetchUserOrders } from "src/queries/orders";
 import OrderClient from "./OrderClient";
@@ -24,7 +25,7 @@ export default async function OrdersPage({
       );
       orders = data;
 
-      console.log(orders)
+      console.log(orders);
       totalOrdersCount = count ?? 0;
     } catch (error) {
       console.error("Error fetching user orders:", error);

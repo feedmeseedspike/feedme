@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { cookies } from "next/headers";
 import Pagination from "@components/shared/pagination";
 import ProductSortSelector from "@components/shared/product/product-sort-selector";

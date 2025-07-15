@@ -62,7 +62,8 @@ import {
   BreadcrumbPage,
 } from "@components/ui/breadcrumb";
 import Image from "next/image";
-import { updateProductAction, uploadProductImageAction } from "./actions";
+import { updateProductAction } from "./actions";
+import { supabase } from "src/lib/supabaseClient";
 
 const animatedComponents = makeAnimated();
 
@@ -174,6 +175,21 @@ type EditProductClientProps = {
   product: any;
   allCategories: any[];
 };
+
+// Client-side image upload utility
+async function uploadProductImageClient(
+  file: File,
+  bucketName = "product-images"
+) {
+  const fileExt = file.name.split(".").pop();
+  const filePath = `${Date.now()}.${fileExt}`;
+  const { error } = await supabase.storage
+    .from(bucketName)
+    .upload(filePath, file);
+  if (error) throw new Error(error.message);
+  const { data } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+  return data.publicUrl;
+}
 
 export default function EditProductClient({
   product,
@@ -330,65 +346,157 @@ export default function EditProductClient({
     }
   };
   const onSubmit = async (data: ProductFormValues) => {
-    // console.log("[DEBUG] ===== ONSUBMIT FUNCTION CALLED =====");
-    // console.log("[DEBUG] onSubmit called with data:", data);
-    // console.log("[DEBUG] data.options:", data.options);
-    // console.log("[DEBUG] data.variation:", data.variation);
-    // console.log("[DEBUG] Form values:", form.getValues());
-    // console.log("[DEBUG] Form errors:", form.formState.errors);
-    // console.log("[DEBUG] Form is valid:", form.formState.isValid);
-    // console.log("[DEBUG] About to call updateProductAction");
-
     setIsSubmitting(true);
 
-    // Prepare the product data - let the server action handle all processing
+    // 1. Upload new product images to Supabase Storage (client-side)
+    let uploadedImageUrls: string[] = [];
+    if (filesToUpload.length > 0) {
+      uploadedImageUrls = await Promise.all(
+        filesToUpload.map((file) => uploadProductImageClient(file))
+      );
+    }
+
+    // 2. Remove deleted images from the current product images
+    let currentImages: string[] = Array.isArray(product.images)
+      ? [...product.images]
+      : [];
+    if (imagesToDelete.length > 0) {
+      currentImages = currentImages.filter(
+        (img) => !imagesToDelete.includes(img)
+      );
+    }
+
+    // 3. Add new image URLs
+    const updatedImages = [...currentImages, ...uploadedImageUrls];
+    const safeImages = updatedImages.filter((img) => typeof img === "string");
+
+    // 4. Handle option images: upload any File images to storage, replace with URLs
+    let safeOptions = data.options || [];
+    if (Array.isArray(safeOptions)) {
+      safeOptions = await Promise.all(
+        safeOptions.map(async (opt: any) => {
+          let imageUrl = opt.image;
+          if (imageUrl instanceof File) {
+            imageUrl = await uploadProductImageClient(
+              imageUrl,
+              "option-images"
+            );
+          }
+          return {
+            ...opt,
+            image: typeof imageUrl === "string" ? imageUrl : null,
+          };
+        })
+      );
+    }
+
+    // 5. Build the payload with only plain data
     const productData: any = {
+      id: product.id,
       name: data.productName,
       description: data.description,
       category_ids: data.selectedCategories.map((c) => c.value),
       is_published: data.is_published,
       slug: toSlug(data.productName),
+      images: safeImages,
+      options: safeOptions,
     };
-
     if (data.variation === "No") {
       productData.price = data.price ?? 0;
       productData.stock_status =
         data.stockStatus === "In Stock" ? "in_stock" : "out_of_stock";
-      productData.options = [];
     } else {
       productData.price = null;
       productData.stock_status = null;
-      // Pass options as-is to the server action
-      productData.options = data.options || [];
     }
 
-    // Always include id for update
-    productData.id = product.id;
+    // 6. Reset file/image state
+    setFilesToUpload([]);
+    form.setValue("images", []);
 
-    // console.log(
-    //   "[DEBUG] About to call updateProduct with:",
-    //   product.id,
-    //   productData
-    // );
-
+    // 7. Call the server action with only plain data
     try {
-      // console.log("[DEBUG] Calling updateProductAction...");
-      // const response = await updateProductAction(product.id, productData);
-      // console.log(
-      //   "[DEBUG] Mutation success, server returned:",
-      //   JSON.stringify(response, null, 2)
-      // );
+      await updateProductAction(product.id, productData);
       showToast("Product updated successfully!", "success");
       router.push("/admin/products");
-      setFilesToUpload([]);
       setImagesToDelete([]);
     } catch (error: any) {
-      console.error("Mutation error:", error);
       showToast(error.message || "Failed to update product.", "error");
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // Add this utility function inside your component (before the component or inside it)
+  function toPlainObject(obj: any): any {
+    if (Array.isArray(obj)) {
+      return obj.map(toPlainObject);
+    } else if (obj && typeof obj === "object" && obj.constructor === Object) {
+      const plain: any = {};
+      for (const key in obj) {
+        const value = obj[key];
+        if (
+          value instanceof File ||
+          typeof value === "function" ||
+          typeof value === "undefined"
+        ) {
+          continue;
+        }
+        plain[key] = toPlainObject(value);
+      }
+      return plain;
+    }
+    return obj;
+  }
+
+  // Remove any File objects from all arrays/objects recursively
+  function deepClean(obj: any): any {
+    if (Array.isArray(obj)) {
+      return obj.filter((item) => !(item instanceof File)).map(deepClean);
+    } else if (obj && typeof obj === "object" && obj.constructor === Object) {
+      const plain: any = {};
+      for (const key in obj) {
+        const value = obj[key];
+        if (value instanceof File) continue;
+        plain[key] = deepClean(value);
+      }
+      return plain;
+    }
+    return obj;
+  }
+
+  // Aggressive deep sanitize utility to remove File, Blob, and non-plain objects
+  function deepSanitize(obj: any): any {
+    if (Array.isArray(obj)) {
+      return obj
+        .filter(
+          (item) =>
+            !(item instanceof File) &&
+            !(typeof Blob !== "undefined" && item instanceof Blob)
+        )
+        .map(deepSanitize);
+    } else if (
+      obj &&
+      typeof obj === "object" &&
+      Object.getPrototypeOf(obj) === Object.prototype
+    ) {
+      const plain: any = {};
+      for (const key in obj) {
+        const value = obj[key];
+        if (
+          value instanceof File ||
+          (typeof Blob !== "undefined" && value instanceof Blob) ||
+          typeof value === "function" ||
+          typeof value === "undefined"
+        ) {
+          continue;
+        }
+        plain[key] = deepSanitize(value);
+      }
+      return plain;
+    }
+    return obj;
+  }
 
   // --- UI ---
   return (
@@ -418,32 +526,7 @@ export default function EditProductClient({
       <Separator className="my-5" />
       <Form {...form}>
         <form
-          onSubmit={(e) => {
-            // console.log("[DEBUG] ===== FORM ONSUBMIT EVENT =====");
-            // Prevent form submission if option modal is open
-            if (isDialogOpen) {
-              // console.log(
-              //   "[DEBUG] Form submission blocked - option modal is open"
-              // );
-              e.preventDefault();
-              return;
-            }
-
-            // console.log("[DEBUG] Form onSubmit event triggered");
-            // console.log("[DEBUG] Form event:", e);
-            // console.log("[DEBUG] Form state at submit:", form.getValues());
-            // console.log(
-            //   "[DEBUG] Form errors at submit:",
-            //   form.formState.errors
-            // );
-            // console.log(
-            //   "[DEBUG] Form is valid at submit:",
-            //   form.formState.isValid
-            // );
-
-            const result = form.handleSubmit(onSubmit)(e);
-            // console.log("[DEBUG] Form handleSubmit result:", result);
-          }}
+          onSubmit={form.handleSubmit(onSubmit)}
           className="p-6 rounded-lg shadow-md bg-white flex flex-col gap-2"
         >
           {/* Product Name */}
@@ -764,30 +847,15 @@ export default function EditProductClient({
                           isOpen={isDialogOpen}
                           onClose={() => setIsDialogOpen(false)}
                           onSubmit={async (data) => {
-                            // console.log(
-                            //   "[DEBUG] OptionModal onSubmit called with data:",
-                            //   data
-                            // );
                             setOptionModalLoading(true);
                             try {
                               // Don't upload the image here - let the main mutation handle it
                               const newOption = { ...data };
-                              // console.log(
-                              //   "[DEBUG] New option to add:",
-                              //   newOption
-                              // );
                               const currentOptions =
                                 form.watch("options") || [];
-                              // console.log(
-                              //   "[DEBUG] Current options before adding:",
-                              //   currentOptions
-                              // );
 
                               // If this is the first option, switch variation to "Yes"
                               if (currentOptions.length === 0) {
-                                // console.log(
-                                //   "[DEBUG] First option added, switching variation to Yes"
-                                // );
                                 form.setValue("variation", "Yes", {
                                   shouldValidate: true,
                                 });
@@ -797,10 +865,6 @@ export default function EditProductClient({
                                 ...currentOptions,
                                 newOption,
                               ];
-                              // console.log(
-                              //   "[DEBUG] Updated options after adding:",
-                              //   updatedOptions
-                              // );
                               form.setValue("options", updatedOptions, {
                                 shouldValidate: true,
                               });
@@ -810,39 +874,11 @@ export default function EditProductClient({
                                 setTimeout(resolve, 200)
                               );
 
-                              // console.log(
-                              //   "[DEBUG] Options after add:",
-                              //   form.getValues("options")
-                              // );
-                              // console.log(
-                              //   "[DEBUG] Variation after add:",
-                              //   form.getValues("variation")
-                              // );
-                              // console.log(
-                              //   "[DEBUG] Form is valid after add:",
-                              //   form.formState.isValid
-                              // );
-
-                              // Close the modal FIRST
-                              setIsDialogOpen(false);
-                              // console.log(
-                              //   "[DEBUG] Modal closed, isDialogOpen set to false"
-                              // );
-
-                              // Wait a bit more for the modal state to update
-                              await new Promise((resolve) =>
-                                setTimeout(resolve, 100)
-                              );
-
                               showToast(
                                 "Option added successfully!",
                                 "success"
                               );
                             } catch (err) {
-                              console.error(
-                                "[DEBUG] Error adding option:",
-                                err
-                              );
                               showToast(
                                 "Failed to add option: " +
                                   (err as Error).message,
@@ -877,16 +913,6 @@ export default function EditProductClient({
               type="submit"
               className="w-full sm:w-auto bg-[#1B6013] text-white"
               disabled={isSubmitting || optionModalLoading || isDialogOpen}
-              onClick={() => {
-                // console.log(
-                //   "[DEBUG] ===== UPDATE PRODUCT BUTTON CLICKED ====="
-                // );
-                // console.log("[DEBUG] Button disabled state:", {
-                //   isSubmitting,
-                //   optionModalLoading,
-                //   isDialogOpen,
-                // });
-              }}
             >
               {isSubmitting ? (
                 <span className="flex items-center gap-2">

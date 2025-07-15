@@ -643,10 +643,21 @@ export default function OrdersClient({
                     </Select>
                   </TableCell>
                   <TableCell>
-                    {typeof order.shipping_address === "object" &&
-                    !Array.isArray(order.shipping_address) &&
-                    typeof order.shipping_address?.city === "string"
-                      ? order.shipping_address.city
+                    {order.shipping_address &&
+                    typeof order.shipping_address === "object" &&
+                    !Array.isArray(order.shipping_address)
+                      ? [
+                          order.shipping_address.city,
+                          order.shipping_address.state,
+                          order.shipping_address.local_government,
+                          order.shipping_address.country,
+                          order.shipping_address.street,
+                          order.shipping_address.zip,
+                        ]
+                          .filter(
+                            (v) => v && typeof v === "string" && v.trim() !== ""
+                          )
+                          .join(", ") || "Unknown Location"
                       : "Unknown Location"}
                   </TableCell>
 

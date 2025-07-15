@@ -123,13 +123,13 @@ export default function AddressesClient({
             Tables<"addresses">,
             "id" | "user_id" | "created_at" | "updated_at"
           > = {
-            label: values.label || null,
-            street: values.street || null,
-            city: values.city || null,
-            state: values.state || null,
-            zip: values.zip || null,
-            country: values.country || null,
-            phone: values.phone || null,
+            label: values.label || "",
+            street: values.street || "",
+            city: values.city || "",
+            state: values.state || "",
+            zip: values.zip || "",
+            country: values.country || "",
+            phone: values.phone || "",
           };
           const newAddress = await addAddressAction(addressData);
           if (newAddress) {
