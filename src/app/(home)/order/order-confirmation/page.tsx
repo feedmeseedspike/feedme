@@ -12,8 +12,11 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { formatNaira } from "src/lib/utils";
+import { formatNaira, showToast } from "src/lib/utils";
 import { Badge } from "@components/ui/badge";
+import { clearCart } from "src/store/features/cartSlice";
+import { useDispatch } from "react-redux";
+import { useClearCartMutation } from "@/queries/cart";
 
 function OrderConfirmationClientWrapper({
   searchParams,
@@ -27,9 +30,24 @@ function OrderConfirmationClientWrapper({
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const dispatch = useDispatch();
+    const clearCartMutation = useClearCartMutation();
+
+  async function clearData(){
+    await clearCartMutation.mutateAsync();
+  }
+
+  useEffect(()=>{
+    console.log('removing carts')
+    clearData()},[])
 
   useEffect(() => {
     let id = orderId;
+    localStorage.removeItem("voucherCode");
+    localStorage.removeItem("voucherDiscount");
+    dispatch(clearCart());
+    localStorage.removeItem("cart");
+    showToast("Order created successfully!", "success");
     if (!id && typeof window !== "undefined") {
       id = localStorage.getItem("lastOrderId") || undefined;
       if (id) localStorage.removeItem("lastOrderId");
@@ -125,8 +143,7 @@ function OrderConfirmationClientWrapper({
         {/* Payment status badge */}
         <div className="flex justify-center mb-4">
           <span
-            className={`inline-block px-4 py-1 rounded-full text-sm font-semibold ${paymentStatusColor}`}
-          >
+            className={`inline-block px-4 py-1 rounded-full text-sm font-semibold ${paymentStatusColor}`}>
             {paymentStatusLabel}
           </span>
         </div>

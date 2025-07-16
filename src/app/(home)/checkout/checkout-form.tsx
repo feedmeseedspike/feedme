@@ -70,6 +70,7 @@ import {
 import { Pencil, Trash2, Loader2 } from "lucide-react";
 import { clearCart } from "src/store/features/cartSlice";
 import { useClearCartMutation } from "src/queries/cart";
+import axios from "axios";
 
 interface GroupedCartItem {
   product?: CartItem["products"];
@@ -210,8 +211,8 @@ const CheckoutForm = ({
   user,
   deliveryLocations,
 }: CheckoutFormProps) => {
-  console.log("CheckoutForm: User:", user);
-  console.log("CheckoutForm: addresses:", addresses);
+  // console.log("CheckoutForm: User:", user);
+  // console.log("CheckoutForm: addresses:", addresses);
   const router = useRouter();
   const dispatch = useDispatch();
   const { data: cartItems, isLoading, isError, error } = useCartQuery();
@@ -775,127 +776,46 @@ const CheckoutForm = ({
               setIsSubmitting(false);
               return;
             }
-            const response = await fetch("/api/wallet/initialize/paystack", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                email: userEmail,
-                amount: totalAmountPaid,
-                orderId: orderResult.data.orderId,
-              }),
+            const response = await axios.post("/api/wallet/initialize", {
+              email: user.email,
+              amount: totalAmountPaid,
+              type: "direct_payment",
+              orderId: orderResult.data.orderId,
+              // Additional data for webhook processing
+              autoAppliedReferralVoucher: autoAppliedReferralVoucher,
+              customerName:
+                user.display_name || shippingAddressForm.getValues().fullName,
+              customerPhone: shippingAddressForm.getValues().phone,
+              itemsOrdered: items.map((item) => ({
+                title: item.products?.name || item.bundles?.name || "",
+                price: item.price,
+                quantity: item.quantity,
+              })),
+              deliveryAddress: shippingAddressForm.getValues().street,
+              localGovernment: shippingAddressForm.getValues().location,
+              deliveryFee: cost,
+              serviceCharge: serviceCharge,
+              subtotal: subtotal,
             });
-            const data = await response.json();
-            if (response.ok && data.authorization_url) {
+            console.log({response})
+            if (response.data.authorization_url) {
               // Store orderId for use after Paystack redirect (optional, for fallback)
+              console.log(orderResult.data)
               if (orderResult.data.orderId) {
                 localStorage.setItem("lastOrderId", orderResult.data.orderId);
               }
-              window.location.href = data.authorization_url;
+              window.location.href = response.data.authorization_url;
               setIsSubmitting(false);
               return; // Stop further execution
             } else {
               showToast(
-                data.message || "Failed to initialize Paystack payment.",
+                response.data.message ||
+                  "Failed to initialize Paystack payment.",
                 "error"
               );
               setIsSubmitting(false);
               return;
             }
-          }
-
-          if (result.success) {
-            // After successful order, update referral record if needed
-            if (autoAppliedReferralVoucher && user?.user_id) {
-              try {
-                await fetch(`/api/referral/status`, {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    userId: user.user_id,
-                    status: "qualified",
-                    referred_discount_given: true,
-                  }),
-                });
-              } catch (err) {
-                console.error(
-                  "Failed to update referral status after order:",
-                  err
-                );
-              }
-            }
-            // Send order confirmation emails to admin and user
-            try {
-              const emailRes = await fetch(
-                "/api/email/send-order-confirmation",
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    adminEmail: "orders.feedmeafrica@gmail.com",
-                    userEmail: user.email,
-                    adminOrderProps: {
-                      orderNumber: result.data.orderId,
-                      customerName:
-                        user.display_name ||
-                        shippingAddressForm.getValues().fullName,
-                      customerPhone: shippingAddressForm.getValues().phone,
-                      itemsOrdered: items.map((item) => ({
-                        title: item.products?.name || item.bundles?.name || "",
-                        price: item.price,
-                        quantity: item.quantity,
-                      })),
-                      deliveryAddress: shippingAddressForm.getValues().street,
-                      localGovernment: shippingAddressForm.getValues().location,
-                    },
-                    userOrderProps: {
-                      orderNumber: result.data.orderId,
-                      customerName:
-                        user.display_name ||
-                        shippingAddressForm.getValues().fullName,
-                      customerPhone: shippingAddressForm.getValues().phone,
-                      itemsOrdered: items.map((item) => ({
-                        title: item.products?.name || item.bundles?.name || "",
-                        price: item.price,
-                        quantity: item.quantity,
-                      })),
-                      deliveryAddress: shippingAddressForm.getValues().street,
-                      deliveryFee: cost,
-                      serviceCharge: serviceCharge,
-                      totalAmount: subtotal,
-                      totalAmountPaid: totalAmountPaid,
-                    },
-                  }),
-                }
-              );
-              const emailData = await emailRes.json();
-              console.log("Order confirmation email response:", emailData);
-              if (emailRes.ok && emailData.success) {
-                showToast("Order confirmation email sent!", "success");
-              } else {
-                showToast(
-                  emailData.error ||
-                    "Order placed, but failed to send confirmation email.",
-                  "error"
-                );
-              }
-            } catch (err) {
-              showToast(
-                "Order placed, but failed to send confirmation email.",
-                "error"
-              );
-            }
-            // Clear voucher from localStorage after successful order
-            localStorage.removeItem("voucherCode");
-            localStorage.removeItem("voucherDiscount");
-            dispatch(clearCart());
-            localStorage.removeItem("cart");
-            await clearCartMutation.mutateAsync();
-            showToast("Order created successfully!", "success");
-            router.push(
-              `/order/order-confirmation?orderId=${result.data.orderId}`
-            );
-          } else {
-            showToast(result.error || "Failed to process order.", "error");
           }
         } catch (error: any) {
           console.error("Error in startTransition:", error);
@@ -945,8 +865,7 @@ const CheckoutForm = ({
                             onClick={() => {
                               setShowAddressModal(true);
                               setShowAddNewForm(false);
-                            }}
-                          >
+                            }}>
                             Change
                           </button>
                         </div>
@@ -965,8 +884,7 @@ const CheckoutForm = ({
                     {/* Modal for address selection/addition */}
                     <Dialog
                       open={showAddressModal}
-                      onOpenChange={setShowAddressModal}
-                    >
+                      onOpenChange={setShowAddressModal}>
                       <DialogContent className="max-w-md w-full max-h-[90vh]">
                         <DialogHeader>
                           <DialogTitle>Select Delivery Address</DialogTitle>
@@ -974,15 +892,13 @@ const CheckoutForm = ({
                         {!showAddNewForm ? (
                           <div
                             className="space-y-4 overflow-y-auto"
-                            style={{ maxHeight: "70vh" }}
-                          >
+                            style={{ maxHeight: "70vh" }}>
                             {userAddresses && userAddresses.length > 0 ? (
                               <div className="space-y-2">
                                 {userAddresses.map((address) => (
                                   <label
                                     key={address.id}
-                                    className={`flex items-start gap-2 p-2 rounded border cursor-pointer ${selectedAddressId === address.id ? "border-green-600 bg-green-50" : "border-gray-300"}`}
-                                  >
+                                    className={`flex items-start gap-2 p-2 rounded border cursor-pointer ${selectedAddressId === address.id ? "border-green-600 bg-green-50" : "border-gray-300"}`}>
                                     <input
                                       type="radio"
                                       checked={selectedAddressId === address.id}
@@ -1013,8 +929,7 @@ const CheckoutForm = ({
                                           phone: address.phone,
                                         });
                                       }}
-                                      title="Edit"
-                                    >
+                                      title="Edit">
                                       <Pencil size={16} />
                                     </button>
                                     <button
@@ -1024,8 +939,7 @@ const CheckoutForm = ({
                                         setAddressToDelete(address);
                                         setDeleteDialogOpen(true);
                                       }}
-                                      title="Delete"
-                                    >
+                                      title="Delete">
                                       <Trash2 size={16} />
                                     </button>
                                   </label>
@@ -1047,8 +961,7 @@ const CheckoutForm = ({
                                   location: "",
                                   phone: "",
                                 });
-                              }}
-                            >
+                              }}>
                               + Add New Address
                             </button>
                           </div>
@@ -1119,8 +1032,7 @@ const CheckoutForm = ({
                                     }
                                   }
                                 )}
-                                className="space-y-4"
-                              >
+                                className="space-y-4">
                                 <FormField
                                   control={shippingAddressForm.control}
                                   name="fullName"
@@ -1161,8 +1073,7 @@ const CheckoutForm = ({
                                       <FormLabel>Location</FormLabel>
                                       <Select
                                         value={field.value}
-                                        onValueChange={field.onChange}
-                                      >
+                                        onValueChange={field.onChange}>
                                         <FormControl>
                                           <SelectTrigger>
                                             <SelectValue placeholder="Select your location" />
@@ -1172,8 +1083,7 @@ const CheckoutForm = ({
                                           {deliveryLocations.map((location) => (
                                             <SelectItem
                                               key={location.name}
-                                              value={location.name}
-                                            >
+                                              value={location.name}>
                                               {location.name}
                                             </SelectItem>
                                           ))}
@@ -1203,8 +1113,7 @@ const CheckoutForm = ({
                                   <Button
                                     type="submit"
                                     className="bg-[#1B6013]/90 text-white"
-                                    disabled={isAddingAddress}
-                                  >
+                                    disabled={isAddingAddress}>
                                     {isAddingAddress ? (
                                       <Loader2 className="animate-spin mr-2 h-4 w-4" />
                                     ) : null}
@@ -1218,8 +1127,7 @@ const CheckoutForm = ({
                                     onClick={() => {
                                       setShowAddNewForm(false);
                                       setEditingAddress(null);
-                                    }}
-                                  >
+                                    }}>
                                     Cancel
                                   </Button>
                                 </DialogFooter>
@@ -1232,8 +1140,7 @@ const CheckoutForm = ({
                             <Button
                               type="button"
                               className="bg-gray-100 text-gray-700 w-full hover:bg-gray-200"
-                              onClick={() => setShowAddressModal(false)}
-                            >
+                              onClick={() => setShowAddressModal(false)}>
                               Use Selected Address
                             </Button>
                           </DialogFooter>
@@ -1281,8 +1188,7 @@ const CheckoutForm = ({
                                 }
                               }
                             )}
-                            className="space-y-4"
-                          >
+                            className="space-y-4">
                             <FormField
                               control={shippingAddressForm.control}
                               name="fullName"
@@ -1326,8 +1232,7 @@ const CheckoutForm = ({
                                   <Select
                                     value={field.value}
                                     onValueChange={field.onChange}
-                                    disabled={isAddingAddress}
-                                  >
+                                    disabled={isAddingAddress}>
                                     <FormControl>
                                       <SelectTrigger>
                                         <SelectValue placeholder="Select your location" />
@@ -1337,8 +1242,7 @@ const CheckoutForm = ({
                                       {deliveryLocations.map((location) => (
                                         <SelectItem
                                           key={location.name}
-                                          value={location.name}
-                                        >
+                                          value={location.name}>
                                           {location.name}
                                         </SelectItem>
                                       ))}
@@ -1369,8 +1273,7 @@ const CheckoutForm = ({
                               <Button
                                 type="submit"
                                 className="bg-[#1B6013]/90 text-white"
-                                disabled={isAddingAddress}
-                              >
+                                disabled={isAddingAddress}>
                                 {isAddingAddress ? (
                                   <Loader2 className="animate-spin mr-2 h-4 w-4" />
                                 ) : null}
@@ -1398,8 +1301,7 @@ const CheckoutForm = ({
                           onClick={() => setSelectedPaymentMethod("paystack")}
                           className={`flex-1 border rounded-lg p-6 flex flex-col items-center gap-2 transition-all duration-150 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-600
                             ${selectedPaymentMethod === "paystack" ? "border-green-600 ring-2 ring-green-600 bg-green-50" : "border-gray-300 bg-white"}
-                          `}
-                        >
+                          `}>
                           <span className="font-semibold text-lg tracking-wide">
                             Paystack
                           </span>
@@ -1420,8 +1322,7 @@ const CheckoutForm = ({
                           }}
                           className={`flex-1 border rounded-lg p-6 flex flex-col items-center gap-2 transition-all duration-150 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-600
                             ${selectedPaymentMethod === "wallet" ? "border-green-600 ring-2 ring-green-600 bg-green-50" : "border-gray-300 bg-white"}
-                          `}
-                        >
+                          `}>
                           <span className="font-semibold text-lg tracking-wide">
                             Wallet
                           </span>
@@ -1448,8 +1349,7 @@ const CheckoutForm = ({
                                     e.stopPropagation();
                                     router.push("/account/wallet");
                                   }}
-                                  className="mt-2 px-4 py-2 rounded bg-[#1B6013] !text-white hover:!bg-[#1B6013]/90 text-xs font-medium transition"
-                                >
+                                  className="mt-2 px-4 py-2 rounded bg-[#1B6013] !text-white hover:!bg-[#1B6013]/90 text-xs font-medium transition">
                                   Fund Wallet
                                 </button>
                               </>
@@ -1581,8 +1481,7 @@ const CheckoutForm = ({
                         <div className="space-y-4 w-full">
                           <Label
                             htmlFor="voucherCode"
-                            className="font-semibold text-lg"
-                          >
+                            className="font-semibold text-lg">
                             Voucher Code
                           </Label>
                           <div className="relative flex gap-2">
@@ -1612,8 +1511,7 @@ const CheckoutForm = ({
                                 isReferralVoucher ||
                                 isSubmitting ||
                                 isLoadingReferralStatus
-                              }
-                            >
+                              }>
                               Apply
                             </ShimmerButton>
                           </div>
@@ -1648,8 +1546,7 @@ const CheckoutForm = ({
                       By placing your order, you agree to our{" "}
                       <Link
                         href="/return-policy"
-                        className="text-green-600 hover:underline"
-                      >
+                        className="text-green-600 hover:underline">
                         Return Policy
                       </Link>
                       .
@@ -1688,8 +1585,7 @@ const CheckoutForm = ({
               type="button"
               variant="outline"
               className="bg-gray-100 text-gray-700 hover:bg-gray-200"
-              onClick={() => setDeleteDialogOpen(false)}
-            >
+              onClick={() => setDeleteDialogOpen(false)}>
               Cancel
             </Button>
             <Button
@@ -1710,8 +1606,7 @@ const CheckoutForm = ({
                   setAddressToDelete(null);
                   setIsDeletingAddress(false);
                 }
-              }}
-            >
+              }}>
               {isDeletingAddress ? (
                 <Loader2 className="animate-spin mr-2 h-4 w-4" />
               ) : null}
@@ -1771,8 +1666,7 @@ function Footer({
       {activeStep !== 0 && ( // Only show Prev button if not on the first step
         <Button
           onClick={handlePrev}
-          className="rounded-lg bg-gray-200 !text-gray-700 hover:!bg-gray-300 px-6 py-3"
-        >
+          className="rounded-lg bg-gray-200 !text-gray-700 hover:!bg-gray-300 px-6 py-3">
           Prev
         </Button>
       )}
@@ -1791,8 +1685,7 @@ function Footer({
         <Button
           onClick={handleNext}
           disabled={isSubmitting}
-          className="rounded-lg bg-[#1B6013] !text-white hover:!bg-[#1B6013]/90 px-6 py-3"
-        >
+          className="rounded-lg bg-[#1B6013] !text-white hover:!bg-[#1B6013]/90 px-6 py-3">
           Review Order
         </Button>
       )}
@@ -1801,8 +1694,7 @@ function Footer({
         <Button
           onClick={handlePlaceOrder}
           disabled={isSubmitting || items.length === 0}
-          className="rounded-lg bg-[#1B6013] !text-white hover:!bg-[#1B6013]/90 px-6 py-3"
-        >
+          className="rounded-lg bg-[#1B6013] !text-white hover:!bg-[#1B6013]/90 px-6 py-3">
           {isSubmitting ? (
             <Loader2 className="animate-spin mr-2" />
           ) : (
