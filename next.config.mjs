@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    serverActions: {
+      allowedOrigins: ["c7jc2vm8-3000.uks1.devtunnels.ms", "localhost:3000","shopfeedme.com","www.shopfeedme.com"],
+    },
+  },
   images: {
     remotePatterns: [
       {
@@ -124,7 +129,7 @@ const nextConfig = {
       },
     ],
     domains: ["images.unsplash.com", "images.pexels.com"],
- },
+  },
   webpack(config) {
     config.module.rules.push({
       test: /\.svg$/,
