@@ -11,8 +11,6 @@ export async function GET(request: NextRequest) {
     const callbackUrl = requestUrl.searchParams.get('callbackUrl') || '/';
     const referralCode = requestUrl.searchParams.get('referral_code');
 
-    console.log('Auth callback params:', { code: !!code, type, callbackUrl, referralCode });
-
     const supabase = await createClient();
 
     // Handle different auth flow types
@@ -30,7 +28,6 @@ export async function GET(request: NextRequest) {
       resetUrl.searchParams.set('code', code);
       resetUrl.searchParams.set('type', 'recovery');
       
-      console.log('Redirecting to password reset page');
       return NextResponse.redirect(resetUrl);
     }
 
@@ -59,7 +56,6 @@ export async function GET(request: NextRequest) {
           successUrl.searchParams.set('callbackUrl', callbackUrl);
         }
         
-        console.log('Email confirmation successful');
         return NextResponse.redirect(successUrl);
       } catch (error) {
         console.error('Email confirmation error:', error);
@@ -80,7 +76,6 @@ export async function GET(request: NextRequest) {
 
     if (existingUser && !code) {
       // User is already logged in and no new code to process
-      console.log('User already logged in, redirecting to account after referral check.');
       
       // Attempt to apply referral for existing user if present in URL
       if (referralCode && existingUser.id) {
@@ -161,8 +156,7 @@ export async function GET(request: NextRequest) {
     // Capture user details after successful OAuth and authentication
     try {
       await users.captureUserDetails(authenticatedUser);
-      console.log('User details captured successfully');
-
+      
       // If there's a referral code from the original signup URL, apply it
       if (referralCode && authenticatedUser.id) {
         try {
@@ -213,7 +207,6 @@ export async function GET(request: NextRequest) {
     // Add success parameter to indicate successful authentication
     finalRedirectUrl.searchParams.set('auth_success', 'true');
     
-    console.log('Redirecting to:', finalRedirectUrl.toString());
     return NextResponse.redirect(finalRedirectUrl);
 
   } catch (error) {
@@ -228,12 +221,6 @@ export async function GET(request: NextRequest) {
       errorUrl.searchParams.set('details', error instanceof Error ? error.message : 'Unknown error');
     }
 
-    console.log('Callback URL:', request.url);
-const requestUrl = new URL(request.url);
-console.log('All query params:', Array.from(requestUrl.searchParams.entries()));
-const code = requestUrl.searchParams.get('code');
-console.log('Parsed code:', code);
-    
     return NextResponse.redirect(errorUrl);
   }
 }

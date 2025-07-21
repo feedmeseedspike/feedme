@@ -41,6 +41,7 @@ interface ProductOption {
   name: string;
   price: number;
   image: string;
+  list_price?: number;
 }
 
 export default function ProductDetailsClient({
@@ -65,6 +66,7 @@ export default function ProductDetailsClient({
       logo?: string;
     };
     countInStock?: number | null;
+    list_price?: number;
   };
   cartItemId: string;
 }) {
@@ -148,6 +150,54 @@ export default function ProductDetailsClient({
 
       <div className="col-span-3">
         <h1 className="text-2xl">{product.name}</h1>
+        {/* Product Price */}
+        {optionsArr.length > 1 ? (
+          <div className="mt-2 mb-1">
+            <p className="text-2xl font-bold text-[#1B6013] inline-block">
+              ₦
+              {Math.min(...optionsArr.map((opt) => opt.price)).toLocaleString()}{" "}
+              - ₦
+              {Math.max(...optionsArr.map((opt) => opt.price)).toLocaleString()}
+            </p>
+            {(() => {
+              const minList = Math.min(
+                ...optionsArr.map((opt) => opt.list_price ?? opt.price)
+              );
+              const maxList = Math.max(
+                ...optionsArr.map((opt) => opt.list_price ?? opt.price)
+              );
+              const minPrice = Math.min(...optionsArr.map((opt) => opt.price));
+              const maxPrice = Math.max(...optionsArr.map((opt) => opt.price));
+              if (minList > minPrice || maxList > maxPrice) {
+                return (
+                  <span className="ml-2 text-lg text-gray-400 line-through align-middle">
+                    ₦{minList.toLocaleString()} - ₦{maxList.toLocaleString()}
+                  </span>
+                );
+              }
+              return null;
+            })()}
+          </div>
+        ) : (
+          <div className="mt-2 mb-1">
+            <p className="text-2xl font-bold text-[#1B6013] inline-block">
+              ₦{(selectedOptionData?.price ?? product.price).toLocaleString()}
+            </p>
+            {(() => {
+              const listPrice =
+                selectedOptionData?.list_price ?? product.list_price;
+              const price = selectedOptionData?.price ?? product.price;
+              if (listPrice && listPrice > price) {
+                return (
+                  <span className="ml-2 text-lg text-gray-400 line-through align-middle">
+                    ₦{listPrice.toLocaleString()}
+                  </span>
+                );
+              }
+              return null;
+            })()}
+          </div>
+        )}
         <RatingSummary
           avgRating={product.avgRating}
           numReviews={product.numReviews}

@@ -241,7 +241,6 @@ export default async function Home() {
   }
 
   const user = await getUser();
-  console.log(user);
 
   let purchasedProductIds: string[] = [];
   if (user?.user_id) {
@@ -266,7 +265,6 @@ export default async function Home() {
   return (
     <HydrationBoundary state={dehydratedState}>
       <main className="">
-        <Headertags />
         <div className="bg-[#F9FAFB]">
           <Container>
             <Banner />

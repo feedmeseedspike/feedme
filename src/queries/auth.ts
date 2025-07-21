@@ -38,9 +38,7 @@ export const signInMutation = () => ({
             : "Sign in failed";
       throw new Error(errorMessage);
     }
-    console.log("signin", result);
     if (result) {
-      console.log("user data => ", result.data);
       axios.defaults.headers.common["Authorization"] =
         `Bearer ${result.data.session.access_token}`;
     }

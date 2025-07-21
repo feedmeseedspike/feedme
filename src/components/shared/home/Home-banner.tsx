@@ -46,8 +46,6 @@ const Banner = () => {
     staleTime: 1000 * 60 * 10,
   });
 
-  console.log("sideBanners", sideBanners);
-
   return (
     <section className="pt-4 pb-5 md:pt-10 md:pb-10 lg:pb-20 w-full">
       <div className="md:flex items-stretch gap-2 md:gap-4 w-full h-full">

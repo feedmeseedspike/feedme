@@ -51,13 +51,11 @@ export async function createVoucher(params: CreateVoucherParams): Promise<Create
       .select();
 
     if (error) {
-      console.error("Error creating voucher:", error);
       return { success: false, message: formatError(error.message), error: error };
     }
 
     return { success: true, message: 'Voucher created successfully!', voucherCode: voucherCode };
   } catch (error: any) {
-    console.error("Unexpected error in createVoucher action:", error);
     return { success: false, message: formatError(error.message || 'An unexpected error occurred'), error: error };
   }
 } 

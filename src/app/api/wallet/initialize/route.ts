@@ -6,9 +6,7 @@ import { supabase } from "src/lib/supabaseClient";
 export const POST = authMiddleware(
   async (request: Request, user_id: string) => {
     try {
-      console.log("started");
       const { email, amount } = await request.json();
-      console.log(email, amount);
       if (!email || !amount) {
         return NextResponse.json(
           { message: "Missing required fields" },
@@ -23,8 +21,6 @@ export const POST = authMiddleware(
         .eq("user_id", user_id)
         .single();
 
-      console.log(user_id);
-
       if (!wallet) {
         const { data: newWallet, error: insertError } = await supabase
           .from("wallets")
@@ -34,16 +30,6 @@ export const POST = authMiddleware(
         if (insertError) throw insertError;
         wallet = newWallet;
       }
-
-      // Debug: Check if Paystack secret key is present
-      console.log(
-        "Paystack Secret Key present:",
-        !!process.env.PAYSTACK_SECRET_KEY
-      );
-      console.log(
-        "Paystack Secret Key value (first 5 chars):",
-        process.env.PAYSTACK_SECRET_KEY?.slice(0, 5)
-      );
 
       // Initialize Paystack transaction
       const callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL!}/account/wallet/success`;

@@ -66,6 +66,7 @@ interface ReviewActionsProps {
   onDelete?: () => void;
   initialIsHelpful?: boolean;
   isPending?: boolean;
+  isDeleting?: boolean;
 }
 
 export default function ReviewActions({
@@ -77,6 +78,7 @@ export default function ReviewActions({
   onDelete,
   initialIsHelpful = false,
   isPending = false,
+  isDeleting = false,
 }: ReviewActionsProps) {
   const { showToast } = useToast();
   const router = useRouter();
@@ -86,7 +88,6 @@ export default function ReviewActions({
     isReported: false,
     isSubmittingVote: false,
     isSubmittingReport: false,
-    isDeleting: false,
   });
 
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
@@ -114,6 +115,8 @@ export default function ReviewActions({
       return;
     }
 
+    // Prevent double voting while loading
+    if (state.isSubmittingVote) return;
     setState((prev) => ({ ...prev, isSubmittingVote: true }));
 
     try {
@@ -140,11 +143,16 @@ export default function ReviewActions({
           isHelpful: true,
         }));
       }
-    } catch (error) {
-      showToast(
-        error instanceof Error ? error.message : "Failed to update vote",
-        "error"
-      );
+    } catch (error: any) {
+      // Show a friendly toast for duplicate vote
+      if (error?.message?.includes("already voted")) {
+        showToast("You've already marked this review as helpful.", "info");
+      } else {
+        showToast(
+          error instanceof Error ? error.message : "Failed to update vote",
+          "error"
+        );
+      }
     } finally {
       setState((prev) => ({ ...prev, isSubmittingVote: false }));
     }
@@ -159,6 +167,8 @@ export default function ReviewActions({
       return;
     }
 
+    // Prevent double submit
+    if (state.isSubmittingReport) return;
     setState((prev) => ({ ...prev, isSubmittingReport: true }));
 
     try {
@@ -181,11 +191,17 @@ export default function ReviewActions({
       setIsReportDialogOpen(false);
       reportForm.reset();
       showToast("Report submitted. Thank you!", "success");
-    } catch (error) {
-      showToast(
-        error instanceof Error ? error.message : "Failed to submit report",
-        "error"
-      );
+    } catch (error: any) {
+      // Show a friendly toast for duplicate/validation errors
+      if (error?.message?.toLowerCase().includes("already")) {
+        showToast("You've already reported this review.", "info");
+        setIsReportDialogOpen(false);
+      } else {
+        showToast(
+          error instanceof Error ? error.message : "Failed to submit report",
+          "error"
+        );
+      }
     } finally {
       setState((prev) => ({ ...prev, isSubmittingReport: false }));
     }
@@ -213,13 +229,13 @@ export default function ReviewActions({
       <div className="flex items-center gap-4 pt-3">
         {/* Helpful Button - Only show if not owner */}
         {!isOwner && (
-          <button
+          <Button
             onClick={handleHelpfulClick}
-            disabled={state.isSubmittingVote}
+            disabled={state.isSubmittingVote || !userId}
             className={`flex items-center gap-1 text-sm px-3 py-1  transition-colors ${
               state.isHelpful
                 ? "bg-green-50 border-green-200 text-green-600"
-                : "border-gray-200 text-gray-600 hover:border-green-200 hover:text-green-600"
+                : " hover:text-green-600"
             } ${state.isSubmittingVote ? "opacity-70 cursor-not-allowed" : ""}`}
           >
             {state.isSubmittingVote ? (
@@ -235,7 +251,7 @@ export default function ReviewActions({
                 Helpful
               </span>
             )}
-          </button>
+          </Button>
         )}
 
         {/* Report Button - Only show if not owner */}
@@ -295,9 +311,9 @@ export default function ReviewActions({
                       <Button
                         variant="destructive"
                         onClick={onDelete}
-                        disabled={state.isDeleting}
+                        disabled={isDeleting}
                       >
-                        {state.isDeleting ? (
+                        {isDeleting ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           "Delete"

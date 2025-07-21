@@ -12,7 +12,6 @@ export async function getUserAddresses(userId: string): Promise<AddressWithId[] 
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
   if (error) {
-    console.error("getUserAddresses: Supabase query error:", error);
     return null;
   }
   return data as AddressWithId[] | null;
@@ -29,7 +28,6 @@ export async function addAddress(address: Omit<Tables<"addresses">, "id" | "user
     .insert(addressToInsert)
     .select();
   if (error) {
-    console.error("Error adding address:", error);
     throw new Error(error.message || "Failed to add address.");
   }
   if (!data || data.length === 0) {
@@ -49,7 +47,6 @@ export async function updateAddress(id: string, updates: Partial<UserAddress>, u
     .eq("user_id", user_id)
     .select();
   if (error) {
-    console.error("Error updating address:", error);
     throw new Error(error.message || "Failed to update address.");
   }
   return data && data.length > 0 ? data[0] as AddressWithId : null;
@@ -65,7 +62,6 @@ export async function deleteAddress(id: string, user_id: string, supabase: Supab
     .eq("id", id)
     .eq("user_id", user_id);
   if (error) {
-    console.error("Error deleting address:", error);
     throw new Error(error.message || "Failed to delete address.");
   }
   return true;

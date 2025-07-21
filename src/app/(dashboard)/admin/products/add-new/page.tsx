@@ -55,6 +55,7 @@ import { getAllCategories } from "../../../../../queries/products";
 import { Label } from "@/components/ui/label";
 import { addProduct } from "src/lib/api";
 import { supabase } from "src/lib/supabaseClient";
+import { useRouter, useSearchParams } from "next/navigation";
 const animatedComponents = makeAnimated();
 
 // Client-side image upload utility
@@ -89,6 +90,13 @@ const productSchema = z
         message: "Price must be at least ₦50",
       })
       .optional(), // Make optional
+    list_price: z
+      .string()
+      .regex(/^\d*\.?\d*$/, "List price must be a number")
+      .refine((val) => val === "" || parseFloat(val) >= 0, {
+        message: "List price must be at least ₦0",
+      })
+      .optional(),
     stockStatus: z
       .enum(["In Stock", "Out of Stock"], {
         required_error: "Stock status is required",
@@ -159,8 +167,9 @@ const productSchema = z
 type ProductFormValues = z.infer<typeof productSchema>;
 
 export default function AddProduct() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [options, setOptions] = useState<OptionType[]>([]);
   const [categories, setCategories] = useState<
     { label: string; value: string }[]
   >([]);
@@ -191,12 +200,13 @@ export default function AddProduct() {
       productName: "",
       description: "",
       price: "",
+      list_price: "",
       stockStatus: "In Stock",
       selectedCategories: [],
       variation: "No",
       images: [],
       options: [], // Initialize options
-      is_published: true,
+      is_published: false,
     },
   });
 
@@ -236,7 +246,6 @@ export default function AddProduct() {
           return option;
         }) || [];
       Promise.all(productFiles).then((files) => {
-        setOptions(optionFiles);
         form.setValue("productName", draftData.productName);
         form.setValue("description", draftData.description);
         form.setValue("price", draftData.price);
@@ -251,6 +260,7 @@ export default function AddProduct() {
         );
         form.setValue("variation", draftData.variation);
         form.setValue("images", files);
+        form.setValue("options", optionFiles); // Set options from draft
         form.setValue("is_published", draftData.is_published);
       });
     }
@@ -285,7 +295,7 @@ export default function AddProduct() {
 
     const optionImagePromises =
       data.variation === "Yes"
-        ? options.map((option) => {
+        ? data.options?.map((option) => {
             return new Promise<string>((resolve) => {
               if (option.image instanceof File) {
                 const reader = new FileReader();
@@ -298,7 +308,7 @@ export default function AddProduct() {
                 resolve(typeof option.image === "string" ? option.image : "");
               }
             });
-          })
+          }) || []
         : [];
 
     const [base64ProductImages, base64OptionImages] = await Promise.all([
@@ -309,10 +319,10 @@ export default function AddProduct() {
     const productState = {
       options:
         data.variation === "Yes"
-          ? options.map((option, index) => ({
+          ? data.options?.map((option, index) => ({
               ...option,
               image: base64OptionImages[index],
-            }))
+            })) || []
           : [],
       productName: data.productName,
       description: data.description,
@@ -393,6 +403,7 @@ export default function AddProduct() {
       slug: toSlug(data.productName),
       description: data.description,
       price: hasVariations ? null : parseFloat(data.price || "0"),
+      list_price: data.list_price ? parseFloat(data.list_price) : null,
       stock_status: hasVariations
         ? null
         : data.stockStatus === "In Stock"
@@ -408,11 +419,11 @@ export default function AddProduct() {
       await addProduct(productData);
       showToast("Product created successfully!", "success");
       form.reset();
-      setOptions([]);
       setImagePreviews([]);
       localStorage.removeItem("productDraft");
       // Redirect to product list after success
-      window.location.href = "/admin/products";
+      const queryString = searchParams.toString();
+      router.push(`/admin/products${queryString ? `?${queryString}` : ""}`);
     } catch (err: any) {
       showToast(err.message || "Failed to create product", "error");
     } finally {
@@ -429,7 +440,7 @@ export default function AddProduct() {
       showToast("Product added successfully!", "success");
       localStorage.removeItem("productDraft");
       form.reset();
-      setOptions([]);
+      setImagePreviews([]);
       setDuplicateDialogOpen(false);
       setPendingProduct(null);
     } catch (err: any) {
@@ -650,6 +661,28 @@ export default function AddProduct() {
                   )}
                 />
 
+                {/* List Price */}
+                <FormField
+                  control={form.control}
+                  name="list_price"
+                  render={({ field }) => (
+                    <FormItem className="mb-4 grid grid-cols-1 sm:grid-cols-9 gap-4">
+                      <FormLabel className="text-sm font-medium col-span-2">
+                        List Price (₦)
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Enter list price"
+                          type="number"
+                          className="col-span-7"
+                        />
+                      </FormControl>
+                      <FormMessage className="col-span-7 col-start-3" />
+                    </FormItem>
+                  )}
+                />
+
                 {/* Stock Status */}
                 <FormField
                   control={form.control}
@@ -684,93 +717,122 @@ export default function AddProduct() {
               <div className="mb-4 grid grid-cols-9">
                 <div className="col-span-2"></div>
                 <div className="col-span-7">
-                  {options.length > 0 && (
-                    <div className="border border-gray-200 rounded-lg overflow-hidden mb-4">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-gray-100 w-full">
-                            <TableHead className="text-center w-1/2 !px-6">
-                              <div className="flex items-center gap-1">
-                                Option
-                                <ArrowDown size={16} strokeWidth={0.7} />
-                              </div>
-                            </TableHead>
-                            <TableHead className="text-center w-1/4">
-                              <div className="flex items-center justify-center gap-1">
-                                Price
-                                <ArrowDown size={16} strokeWidth={0.7} />
-                              </div>
-                            </TableHead>
-                            <TableHead className="text-center w-1/4">
-                              <div className="flex items-center justify-center gap-1">
-                                Stock Status
-                                <ArrowDown size={16} strokeWidth={0.7} />
-                              </div>
-                            </TableHead>
-                            <TableHead className="text-center w-1/4"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-
-                        <TableBody>
-                          {options.map((option, index) => (
-                            <TableRow key={index}>
-                              <TableCell className="flex items-center justify-start gap-3 w-1/2 !px-6">
-                                <div className="size-[40px] h relative">
-                                  {option.image instanceof File ? (
-                                    <Image
-                                      src={URL.createObjectURL(option.image)}
-                                      alt={option.name}
-                                      fill
-                                      className="rounded-[12px]"
-                                    />
-                                  ) : (
-                                    <Image
-                                      src={
-                                        typeof option.image === "string" &&
-                                        option.image
-                                          ? option.image
-                                          : "/placeholder-product.png"
-                                      }
-                                      alt={option.name}
-                                      fill
-                                      className="rounded-[12px]"
-                                    />
-                                  )}
+                  {form.watch("options") &&
+                    (form.watch("options")?.length ?? 0) > 0 && (
+                      <div className="border border-gray-200 rounded-lg overflow-hidden mb-4">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-gray-100 w-full">
+                              <TableHead className="text-center w-1/2 !px-6">
+                                <div className="flex items-center gap-1">
+                                  Option
+                                  <ArrowDown size={16} strokeWidth={0.7} />
                                 </div>
-                                <span>{option.name}</span>
-                              </TableCell>
-                              <TableCell className="text-center w-1/4">
-                                {formatNaira(option.price)}
-                              </TableCell>
-                              <TableCell className="text-center w-1/4">
-                                {option.stockStatus}
-                              </TableCell>
-                              <TableCell className="text-center flex gap-2 w-full h-full">
-                                <button>
-                                  <Edit />
-                                </button>
-                                <button className="size-5">
-                                  <Trash />
-                                </button>
-                              </TableCell>
+                              </TableHead>
+                              <TableHead className="text-center w-1/4">
+                                <div className="flex items-center justify-center gap-1">
+                                  Price
+                                  <ArrowDown size={16} strokeWidth={0.7} />
+                                </div>
+                              </TableHead>
+                              <TableHead className="text-center w-1/4">
+                                <div className="flex items-center justify-center gap-1">
+                                  List Price
+                                  <ArrowDown size={16} strokeWidth={0.7} />
+                                </div>
+                              </TableHead>
+                              <TableHead className="text-center w-1/4">
+                                <div className="flex items-center justify-center gap-1">
+                                  Stock Status
+                                  <ArrowDown size={16} strokeWidth={0.7} />
+                                </div>
+                              </TableHead>
+                              <TableHead className="text-center w-1/4"></TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
+                          </TableHeader>
+                          <TableBody>
+                            {(form.watch("options") ?? []).map(
+                              (option, index) => (
+                                <TableRow key={index}>
+                                  <TableCell className="flex items-center justify-start gap-3 w-1/2 !px-6">
+                                    <div className="size-[40px] h relative">
+                                      {option.image instanceof File ? (
+                                        <Image
+                                          src={URL.createObjectURL(
+                                            option.image
+                                          )}
+                                          alt={option.name}
+                                          fill
+                                          className="rounded-[12px]"
+                                        />
+                                      ) : (
+                                        <Image
+                                          src={
+                                            typeof option.image === "string" &&
+                                            option.image
+                                              ? option.image
+                                              : "/placeholder-product.png"
+                                          }
+                                          alt={option.name}
+                                          fill
+                                          className="rounded-[12px]"
+                                        />
+                                      )}
+                                    </div>
+                                    <span>{option.name}</span>
+                                  </TableCell>
+                                  <TableCell className="text-center w-1/4">
+                                    {formatNaira(option.price)}
+                                  </TableCell>
+                                  <TableCell className="text-center w-1/4">
+                                    {option.list_price !== undefined &&
+                                    option.list_price !== null
+                                      ? formatNaira(option.list_price)
+                                      : "-"}
+                                  </TableCell>
+                                  <TableCell className="text-center w-1/4">
+                                    {option.stockStatus}
+                                  </TableCell>
+                                  <TableCell className="text-center flex gap-2 w-full h-full">
+                                    <button
+                                      type="button"
+                                      className="size-5"
+                                      onClick={() => {
+                                        const current =
+                                          form.watch("options") ?? [];
+                                        const updated = current.filter(
+                                          (_, i) => i !== index
+                                        );
+                                        form.setValue("options", updated, {
+                                          shouldValidate: true,
+                                        });
+                                      }}
+                                    >
+                                      <Trash />
+                                    </button>
+                                  </TableCell>
+                                </TableRow>
+                              )
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
                   <button
                     className="bg-[#E8F3E7] px-4 py-[10px] flex items-center gap-2 text-sm whitespace-nowrap rounded-[8px]"
+                    type="button"
                     onClick={() => setIsDialogOpen(true)}
                   >
-                    <Plus size={14} />
-                    Add New Option
+                    <Plus size={14} /> Add New Option
                   </button>
                   <OptionModal
                     isOpen={isDialogOpen}
                     onClose={() => setIsDialogOpen(false)}
                     onSubmit={(data) => {
-                      setOptions([...options, data]);
+                      const current = form.watch("options") || [];
+                      form.setValue("options", [...current, data], {
+                        shouldValidate: true,
+                      });
                       setIsDialogOpen(false);
                     }}
                   />

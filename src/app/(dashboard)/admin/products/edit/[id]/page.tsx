@@ -1,6 +1,10 @@
 export const dynamic = "force-dynamic";
+
 import EditProductClient from "./EditProductClient";
-import { getProductById, getAllCategories } from "src/queries/products";
+import {
+  getProductById,
+  getAllCategories,
+} from "src/lib/actions/product.actions";
 import { notFound } from "next/navigation";
 
 function normalizeProduct(product: any) {
@@ -14,25 +18,72 @@ function normalizeProduct(product: any) {
   ) {
     try {
       options = JSON.parse(product.options);
+      if (!Array.isArray(options)) {
+        options = [];
+      }
     } catch (e) {
       options = [];
     }
+  } else if (product.options && typeof product.options === "object") {
+    options = Array.isArray(product.options) ? product.options : [];
   }
+
   // Ensure images is always an array of strings
   let images = [];
   if (Array.isArray(product.images)) {
-    images = product.images.filter(Boolean);
+    images = product.images
+      .map((img: any) => {
+        if (typeof img === "string") {
+          return img;
+        } else if (img && typeof img === "object" && img.url) {
+          return img.url;
+        }
+        return null;
+      })
+      .filter(Boolean);
   } else if (typeof product.images === "string" && product.images) {
-    images = [product.images];
+    try {
+      const parsed = JSON.parse(product.images);
+      if (Array.isArray(parsed)) {
+        images = parsed.filter(Boolean);
+      } else {
+        images = [product.images];
+      }
+    } catch (e) {
+      images = [product.images];
+    }
   }
-  // Ensure stock_status is a string or null
+
+  // Ensure stock_status is properly formatted
   let stock_status = product.stock_status || null;
-  return {
+  if (stock_status === "in_stock") {
+    stock_status = "In Stock";
+  } else if (stock_status === "out_of_stock") {
+    stock_status = "Out of Stock";
+  }
+
+  // Ensure category_ids is an array
+  let category_ids = [];
+  if (Array.isArray(product.category_ids)) {
+    category_ids = product.category_ids;
+  } else if (typeof product.category_ids === "string") {
+    try {
+      const parsed = JSON.parse(product.category_ids);
+      category_ids = Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      category_ids = [];
+    }
+  }
+
+  const normalized = {
     ...product,
     options,
     images,
     stock_status,
+    category_ids,
+    is_published: Boolean(product.is_published),
   };
+  return normalized;
 }
 
 export default async function EditProductPage({
@@ -43,34 +94,27 @@ export default async function EditProductPage({
   const productId = params.id;
   let product = null;
   let allCategories = [];
+
   try {
-    product = await getProductById(productId);
-    allCategories = await getAllCategories();
+    [product, allCategories] = await Promise.all([
+      getProductById(productId),
+      getAllCategories(),
+    ]);
+
     if (!product) {
-      console.error(`[EditProductPage] Product not found for id: ${productId}`);
       return notFound();
     }
   } catch (error) {
-    console.error(
-      `[EditProductPage] Error fetching product or categories for id: ${productId}`,
-      error
-    );
     return notFound();
   }
+
   // Normalize product data for the client
   const normalizedProduct = normalizeProduct(product);
-  // Debug log for options
-  console.log(
-    "[DEBUG] Product options after fetch:",
-    normalizedProduct
-  );
+
   return (
-    <>
-      {/* <pre>{JSON.stringify(normalizedProduct.options, null, 2)}</pre> */}
-      <EditProductClient
-        product={normalizedProduct}
-        allCategories={allCategories}
-      />
-    </>
+    <EditProductClient
+      product={normalizedProduct}
+      allCategories={allCategories}
+    />
   );
 }

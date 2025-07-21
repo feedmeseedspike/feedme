@@ -210,8 +210,6 @@ const CheckoutForm = ({
   user,
   deliveryLocations,
 }: CheckoutFormProps) => {
-  console.log("CheckoutForm: User:", user);
-  console.log("CheckoutForm: addresses:", addresses);
   const router = useRouter();
   const dispatch = useDispatch();
   const { data: cartItems, isLoading, isError, error } = useCartQuery();
@@ -454,7 +452,6 @@ const CheckoutForm = ({
     if (user && !isLoadingReferralStatus && !autoAppliedReferralVoucher) {
       startTransition(() => {
         tryAutoApplyReferralVoucher().catch((error) => {
-          console.error("Error with tryAutoApplyReferralVoucher:", error);
           setVoucherCode("");
           setVoucherDiscount(0);
           setIsVoucherValid(false);
@@ -533,17 +530,10 @@ const CheckoutForm = ({
 
     startTransition(async () => {
       try {
-        console.log(
-          "totalAmount before calling getVoucher:",
-          totalAmount,
-          "Type:",
-          typeof totalAmount
-        );
         const result = await validateVoucherMutation({
           code: voucherCode,
           totalAmount,
         });
-        console.log("Result from getVoucher server action:", result);
         if (result.success && result.data) {
           const { id, discountType, discountValue } = result.data;
           setIsVoucherValid(true);
@@ -705,7 +695,6 @@ const CheckoutForm = ({
                   }
                 );
                 const emailData = await emailRes.json();
-                console.log("Order confirmation email response:", emailData);
                 if (emailRes.ok && emailData.success) {
                   showToast("Order confirmation email sent!", "success");
                 } else {
@@ -831,7 +820,7 @@ const CheckoutForm = ({
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
-                    adminEmail: "orders.feedmeafrica@gmail.com",
+                    adminEmail: "oyedelejeremiah.ng@gmail.com",
                     userEmail: user.email,
                     adminOrderProps: {
                       orderNumber: result.data.orderId,
@@ -868,7 +857,6 @@ const CheckoutForm = ({
                 }
               );
               const emailData = await emailRes.json();
-              console.log("Order confirmation email response:", emailData);
               if (emailRes.ok && emailData.success) {
                 showToast("Order confirmation email sent!", "success");
               } else {

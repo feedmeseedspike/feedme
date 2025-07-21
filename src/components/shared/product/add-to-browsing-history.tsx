@@ -26,6 +26,17 @@ export default function AddToBrowsingHistory({
       } = await supabase.auth.getUser();
 
       if (user) {
+        // Ensure profile exists
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("user_id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (!profile) {
+          await supabase.from("profiles").insert([{ user_id: user.id }]);
+        }
+
         const { error } = await supabase.from("browsing_history").insert([
           {
             user_id: user.id,

@@ -197,7 +197,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
   const prefetchCart = usePrefetchCart();
   const queryClient = useQueryClient();
 
-  const [open, setOpen] = useState(false); 
+  const [open, setOpen] = useState(false);
 
   const items: CartItem[] = useMemo(() => cartItems || [], [cartItems]);
 
@@ -597,12 +597,20 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
                 <p>{formatNaira(totalAmount)}</p>
               </div>
               <p className="text-black">Delivery fees not included yet.</p>
-              <button
-                className="mt-3 w-full btn-primary"
-                onClick={handleCheckout}
-              >
-                Checkout
-              </button>
+              <div className="grid grid-cols-2 gap-2 w-full mt-3 ">
+                <button
+                  className="btn-primary !bg-[#D0D5DD] flex items-center justify-center !text-black"
+                  onClick={() => {
+                    setOpen(false);
+                    router.push("/cart");
+                  }}
+                >
+                  View cart
+                </button>
+                <button className="btn-primary" onClick={handleCheckout}>
+                  Checkout
+                </button>
+              </div>
             </div>
           </SheetFooter>
         )}

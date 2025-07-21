@@ -14,9 +14,6 @@ export async function processWalletPayment(orderData: OrderData) {
 
   const userId = userData.user.id;
 
-  // Debug log for user ID mismatch
-  console.log('OrderData userId:', orderData.userId, 'Authenticated userId:', userId);
-
   // Basic security check: Ensure the order data belongs to the authenticated user
   if (orderData.userId !== userId) {
     return { success: false, error: "Order data mismatch." };
@@ -35,7 +32,6 @@ export async function processWalletPayment(orderData: OrderData) {
       .from("wallets")
       .insert({ user_id: userId, balance: 0 });
     if (createWalletError) {
-      console.error("Error creating wallet for user:", createWalletError.message);
       return { success: false, error: "Could not create wallet for user." };
     }
     // Retry fetching the wallet
@@ -45,14 +41,12 @@ export async function processWalletPayment(orderData: OrderData) {
       .eq("user_id", userId)
       .single());
     if (walletError || !walletData) {
-      console.error("Error fetching wallet after creation:", walletError?.message);
       return { success: false, error: "Could not retrieve wallet information." };
     }
   }
 
   // Check if balance is null and handle it
   if (walletData.balance === null) {
-      console.error("Wallet balance is null for user:", userId);
       return { success: false, error: "Invalid wallet balance." };
   }
 
@@ -73,7 +67,6 @@ export async function processWalletPayment(orderData: OrderData) {
       .eq("user_id", userId);
 
     if (deductionError) {
-      console.error("Error deducting from wallet:", deductionError.message);
       throw new Error("Failed to deduct from wallet.");
     }
 
@@ -94,7 +87,6 @@ export async function processWalletPayment(orderData: OrderData) {
       .single();
 
     if (orderError || !orderResult) {
-      console.error("Error creating order:", JSON.stringify(orderError, null, 2));
       throw new Error("Failed to create order record.");
     }
 
@@ -113,7 +105,6 @@ export async function processWalletPayment(orderData: OrderData) {
         .insert(orderItems);
 
     if(orderItemsError) {
-        console.error("Error inserting order items:", orderItemsError.message);
         throw new Error("Failed to create order items.");
     }
 
@@ -136,8 +127,6 @@ export async function processWalletPayment(orderData: OrderData) {
 
   } catch (error: any) {
     // Basic rollback mechanism: if order creation/items failed, try to refund the wallet
-    console.error("Transaction failed, attempting rollback:", error.message);
-    // NOTE: A more robust transaction handling (e.g., using database features) is recommended
     if (walletData && walletData.balance !== null) { // Only attempt refund if initial deduction happened and balance was not null
         await supabase
             .from("wallets")

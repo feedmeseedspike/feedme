@@ -33,10 +33,8 @@ const ShareLike = ({ product }: { product: any }) => {
   const [open, setOpen] = useState(false);
 
   // Use useQuery to fetch favorites
-  const { data: favorites, isLoading: isLoadingFavorites } = useQuery(
-    getFavoritesQuery()
-  );
-  console.log("Favorites data in ShareLike:", favorites);
+  const { data: favorites, isLoading: isLoadingFavorites } =
+    useQuery(getFavoritesQuery());
   const isFavorited =
     product.id && favorites ? favorites.includes(product.id) : false;
 
@@ -54,12 +52,6 @@ const ShareLike = ({ product }: { product: any }) => {
     async (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      console.log(
-        "Toggle like clicked for product:",
-        product.id,
-        "isFavorited initially:",
-        isFavorited
-      );
       if (!product.id) return;
 
       try {
@@ -80,7 +72,13 @@ const ShareLike = ({ product }: { product: any }) => {
         }
       }
     },
-    [product.id, product.name, isFavorited, removeFavoriteMutation, addFavoriteMutation]
+    [
+      product.id,
+      product.name,
+      isFavorited,
+      removeFavoriteMutation,
+      addFavoriteMutation,
+    ]
   );
 
   // Handle share functionality

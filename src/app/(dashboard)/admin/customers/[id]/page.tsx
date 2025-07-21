@@ -161,7 +161,6 @@ export default function CustomerDetailsPage() {
       console.error("Error updating order status:", error);
       showToast("Failed to update order status.", "error");
     } else {
-      console.log(`Order ${orderId} status updated to ${newStatus}`);
       showToast("Order status updated successfully.", "success");
       // Invalidate the customer orders query to refetch data
       queryClient.invalidateQueries({

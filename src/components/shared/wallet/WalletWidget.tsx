@@ -28,8 +28,6 @@ function WalletWidget({
     error: errorBalance,
   } = useWalletBalanceQuery(session?.user?.id || "");
 
-  console.log("session", session);
-
   useEffect(() => {
     if (errorBalance) {
       showToast(
@@ -64,9 +62,7 @@ function WalletWidget({
         }
       );
 
-
       if (response.data.authorization_url) {
-        console.log("Redirecting to:", response.data.authorization_url);
         router.push(response.data.authorization_url);
       } else {
         showToast(
@@ -83,7 +79,6 @@ function WalletWidget({
       );
       console.error("Error initiating payment:", err);
     } finally {
-      console.log("Setting isInitializingPayment to false");
       setIsInitializingPayment(false);
     }
   };

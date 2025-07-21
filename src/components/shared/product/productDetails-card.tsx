@@ -65,14 +65,6 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
     const user = useUser();
     const router = useRouter();
 
-    console.log("ProductDetailsCard: Product data", {
-      productId: product.id,
-      productName: product.name,
-      stockStatus: product.stockStatus,
-      countInStock: product.countInStock,
-      isPublished: product.is_published,
-    });
-
     // Tanstack Query for Cart
     const { data: cartItems, isLoading: isLoadingCart } = useCartQuery();
 
@@ -541,16 +533,20 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       if (sortedOptions.length > 0) {
         const firstPrice = sortedOptions[0]?.price;
         const lastPrice = sortedOptions[sortedOptions.length - 1]?.price;
-        if (
+        if (sortedOptions.length === 1) {
+          // Only one option, show its price
+          priceDisplay = formatNaira(firstPrice);
+        } else if (
           firstPrice !== null &&
           firstPrice !== undefined &&
           lastPrice !== null &&
-          lastPrice !== undefined
+          lastPrice !== undefined &&
+          firstPrice !== lastPrice
         ) {
-          priceDisplay = `${formatNaira(firstPrice)} - ${formatNaira(
-            lastPrice
-          )}`;
+          // Multiple options with different prices, show range
+          priceDisplay = `${formatNaira(firstPrice)} - ${formatNaira(lastPrice)}`;
         } else if (firstPrice !== null && firstPrice !== undefined) {
+          // Multiple options but all have the same price
           priceDisplay = formatNaira(firstPrice);
         } else if (lastPrice !== null && lastPrice !== undefined) {
           priceDisplay = formatNaira(lastPrice);
@@ -606,15 +602,19 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       const currentValue = selectedOption || sortedOptions[0]?.name || "";
 
       return (
-        <div className="w-[8rem] mt-2">
+        <div className="w-full mt-2 max-w-xs min-w-[10rem]">
           <Select value={currentValue} onValueChange={handleOptionChange}>
-            <SelectTrigger className="w-full !border-none">
+            <SelectTrigger className="w-full !border-none min-w-[10rem] max-w-[18rem]">
               <SelectValue placeholder="Select an option" />
             </SelectTrigger>
-            <SelectContent className="w-fit">
+            <SelectContent className="w-full min-w-[10rem] max-w-[18rem] max-h-[250px] overflow-y-auto z-50">
               {sortedOptions.map((option) => (
-                <SelectItem key={option.name} value={option.name}>
-                  <div className="flex items-center gap-2 w-fit">
+                <SelectItem
+                  key={option.name}
+                  value={option.name}
+                  className="w-full"
+                >
+                  <div className="flex items-center gap-2 w-full">
                     {typeof option.image === "string" && (
                       <Image
                         src={option.image}

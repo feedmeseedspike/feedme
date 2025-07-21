@@ -37,7 +37,6 @@ interface AppSidebarProps {
 }
 
 export function AdminSidebar({ user }: AppSidebarProps) {
-  console.log("user here", user);
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);

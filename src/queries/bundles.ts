@@ -49,7 +49,6 @@ export async function fetchBundles({
   const { data, error, count } = await query;
 
   if (error) {
-    console.error('Error fetching bundles:', error);
     throw error;
   }
 
@@ -79,7 +78,6 @@ export const createBundleWithProducts = async (data: CreateBundleData) => {
       .upload(filePath, file);
 
     if (uploadError) {
-      console.error("Error uploading bundle image:", uploadError);
       throw new Error("Failed to upload bundle image");
     }
 
@@ -106,8 +104,6 @@ export const createBundleWithProducts = async (data: CreateBundleData) => {
     .single();
 
   if (bundleError) {
-    console.error("Error creating bundle:", bundleError);
-    // TODO: Clean up uploaded image if bundle creation fails
     throw new Error("Failed to create bundle");
   }
 
@@ -123,8 +119,6 @@ export const createBundleWithProducts = async (data: CreateBundleData) => {
       .insert(bundleProductsData);
 
     if (bundleProductsError) {
-      console.error("Error linking products to bundle:", bundleProductsError);
-      // TODO: Clean up created bundle and uploaded image if linking fails
       throw new Error("Failed to link products to bundle");
     }
   }
@@ -151,7 +145,6 @@ export async function createBundle({ name, price, stock_status, published_status
       .upload(filePath, thumbnail_file);
 
     if (uploadError) {
-      console.error('Error uploading thumbnail:', uploadError);
       throw uploadError; // Propagate the error
     }
 
@@ -178,7 +171,6 @@ export async function createBundle({ name, price, stock_status, published_status
     .single(); // Assuming you want the inserted row back
 
   if (error) {
-    console.error('Error creating bundle:', error);
     throw error; // Propagate the error
   }
 
@@ -207,7 +199,6 @@ export const fetchBundleByIdWithProducts = async (bundleId: string) => {
     .single(); // Expecting a single bundle
 
   if (error) {
-    console.error("Error fetching bundle with products:", error);
     throw error; // Propagate the error
   }
 
@@ -249,7 +240,6 @@ export const updateBundleWithProducts = async (data: UpdateBundleData) => {
       .upload(filePath, file);
 
     if (uploadError) {
-      console.error("Error uploading new bundle image:", uploadError);
       throw new Error("Failed to upload new bundle image");
     }
 
@@ -295,8 +285,6 @@ export const updateBundleWithProducts = async (data: UpdateBundleData) => {
     .single();
 
   if (bundleError) {
-    console.error("Error updating bundle:", bundleError);
-    // TODO: Clean up uploaded image if bundle update fails
     throw new Error("Failed to update bundle");
   }
 
@@ -308,8 +296,6 @@ export const updateBundleWithProducts = async (data: UpdateBundleData) => {
     .eq('bundle_id', data.id);
 
   if (deleteError) {
-    console.error("Error deleting existing bundle products:", deleteError);
-    // TODO: Consider rolling back bundle update if linking fails
     throw new Error("Failed to update bundle products");
   }
 
@@ -325,8 +311,6 @@ export const updateBundleWithProducts = async (data: UpdateBundleData) => {
       .insert(bundleProductsData);
 
     if (insertError) {
-      console.error("Error inserting new bundle products:", insertError);
-      // TODO: Consider rolling back bundle update if linking fails
       throw new Error("Failed to insert new bundle products");
     }
   }
@@ -344,7 +328,6 @@ export async function deleteBundle(bundleId: string): Promise<void> {
     .eq('id', bundleId);
 
   if (error) {
-    console.error('Error deleting bundle:', error);
     throw error; // Propagate the error
   }
 } 

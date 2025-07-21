@@ -230,7 +230,13 @@ export const addHelpfulVote = async ({
     const { error } = await supabase
       .from("review_helpful_votes")
       .insert({ review_id: reviewId, user_id: userId });
-    if (error) throw error;
+    if (error) {
+      // Catch duplicate key error (already voted)
+      if (error.code === "23505") {
+        throw new Error("You've already voted for this review");
+      }
+      throw error;
+    }
     // Increment helpful_count in product_reviews table
     const { error: updateError } = await supabase.rpc(
       "increment_helpful_count",

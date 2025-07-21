@@ -33,6 +33,7 @@ import { useUser } from "src/hooks/useUser";
 const HeaderClient = ({ categories, categoriesError }: any) => {
   const { user, isLoading: isUserLoading } = useUser();
   const [openAccountSheet, setOpenAccountSheet] = useState(false);
+  const [openMobileSheet, setOpenMobileSheet] = useState(false); // Add state for mobile menu
   const [isCategoriesLoading] = useState(false); // Always false, categories are from props
 
   if (isUserLoading) {
@@ -49,11 +50,12 @@ const HeaderClient = ({ categories, categoriesError }: any) => {
             <nav className="rounded-xl flex flex-row w-full">
               <div className="flex flex-row gap-x-6 md:gap-x-12 items-center relative">
                 {/* Mobile Sheet Menu for Categories */}
-                <Sheet>
+                <Sheet open={openMobileSheet} onOpenChange={setOpenMobileSheet}>
                   <SheetTrigger className="md:hidden" asChild>
                     <Button
                       variant="ghost"
                       className="p-0 hover:bg-transparent"
+                      onClick={() => setOpenMobileSheet(true)}
                     >
                       <svg
                         className="text-white fill-white"
@@ -77,7 +79,10 @@ const HeaderClient = ({ categories, categoriesError }: any) => {
                   >
                     <SheetHeader>
                       <SheetTitle>
-                        <Link href="/">
+                        <Link
+                          href="/"
+                          onClick={() => setOpenMobileSheet(false)}
+                        >
                           <Image
                             src="/logo.png"
                             alt="logo"
@@ -111,10 +116,9 @@ const HeaderClient = ({ categories, categoriesError }: any) => {
                             {categories?.map((category: any) => (
                               <Link
                                 key={category.id}
-                                href={`/category/${
-                                  category.tags || category.id
-                                }`}
+                                href={`/category/${category.tags || category.id}`}
                                 className="block py-2 hover:bg-white/10 rounded text-lg px-2 transition-colors"
+                                onClick={() => setOpenMobileSheet(false)}
                               >
                                 {category.title}
                               </Link>

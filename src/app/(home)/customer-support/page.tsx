@@ -25,13 +25,26 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "../../../components/ui/accordion";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+const formSchema = z.object({
+  name: z.string().min(1, "Full name is required"),
+  email: z.string().email("Invalid email address"),
+  subject: z.string().min(1, "Subject is required"),
+  message: z.string().min(1, "Message is required"),
+});
+type ContactFormValues = z.infer<typeof formSchema>;
 
 export default function CustomerServicePage() {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    subject: "",
-    message: "",
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
+  const form = useForm<ContactFormValues>({
+    resolver: zodResolver(formSchema),
   });
 
   const faqs = [
@@ -62,19 +75,33 @@ export default function CustomerServicePage() {
     },
   ];
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Handle form submission
-    // console.log("Form submitted:", formData);
-    alert("Thank you for your message! Our team will respond within 24 hours.");
-    setFormData({ name: "", email: "", subject: "", message: "" });
+  const onSubmit = async (data: ContactFormValues) => {
+    setLoading(true);
+    setResult(null);
+    try {
+      const res = await fetch("/api/email/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setResult({ success: true, message: "Message sent successfully!" });
+        form.reset();
+      } else {
+        setResult({
+          success: false,
+          message: json.error || "Failed to send message.",
+        });
+      }
+    } catch (err: any) {
+      setResult({
+        success: false,
+        message: err.message || "Failed to send message.",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -128,7 +155,9 @@ export default function CustomerServicePage() {
               <p className="text-gray-600 mb-4">
                 Send us an email and we&apos;ll respond promptly
               </p>
-              <p className="text-lg font-semibold">seedspikelimited@gmail.com</p>
+              <p className="text-lg font-semibold">
+                seedspikelimited@gmail.com
+              </p>
               <p className="text-sm text-gray-500 mt-2">
                 Average response time: 12 hours
               </p>
@@ -163,7 +192,14 @@ export default function CustomerServicePage() {
         {/* Contact Form */}
         <div className="max-w-2xl mx-auto">
           <h2 className="text-2xl font-bold mb-6">Contact Us</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {result && (
+              <div
+                className={`text-sm px-3 py-2 rounded-md border ${result.success ? "bg-green-100 border-green-300 text-green-800" : "bg-red-100 border-red-300 text-red-800"}`}
+              >
+                {result.message}
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label
@@ -174,12 +210,16 @@ export default function CustomerServicePage() {
                 </label>
                 <Input
                   id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
+                  {...form.register("name")}
                   required
                   placeholder="Your name"
+                  className="rounded-full"
                 />
+                {form.formState.errors.name && (
+                  <span className="text-xs text-red-600">
+                    {form.formState.errors.name.message as string}
+                  </span>
+                )}
               </div>
               <div>
                 <label
@@ -190,13 +230,17 @@ export default function CustomerServicePage() {
                 </label>
                 <Input
                   id="email"
-                  name="email"
                   type="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
+                  {...form.register("email")}
                   required
                   placeholder="your@email.com"
+                  className="rounded-full"
                 />
+                {form.formState.errors.email && (
+                  <span className="text-xs text-red-600">
+                    {form.formState.errors.email.message as string}
+                  </span>
+                )}
               </div>
             </div>
             <div>
@@ -208,12 +252,16 @@ export default function CustomerServicePage() {
               </label>
               <Input
                 id="subject"
-                name="subject"
-                value={formData.subject}
-                onChange={handleInputChange}
+                {...form.register("subject")}
                 required
                 placeholder="What's this about?"
+                className="rounded-full"
               />
+              {form.formState.errors.subject && (
+                <span className="text-xs text-red-600">
+                  {form.formState.errors.subject.message as string}
+                </span>
+              )}
             </div>
             <div>
               <label
@@ -224,17 +272,24 @@ export default function CustomerServicePage() {
               </label>
               <Textarea
                 id="message"
-                name="message"
-                value={formData.message}
-                onChange={handleInputChange}
+                {...form.register("message")}
                 required
                 rows={5}
                 placeholder="How can we help you?"
-                className="min-h-[120px]"
+                className="min-h-[120px] rounded-xl"
               />
+              {form.formState.errors.message && (
+                <span className="text-xs text-red-600">
+                  {form.formState.errors.message as unknown as string}
+                </span>
+              )}
             </div>
-            <Button type="submit" className="w-full md:w-auto !bg-[#1B6013]">
-              Send Message
+            <Button
+              type="submit"
+              className="w-full md:w-auto !bg-[#1B6013]"
+              disabled={loading}
+            >
+              {loading ? "Sending..." : "Send Message"}
             </Button>
           </form>
         </div>

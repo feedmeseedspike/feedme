@@ -2,6 +2,8 @@ import ReviewListClient from "./review-list/ReviewListClient";
 import { getReviews } from "src/queries/reviews";
 import { getUser } from "src/lib/actions/auth.actions";
 import type { Tables } from "src/utils/database.types";
+import { getUsersPurchasedProductIds } from "src/queries/products";
+import { createServerComponentClient } from "src/utils/supabase/server";
 
 interface ReviewListServerProps {
   product: Tables<"products">;
@@ -9,7 +11,6 @@ interface ReviewListServerProps {
 
 export default async function ReviewList({ product }: ReviewListServerProps) {
   const user = await getUser();
-  console.log("reviews list", user);
   const userId = user?.user_id ?? undefined;
 
   if (!product.id) throw new Error("Product id is required");
@@ -26,6 +27,16 @@ export default async function ReviewList({ product }: ReviewListServerProps) {
       }
     : null;
 
+  let hasPurchased = false;
+  if (userId) {
+    const supabase = await createServerComponentClient();
+    const purchasedProductIds = await getUsersPurchasedProductIds(
+      supabase,
+      userId
+    );
+    hasPurchased = purchasedProductIds.includes(product.id);
+  }
+
   // console.log("reviewsData:", reviewsData);
   return (
     <ReviewListClient
@@ -34,6 +45,7 @@ export default async function ReviewList({ product }: ReviewListServerProps) {
       userId={userId ?? ""}
       avgRating={avgRating}
       currentUser={currentUser}
+      hasPurchased={hasPurchased}
     />
   );
 }
