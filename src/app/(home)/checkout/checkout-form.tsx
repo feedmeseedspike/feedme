@@ -70,6 +70,7 @@ import {
 import { Pencil, Trash2, Loader2 } from "lucide-react";
 import { clearCart } from "src/store/features/cartSlice";
 import { useClearCartMutation } from "src/queries/cart";
+import axios from "axios";
 
 interface GroupedCartItem {
   product?: CartItem["products"];
@@ -560,7 +561,6 @@ const CheckoutForm = ({
         // Remove voucher from localStorage
         localStorage.removeItem("voucherCode");
         localStorage.removeItem("voucherDiscount");
-        console.error("Error caught in handleVoucherValidation:", error);
         showToast(
           error.message || "An error occurred while validating the voucher.",
           "error"
@@ -764,129 +764,46 @@ const CheckoutForm = ({
               setIsSubmitting(false);
               return;
             }
-            const response = await fetch("/api/wallet/initialize/paystack", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                email: userEmail,
-                amount: totalAmountPaid,
-                orderId: orderResult.data.orderId,
-              }),
+            const response = await axios.post("/api/wallet/initialize", {
+              email: user.email,
+              amount: totalAmountPaid,
+              type: "direct_payment",
+              orderId: orderResult.data.orderId,
+              // Additional data for webhook processing
+              autoAppliedReferralVoucher: autoAppliedReferralVoucher,
+              customerName:
+                user.display_name || shippingAddressForm.getValues().fullName,
+              customerPhone: shippingAddressForm.getValues().phone,
+              itemsOrdered: items.map((item) => ({
+                title: item.products?.name || item.bundles?.name || "",
+                price: item.price,
+                quantity: item.quantity,
+              })),
+              deliveryAddress: shippingAddressForm.getValues().street,
+              localGovernment: shippingAddressForm.getValues().location,
+              deliveryFee: cost,
+              serviceCharge: serviceCharge,
+              subtotal: subtotal,
             });
-            const data = await response.json();
-            if (response.ok && data.authorization_url) {
+            if (response.data.authorization_url) {
               // Store orderId for use after Paystack redirect (optional, for fallback)
               if (orderResult.data.orderId) {
                 localStorage.setItem("lastOrderId", orderResult.data.orderId);
               }
-              window.location.href = data.authorization_url;
+              window.location.href = response.data.authorization_url;
               setIsSubmitting(false);
               return; // Stop further execution
             } else {
               showToast(
-                data.message || "Failed to initialize Paystack payment.",
+                response.data.message ||
+                  "Failed to initialize Paystack payment.",
                 "error"
               );
               setIsSubmitting(false);
               return;
             }
           }
-
-          if (result.success) {
-            // After successful order, update referral record if needed
-            if (autoAppliedReferralVoucher && user?.user_id) {
-              try {
-                await fetch(`/api/referral/status`, {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    userId: user.user_id,
-                    status: "qualified",
-                    referred_discount_given: true,
-                  }),
-                });
-              } catch (err) {
-                console.error(
-                  "Failed to update referral status after order:",
-                  err
-                );
-              }
-            }
-            // Send order confirmation emails to admin and user
-            try {
-              const emailRes = await fetch(
-                "/api/email/send-order-confirmation",
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    adminEmail: "oyedelejeremiah.ng@gmail.com",
-                    userEmail: user.email,
-                    adminOrderProps: {
-                      orderNumber: result.data.orderId,
-                      customerName:
-                        user.display_name ||
-                        shippingAddressForm.getValues().fullName,
-                      customerPhone: shippingAddressForm.getValues().phone,
-                      itemsOrdered: items.map((item) => ({
-                        title: item.products?.name || item.bundles?.name || "",
-                        price: item.price,
-                        quantity: item.quantity,
-                      })),
-                      deliveryAddress: shippingAddressForm.getValues().street,
-                      localGovernment: shippingAddressForm.getValues().location,
-                    },
-                    userOrderProps: {
-                      orderNumber: result.data.orderId,
-                      customerName:
-                        user.display_name ||
-                        shippingAddressForm.getValues().fullName,
-                      customerPhone: shippingAddressForm.getValues().phone,
-                      itemsOrdered: items.map((item) => ({
-                        title: item.products?.name || item.bundles?.name || "",
-                        price: item.price,
-                        quantity: item.quantity,
-                      })),
-                      deliveryAddress: shippingAddressForm.getValues().street,
-                      deliveryFee: cost,
-                      serviceCharge: serviceCharge,
-                      totalAmount: subtotal,
-                      totalAmountPaid: totalAmountPaid,
-                    },
-                  }),
-                }
-              );
-              const emailData = await emailRes.json();
-              if (emailRes.ok && emailData.success) {
-                showToast("Order confirmation email sent!", "success");
-              } else {
-                showToast(
-                  emailData.error ||
-                    "Order placed, but failed to send confirmation email.",
-                  "error"
-                );
-              }
-            } catch (err) {
-              showToast(
-                "Order placed, but failed to send confirmation email.",
-                "error"
-              );
-            }
-            // Clear voucher from localStorage after successful order
-            localStorage.removeItem("voucherCode");
-            localStorage.removeItem("voucherDiscount");
-            dispatch(clearCart());
-            localStorage.removeItem("cart");
-            await clearCartMutation.mutateAsync();
-            showToast("Order created successfully!", "success");
-            router.push(
-              `/order/order-confirmation?orderId=${result.data.orderId}`
-            );
-          } else {
-            showToast(result.error || "Failed to process order.", "error");
-          }
         } catch (error: any) {
-          console.error("Error in startTransition:", error);
           showToast(
             `Order processing error: ${
               error.message || "An unknown error occurred."
@@ -898,7 +815,6 @@ const CheckoutForm = ({
         }
       });
     } catch (error: any) {
-      console.error("Error in handleOrderSubmission try block:", error);
       showToast(error.message || "An unexpected error occurred.", "error");
       setIsSubmitting(false);
     }

@@ -143,7 +143,11 @@ export default function WalletClient({
       // console.log("get session => ", accessToken);
       const res = await axios.post(
         "/api/wallet/initialize",
-        { email: user.email, amount: parseFloat(amount) },
+        {
+          email: user.email,
+          amount: parseFloat(amount),
+          type: "wallet_funding",
+        }
         // {
         //   headers: {
         //     Authorization: `Bearer ${accessToken}`,
