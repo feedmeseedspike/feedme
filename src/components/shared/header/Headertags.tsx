@@ -2,12 +2,11 @@
 
 import Container from "@components/shared/Container";
 import Link from "next/link";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { headerMenus } from "src/lib/data";
 import { AnimatePresence, motion } from "framer-motion";
 import FlyoutLink from "@components/shared/header/FlyoutLink";
 import { ChevronDownIcon, Menu } from "lucide-react";
-import { useQuery, useQueries } from "@tanstack/react-query";
 import { getAllCategoriesQuery } from "src/queries/categories";
 import { getProducts } from "src/queries/products";
 import { createClient } from "src/utils/supabase/client";
@@ -109,50 +108,63 @@ const CategoriesFlyout = ({
 const Headertags = () => {
   const supabase = createClient();
 
-  const queryFn = async () => {
-    const queryBuilder = getAllCategoriesQuery(supabase);
-    const { data, error } = await queryBuilder.select("*");
-    if (error) throw error;
-    return data as any;
-  };
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [productsByCategory, setProductsByCategory] = useState<
+    Record<string, string[]>
+  >({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const {
-    data: categories,
-    isLoading,
-    error,
-  } = useQuery<Category[]>({
-    queryKey: ["categories"],
-    queryFn,
-  });
-
-  // Safely map categories to ensure thumbnail is an object with a url
-  const safeCategories = (categories || []).map((cat) => ({
-    ...cat,
-    thumbnail:
-      cat.thumbnail &&
-      typeof cat.thumbnail === "object" &&
-      !Array.isArray(cat.thumbnail) &&
-      "url" in cat.thumbnail
-        ? cat.thumbnail
-        : undefined,
-  })) as unknown as Category[];
-
-  // Fetch up to 3 product names for each category by id using useQueries
-  const productQueries = useQueries({
-    queries: safeCategories.map((cat) => ({
-      queryKey: ["products-for-category", cat.id],
-      queryFn: async () => {
-        const { data } = await getProducts({ category: cat.id, limit: 2 });
-        return (data || []).map((p: any) => p.name);
-      },
-      enabled: !!cat.id,
-    })),
-  });
-
-  const productsByCategory: Record<string, string[]> = {};
-  safeCategories.forEach((cat, idx) => {
-    productsByCategory[cat.id] = productQueries[idx]?.data || [];
-  });
+  useEffect(() => {
+    const fetchCategoriesAndProducts = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // Fetch categories
+        const queryBuilder = getAllCategoriesQuery(supabase);
+        const { data: catData, error: catError } =
+          await queryBuilder.select("*");
+        if (catError) throw catError;
+        // Safely map categories to ensure thumbnail is an object with a url
+        const safeCategories = (catData || []).map((cat: any) => ({
+          ...cat,
+          thumbnail:
+            cat.thumbnail &&
+            typeof cat.thumbnail === "object" &&
+            !Array.isArray(cat.thumbnail) &&
+            "url" in cat.thumbnail
+              ? cat.thumbnail
+              : undefined,
+        })) as Category[];
+        setCategories(safeCategories);
+        // Fetch products for each category
+        const productsArr = await Promise.all(
+          safeCategories.map(async (cat) => {
+            try {
+              const { data } = await getProducts({
+                category: cat.id,
+                limit: 2,
+              });
+              return (data || []).map((p: any) => p.name);
+            } catch {
+              return [];
+            }
+          })
+        );
+        const productsMap: Record<string, string[]> = {};
+        safeCategories.forEach((cat, idx) => {
+          productsMap[cat.id] = productsArr[idx] || [];
+        });
+        setProductsByCategory(productsMap);
+      } catch (err: any) {
+        setError(err.message || "Failed to load categories");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCategoriesAndProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="bg-white">
@@ -161,12 +173,44 @@ const Headertags = () => {
           {/* Categories Flyout */}
           <FlyoutLink
             FlyoutContent={() => (
-              <CategoriesFlyout
-                categories={safeCategories}
-                isLoading={isLoading}
-                error={error}
-                productsByCategory={productsByCategory}
-              />
+              <div className="p-4 w-full max-w-7x mx-auto overflow-x-auto">
+                {loading && (
+                  <div className="text-gray-500">Loading categories...</div>
+                )}
+                {error && <div className="p-2 text-red-500">{error}</div>}
+                {!loading && !error && categories.length === 0 && (
+                  <div className="text-gray-500">No categories found.</div>
+                )}
+                {!loading && !error && categories.length > 0 && (
+                  <div className="grid grid-cols-3 lg:grid-cols-4 gap-2 ">
+                    {categories.map((category) => (
+                      <Link
+                        href={`/category/${toSlug(category.title)}`}
+                        key={category.id}
+                        className={`flex items-center gap-2 px-2 py-5 rounded hover:bg-gray-100 transition-colors ${getCategoryColor(category.id, CATEGORY_COLORS)}`}
+                      >
+                        {category.thumbnail?.url && (
+                          <Image
+                            src={category.thumbnail.url}
+                            width={60}
+                            height={60}
+                            alt={category.title}
+                            className=" size-[60px]"
+                          />
+                        )}
+                        <div>
+                          <span>{category.title}</span>
+                          {productsByCategory?.[category.id]?.length ? (
+                            <p className="text-xs text-gray-600 mt-1 truncate overflow-hidden whitespace-nowrap block w-full max-w-[200px]">
+                              {productsByCategory[category.id].join(", ")}, etc
+                            </p>
+                          ) : null}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
             className="flex items-center gap-1 text-sm h-7 rounded-md hover:bg-gray-100 transition-colors cursor-pointer px-2"
             flyoutPosition="absolute"

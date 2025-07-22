@@ -359,14 +359,7 @@ const CartClient: React.FC<CartClientProps> = ({
       <div className="min-h-screen bg-gray-50">
         <Container className="py-10">
           {/* Header */}
-          <div className="flex flex-col items-center mb-10">
-            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-              <span className="text-3xl text-primary">🛒</span>
-            </div>
-            <h1 className="text-3xl md:text-4xl font-bold text-primary text-center">
-              Your Cart
-            </h1>
-          </div>
+
 
           {items.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24">
@@ -387,185 +380,180 @@ const CartClient: React.FC<CartClientProps> = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-              {/* Cart Items */}
-              <div className="md:col-span-2 space-y-6">
-                {Object.entries(groupedItems).map(
-                  ([groupKey, productGroup]: [string, GroupedCartItem]) => {
-                    const optionEntries = Object.entries(productGroup.options);
-                    const isSingleItem = optionEntries.length === 1;
-                    return (
-                      <Card
-                        key={groupKey}
-                        className="p-6 bg-white rounded-xl shadow-sm border border-gray-100"
-                      >
-                        <div className="flex items-center justify-between mb-4">
-                          <h2 className="text-xl font-bold text-primary">
-                            {productGroup.product?.name ||
-                              productGroup.bundle?.name || (
-                                <span className="text-gray-400">Unnamed</span>
-                              )}
-                          </h2>
-                          {/* Show group Trash2Icon only if more than one item, or always if only one item */}
-                          {isSingleItem || optionEntries.length > 1 ? (
-                            <Trash2Icon
-                              className="size-5 cursor-pointer text-gray-400 hover:text-red-500 transition-colors"
-                              onClick={() => {
-                                const itemToRemove = optionEntries[0][1];
-                                if (itemToRemove)
-                                  handleRemoveItem(itemToRemove);
-                              }}
-                              aria-label="Remove all items in this group"
-                            />
-                          ) : null}
-                        </div>
-                        <div className="space-y-4">
-                          {optionEntries.map(
-                            (
-                              [optionKey, item]: [string, CartItem],
-                              idx,
-                              arr
-                            ) => (
-                              <div key={item.id}>
-                                <div className="flex items-center gap-4">
-                                  <Link
-                                    href={`/product/${
-                                      item.products?.slug || item.bundles?.id
-                                    }`}
-                                    className="block"
-                                  >
-                                    <Image
-                                      width={80}
-                                      height={80}
-                                      src={
-                                        (item.option as ProductOption)?.image ||
-                                        item.products?.images?.[0] ||
-                                        item.bundles?.thumbnail_url ||
-                                        "/placeholder.png"
-                                      }
-                                      alt={
-                                        item.products?.name ||
-                                        item.bundles?.name ||
-                                        "Item image"
-                                      }
-                                      className="h-20 w-20 rounded-lg object-cover border border-gray-200"
-                                    />
-                                  </Link>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex justify-between items-start">
-                                      <div>
-                                        <p className="font-semibold text-primary text-base truncate">
-                                          {item.option
-                                            ? (item.option as ProductOption)
-                                                .name
-                                            : item.products?.name}
-                                        </p>
-                                        <p className="text-muted-foreground text-xs mt-1">
-                                          {(() => {
-                                            // Get category IDs from product
-                                            let categoryIds: string[] = [];
-                                            if (
-                                              Array.isArray(
-                                                (item.products as any)?.category
-                                              )
-                                            ) {
-                                              categoryIds = (
-                                                item.products as any
-                                              ).category;
-                                            } else if (
-                                              Array.isArray(
-                                                (item.products as any)
-                                                  ?.category_ids
-                                              )
-                                            ) {
-                                              categoryIds = (
-                                                item.products as any
-                                              ).category_ids;
-                                            }
-                                            // Map IDs to names using allCategories
-                                            const categoryNames = categoryIds
-                                              .map((catId) => {
-                                                const cat = allCategories.find(
-                                                  (c: any) => c.id === catId
-                                                );
-                                                return cat ? cat.title : catId;
-                                              })
-                                              .filter(Boolean);
-                                            return categoryNames.length > 0
-                                              ? categoryNames.join(", ")
-                                              : "";
-                                          })()}
-                                        </p>
-                                      </div>
-                                      {/* Only show individual Trash2Icon if more than one item in group */}
-                                      {!isSingleItem && (
-                                        <Trash2Icon
-                                          className="size-4 cursor-pointer text-gray-400 hover:text-red-500 transition-colors ml-2"
-                                          onClick={() => handleRemoveItem(item)}
-                                          aria-label="Remove individual item"
-                                        />
-                                      )}
-                                    </div>
-                                    <div className="flex items-center justify-between mt-2">
-                                      <div className="flex items-center gap-2">
-                                        <Button
-                                          variant="outline"
-                                          size="icon"
-                                          className="size-8 rounded-full border-primary text-primary border-2"
-                                          onClick={() =>
-                                            handleQuantityChange(item, false)
-                                          }
-                                        >
-                                          <AiOutlineMinus className="size-4" />
-                                        </Button>
-                                        <span className="font-medium text-lg text-primary">
-                                          {item.quantity}
-                                        </span>
-                                        <Button
-                                          variant="outline"
-                                          size="icon"
-                                          className="size-8 rounded-full border-primary text-primary border-2"
-                                          onClick={() =>
-                                            handleQuantityChange(item, true)
-                                          }
-                                        >
-                                          <AiOutlinePlus className="size-4" />
-                                        </Button>
-                                      </div>
-                                      <span className="font-bold text-lg text-primary">
-                                        {formatNaira(
-                                          ((item.option as ProductOption)
-                                            ?.price ??
-                                            item.price ??
-                                            0) * item.quantity
-                                        )}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-                                {idx !== arr.length - 1 && (
-                                  <Separator className="my-4" />
-                                )}
-                              </div>
-                            )
-                          )}
-                        </div>
-                      </Card>
-                    );
-                  }
-                )}
-                {/* Recommended Products Section */}
-                {/* {recommendedProducts && recommendedProducts.length > 0 && (
-                  <div className="mt-12">
-                    <h2 className="text-2xl font-bold mb-4 text-primary">
-                      Recommended for You
-                    </h2>
-                    <ProductSlider
-                      products={recommendedProducts}
-                      title={undefined}
-                      hideDetails={false}
+              {/* Cart Items Table */}
+              <div className="md:col-span-2">
+                          {/* Free Shipping Progress Bar */}
+          {items.length > 0 &&
+            (() => {
+              const FREE_SHIPPING_THRESHOLD = 50000;
+              const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
+              const percent = Math.min(
+                100,
+                (subtotal / FREE_SHIPPING_THRESHOLD) * 100
+              );
+              return (
+                <div
+                  className={`rounded border px-4 py-3 mb-8 ${
+                    subtotal >= FREE_SHIPPING_THRESHOLD
+                      ? "bg-green-50 border-green-200"
+                      : "bg-[#FFF5EC] border-[#F0800F]"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">📦</span>
+                    {subtotal >= FREE_SHIPPING_THRESHOLD ? (
+                      <span className="font-semibold text-green-700">
+                        Congratulations! You have unlocked <b>free shipping</b>!
+                      </span>
+                    ) : (
+                      <span className="font-medium text-black">
+                        Add{" "}
+                        <span className="font-bold text-[#F0800F]">
+                          {formatNaira(remaining)}
+                        </span>{" "}
+                        to cart and get <b>free shipping</b>!
+                      </span>
+                    )}
+                  </div>
+                  <div className="w-full h-2 bg-[#FFE1C7] rounded">
+                    <div
+                      className={`h-2 rounded transition-all duration-300 ${
+                        subtotal >= FREE_SHIPPING_THRESHOLD
+                          ? "bg-green-500"
+                          : "bg-[#F0800F]"
+                      }`}
+                      style={{ width: `${percent}%` }}
                     />
                   </div>
-                )} */}
+                </div>
+              );
+            })()}
+                <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Product
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Price
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Quantity
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Subtotal
+                        </th>
+                        <th className="px-2 py-3"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {Object.entries(groupedItems).map(
+                        ([groupKey, productGroup]: [
+                          string,
+                          GroupedCartItem,
+                        ]) => {
+                          const optionEntries = Object.entries(
+                            productGroup.options
+                          );
+                          return optionEntries.map(
+                            ([optionKey, item]: [string, CartItem], idx) => {
+                              const productOption = isProductOption(item.option)
+                                ? item.option
+                                : null;
+                              return (
+                                <tr key={item.id}>
+                                  {/* Product cell */}
+                                  <td className="px-6 py-4 whitespace-nowrap flex items-center gap-4">
+                                    <button
+                                      className="text-gray-400 hover:text-red-500 focus:outline-none mr-2"
+                                      onClick={() => handleRemoveItem(item)}
+                                      aria-label="Remove item"
+                                    >
+                                      &times;
+                                    </button>
+                                    <Link
+                                      href={`/product/${item.products?.slug || item.bundles?.id}`}
+                                    >
+                                      <Image
+                                        width={60}
+                                        height={60}
+                                        src={
+                                          productOption?.image ||
+                                          item.products?.images?.[0] ||
+                                          item.bundles?.thumbnail_url ||
+                                          "/placeholder.png"
+                                        }
+                                        alt={
+                                          item.products?.name ||
+                                          item.bundles?.name ||
+                                          "Product image"
+                                        }
+                                        className="h-14 w-14 rounded object-cover border border-gray-200"
+                                      />
+                                    </Link>
+                                    <div>
+                                      <div className="font-semibold text-gray-900 text-sm">
+                                        {productOption?.name ||
+                                          item.products?.name ||
+                                          item.bundles?.name}
+                                      </div>
+                                      {/* Optionally, show category or other info here */}
+                                    </div>
+                                  </td>
+                                  {/* Price cell */}
+                                  <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-900">
+                                    {formatNaira(
+                                      productOption?.price ?? item.price ?? 0
+                                    )}
+                                  </td>
+                                  {/* Quantity cell */}
+                                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                                    <div className="flex items-center justify-center gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="size-7 rounded border border-gray-300 text-gray-700"
+                                        onClick={() =>
+                                          handleQuantityChange(item, false)
+                                        }
+                                      >
+                                        <AiOutlineMinus className="size-4" />
+                                      </Button>
+                                      <span className="font-medium text-base text-gray-900">
+                                        {item.quantity}
+                                      </span>
+                                      <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="size-7 rounded border border-gray-300 text-gray-700"
+                                        onClick={() =>
+                                          handleQuantityChange(item, true)
+                                        }
+                                      >
+                                        <AiOutlinePlus className="size-4" />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                  {/* Subtotal cell */}
+                                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-gray-900">
+                                    {formatNaira(
+                                      (productOption?.price ??
+                                        item.price ??
+                                        0) * item.quantity
+                                    )}
+                                  </td>
+                                  {/* Remove button cell (for spacing/alignment) */}
+                                  <td className="px-2 py-4"></td>
+                                </tr>
+                              );
+                            }
+                          );
+                        }
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {/* Order Summary */}

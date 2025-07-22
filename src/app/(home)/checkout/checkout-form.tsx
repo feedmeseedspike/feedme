@@ -324,9 +324,6 @@ const CheckoutForm = ({
 
   const formLocation = shippingAddressForm.watch("location");
   const locations = deliveryLocations;
-  const cost =
-    locations.find((loc) => loc.name === formLocation)?.price || 2500;
-
   const subtotal = useMemo(
     () =>
       items.reduce((acc, item) => {
@@ -345,25 +342,35 @@ const CheckoutForm = ({
     [items]
   );
 
+  // Free shipping logic
+  const FREE_SHIPPING_THRESHOLD = 50000;
+  const qualifiesForFreeShipping = subtotal >= FREE_SHIPPING_THRESHOLD;
+  const cost = qualifiesForFreeShipping
+    ? 0
+    : locations.find((loc) => loc.name === formLocation)?.price || 2500;
+
   // Service charge: 7.5% of subtotal (total orders), do not subtract delivery fee
+  /*
   const serviceCharge = useMemo(() => {
     // Only apply service charge if subtotal > 0
     if (subtotal <= 0) return 0;
     // Service charge is 7.5% of subtotal (total order), do not include delivery fee
     return 0.075 * subtotal;
   }, [subtotal]);
+  */
 
   const staffDiscount = useMemo(() => {
     if (user?.is_staff) {
       // 10% off subtotal + service charge (not delivery fee or voucher discount)
-      return 0.1 * (subtotal + serviceCharge);
+      // return 0.1 * (subtotal + serviceCharge);
+      return 0.1 * subtotal; // Service charge commented out
     }
     return 0;
-  }, [user, subtotal, serviceCharge]);
+  }, [user, subtotal /*, serviceCharge*/]);
 
   const totalAmount = subtotal;
   const totalAmountPaid =
-    subtotal + cost + serviceCharge - voucherDiscount - staffDiscount;
+    subtotal + cost /*+ serviceCharge*/ - voucherDiscount - staffDiscount;
 
   const isReferralVoucher = isVoucherValid && voucherCode.startsWith("REF-");
 
@@ -687,7 +694,7 @@ const CheckoutForm = ({
                         })),
                         deliveryAddress: shippingAddressForm.getValues().street,
                         deliveryFee: cost,
-                        serviceCharge: serviceCharge,
+                        serviceCharge: /*serviceCharge*/ 0, // Service charge commented out
                         totalAmount: subtotal,
                         totalAmountPaid: totalAmountPaid,
                       },
@@ -766,7 +773,7 @@ const CheckoutForm = ({
             }
             const response = await axios.post("/api/wallet/initialize", {
               email: user.email,
-              amount: totalAmountPaid,
+              amount: Math.round(totalAmountPaid),
               type: "direct_payment",
               orderId: orderResult.data.orderId,
               // Additional data for webhook processing
@@ -782,7 +789,7 @@ const CheckoutForm = ({
               deliveryAddress: shippingAddressForm.getValues().street,
               localGovernment: shippingAddressForm.getValues().location,
               deliveryFee: cost,
-              serviceCharge: serviceCharge,
+              serviceCharge: /*serviceCharge*/ 0, // Service charge commented out
               subtotal: subtotal,
             });
             if (response.data.authorization_url) {
@@ -1445,9 +1452,32 @@ const CheckoutForm = ({
                     <div className="flex justify-between">
                       <span className="text-gray-600">Delivery Fee</span>
                       <span className="font-medium">
-                        {formLocation ? formatNaira(cost) : "Select location"}
+                        {qualifiesForFreeShipping ? (
+                          <span className="text-green-600 font-semibold">
+                            Free
+                          </span>
+                        ) : formLocation ? (
+                          formatNaira(cost)
+                        ) : (
+                          "Select location"
+                        )}
                       </span>
                     </div>
+                    {qualifiesForFreeShipping && (
+                      <div className="text-green-600 text-sm mb-2">
+                        🎉 Congratulations! You have unlocked{" "}
+                        <b>free shipping</b>!
+                      </div>
+                    )}
+                    {!qualifiesForFreeShipping && subtotal > 0 && (
+                      <div className="text-[#F0800F] text-sm mb-2">
+                        Add{" "}
+                        <span className="font-bold">
+                          {formatNaira(FREE_SHIPPING_THRESHOLD - subtotal)}
+                        </span>{" "}
+                        to your order to get <b>free shipping</b>!
+                      </div>
+                    )}
                     {isVoucherValid && (
                       <div className="flex justify-between text-green-600">
                         <span>Voucher Discount</span>
@@ -1460,12 +1490,12 @@ const CheckoutForm = ({
                         <span>-{formatNaira(staffDiscount)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between">
+                    {/* <div className="flex justify-between">
                       <span className="text-gray-600">Service Charge</span>
                       <span className="font-medium">
                         {formatNaira(serviceCharge)}
                       </span>
-                    </div>
+                    </div> */}
                   </div>
 
                   <Separator />

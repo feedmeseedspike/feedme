@@ -528,6 +528,53 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
           )}
         </SheetHeader>
 
+        {/* Free Shipping Progress Bar */}
+        {items.length > 0 &&
+          (() => {
+            const FREE_SHIPPING_THRESHOLD = 50000;
+            const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
+            const percent = Math.min(
+              100,
+              (subtotal / FREE_SHIPPING_THRESHOLD) * 100
+            );
+            return (
+              <div
+                className={`rounded border px-4 py-3 mb-2 ${
+                  subtotal >= FREE_SHIPPING_THRESHOLD
+                    ? "bg-green-50 border-green-200"
+                    : "bg-red-50 border-red-200"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-lg">📦</span>
+                  {subtotal >= FREE_SHIPPING_THRESHOLD ? (
+                    <span className="font-semibold text-[14px] text-green-700">
+                      Congratulations! You have unlocked <b>free shipping</b>!
+                    </span>
+                  ) : (
+                    <span className="font-medium text-black">
+                      Add{" "}
+                      <span className="font-bold text-red-600">
+                        {formatNaira(remaining)}
+                      </span>{" "}
+                      to cart and get <b>free shipping</b>!
+                    </span>
+                  )}
+                </div>
+                <div className="w-full h-2 bg-red-100 rounded">
+                  <div
+                    className={`h-2 rounded transition-all duration-300 ${
+                      subtotal >= FREE_SHIPPING_THRESHOLD
+                        ? "bg-green-500"
+                        : "bg-red-500"
+                    }`}
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })()}
+
         <div className="flex grow flex-col space-y-5 overflow-y-auto pt-1">
           {isLoading && <p>Loading cart...</p>}
           {isError && <p>Error loading cart: {error?.error}</p>}
