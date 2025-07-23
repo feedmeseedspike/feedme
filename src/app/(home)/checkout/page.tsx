@@ -35,7 +35,6 @@ export default async function CheckoutPage() {
     .from("delivery_locations")
     .select("*");
 
-  console.log(addresses);
   const deliveryLocations = locations || [];
 
   return (

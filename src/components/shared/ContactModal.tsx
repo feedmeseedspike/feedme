@@ -107,7 +107,7 @@ export function ContactModal() {
               <div className="space-y-4">
                 <p className="text-sm text-gray-500">Other ways to reach us</p>
                 <a
-                  href="/customer-service"
+                  href="/customer-support"
                   className="text-black font-bold underline hover:text-[#1B6013] text-lg underline-offset-4"
                 >
                   Visit our Help Center

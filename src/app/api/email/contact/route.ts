@@ -12,7 +12,6 @@ interface ContactEmailRequestBody {
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as ContactEmailRequestBody;
-    console.log(body)
     const { firstName, lastName, email, subject, message } = body;
 
     const adminEmail = "orders.feedmeafrica@gmail.com";

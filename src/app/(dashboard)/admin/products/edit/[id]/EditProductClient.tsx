@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
@@ -84,6 +84,13 @@ const formSchema = z
       })
       .min(50, "Price must be at least ₦50")
       .optional(),
+    list_price: z
+      .number({
+        invalid_type_error: "List price must be a number",
+        required_error: "List price is required",
+      })
+      .min(0, "List price must be at least ₦0")
+      .optional(),
     stockStatus: z
       .enum(["In Stock", "Out of Stock"], {
         required_error: "Stock status is required",
@@ -110,13 +117,8 @@ const formSchema = z
     is_published: z.boolean().default(false),
   })
   .superRefine((data, ctx) => {
-    // console.log("[DEBUG] superRefine validation - data:", data);
-    // console.log("[DEBUG] superRefine validation - variation:", data.variation);
-    // console.log("[DEBUG] superRefine validation - options:", data.options);
-
     if (data.variation === "Yes") {
       if (!data.options || data.options.length === 0) {
-        // console.log("[DEBUG] Validation failed: No options provided");
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["options"],
@@ -124,10 +126,7 @@ const formSchema = z
             "At least one option is required when product has variations",
         });
       } else {
-        // console.log("[DEBUG] Validating options:", data.options);
-        // Validate each option individually
         data.options.forEach((option, index) => {
-          // console.log(`[DEBUG] Validating option ${index}:`, option);
           if (!option.name || option.name.trim() === "") {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
@@ -196,6 +195,8 @@ export default function EditProductClient({
   allCategories,
 }: EditProductClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryString = searchParams.toString();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
@@ -207,15 +208,19 @@ export default function EditProductClient({
   const { showToast } = useToast();
   const [optionModalLoading, setOptionModalLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editOptionIndex, setEditOptionIndex] = useState<number | null>(null);
+  const [editOptionData, setEditOptionData] = useState<any>(null);
+  const [formErrors, setFormErrors] = useState<any>(null);
 
-  // Debug product data
-  // console.log("[DEBUG] Product data received:", product);
-  // console.log("[DEBUG] Product options:", product.options);
-  // console.log("[DEBUG] Product options type:", typeof product.options);
-  // console.log(
-  //   "[DEBUG] Product options isArray:",
-  //   Array.isArray(product.options)
-  // );
+  // 1. Add a single source of truth for images
+  const [images, setImages] = useState<string[]>(() =>
+    Array.isArray(product.images) ? [...product.images] : []
+  );
+
+  // 2. Update useEffect to sync previews with images state (fix linter error)
+  useEffect(() => {
+    setImagePreviews(images.map((img) => (typeof img === "string" ? img : "")));
+  }, [images]);
 
   // Prepare initial categories for react-select
   const productCategoryIds = Array.isArray(product.category_ids)
@@ -232,6 +237,7 @@ export default function EditProductClient({
       productName: product.name || "",
       description: product.description || "",
       price: product.price || 0,
+      list_price: product.list_price ?? undefined,
       stockStatus:
         product.stock_status === "In Stock" ||
         product.stock_status === "Out of Stock"
@@ -244,20 +250,9 @@ export default function EditProductClient({
           : "No",
       images: [],
       options: Array.isArray(product.options) ? product.options : [],
-      is_published: product.is_published,
+      is_published: product.is_published || false,
     },
   });
-
-  // Debug form state
-  const formState = form.watch();
-  // console.log("[DEBUG] Form state:", formState);
-  // console.log("[DEBUG] Form errors:", form.formState.errors);
-  // console.log(
-  //   "[DEBUG] Form errors details:",
-  //   JSON.stringify(form.formState.errors, null, 2)
-  // );
-  // console.log("[DEBUG] Form is valid:", form.formState.isValid);
-  // console.log("[DEBUG] Form is dirty:", form.formState.isDirty);
 
   // Set image previews from existing product images
   useEffect(() => {
@@ -274,13 +269,15 @@ export default function EditProductClient({
               ) {
                 return parsedImg.url;
               }
-            } catch (e) {}
-            if (
-              img.startsWith("http://") ||
-              img.startsWith("https://") ||
-              img.startsWith("/")
-            ) {
-              return img;
+            } catch (e) {
+              // If parsing fails, check if it's already a URL
+              if (
+                img.startsWith("http://") ||
+                img.startsWith("https://") ||
+                img.startsWith("/")
+              ) {
+                return img;
+              }
             }
             return null;
           } else if (
@@ -300,79 +297,128 @@ export default function EditProductClient({
     }
   }, [product.images]);
 
+  // Add after form definition
+  useEffect(() => {
+    if (form.watch("variation") === "Yes") {
+      form.setValue("price", undefined);
+    }
+  }, [form, form.watch("variation")]);
+
   // --- Handlers ---
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // 3. Update handleImageUpload to add new uploads to images state
+  const handleImageUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const files = event.target.files;
     if (files && files.length > 0) {
-      const newFiles = Array.from(files);
-      setFilesToUpload((prev) => [...prev, ...newFiles]);
-      const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
-      setImagePreviews((prev) => [...prev, ...newPreviews]);
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const url = await uploadProductImageClient(file);
+        return url;
+      });
+      const uploadedUrls = await Promise.all(uploadPromises);
+      setImages((prev) => [...prev, ...uploadedUrls]);
     }
+    event.target.value = "";
   };
+
+  // 4. Update handleRemoveImage to remove from images state
   const handleRemoveImage = (index: number) => {
-    const urlToRemove = imagePreviews[index];
-    if (
-      !filesToUpload.some(
-        (_, i) => i === index - (imagePreviews.length - filesToUpload.length)
-      )
-    ) {
-      setImagesToDelete((prev) => [...prev, urlToRemove]);
-    }
-    const newPreviews = [...imagePreviews];
-    newPreviews.splice(index, 1);
-    setImagePreviews(newPreviews);
-    if (index >= imagePreviews.length - filesToUpload.length) {
-      const fileIndex = index - (imagePreviews.length - filesToUpload.length);
-      const newFiles = [...filesToUpload];
-      newFiles.splice(fileIndex, 1);
-      setFilesToUpload(newFiles);
+    setImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // --- Option Management ---
+  // Add Option
+  const handleOptionSubmit = async (optionData: any) => {
+    setOptionModalLoading(true);
+    try {
+      let imageUrl = optionData.image;
+      if (imageUrl instanceof File) {
+        imageUrl = await uploadProductImageClient(imageUrl, "option-images");
+      }
+      const newOption = {
+        ...optionData,
+        image: typeof imageUrl === "string" ? imageUrl : null,
+      };
+      const currentOptions = form.getValues("options") || [];
+      form.setValue("options", [...currentOptions, newOption]);
+      setIsDialogOpen(false);
+      setEditOptionIndex(null);
+      setEditOptionData(null);
+      setTimeout(() => {
+        form.trigger("options");
+      }, 0);
+      showToast("Option added successfully!", "success");
+    } catch (err) {
+      showToast("Failed to add option: " + (err as Error).message, "error");
+    } finally {
+      setOptionModalLoading(false);
     }
   };
-  const handleDeleteOptionClick = (index: number) => {
-    setOptionIndexToDelete(index);
-    setDeleteOptionDialogOpen(true);
+
+  // Edit Option
+  const handleOptionEditSubmit = async (optionData: any) => {
+    setOptionModalLoading(true);
+    try {
+      let imageUrl = optionData.image;
+      const currentOptions = form.getValues("options") || [];
+      if (
+        !imageUrl &&
+        editOptionIndex !== null &&
+        currentOptions[editOptionIndex]
+      ) {
+        imageUrl = currentOptions[editOptionIndex].image;
+      }
+      if (imageUrl instanceof File) {
+        imageUrl = await uploadProductImageClient(imageUrl, "option-images");
+      }
+      const updatedOption = {
+        ...optionData,
+        image: typeof imageUrl === "string" ? imageUrl : null,
+      };
+      if (editOptionIndex !== null) {
+        const updatedOptions = [...currentOptions];
+        updatedOptions[editOptionIndex] = updatedOption;
+        form.setValue("options", updatedOptions);
+        setEditOptionIndex(null);
+        setEditOptionData(null);
+        setTimeout(() => {
+          form.trigger("options");
+        }, 0);
+        showToast("Option updated successfully!", "success");
+      }
+    } catch (err) {
+      showToast("Failed to update option: " + (err as Error).message, "error");
+    } finally {
+      setOptionModalLoading(false);
+    }
   };
+
+  // Delete Option
   const handleDeleteOptionConfirm = () => {
     if (optionIndexToDelete !== null) {
-      const currentOptions = form.watch("options") || [];
+      const currentOptions = form.getValues("options") || [];
       const updatedOptions = currentOptions.filter(
         (_, index) => index !== optionIndexToDelete
       );
-      form.setValue("options", updatedOptions, { shouldValidate: true });
-      showToast("Option deleted successfully!", "success");
+      form.setValue("options", updatedOptions);
       setDeleteOptionDialogOpen(false);
       setOptionIndexToDelete(null);
+      setTimeout(() => {
+        form.trigger("options");
+      }, 0);
+      showToast("Option deleted successfully!", "success");
     }
   };
+
+  // 6. Refactor onSubmit to use images state and clean options
   const onSubmit = async (data: ProductFormValues) => {
     setIsSubmitting(true);
-
-    // 1. Upload new product images to Supabase Storage (client-side)
-    let uploadedImageUrls: string[] = [];
-    if (filesToUpload.length > 0) {
-      uploadedImageUrls = await Promise.all(
-        filesToUpload.map((file) => uploadProductImageClient(file))
-      );
-    }
-
-    // 2. Remove deleted images from the current product images
-    let currentImages: string[] = Array.isArray(product.images)
-      ? [...product.images]
-      : [];
-    if (imagesToDelete.length > 0) {
-      currentImages = currentImages.filter(
-        (img) => !imagesToDelete.includes(img)
-      );
-    }
-
-    // 3. Add new image URLs
-    const updatedImages = [...currentImages, ...uploadedImageUrls];
-    const safeImages = updatedImages.filter((img) => typeof img === "string");
-
-    // 4. Handle option images: upload any File images to storage, replace with URLs
-    let safeOptions = data.options || [];
-    if (Array.isArray(safeOptions)) {
+    setFormErrors(null);
+    try {
+      // Use images state for current images
+      const safeImages = images.filter((img) => typeof img === "string");
+      // Clean options (ensure all images are URLs and no empty objects)
+      let safeOptions = form.getValues("options") || [];
       safeOptions = await Promise.all(
         safeOptions.map(async (opt: any) => {
           let imageUrl = opt.image;
@@ -382,44 +428,49 @@ export default function EditProductClient({
               "option-images"
             );
           }
+          // Remove empty object images
+          if (
+            imageUrl &&
+            typeof imageUrl === "object" &&
+            Object.keys(imageUrl).length === 0
+          ) {
+            imageUrl = undefined;
+          }
+          // Make list_price undefined if empty string or NaN
+          let list_price =
+            opt.list_price === "" || Number.isNaN(opt.list_price)
+              ? undefined
+              : opt.list_price;
           return {
             ...opt,
             image: typeof imageUrl === "string" ? imageUrl : null,
+            list_price,
           };
         })
       );
-    }
-
-    // 5. Build the payload with only plain data
-    const productData: any = {
-      id: product.id,
-      name: data.productName,
-      description: data.description,
-      category_ids: data.selectedCategories.map((c) => c.value),
-      is_published: data.is_published,
-      slug: toSlug(data.productName),
-      images: safeImages,
-      options: safeOptions,
-    };
-    if (data.variation === "No") {
-      productData.price = data.price ?? 0;
-      productData.stock_status =
-        data.stockStatus === "In Stock" ? "in_stock" : "out_of_stock";
-    } else {
-      productData.price = null;
-      productData.stock_status = null;
-    }
-
-    // 6. Reset file/image state
-    setFilesToUpload([]);
-    form.setValue("images", []);
-
-    // 7. Call the server action with only plain data
-    try {
+      const productData: any = {
+        id: product.id,
+        name: data.productName,
+        description: data.description,
+        category_ids: data.selectedCategories.map((c) => c.value),
+        is_published: data.is_published,
+        slug: toSlug(data.productName),
+        images: safeImages,
+        options: safeOptions,
+        list_price: data.list_price ?? null,
+      };
+      if (data.variation === "No") {
+        productData.price = data.price ?? 0;
+        productData.stock_status =
+          data.stockStatus === "In Stock" ? "in_stock" : "out_of_stock";
+      } else {
+        productData.price = null;
+        productData.stock_status = null;
+      }
       await updateProductAction(product.id, productData);
       showToast("Product updated successfully!", "success");
-      router.push("/admin/products");
-      setImagesToDelete([]);
+      // Force refresh to get latest data from DB
+      router.refresh();
     } catch (error: any) {
       showToast(error.message || "Failed to update product.", "error");
     } finally {
@@ -427,45 +478,7 @@ export default function EditProductClient({
     }
   };
 
-  // Add this utility function inside your component (before the component or inside it)
-  function toPlainObject(obj: any): any {
-    if (Array.isArray(obj)) {
-      return obj.map(toPlainObject);
-    } else if (obj && typeof obj === "object" && obj.constructor === Object) {
-      const plain: any = {};
-      for (const key in obj) {
-        const value = obj[key];
-        if (
-          value instanceof File ||
-          typeof value === "function" ||
-          typeof value === "undefined"
-        ) {
-          continue;
-        }
-        plain[key] = toPlainObject(value);
-      }
-      return plain;
-    }
-    return obj;
-  }
-
-  // Remove any File objects from all arrays/objects recursively
-  function deepClean(obj: any): any {
-    if (Array.isArray(obj)) {
-      return obj.filter((item) => !(item instanceof File)).map(deepClean);
-    } else if (obj && typeof obj === "object" && obj.constructor === Object) {
-      const plain: any = {};
-      for (const key in obj) {
-        const value = obj[key];
-        if (value instanceof File) continue;
-        plain[key] = deepClean(value);
-      }
-      return plain;
-    }
-    return obj;
-  }
-
-  // Aggressive deep sanitize utility to remove File, Blob, and non-plain objects
+  // Utility function to remove File objects and other non-serializable data
   function deepSanitize(obj: any): any {
     if (Array.isArray(obj)) {
       return obj
@@ -512,7 +525,11 @@ export default function EditProductClient({
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbLink href="/admin/products">Products</BreadcrumbLink>
+            <BreadcrumbLink
+              href={`/admin/products${queryString ? `?${queryString}` : ""}`}
+            >
+              Products
+            </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
@@ -526,9 +543,18 @@ export default function EditProductClient({
       <Separator className="my-5" />
       <Form {...form}>
         <form
-          onSubmit={form.handleSubmit(onSubmit)}
+          onSubmit={form.handleSubmit(onSubmit, (errors) => {
+            setFormErrors(errors);
+          })}
           className="p-6 rounded-lg shadow-md bg-white flex flex-col gap-2"
         >
+          {/* Show visible error message if there are form errors */}
+          {formErrors && (
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+              There are form errors. Please check the fields below and try
+              again.
+            </div>
+          )}
           {/* Product Name */}
           <FormField
             control={form.control}
@@ -549,6 +575,7 @@ export default function EditProductClient({
               </FormItem>
             )}
           />
+
           {/* Categories */}
           <FormField
             control={form.control}
@@ -576,6 +603,7 @@ export default function EditProductClient({
               </FormItem>
             )}
           />
+
           {/* Description */}
           <FormField
             control={form.control}
@@ -596,7 +624,8 @@ export default function EditProductClient({
               </FormItem>
             )}
           />
-          {/* Product Images - moved above variation */}
+
+          {/* Product Images */}
           <FormField
             control={form.control}
             name="images"
@@ -655,7 +684,8 @@ export default function EditProductClient({
               </FormItem>
             )}
           />
-          {/* Variation field follows here */}
+
+          {/* Variation field */}
           <FormField
             control={form.control}
             name="variation"
@@ -683,6 +713,7 @@ export default function EditProductClient({
               </FormItem>
             )}
           />
+
           <motion.div
             key={form.watch("variation")}
             initial={{ opacity: 0, x: 20 }}
@@ -709,6 +740,38 @@ export default function EditProductClient({
                           value={field.value === 0 ? "" : String(field.value)}
                           onChange={(e) =>
                             field.onChange(parseFloat(e.target.value) || 0)
+                          }
+                          className="col-span-7"
+                          disabled={form.watch("variation") === "Yes"}
+                        />
+                      </FormControl>
+                      <FormMessage className="col-span-7 col-start-3" />
+                    </FormItem>
+                  )}
+                />
+                {/* List Price */}
+                <FormField
+                  control={form.control}
+                  name="list_price"
+                  render={({ field }) => (
+                    <FormItem className="mb-4 grid grid-cols-1 sm:grid-cols-9 gap-4">
+                      <FormLabel className="text-sm font-medium col-span-2">
+                        List Price (₦)
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Enter list price"
+                          type="number"
+                          value={
+                            field.value === undefined ? "" : String(field.value)
+                          }
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value === ""
+                                ? undefined
+                                : parseFloat(e.target.value)
+                            )
                           }
                           className="col-span-7"
                         />
@@ -776,6 +839,12 @@ export default function EditProductClient({
                                   </TableHead>
                                   <TableHead className="text-center w-1/4">
                                     <div className="flex items-center justify-center gap-1">
+                                      List Price
+                                      <ArrowDown size={16} strokeWidth={0.7} />
+                                    </div>
+                                  </TableHead>
+                                  <TableHead className="text-center w-1/4">
+                                    <div className="flex items-center justify-center gap-1">
                                       Stock Status
                                       <ArrowDown size={16} strokeWidth={0.7} />
                                     </div>
@@ -813,18 +882,31 @@ export default function EditProductClient({
                                       {formatNaira(option.price)}
                                     </TableCell>
                                     <TableCell className="text-center w-1/4">
+                                      {option.list_price !== undefined &&
+                                      option.list_price !== null
+                                        ? formatNaira(option.list_price)
+                                        : "-"}
+                                    </TableCell>
+                                    <TableCell className="text-center w-1/4">
                                       {option.stockStatus}
                                     </TableCell>
                                     <TableCell className="text-center flex gap-2 w-full h-full">
-                                      <button type="button">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setEditOptionIndex(index);
+                                          setEditOptionData(option);
+                                        }}
+                                      >
                                         <Edit />
                                       </button>
                                       <button
                                         type="button"
                                         className="size-5"
-                                        onClick={() =>
-                                          handleDeleteOptionClick(index)
-                                        }
+                                        onClick={() => {
+                                          setOptionIndexToDelete(index);
+                                          setDeleteOptionDialogOpen(true);
+                                        }}
                                       >
                                         <Trash />
                                       </button>
@@ -843,51 +925,26 @@ export default function EditProductClient({
                           <Plus size={14} />
                           Add New Option
                         </button>
+
+                        {/* Add Option Modal */}
                         <OptionModal
                           isOpen={isDialogOpen}
                           onClose={() => setIsDialogOpen(false)}
-                          onSubmit={async (data) => {
-                            setOptionModalLoading(true);
-                            try {
-                              // Don't upload the image here - let the main mutation handle it
-                              const newOption = { ...data };
-                              const currentOptions =
-                                form.watch("options") || [];
+                          onSubmit={handleOptionSubmit}
+                          mode="add"
+                          initialData={undefined}
+                        />
 
-                              // If this is the first option, switch variation to "Yes"
-                              if (currentOptions.length === 0) {
-                                form.setValue("variation", "Yes", {
-                                  shouldValidate: true,
-                                });
-                              }
-
-                              const updatedOptions = [
-                                ...currentOptions,
-                                newOption,
-                              ];
-                              form.setValue("options", updatedOptions, {
-                                shouldValidate: true,
-                              });
-
-                              // Wait for form state to update
-                              await new Promise((resolve) =>
-                                setTimeout(resolve, 200)
-                              );
-
-                              showToast(
-                                "Option added successfully!",
-                                "success"
-                              );
-                            } catch (err) {
-                              showToast(
-                                "Failed to add option: " +
-                                  (err as Error).message,
-                                "error"
-                              );
-                            } finally {
-                              setOptionModalLoading(false);
-                            }
+                        {/* Edit Option Modal */}
+                        <OptionModal
+                          isOpen={editOptionIndex !== null}
+                          onClose={() => {
+                            setEditOptionIndex(null);
+                            setEditOptionData(null);
                           }}
+                          onSubmit={handleOptionEditSubmit}
+                          mode="edit"
+                          initialData={editOptionData || undefined}
                         />
                         <FormMessage />
                       </div>
@@ -897,7 +954,9 @@ export default function EditProductClient({
               />
             )}
           </motion.div>
+
           <Separator className="-mx-[24px]" />
+
           {/* Buttons */}
           <div className="flex flex-col sm:flex-row justify-end mt-6 gap-4">
             <Button
@@ -905,14 +964,18 @@ export default function EditProductClient({
               variant="outline"
               className="w-full sm:w-auto"
               disabled={isSubmitting}
-              onClick={() => router.push("/admin/products")}
+              onClick={() =>
+                router.push(
+                  `/admin/products${queryString ? `?${queryString}` : ""}`
+                )
+              }
             >
               Cancel
             </Button>
             <Button
               type="submit"
               className="w-full sm:w-auto bg-[#1B6013] text-white"
-              disabled={isSubmitting || optionModalLoading || isDialogOpen}
+              disabled={isSubmitting || optionModalLoading}
             >
               {isSubmitting ? (
                 <span className="flex items-center gap-2">
@@ -969,6 +1032,7 @@ export default function EditProductClient({
           </div>
         </form>
       </Form>
+
       {/* Delete Option Dialog */}
       <Dialog
         open={deleteOptionDialogOpen}

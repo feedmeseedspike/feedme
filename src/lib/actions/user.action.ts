@@ -98,7 +98,6 @@ export async function updateUserInfo(currentState: any, formData: FormData) {
       avatarUrl,
     };
   } catch (error: any) {
-    console.error("Error in updateUserInfo:", error);
     return {
       success: false,
       message: error.message || "Something went wrong",
@@ -109,7 +108,6 @@ export async function updateUserInfo(currentState: any, formData: FormData) {
 
 
 export async function getCustomerByIdAction(customerId: string) {
-  console.warn(`Fetching customer (user with role 'buyer') with ID: ${customerId}`);
   const supabase = await createClient();
 
   try {
@@ -122,9 +120,6 @@ export async function getCustomerByIdAction(customerId: string) {
       .single(); // Expect a single result
 
     if (error) {
-      console.error("Error fetching customer by ID:", error);
-      // Depending on how you want to handle not found vs other errors,
-      // you might want to check error.code, e.g., 'PGRST116' for not found
       throw new Error(error.message); // Throw an error if fetching fails
     }
     
@@ -135,7 +130,6 @@ export async function getCustomerByIdAction(customerId: string) {
     return data; // data will be null if .single() finds no match
     
   } catch (error: any) {
-    console.error("Exception in getCustomerByIdAction:", error);
     throw new Error(error.message || "Failed to fetch customer");
   }
 }
@@ -155,7 +149,6 @@ export async function getCustomerOrdersAction(customerId: string) {
       .order('created_at', { ascending: false }); // Order by creation date, newest first
 
     if (error) {
-      console.error("Error fetching customer orders:", error);
       throw new Error(error.message || "Failed to fetch customer orders");
     }
     
@@ -163,7 +156,6 @@ export async function getCustomerOrdersAction(customerId: string) {
     return data; 
     
   } catch (error: any) {
-    console.error("Exception in getCustomerOrdersAction:", error);
     throw new Error(error.message || "Failed to fetch customer orders");
   }
 }

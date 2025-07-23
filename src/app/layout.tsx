@@ -18,6 +18,7 @@ import { User } from "@supabase/supabase-js";
 import { PathnameProvider } from "@components/shared/pathname-provider";
 import { getReferralStatus } from "@/queries/referrals";
 import Script from "next/script";
+import RegisterSW from "../components/register-sw";
 
 const DynamicReferralBanner = dynamic(
   () => import("@components/shared/ReferralBanner"),
@@ -47,6 +48,13 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://shopfeedme.com/"),
+  manifest: "/manifest.json", // Added for PWA support
+  themeColor: "#ff6600", // PWA theme color
+  appleWebApp: {
+    capable: true,
+    title: "FeedMe",
+    statusBarStyle: "default",
+  },
   title: {
     template: "%s - FeedMe",
     default: "FeedMe - Real Food, Real Fast, Delivered in 3 Hours",
@@ -117,7 +125,6 @@ export default async function RootLayout({
     if (supabase) {
       const { data: userData, error: authError } =
         await supabase.auth.getUser();
-      console.log(userData);
 
       // Only process if we have valid user data and no critical errors
       if (
@@ -172,18 +179,16 @@ export default async function RootLayout({
               hasReferralStatus = true;
             }
           } catch (referralError) {
-            console.warn("Could not fetch referral status:", referralError);
             // Continue without referral status
           }
         } catch (profileError) {
-          console.warn("Error fetching user profile:", profileError);
           // Continue with auth user only
         }
       } else if (authError && authError.name !== "AuthSessionMissingError") {
         console.error("RootLayout: Auth error:", authError.message);
       }
     } else {
-      console.warn("Failed to create Supabase client in layout");
+      // Continue with null user/session
     }
   } catch (error) {
     console.error("Error in RootLayout:", error);
@@ -256,6 +261,7 @@ export default async function RootLayout({
         </Script>
       </head>
       <body className="font-custom">
+        <RegisterSW />
         {/* Google Tag Manager (noscript) */}
         <noscript>
           <iframe

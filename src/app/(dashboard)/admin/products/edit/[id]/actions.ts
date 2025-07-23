@@ -16,6 +16,7 @@ export async function updateProductAction(productId: string, productData: any) {
     "slug", 
     "description",
     "price",
+    "list_price",
     "stock_status",
     "is_published",
     "category_ids",
@@ -26,7 +27,25 @@ export async function updateProductAction(productId: string, productData: any) {
   const cleanData: any = {};
   for (const field of allowedFields) {
     if (field in productData) {
-      cleanData[field] = productData[field];
+      // Special handling for specific fields
+      if (field === "options") {
+        // Ensure options is properly serialized JSON
+        cleanData[field] = Array.isArray(productData[field]) 
+          ? productData[field] 
+          : [];
+      } else if (field === "images") {
+        // Ensure images is an array of strings
+        cleanData[field] = Array.isArray(productData[field]) 
+          ? productData[field].filter((img: any) => typeof img === "string")
+          : [];
+      } else if (field === "category_ids") {
+        // Ensure category_ids is an array of strings
+        cleanData[field] = Array.isArray(productData[field]) 
+          ? productData[field]
+          : [];
+      } else {
+        cleanData[field] = productData[field];
+      }
     }
   }
   
@@ -41,9 +60,11 @@ export async function updateProductAction(productId: string, productData: any) {
   console.log('[DEBUG] Supabase update result:', JSON.stringify({ data, error }, null, 2));
   
   if (error) {
+    console.error('[ERROR] Supabase update error:', error);
     throw new Error(error.message);
   }
   
+  // Revalidate relevant paths
   revalidatePath("/admin/products");
   revalidatePath(`/admin/products/edit/${productId}`);
   return data?.[0];

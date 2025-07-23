@@ -69,8 +69,6 @@ function OrderConfirmationClientWrapper({
       .finally(() => setLoading(false));
   }, [orderId]);
 
-  console.log(order);
-
   if (loading) return <div className="p-8 text-center">Loading...</div>;
   if (missingOrderId) {
     return (
@@ -194,24 +192,22 @@ function OrderConfirmationClientWrapper({
             </h2>
             <Separator />
             <div className="w-full overflow-x-auto">
-              <Table className="border-none w-full mx-auto mt-4">
+              <Table className="border-none w-full mt-4">
                 <TableHeader>
                   <TableRow className="text-base border-b-0">
-                    <TableHead className="font-semibold text-center">
+                    <TableHead className="font-semibold !px-0">
                       Products
                     </TableHead>
-                    <TableHead className="font-semibold text-center">
+                    <TableHead className="font-semibold !px-0">
                       Quantity
                     </TableHead>
-                    <TableHead className="font-bold text-center">
-                      Price
-                    </TableHead>
+                    <TableHead className="font-bold !px-0">Price</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.map((item: any) => (
                     <TableRow key={item.id} className="border-b-0">
-                      <TableCell className="border-b-0 flex items-center gap-2 justify-center">
+                      <TableCell className="border-b-0 flex items-center gap-2 ">
                         <Image
                           src={
                             Array.isArray(item.products?.images) &&
@@ -227,10 +223,10 @@ function OrderConfirmationClientWrapper({
                         />
                         <span>{item.products?.name || item.bundles?.name}</span>
                       </TableCell>
-                      <TableCell className="border-b-0 text-center">
+                      <TableCell className="border-b-0">
                         {item.quantity}
                       </TableCell>
-                      <TableCell className="border-b-0 text-center">
+                      <TableCell className="border-b-0">
                         {formatNaira(
                           (item.option?.price !== undefined &&
                           item.option?.price !== null

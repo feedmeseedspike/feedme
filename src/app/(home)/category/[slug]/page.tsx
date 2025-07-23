@@ -215,7 +215,7 @@ export default async function CategoryPage({
           <Container>
             <div className="flex justify-between items-center py-4">
               <div className="flex items-center">
-                <h1 className="text-[#1B6013] text-2xl md:text-3xl !leading-3 font-bold">
+                <h1 className="text-[#1B6013] text-2xl md:text-3xl !leading-5 font-bold">
                   {categoryName.charAt(0).toUpperCase() + categoryName.slice(1)}
                 </h1>
               </div>

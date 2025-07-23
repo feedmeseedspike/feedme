@@ -9,8 +9,6 @@ export async function POST(request: Request) {
 
   const { referrerEmail, referredUserId, referredUserEmail } = await request.json();
 
-  console.log('Received referral request:', { referrerEmail, referredUserId, referredUserEmail });
-
   if (!referrerEmail || !referredUserId || !referredUserEmail) {
     return NextResponse.json({ message: 'Missing required referral parameters.' }, { status: 400 });
   }
@@ -39,19 +37,15 @@ export async function POST(request: Request) {
     }
 
     // Check if a record with this referrer_email already exists in the referrals table
-    console.log('Checking for existing referrer email record...');
     const { data: existingReferrerEmailRecord, error: existingReferrerEmailError } = await supabase
       .from('referrals')
       .select('id')
       .eq('referrer_email', referrerEmail)
       .single();
 
-    console.log('Existing referrer email record check result:', { existingReferrerEmailRecord, existingReferrerEmailError });
-
     if (existingReferrerEmailRecord) {
       // If a record with this referrer_email already exists, return a 409 conflict.
       // This handles the unique constraint on referrer_email.
-      console.log('Referral for this referrer has already been processed (409).');
       return NextResponse.json({ message: 'Referral for this referrer has already been processed.' }, { status: 409 });
     }
 
@@ -61,17 +55,13 @@ export async function POST(request: Request) {
     }
 
     // 2. Check if this referredUserId has already applied a referral
-    console.log('Checking if referred user ID has already applied a referral...');
     const { data: referral, error: referralError } = await supabase
       .from('referrals')
       .select('*')
       .eq('referred_user_id', referredUserId)
       .single();
 
-    console.log('Existing referred user referral check result:', { referral, referralError });
-
     if (referral) {
-      console.log('This user has already applied a referral code (409).');
       return NextResponse.json({ message: 'This user has already applied a referral code.' }, { status: 409 });
     }
 
@@ -94,8 +84,6 @@ export async function POST(request: Request) {
       updated_at: new Date().toISOString(),
     };
 
-    console.log('Attempting to insert new referral record:', referralInsertData);
-
     const { error: insertError } = await supabase
       .from('referrals')
       .insert(referralInsertData);
@@ -107,8 +95,6 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
-
-    console.log('Referral record inserted successfully.');
 
     return NextResponse.json({ message: 'Referral applied successfully!' }, { status: 200 });
   } catch (error: any) {

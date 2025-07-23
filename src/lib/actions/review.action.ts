@@ -46,10 +46,7 @@ export async function createUpdateReview({
   const supabase = await createClient();
 
   try {
-    console.log("createUpdateReview - data.product:", data.product);
-    console.log("createUpdateReview - userId:", userId);
     if (data.reviewId) {
-      console.log("createUpdateReview - data.reviewId:", data.reviewId);
     }
 
     // Check for existing review by this user for this product
@@ -96,7 +93,6 @@ export async function createUpdateReview({
       };
     } else {
       // Create new review
-      console.log("createUpdateReview - Inserting new review with product_id:", data.product, "and user_id:", userId);
       const { error: insertError } = await supabase
         .from("product_reviews")
         .insert([{
@@ -119,7 +115,6 @@ export async function createUpdateReview({
       };
     }
   } catch (error) {
-    console.error("Error in createUpdateReview:", error);
     return {
       success: false,
       message: error instanceof Error ? error.message : "Failed to process review",
@@ -151,8 +146,6 @@ export async function getReviews({
       .select("*", { count: "exact", head: true })
       .eq("product_id", productId);
 
-      console.log(count)
-      
       const totalPages = count ? Math.ceil(count / limit) : 1;
 
       // Get paginated reviews with user info
@@ -219,7 +212,6 @@ export async function getReviews({
       totalPages,
     };
   } catch (error) {
-    console.error("Error in getReviews:", error);
     return {
       data: [],
       totalPages: 1,
@@ -238,6 +230,19 @@ export async function addHelpfulVote({
   const supabase = await createClient();
 
   try {
+    // Check if user exists in users table (fix for FK error)
+    const { data: userRow, error: userError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("id", userId)
+      .maybeSingle();
+    if (userError) throw userError;
+    if (!userRow) {
+      return {
+        success: false,
+        message: "User not found. Please re-login or contact support.",
+      };
+    }
     // Check if vote already exists
     const { data: existingVote } = await supabase
       .from("review_helpful_votes")
@@ -268,8 +273,14 @@ export async function addHelpfulVote({
     if (countError) throw countError;
 
     return { success: true, message: "Vote added successfully" };
-  } catch (error) {
-    console.error("Error in addHelpfulVote:", error);
+  } catch (error: any) {
+    // Check for duplicate key error (Postgres error code 23505)
+    if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
+      return {
+        success: false,
+        message: "You've already voted for this review",
+      };
+    }
     return {
       success: false,
       message: error instanceof Error ? error.message : "Failed to add vote",
@@ -305,7 +316,6 @@ export async function removeHelpfulVote({
 
     return { success: true, message: "Vote removed successfully" };
   } catch (error) {
-    console.error("Error in removeHelpfulVote:", error);
     return {
       success: false,
       message: error instanceof Error ? error.message : "Failed to remove vote",
@@ -358,7 +368,6 @@ export async function addReport({
 
     return { success: true, message: "Report submitted successfully" };
   } catch (error) {
-    console.error("Error in addReport:", error);
     return {
       success: false,
       message: error instanceof Error ? error.message : "Failed to submit report",
@@ -404,7 +413,6 @@ export async function deleteReview({
 
     return { success: true, message: "Review deleted successfully" };
   } catch (error) {
-    console.error("Error in deleteReview:", error);
     return {
       success: false,
       message: error instanceof Error ? error.message : "Failed to delete review",

@@ -45,13 +45,6 @@ export default function ProductSlider({
   const queryFn = React.useCallback(async () => {
     if (!tag) return null;
 
-    console.log(
-      "ProductSlider: Executing queryFn for tag:",
-      tag,
-      "limit:",
-      limit
-    );
-
     let queryBuilder = getProductsByTagQuery(supabase, tag, limit);
     const { data, error } = await queryBuilder.select("*");
 
@@ -72,15 +65,6 @@ export default function ProductSlider({
     queryKey: queryKey,
     queryFn: queryFn,
     enabled: !!tag,
-  });
-
-  console.log("ProductSlider: useQuery state", {
-    title,
-    tag,
-    fetchedProducts,
-    isLoading,
-    fetchedError,
-    productsProp: products,
   });
 
   if (isLoading && !products) {

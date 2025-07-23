@@ -172,13 +172,6 @@ export default function ProductsClient({
     {}
   );
 
-  // DEBUG: Log allCategoryMap keys on every render
-  useEffect(() => {
-    if (Object.keys(allCategoryMap).length > 0) {
-      console.log("allCategoryMap keys:", Object.keys(allCategoryMap));
-    }
-  }, [allCategoryMap]);
-
   // Fetch all categories on mount
   useEffect(() => {
     async function fetchAllCategories() {
@@ -421,7 +414,9 @@ export default function ProductsClient({
           <h2 className="text-3xl font-semibold">Products</h2>
           <p className="text-[#475467]">Manage Products here.</p>
         </div>
-        <Link href="/admin/products/add-new">
+        <Link
+          href={`/admin/products/add-new${searchParams.toString() ? `?${searchParams.toString()}` : ""}`}
+        >
           <Button className="bg-[#1B6013] text-white">
             <Plus size={16} /> Add New Product
           </Button>
@@ -714,6 +709,7 @@ export default function ProductsClient({
               <TableHead>Product Name</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Price</TableHead>
+              <TableHead>List Price</TableHead>
               <TableHead>Stock Status</TableHead>
               <TableHead>Published</TableHead>
               <TableHead>Actions</TableHead>
@@ -790,15 +786,6 @@ export default function ProductsClient({
                         Array.isArray(product.category_ids) &&
                         product.category_ids.length > 0
                       ) {
-                        // DEBUG: Log for each product row
-                        console.log(
-                          "Product:",
-                          product.name,
-                          "category_ids:",
-                          product.category_ids,
-                          "allCategoryMap keys:",
-                          Object.keys(allCategoryMap)
-                        );
                         return product.category_ids
                           .map(
                             (catId: string) =>
@@ -813,6 +800,12 @@ export default function ProductsClient({
                     })()}
                   </TableCell>
                   <TableCell>{formatNaira(product.price)}</TableCell>
+                  <TableCell>
+                    {product.list_price !== undefined &&
+                    product.list_price !== null
+                      ? formatNaira(product.list_price)
+                      : "-"}
+                  </TableCell>
                   <TableCell>
                     <Badge
                       className={

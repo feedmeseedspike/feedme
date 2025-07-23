@@ -76,6 +76,12 @@ export const OptionSchema = z.object({
       required_error: "Price is required",
     })
     .min(50, "Price must be at least ₦50"),
+  list_price: z
+    .coerce.number({
+      invalid_type_error: "List price must be a number",
+    })
+    .min(0, "List price must be at least ₦0")
+    .optional(),
   stockStatus: z.enum(["In Stock", "Out of Stock"], {
     required_error: "Stock status is required",
   }).optional(),

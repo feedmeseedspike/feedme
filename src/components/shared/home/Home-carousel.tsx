@@ -53,17 +53,11 @@ export const HomeCarousel = () => {
     staleTime: 1000 * 60 * 10,
   });
 
-  console.log("HomeCarousel: useQuery state", {
-    carouselBanners,
-    isLoadingCarousel,
-  });
-
   const [imgIndex, setImgIndex] = useState(0);
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
     setHasMounted(true);
-    console.log("HomeCarousel: hasMounted set to true");
   }, []);
 
   useEffect(() => {
@@ -102,12 +96,6 @@ export const HomeCarousel = () => {
     return <Skeleton className="w-full h-64 md:h-96 bg-gray-200" />;
   if (!carouselBanners || carouselBanners.length === 0)
     return <p>No carousel banners available.</p>;
-
-  console.log(
-    "HomeCarousel: Rendering with banners.",
-    carouselBanners.length,
-    "banners."
-  );
 
   return (
     <div className="relative bg-white w-full overflow-hidden">

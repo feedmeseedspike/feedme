@@ -29,7 +29,7 @@ import FooterClient from "./FooterClient";
 type CategoryListItem = {
   id: string;
   title: string;
-  thumbnail: any; // Accept any type to match the query result
+  thumbnail: any; 
 };
 
 const footerData = [

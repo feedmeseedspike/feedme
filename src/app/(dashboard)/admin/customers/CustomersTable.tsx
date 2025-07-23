@@ -13,7 +13,6 @@ import { useState, useEffect } from "react";
 import { Checkbox } from "@components/ui/checkbox";
 
 export default function CustomersTable({ data }: { data: any[] }) {
-  console.log("CustomersTable data:", data);
   const [updating, setUpdating] = useState<string | null>(null);
   const [localStaff, setLocalStaff] = useState<Record<string, boolean>>({});
 

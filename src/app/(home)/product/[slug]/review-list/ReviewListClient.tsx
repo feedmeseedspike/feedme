@@ -42,6 +42,8 @@ import { Label } from "@components/ui/label";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import ProductGallery from "@components/shared/product/product-gallery";
 import * as reviewActions from "src/lib/actions/review.action";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import useSupabase from "src/utils/supabase/client";
 
 const reviewFormDefaultValues = {
   title: "",
@@ -57,6 +59,7 @@ interface ReviewListClientProps {
   userId: string;
   avgRating?: number;
   currentUser?: { display_name?: string; avatar_url?: string } | null;
+  hasPurchased: boolean;
 }
 
 const ReviewListClient = ({
@@ -65,6 +68,7 @@ const ReviewListClient = ({
   userId,
   avgRating = 0,
   currentUser,
+  hasPurchased,
 }: ReviewListClientProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [open, setOpen] = useState(false); // For the review form dialog
@@ -81,7 +85,69 @@ const ReviewListClient = ({
   const [currentZoomedImageIndex, setCurrentZoomedImageIndex] = useState(0);
   const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
   const [originalImageUrls, setOriginalImageUrls] = useState<string[]>([]);
-  const [reviewsData, setReviewsData] = useState(initialReviewsData);
+  const queryClient = useQueryClient();
+  const supabase = useSupabase();
+
+  // Fetch reviews using React Query
+  const {
+    data: reviewsData = initialReviewsData,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["productReviews", product.id, userId],
+    queryFn: () => reviewActions.getReviews({ productId: product.id, userId }),
+    initialData: initialReviewsData,
+  });
+
+  // Add review mutation
+  const addReviewMutation = useMutation({
+    mutationFn: async (values: z.infer<typeof ReviewInputSchema>) => {
+      return reviewActions.createUpdateReview({
+        data: {
+          product: product.id,
+          title: values.title,
+          comment: values.comment,
+          rating: values.rating,
+          isVerifiedPurchase: true,
+          image_urls: Array.isArray(values.image_urls)
+            ? [...values.image_urls]
+            : [],
+        },
+        userId,
+      });
+    },
+    onSuccess: async (res) => {
+      if (!res.success) throw new Error(res.message);
+      showToast(res.message || "Review submitted successfully", "success");
+      await queryClient.invalidateQueries({
+        queryKey: ["productReviews", product.id, userId],
+      });
+      form.reset(reviewFormDefaultValues);
+      setSelectedImageFiles([]);
+      setUploadingImage(false);
+      setOpen(false); // ensure modal closes
+    },
+    onError: (error: any) => {
+      showToast(error.message || "Failed to submit review", "error");
+    },
+  });
+
+  // Delete review mutation
+  const deleteReviewMutation = useMutation({
+    mutationFn: async (reviewId: string) => {
+      return reviewActions.deleteReview({ reviewId, userId });
+    },
+    onSuccess: async (res) => {
+      if (!res.success) throw new Error(res.message);
+      showToast(res.message || "Review deleted successfully", "success");
+      await queryClient.invalidateQueries({
+        queryKey: ["productReviews", product.id, userId],
+      });
+    },
+    onError: (error: any) => {
+      showToast(error.message || "Failed to delete review", "error");
+    },
+  });
 
   // Review form setup
   const form = useForm<z.infer<typeof ReviewInputSchema>>({
@@ -101,16 +167,35 @@ const ReviewListClient = ({
     );
   };
 
-  // Helper to refetch reviews after mutation
-  const refetchReviews = async () => {
-    const updated = await reviewActions.getReviews({
-      productId: product.id,
-      userId,
-    });
-    setReviewsData(updated);
+  // Helper to upload images to Supabase Storage
+  const uploadReviewImages = async (
+    files: File[],
+    userId: string,
+    productId: string
+  ) => {
+    const uploadedUrls: string[] = [];
+    for (const file of files) {
+      const ext = file.name.split(".").pop();
+      const filePath = `${userId}/${productId}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
+      const { data, error } = await supabase.storage
+        .from("review-images")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+      if (error) throw new Error(`Failed to upload image: ${error.message}`);
+      // Get public URL
+      const { data: publicUrlData } = supabase.storage
+        .from("review-images")
+        .getPublicUrl(filePath);
+      if (!publicUrlData?.publicUrl)
+        throw new Error("Failed to get public URL for uploaded image");
+      uploadedUrls.push(publicUrlData.publicUrl);
+    }
+    return uploadedUrls;
   };
 
-  // Form submission with optimistic updates
+  // Form submission
   const onSubmit: SubmitHandler<z.infer<typeof ReviewInputSchema>> = async (
     values
   ) => {
@@ -121,59 +206,36 @@ const ReviewListClient = ({
       );
       return;
     }
-    setOpen(false);
+    setUploadingImage(true);
     try {
-      const res = await reviewActions.createUpdateReview({
-        data: {
-          product: product.id,
-          title: values.title,
-          comment: values.comment,
-          rating: values.rating,
-          isVerifiedPurchase: true,
-          image_urls: Array.isArray(existingImageUrls)
-            ? [...existingImageUrls]
-            : [],
-        },
-        userId,
-      });
-      if (!res.success) throw new Error(res.message);
-      showToast(res.message || "Review submitted successfully", "success");
-      // Refetch reviews and update local state
-      const updated = await reviewActions.getReviews({
-        productId: product.id,
-        userId,
-      });
-      setReviewsData(updated);
-      // Debug log for review user IDs
-      updated.data.forEach((review: any) => {
-        console.log(
-          "Review userId:",
-          review.user?.id,
-          "review.user_id:",
-          review.user_id,
-          "Current userId:",
-          userId
+      let uploadedImageUrls: string[] = [];
+      if (selectedImageFiles.length > 0) {
+        uploadedImageUrls = await uploadReviewImages(
+          selectedImageFiles,
+          userId,
+          product.id
         );
+      }
+      // Combine with existing images (if any)
+      const allImageUrls = [...existingImageUrls, ...uploadedImageUrls].slice(
+        0,
+        3
+      );
+      await addReviewMutation.mutateAsync({
+        ...values,
+        image_urls: allImageUrls,
       });
-      // Find the updated review and update image state
-      const updatedReview = updated.data.find(
-        (r: any) => (r.user?.id ?? r.user_id) === userId
-      );
-      setExistingImageUrls(
-        Array.isArray(updatedReview?.image_urls) ? updatedReview.image_urls : []
-      );
-      setOriginalImageUrls(
-        Array.isArray(updatedReview?.image_urls) ? updatedReview.image_urls : []
-      );
+      setOpen(false); // close modal only after success
     } catch (error: any) {
-      showToast(error.message || "Failed to submit review", "error");
+      showToast(error.message || "Failed to upload images", "error");
+      console.error("Image upload error:", error);
     } finally {
-      form.reset(reviewFormDefaultValues);
-      setSelectedImageFiles([]);
       setUploadingImage(false);
     }
   };
 
+  // Delete review handler
+  const [deletingReviewId, setDeletingReviewId] = useState<string | null>(null);
   const handleDeleteReview = async (reviewId: string) => {
     if (!userId) {
       showToast("Please sign in to delete a review", "error");
@@ -182,14 +244,10 @@ const ReviewListClient = ({
       );
       return;
     }
-    try {
-      const res = await reviewActions.deleteReview({ reviewId, userId });
-      if (!res.success) throw new Error(res.message);
-      showToast(res.message || "Review deleted successfully", "success");
-      await refetchReviews();
-    } catch (error: any) {
-      showToast(error.message || "Failed to delete review", "error");
-    }
+    setDeletingReviewId(reviewId);
+    deleteReviewMutation.mutate(reviewId, {
+      onSettled: () => setDeletingReviewId(null),
+    });
   };
 
   const handleOpenForm = async (review?: any) => {
@@ -265,41 +323,28 @@ const ReviewListClient = ({
     });
   };
 
-  // --- Rating Distribution Normalization ---
+  // --- Rating Distribution Normalization (from client-side reviewsData) ---
   let avgRatingToDisplay = 0;
   let numReviewsToDisplay = 0;
-  let ratingDistributionToDisplay: any[] = [];
+  let normalizedLocalRatingDistribution: { rating: number; count: number }[] =
+    [];
 
-  if (
-    product.avg_rating !== undefined &&
-    product.num_reviews !== undefined &&
-    product.rating_distribution !== undefined
-  ) {
-    avgRatingToDisplay = product.avg_rating;
-    numReviewsToDisplay = product.num_reviews;
-    ratingDistributionToDisplay = product.rating_distribution;
-  } else {
-    avgRatingToDisplay = avgRating;
-    numReviewsToDisplay = reviewsData?.data?.length || 0;
-    ratingDistributionToDisplay = [];
-  }
-
-  const safeRatingDistribution = Array.isArray(ratingDistributionToDisplay)
-    ? ratingDistributionToDisplay
-    : [];
-  const normalizedLocalRatingDistribution = Array.from(
-    { length: 5 },
-    (_, i) => {
-      const ratingValue = i + 1;
-      const existingEntry = safeRatingDistribution.find(
-        (dist: any) => dist.rating === ratingValue
+  if (reviewsData?.data && Array.isArray(reviewsData.data)) {
+    numReviewsToDisplay = reviewsData.data.length;
+    if (numReviewsToDisplay > 0) {
+      const total = reviewsData.data.reduce(
+        (sum: number, r: any) => sum + (r.rating || 0),
+        0
       );
-      return {
-        rating: ratingValue,
-        count: existingEntry ? existingEntry.count : 0,
-      };
+      avgRatingToDisplay = total / numReviewsToDisplay;
     }
-  );
+    // Build distribution for 1-5 stars
+    const distribution = [1, 2, 3, 4, 5].map((star) => ({
+      rating: star,
+      count: reviewsData.data.filter((r: any) => r.rating === star).length,
+    }));
+    normalizedLocalRatingDistribution = distribution;
+  }
 
   // Helper functions for display name and avatar
   const getDisplayName = (review: any) => {
@@ -320,25 +365,27 @@ const ReviewListClient = ({
     <LayoutGroup>
       <div className="space-y-2">
         {/* Rating Summary Section */}
-        <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
-          <div className="p-8 flex flex-col gap-y-3 bg-[#F2F4F7] col-span-full md:col-span-3 rounded-[8px]">
-            <h1 className="font-bold text-[60px] m-0">
-              {avgRatingToDisplay?.toFixed(1) || "0.0"}
-            </h1>
-            <Rating rating={avgRatingToDisplay || 0} />
-            <p className="text-[#12B76A] text-[15.25px]">
-              All from verified purchases
-            </p>
+        {numReviewsToDisplay > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+            <div className="p-8 flex flex-col gap-y-3 bg-[#F2F4F7] col-span-full md:col-span-3 rounded-[8px]">
+              <h1 className="font-bold text-[60px] m-0">
+                {avgRatingToDisplay?.toFixed(1) || "0.0"}
+              </h1>
+              <Rating rating={avgRatingToDisplay || 0} />
+              <p className="text-[#12B76A] text-[15.25px]">
+                All from verified purchases
+              </p>
+            </div>
+            <div className="bg-[#F2F4F7] col-span-full md:col-span-4 rounded-[8px] p-8">
+              <RatingSummary
+                avgRating={avgRatingToDisplay || 0}
+                numReviews={numReviewsToDisplay || 0}
+                ratingDistribution={normalizedLocalRatingDistribution}
+                hideSummaryText
+              />
+            </div>
           </div>
-          <div className="bg-[#F2F4F7] col-span-full md:col-span-4 rounded-[8px] p-8">
-            <RatingSummary
-              avgRating={avgRatingToDisplay || 0}
-              numReviews={numReviewsToDisplay || 0}
-              ratingDistribution={normalizedLocalRatingDistribution}
-              hideSummaryText
-            />
-          </div>
-        </div>
+        )}
 
         {/* Review Content Section */}
         <div className="space-y-4">
@@ -453,6 +500,10 @@ const ReviewListClient = ({
                         isOwner={review.canEdit}
                         onEdit={() => handleOpenForm(review)}
                         onDelete={() => handleDeleteReview(review.id)}
+                        isDeleting={
+                          deleteReviewMutation.status === "pending" &&
+                          deletingReviewId === review.id
+                        }
                       />
                     </div>
                   </div>
@@ -496,7 +547,12 @@ const ReviewListClient = ({
 
           {/* Review Form Dialog */}
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent
+              className="sm:max-w-[425px]"
+              onInteractOutside={
+                uploadingImage ? (e) => e.preventDefault() : undefined
+              }
+            >
               <DialogHeader>
                 <DialogTitle>
                   {currentUserReview ? "Edit Your Review" : "Write a Review"}
@@ -654,9 +710,15 @@ const ReviewListClient = ({
                   <DialogFooter>
                     <Button
                       type="submit"
-                      disabled={form.formState.isSubmitting}
+                      disabled={
+                        form.formState.isSubmitting ||
+                        uploadingImage ||
+                        addReviewMutation.status === "pending"
+                      }
                     >
-                      Submit Review
+                      {addReviewMutation.status === "pending" || uploadingImage
+                        ? "Submitting..."
+                        : "Submit Review"}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -664,10 +726,19 @@ const ReviewListClient = ({
             </DialogContent>
           </Dialog>
 
-          {/* Write Review Button - only show if user is logged in and does NOT have a review */}
+          {/* Write Review Button - show to all logged-in users who don't have a review */}
           {userId && !currentUserReview && (
             <Button
-              onClick={() => handleOpenForm()}
+              onClick={() => {
+                if (!hasPurchased) {
+                  showToast(
+                    "Only verified buyers can review this product.",
+                    "error"
+                  );
+                  return;
+                }
+                handleOpenForm();
+              }}
               variant="outline"
               className="w-full mt-4"
             >
@@ -708,15 +779,31 @@ const ReviewListClient = ({
                 >
                   <X />
                 </button>
-
-                {/* Add validation for the current image */}
                 {zoomedImageUrls[currentZoomedImageIndex] && (
                   <motion.div
                     layoutId={`review-image-${zoomedImageUrls[currentZoomedImageIndex]}`}
-                    className="rounded-md w-[800px] h-[500px] flex flex-col items-center justify-center cursor-auto"
+                    className="rounded-md flex flex-col items-center justify-center cursor-auto"
+                    style={{
+                      width: 800,
+                      height: 500,
+                      minWidth: 800,
+                      minHeight: 500,
+                      maxWidth: 800,
+                      maxHeight: 500,
+                    }}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="relative w-[800px] h-[500px]">
+                    <div
+                      className="relative"
+                      style={{
+                        width: 800,
+                        height: 500,
+                        minWidth: 800,
+                        minHeight: 500,
+                        maxWidth: 800,
+                        maxHeight: 500,
+                      }}
+                    >
                       <Image
                         src={zoomedImageUrls[currentZoomedImageIndex]}
                         alt="Zoomed review image"
@@ -733,8 +820,6 @@ const ReviewListClient = ({
                         }}
                       />
                     </div>
-
-                    {/* Thumbnail Gallery in Modal */}
                     <div className="flex flex-col items-center mt-4">
                       <ProductGallery
                         images={zoomedImageUrls}

@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
+
 import ProductsClient from "./ProductsClient";
-import { getProducts, getAllCategories } from "../../../../queries/products";
+import { getProducts, getAllCategories } from "src/lib/actions/product.actions";
 
 export default async function ProductsPage({
   searchParams,
@@ -30,54 +31,78 @@ export default async function ProductsPage({
   const sortBy = searchParams?.sortBy || "created_at";
   const sortOrder = searchParams?.sortOrder || "desc";
 
-  const { data: initialProducts, count: totalProductsCount } =
-    await getProducts({
-      page: currentPage,
-      limit: itemsPerPage,
-      search: initialSearch,
-      category: initialCategories[0] || "",
-      stockStatus: initialStock[0] || "",
-      publishedStatus: initialPublished[0] || "",
-      sortBy,
-      sortOrder: sortOrder as "asc" | "desc",
-    });
+  try {
+    const [productsResult, allCategories] = await Promise.all([
+      getProducts({
+        page: currentPage,
+        limit: itemsPerPage,
+        query: initialSearch,
+        category: initialCategories[0] || "",
+        // Add other supported filters as needed
+        // tag, price, rating, sort
+      }),
+      getAllCategories(),
+    ]);
 
-  // Collect all unique category IDs from products
-  const allCategoryIds = Array.from(
-    new Set(
-      (initialProducts || [])
-        .flatMap((p: any) =>
-          Array.isArray(p.category_ids) ? p.category_ids : []
-        )
-        .filter(Boolean)
-    )
-  );
+    const { products: initialProducts, totalProducts: totalProductsCount } =
+      productsResult;
 
-  // Fetch all categories in one go
-  const allCategories = await getAllCategories();
-  let categoryNames: Record<string, string> = {};
-  if (allCategoryIds.length > 0) {
-    for (const cat of allCategories) {
-      if (allCategoryIds.includes(cat.id)) {
-        categoryNames[cat.id] = cat.title;
+    // Collect all unique category IDs from products
+    const allCategoryIds = Array.from(
+      new Set(
+        (initialProducts || [])
+          .flatMap((p: any) =>
+            Array.isArray(p.category_ids) ? p.category_ids : []
+          )
+          .filter(Boolean)
+      )
+    );
+
+    // Create category names mapping
+    let categoryNames: Record<string, string> = {};
+    if (allCategoryIds.length > 0) {
+      for (const cat of allCategories) {
+        if (allCategoryIds.includes(cat.id)) {
+          categoryNames[cat.id] = cat.title;
+        }
       }
     }
-  }
 
-  return (
-    <ProductsClient
-      initialProducts={initialProducts || []}
-      totalProductsCount={totalProductsCount || 0}
-      itemsPerPage={itemsPerPage}
-      currentPage={currentPage}
-      initialSearch={initialSearch}
-      initialCategories={initialCategories}
-      initialStock={initialStock}
-      initialPublished={initialPublished}
-      categoryNames={categoryNames}
-      allCategories={allCategories}
-      initialSortBy={sortBy}
-      initialSortOrder={sortOrder}
-    />
-  );
+    return (
+      <ProductsClient
+        initialProducts={initialProducts || []}
+        totalProductsCount={totalProductsCount || 0}
+        itemsPerPage={itemsPerPage}
+        currentPage={currentPage}
+        initialSearch={initialSearch}
+        initialCategories={initialCategories}
+        initialStock={initialStock}
+        initialPublished={initialPublished}
+        categoryNames={categoryNames}
+        allCategories={allCategories}
+        initialSortBy={sortBy}
+        initialSortOrder={sortOrder}
+      />
+    );
+  } catch (error) {
+    console.error("[ProductsPage] Error fetching data:", error);
+
+    // Return with empty data in case of error
+    return (
+      <ProductsClient
+        initialProducts={[]}
+        totalProductsCount={0}
+        itemsPerPage={itemsPerPage}
+        currentPage={currentPage}
+        initialSearch={initialSearch}
+        initialCategories={initialCategories}
+        initialStock={initialStock}
+        initialPublished={initialPublished}
+        categoryNames={{}}
+        allCategories={[]}
+        initialSortBy={sortBy}
+        initialSortOrder={sortOrder}
+      />
+    );
+  }
 }

@@ -5,23 +5,28 @@ import React from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
-import {
-  FaHome,
-  FaShoppingCart,
-  FaUserCircle,
-  FaClipboardList,
-  FaHeart,
-} from "react-icons/fa";
 
 export default function BottomNav() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: "/", icon: FaHome, label: "Home" },
-    { href: "/cart", icon: FaShoppingCart, label: "Cart" },
-    { href: "/account/order", icon: FaClipboardList, label: "Orders" },
-    { href: "/account/favourites", icon: FaHeart, label: "Favorites" },
-    { href: "/account/profile", icon: FaUserCircle, label: "Account" },
+    { href: "/", icon: "/bottom-icons/home.svg", label: "Home" },
+    { href: "/cart", icon: "/bottom-icons/cart.png", label: "Cart" },
+    {
+      href: "/account/order",
+      icon: "/bottom-icons/order.png",
+      label: "Orders",
+    },
+    {
+      href: "/account/favourites",
+      icon: "/bottom-icons/favorite.png",
+      label: "Favorites",
+    },
+    {
+      href: "/account/profile",
+      icon: "/bottom-icons/account.png",
+      label: "Account",
+    },
   ];
 
   return (
@@ -83,10 +88,10 @@ export default function BottomNav() {
                       />
                     </AnimatePresence>
                   )}
-                  <item.icon
-                    className={`text-2xl relative z-10 ${
-                      isActive && "text-[#1B6013]"
-                    }`}
+                  <img
+                    src={item.icon}
+                    alt={item.label}
+                    className={`w-6 h-6 relative z-10 ${isActive ? "grayscale-0" : "grayscale"}`}
                   />
                   <span className="relative z-10">{item.label}</span>
                 </Link>

@@ -255,7 +255,6 @@ export async function deleteProduct(id: string) {
   }
   return true;
 }
-
 export async function getProductsBySearch(query: string, limit = 10) {
   const supabase =await createClient();
   const { data, error } = await supabase
@@ -273,3 +272,26 @@ export async function getProductsBySearch(query: string, limit = 10) {
     image: Array.isArray(p.images) ? p.images[0] : p.images || null,
   }));
 }
+
+export async function getProductById(id: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getAllCategories() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('categories')
+    .select('id, title, thumbnail');
+  if (error) throw error;
+  return data;
+}
+
+export { getProductsServer as getProducts };
+
