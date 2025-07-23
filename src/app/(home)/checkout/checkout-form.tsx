@@ -211,6 +211,8 @@ const CheckoutForm = ({
   user,
   deliveryLocations,
 }: CheckoutFormProps) => {
+  // console.log("CheckoutForm: User:", user);
+  // console.log("CheckoutForm: addresses:", addresses);
   const router = useRouter();
   const dispatch = useDispatch();
   const { data: cartItems, isLoading, isError, error } = useCartQuery();
@@ -794,6 +796,7 @@ const CheckoutForm = ({
             });
             if (response.data.authorization_url) {
               // Store orderId for use after Paystack redirect (optional, for fallback)
+              console.log(orderResult.data)
               if (orderResult.data.orderId) {
                 localStorage.setItem("lastOrderId", orderResult.data.orderId);
               }
@@ -856,8 +859,7 @@ const CheckoutForm = ({
                             onClick={() => {
                               setShowAddressModal(true);
                               setShowAddNewForm(false);
-                            }}
-                          >
+                            }}>
                             Change
                           </button>
                         </div>
@@ -876,8 +878,7 @@ const CheckoutForm = ({
                     {/* Modal for address selection/addition */}
                     <Dialog
                       open={showAddressModal}
-                      onOpenChange={setShowAddressModal}
-                    >
+                      onOpenChange={setShowAddressModal}>
                       <DialogContent className="max-w-md w-full max-h-[90vh]">
                         <DialogHeader>
                           <DialogTitle>Select Delivery Address</DialogTitle>
@@ -885,15 +886,13 @@ const CheckoutForm = ({
                         {!showAddNewForm ? (
                           <div
                             className="space-y-4 overflow-y-auto"
-                            style={{ maxHeight: "70vh" }}
-                          >
+                            style={{ maxHeight: "70vh" }}>
                             {userAddresses && userAddresses.length > 0 ? (
                               <div className="space-y-2">
                                 {userAddresses.map((address) => (
                                   <label
                                     key={address.id}
-                                    className={`flex items-start gap-2 p-2 rounded border cursor-pointer ${selectedAddressId === address.id ? "border-green-600 bg-green-50" : "border-gray-300"}`}
-                                  >
+                                    className={`flex items-start gap-2 p-2 rounded border cursor-pointer ${selectedAddressId === address.id ? "border-green-600 bg-green-50" : "border-gray-300"}`}>
                                     <input
                                       type="radio"
                                       checked={selectedAddressId === address.id}
@@ -924,8 +923,7 @@ const CheckoutForm = ({
                                           phone: address.phone,
                                         });
                                       }}
-                                      title="Edit"
-                                    >
+                                      title="Edit">
                                       <Pencil size={16} />
                                     </button>
                                     <button
@@ -935,8 +933,7 @@ const CheckoutForm = ({
                                         setAddressToDelete(address);
                                         setDeleteDialogOpen(true);
                                       }}
-                                      title="Delete"
-                                    >
+                                      title="Delete">
                                       <Trash2 size={16} />
                                     </button>
                                   </label>
@@ -958,8 +955,7 @@ const CheckoutForm = ({
                                   location: "",
                                   phone: "",
                                 });
-                              }}
-                            >
+                              }}>
                               + Add New Address
                             </button>
                           </div>
@@ -1030,8 +1026,7 @@ const CheckoutForm = ({
                                     }
                                   }
                                 )}
-                                className="space-y-4"
-                              >
+                                className="space-y-4">
                                 <FormField
                                   control={shippingAddressForm.control}
                                   name="fullName"
@@ -1072,8 +1067,7 @@ const CheckoutForm = ({
                                       <FormLabel>Location</FormLabel>
                                       <Select
                                         value={field.value}
-                                        onValueChange={field.onChange}
-                                      >
+                                        onValueChange={field.onChange}>
                                         <FormControl>
                                           <SelectTrigger>
                                             <SelectValue placeholder="Select your location" />
@@ -1083,8 +1077,7 @@ const CheckoutForm = ({
                                           {deliveryLocations.map((location) => (
                                             <SelectItem
                                               key={location.name}
-                                              value={location.name}
-                                            >
+                                              value={location.name}>
                                               {location.name}
                                             </SelectItem>
                                           ))}
@@ -1114,8 +1107,7 @@ const CheckoutForm = ({
                                   <Button
                                     type="submit"
                                     className="bg-[#1B6013]/90 text-white"
-                                    disabled={isAddingAddress}
-                                  >
+                                    disabled={isAddingAddress}>
                                     {isAddingAddress ? (
                                       <Loader2 className="animate-spin mr-2 h-4 w-4" />
                                     ) : null}
@@ -1129,8 +1121,7 @@ const CheckoutForm = ({
                                     onClick={() => {
                                       setShowAddNewForm(false);
                                       setEditingAddress(null);
-                                    }}
-                                  >
+                                    }}>
                                     Cancel
                                   </Button>
                                 </DialogFooter>
@@ -1143,8 +1134,7 @@ const CheckoutForm = ({
                             <Button
                               type="button"
                               className="bg-gray-100 text-gray-700 w-full hover:bg-gray-200"
-                              onClick={() => setShowAddressModal(false)}
-                            >
+                              onClick={() => setShowAddressModal(false)}>
                               Use Selected Address
                             </Button>
                           </DialogFooter>
@@ -1192,8 +1182,7 @@ const CheckoutForm = ({
                                 }
                               }
                             )}
-                            className="space-y-4"
-                          >
+                            className="space-y-4">
                             <FormField
                               control={shippingAddressForm.control}
                               name="fullName"
@@ -1237,8 +1226,7 @@ const CheckoutForm = ({
                                   <Select
                                     value={field.value}
                                     onValueChange={field.onChange}
-                                    disabled={isAddingAddress}
-                                  >
+                                    disabled={isAddingAddress}>
                                     <FormControl>
                                       <SelectTrigger>
                                         <SelectValue placeholder="Select your location" />
@@ -1248,8 +1236,7 @@ const CheckoutForm = ({
                                       {deliveryLocations.map((location) => (
                                         <SelectItem
                                           key={location.name}
-                                          value={location.name}
-                                        >
+                                          value={location.name}>
                                           {location.name}
                                         </SelectItem>
                                       ))}
@@ -1280,8 +1267,7 @@ const CheckoutForm = ({
                               <Button
                                 type="submit"
                                 className="bg-[#1B6013]/90 text-white"
-                                disabled={isAddingAddress}
-                              >
+                                disabled={isAddingAddress}>
                                 {isAddingAddress ? (
                                   <Loader2 className="animate-spin mr-2 h-4 w-4" />
                                 ) : null}
@@ -1309,8 +1295,7 @@ const CheckoutForm = ({
                           onClick={() => setSelectedPaymentMethod("paystack")}
                           className={`flex-1 border rounded-lg p-6 flex flex-col items-center gap-2 transition-all duration-150 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-600
                             ${selectedPaymentMethod === "paystack" ? "border-green-600 ring-2 ring-green-600 bg-green-50" : "border-gray-300 bg-white"}
-                          `}
-                        >
+                          `}>
                           <span className="font-semibold text-lg tracking-wide">
                             Paystack
                           </span>
@@ -1331,8 +1316,7 @@ const CheckoutForm = ({
                           }}
                           className={`flex-1 border rounded-lg p-6 flex flex-col items-center gap-2 transition-all duration-150 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-600
                             ${selectedPaymentMethod === "wallet" ? "border-green-600 ring-2 ring-green-600 bg-green-50" : "border-gray-300 bg-white"}
-                          `}
-                        >
+                          `}>
                           <span className="font-semibold text-lg tracking-wide">
                             Wallet
                           </span>
@@ -1359,8 +1343,7 @@ const CheckoutForm = ({
                                     e.stopPropagation();
                                     router.push("/account/wallet");
                                   }}
-                                  className="mt-2 px-4 py-2 rounded bg-[#1B6013] !text-white hover:!bg-[#1B6013]/90 text-xs font-medium transition"
-                                >
+                                  className="mt-2 px-4 py-2 rounded bg-[#1B6013] !text-white hover:!bg-[#1B6013]/90 text-xs font-medium transition">
                                   Fund Wallet
                                 </button>
                               </>
@@ -1515,8 +1498,7 @@ const CheckoutForm = ({
                         <div className="space-y-4 w-full">
                           <Label
                             htmlFor="voucherCode"
-                            className="font-semibold text-lg"
-                          >
+                            className="font-semibold text-lg">
                             Voucher Code
                           </Label>
                           <div className="relative flex gap-2">
@@ -1546,8 +1528,7 @@ const CheckoutForm = ({
                                 isReferralVoucher ||
                                 isSubmitting ||
                                 isLoadingReferralStatus
-                              }
-                            >
+                              }>
                               Apply
                             </ShimmerButton>
                           </div>
@@ -1582,8 +1563,7 @@ const CheckoutForm = ({
                       By placing your order, you agree to our{" "}
                       <Link
                         href="/return-policy"
-                        className="text-green-600 hover:underline"
-                      >
+                        className="text-green-600 hover:underline">
                         Return Policy
                       </Link>
                       .
@@ -1622,8 +1602,7 @@ const CheckoutForm = ({
               type="button"
               variant="outline"
               className="bg-gray-100 text-gray-700 hover:bg-gray-200"
-              onClick={() => setDeleteDialogOpen(false)}
-            >
+              onClick={() => setDeleteDialogOpen(false)}>
               Cancel
             </Button>
             <Button
@@ -1644,8 +1623,7 @@ const CheckoutForm = ({
                   setAddressToDelete(null);
                   setIsDeletingAddress(false);
                 }
-              }}
-            >
+              }}>
               {isDeletingAddress ? (
                 <Loader2 className="animate-spin mr-2 h-4 w-4" />
               ) : null}
@@ -1705,8 +1683,7 @@ function Footer({
       {activeStep !== 0 && ( // Only show Prev button if not on the first step
         <Button
           onClick={handlePrev}
-          className="rounded-lg bg-gray-200 !text-gray-700 hover:!bg-gray-300 px-6 py-3"
-        >
+          className="rounded-lg bg-gray-200 !text-gray-700 hover:!bg-gray-300 px-6 py-3">
           Prev
         </Button>
       )}
@@ -1725,8 +1702,7 @@ function Footer({
         <Button
           onClick={handleNext}
           disabled={isSubmitting}
-          className="rounded-lg bg-[#1B6013] !text-white hover:!bg-[#1B6013]/90 px-6 py-3"
-        >
+          className="rounded-lg bg-[#1B6013] !text-white hover:!bg-[#1B6013]/90 px-6 py-3">
           Review Order
         </Button>
       )}
@@ -1735,8 +1711,7 @@ function Footer({
         <Button
           onClick={handlePlaceOrder}
           disabled={isSubmitting || items.length === 0}
-          className="rounded-lg bg-[#1B6013] !text-white hover:!bg-[#1B6013]/90 px-6 py-3"
-        >
+          className="rounded-lg bg-[#1B6013] !text-white hover:!bg-[#1B6013]/90 px-6 py-3">
           {isSubmitting ? (
             <Loader2 className="animate-spin mr-2" />
           ) : (
