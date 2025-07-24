@@ -254,6 +254,12 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       e.preventDefault();
       e.stopPropagation();
 
+      // Check if product is out of season
+      if (product.in_season === false) {
+        showToast("This product is currently out of season and cannot be added to cart", "error");
+        return;
+      }
+
       if (!user) {
         showToast("Please log in to add items to cart", "error");
         router.push(
@@ -275,13 +281,20 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           );
           return;
         }
+
+        // Check if product is out of season and user is trying to increase quantity
+        if (product.in_season === false && newQuantity > (currentCartItem?.quantity ?? 0)) {
+          showToast("Cannot increase quantity for out of season products", "error");
+          return;
+        }
+
         if (newQuantity < 1) {
           handleRemoveFromCart();
         } else {
           handleUpdateCartQuantity(newQuantity);
         }
       },
-      [user, showToast, router, handleRemoveFromCart, handleUpdateCartQuantity]
+      [user, showToast, router, handleRemoveFromCart, handleUpdateCartQuantity, product.in_season, currentCartItem?.quantity]
     );
 
     // Handle favorite toggle
@@ -419,10 +432,23 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
+                      
+                      // Check if product is out of season
+                      if (product.in_season === false) {
+                        showToast("Cannot increase quantity for out of season products", "error");
+                        return;
+                      }
+                      
                       const newQuantity = quantity + 1;
                       handleQuantityChange(newQuantity);
                     }}
-                    className="p-1 rounded-full bg-[#1B6013]/70 backdrop-blur-sm shadow-md hover:bg-[#1B6013]/90 transition-colors"
+                    disabled={product.in_season === false}
+                    className={cn(
+                      "p-1 rounded-full backdrop-blur-sm shadow-md transition-colors",
+                      product.in_season === false
+                        ? "bg-gray-300 cursor-not-allowed opacity-50"
+                        : "bg-[#1B6013]/70 hover:bg-[#1B6013]/90"
+                    )}
                     aria-label="Increase quantity"
                   >
                     <Plus className="w-4 h-4" />
@@ -437,11 +463,24 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    
+                    // Check if product is out of season
+                    if (product.in_season === false) {
+                      showToast("This product is currently out of season and cannot be added to cart", "error");
+                      return;
+                    }
+                    
                     setShowQuantityControls(true);
                     handleUpdateCartQuantity(1);
                   }}
-                  className="p-2 rounded-full bg-[#1B6013]/90 backdrop-blur-sm shadow-md hover:bg-[#1B6013] transition-colors"
-                  aria-label="Add to cart"
+                  disabled={product.in_season === false}
+                  className={cn(
+                    "p-2 rounded-full backdrop-blur-sm shadow-md transition-colors",
+                    product.in_season === false
+                      ? "bg-gray-300 cursor-not-allowed opacity-50"
+                      : "bg-[#1B6013]/90 hover:bg-[#1B6013]"
+                  )}
+                  aria-label={product.in_season === false ? "Product out of season" : "Add to cart"}
                 >
                   <Plus className="w-4 h-4 text-white" />
                 </motion.button>
@@ -451,7 +490,9 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
 
           {/* Product image */}
           <Link href={`/product/${product.slug}`} passHref>
-            <div className="relative h-[10rem] lg:h-[12rem] w-full overflow-hidden rounded-lg">
+            <div className={cn(
+              "relative h-[10rem] lg:h-[12rem] w-full overflow-hidden rounded-lg",
+            )}>
               {product.images && product.images.length > 1 ? (
                 <ImageHover
                   src={
@@ -499,32 +540,16 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                 </div>
               )}
 
-              {discountPercent > 0 && (
+              {/* {discountPercent > 0 && (
                 <span className="absolute top-2 left-2 bg-[#1B6013] text-white text-xs font-semibold px-2 py-1 rounded-md z-10">
                   -{discountPercent}%
                 </span>
-              )}
+              )} */}
             </div>
           </Link>
         </div>
       );
-    }, [
-      product.price,
-      product.list_price,
-      product.slug,
-      product.images,
-      product.name,
-      selectedOptionData,
-      sortedOptions,
-      handleToggleLike,
-      isLoading,
-      isFavorited,
-      showQuantityControls,
-      quantity,
-      handleRemoveFromCart,
-      handleQuantityChange,
-      handleUpdateCartQuantity,
-    ]);
+    }, [product.price, product.list_price, product.in_season, product.slug, product.images, product.name, selectedOptionData, sortedOptions, handleToggleLike, isLoading, isFavorited, showQuantityControls, quantity, handleRemoveFromCart, handleQuantityChange, showToast, handleUpdateCartQuantity]);
 
     const ProductDetails = useMemo(() => {
       // Safely determine the price display
@@ -568,6 +593,17 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           >
             {product.name}
           </Link>
+          {/* {console.log('Product in_season value:', product.in_season, 'for product:', product.name)} */}
+          {product.in_season === true && (
+            <span className="inline-block mt-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded font-semibold">
+              In Season
+            </span>
+          )}
+          {product.in_season === false && (
+            <span className="inline-block mt-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded font-semibold">
+              Out of Season
+            </span>
+          )}
           <div className="flex gap-2">
             <Rating rating={product.avg_rating || 0} />
             {typeof product.num_reviews === "number" &&

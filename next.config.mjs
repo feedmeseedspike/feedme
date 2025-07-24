@@ -6,6 +6,7 @@ const nextConfig = {
     },
   },
   images: {
+    unoptimized: process.env.NODE_ENV === 'production',
     remotePatterns: [
       {
         protocol: "https",
@@ -115,15 +116,21 @@ const nextConfig = {
         port: "",
         pathname: "**/*",
       },
+      // {
+      //   protocol: "https",
+      //   hostname: "qafbcposwxopeoiuwyji.supabase.co",
+      //   port: "",
+      //   pathname: "**/*",
+      // },
       {
         protocol: "https",
-        hostname: "qafbcposwxopeoiuwyji.supabase.co",
+        hostname: "fyldgskqxrfmrhyluxmw.supabase.co",
         port: "",
         pathname: "**/*",
       },
       {
         protocol: "https",
-        hostname: "fyldgskqxrfmrhyluxmw.supabase.co",
+        hostname: "*.supabase.co",
         port: "",
         pathname: "**/*",
       },

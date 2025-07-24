@@ -63,6 +63,16 @@ const ProductCard = ({
       >
         {product.name}
       </Link>
+      {product.in_season === true && (
+        <span className="inline-block mt-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded font-semibold">
+          In Season
+        </span>
+      )}
+      {product.in_season === false && (
+        <span className="inline-block mt-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded font-semibold">
+          Out of Season
+        </span>
+      )}
       <span className="text-[14px] text-[#1B6013]">
         {optionsArr.length > 0
           ? `From ${formatNaira(Math.min(...optionsArr.map((opt) => opt.price ?? Infinity)))}`

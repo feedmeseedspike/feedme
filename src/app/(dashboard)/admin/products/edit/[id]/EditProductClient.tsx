@@ -115,6 +115,7 @@ const formSchema = z
       .optional(),
     options: z.array(OptionSchema).optional(),
     is_published: z.boolean().default(false),
+    in_season: z.boolean().nullable().default(null),
   })
   .superRefine((data, ctx) => {
     if (data.variation === "Yes") {
@@ -251,6 +252,8 @@ export default function EditProductClient({
       images: [],
       options: Array.isArray(product.options) ? product.options : [],
       is_published: product.is_published || false,
+      in_season:
+        typeof product.in_season === "boolean" ? product.in_season : null,
     },
   });
 
@@ -458,6 +461,7 @@ export default function EditProductClient({
         images: safeImages,
         options: safeOptions,
         list_price: data.list_price ?? null,
+        in_season: data.in_season,
       };
       if (data.variation === "No") {
         productData.price = data.price ?? 0;
@@ -954,6 +958,76 @@ export default function EditProductClient({
               />
             )}
           </motion.div>
+
+          {/* In Season Select */}
+          <FormField
+            control={form.control}
+            name="in_season"
+            render={({ field }) => (
+              <FormItem className="mb-4 grid grid-cols-1 sm:grid-cols-9 gap-4">
+                <FormLabel className="text-sm font-medium col-span-2">
+                  Seasonality
+                </FormLabel>
+                <FormControl>
+                  <select
+                    value={
+                      field.value === null
+                        ? "null"
+                        : field.value
+                          ? "true"
+                          : "false"
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      field.onChange(val === "null" ? null : val === "true");
+                    }}
+                    className="col-span-7 border rounded px-2 py-1"
+                  >
+                    <option value="null">Not Applicable</option>
+                    <option value="true">In Season</option>
+                    <option value="false">Out of Season</option>
+                  </select>
+                </FormControl>
+                <FormMessage className="col-span-7 col-start-3" />
+              </FormItem>
+            )}
+          />
+
+          {/* Published Toggle */}
+          <FormField
+            control={form.control}
+            name="is_published"
+            render={({ field }) => (
+              <FormItem className="mb-4 grid grid-cols-1 sm:grid-cols-9 gap-4">
+                <FormLabel className="text-sm font-medium col-span-2">
+                  Publish Status
+                </FormLabel>
+                <FormControl>
+                  <div className="col-span-7 flex items-center space-x-2">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={field.value}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                      />
+                      <div className={`w-11 h-6 rounded-full transition-colors ${
+                        field.value ? 'bg-[#1B6013]' : 'bg-gray-200'
+                      }`}>
+                        <div className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
+                          field.value ? 'translate-x-5' : 'translate-x-0.5'
+                        } mt-0.5`} />
+                      </div>
+                    </label>
+                    <span className="text-sm text-gray-700">
+                      {field.value ? 'Published' : 'Draft'}
+                    </span>
+                  </div>
+                </FormControl>
+                <FormMessage className="col-span-7 col-start-3" />
+              </FormItem>
+            )}
+          />
 
           <Separator className="-mx-[24px]" />
 

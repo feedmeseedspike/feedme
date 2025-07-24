@@ -36,6 +36,7 @@ interface AddToCartProps {
     onOutOfStock?: () => void;
     iconOnly?: boolean;
     bundleId?: string;
+    in_season?: boolean | null; // <-- add this
   };
   minimal?: boolean;
   className?: string;
@@ -319,6 +320,8 @@ const AddToCart = React.memo(
       }
     }, [cartItems, item.id, item.option, isInCart]);
 
+    const isOutOfSeason = item.in_season === false;
+
     // Check if cart data is loading
     if (useCartQuery().isLoading) {
       return (
@@ -345,7 +348,7 @@ const AddToCart = React.memo(
       return (
         <button
           onClick={(e) => {
-            e.preventDefault();
+            if (isOutOfSeason) return;
             handleAddToCartClick();
           }}
           className={clsx(
@@ -356,17 +359,26 @@ const AddToCart = React.memo(
             item.countInStock !== null &&
               item.countInStock !== undefined &&
               item.countInStock <= 0 &&
-              "opacity-50 cursor-not-allowed"
+              "opacity-50 cursor-not-allowed",
+            isOutOfSeason && "opacity-50 cursor-not-allowed"
           )}
           disabled={
+            isOutOfSeason ||
             (item.countInStock !== null &&
               item.countInStock !== undefined &&
               item.countInStock <= 0) ||
             updateCartMutation.isPending
           }
+          title={
+            isOutOfSeason
+              ? "This product is out of season and cannot be purchased."
+              : undefined
+          }
         >
           <span className="font-semibold">
-            {updateCartMutation.isPending ? (
+            {isOutOfSeason ? (
+              "Out of Season"
+            ) : updateCartMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin inline-block mr-2" />
             ) : item.countInStock !== null &&
               item.countInStock !== undefined &&
@@ -436,10 +448,11 @@ const AddToCart = React.memo(
           <div className="flex flex-col gap-2">
             <button
               onClick={(e) => {
-                e.preventDefault();
+                if (isOutOfSeason) return;
                 handleAddToCartClick();
               }}
               disabled={
+                isOutOfSeason ||
                 (item.countInStock !== null &&
                   item.countInStock !== undefined &&
                   item.countInStock <= 0) ||
@@ -453,10 +466,18 @@ const AddToCart = React.memo(
                 item.countInStock !== null &&
                   item.countInStock !== undefined &&
                   item.countInStock <= 0 &&
-                  "opacity-50 cursor-not-allowed"
+                  "opacity-50 cursor-not-allowed",
+                isOutOfSeason && "opacity-50 cursor-not-allowed"
               )}
+              title={
+                isOutOfSeason
+                  ? "This product is out of season and cannot be purchased."
+                  : undefined
+              }
             >
-              {updateCartMutation.isPending ? (
+              {isOutOfSeason ? (
+                "Out of Season"
+              ) : updateCartMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin inline-block mr-2" />
               ) : item.countInStock !== null &&
                 item.countInStock !== undefined &&
@@ -470,6 +491,11 @@ const AddToCart = React.memo(
             {missingOption && (
               <p className="text-red-500 text-xs mt-1">
                 Please select an option first
+              </p>
+            )}
+            {isOutOfSeason && (
+              <p className="text-red-500 text-xs mt-1">
+                This product is out of season and cannot be purchased.
               </p>
             )}
           </div>

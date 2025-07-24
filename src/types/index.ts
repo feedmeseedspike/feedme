@@ -23,6 +23,7 @@ export type IReviewDetails = IReviewInput & {
 }
 export type IProductInput = z.infer<typeof ProductInputSchema> & {
   bundleId?: string;
+  in_season: boolean | null;
 }
 export type OrderItem = z.infer<typeof OrderItemSchema>
 export type Options = z.infer<typeof OptionSchema>
