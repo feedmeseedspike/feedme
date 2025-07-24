@@ -55,10 +55,11 @@ export function cn(...inputs: ClassValue[]) {
 export const toSlug = (text: string): string =>
   text
     .toLowerCase()
-    .replace(/[^\w\s-]+/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-+/g, '-')
+    .replace(/&/g, '') // Remove & specifically first
+    .replace(/[^\w\s-]+/g, '') // Remove other special characters
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single
 
 export function formatNaira(amount: number | null | undefined): string {
   if (amount === null || amount === undefined || isNaN(amount)) {
@@ -230,6 +231,7 @@ export const mapSupabaseProductToIProductInput = (
     vendor: undefined,
     reviews: [],
     colors: [],
+    in_season: supabaseProduct.in_season,
   };
 };
 
@@ -258,6 +260,7 @@ export const mapSupabaseBundleToIProductInput = (
     vendor: undefined,
     reviews: [],
     colors: [],
+    in_season: null, // Default bundles to null (no badge)
     bundleId: supabaseBundle.id, // Crucially, set the bundleId here
   };
 };

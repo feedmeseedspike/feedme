@@ -28,7 +28,8 @@ export async function getAllProducts(client: TypedSupabaseClient, {
   let queryBuilder = client
     .from('products')
     .select('*')
-    .eq('is_published', true);
+    .eq('is_published', true)
+    .eq('in_season', true);
 
   // Apply tag filter if provided
   if (tag === 'new-arrival') {
@@ -174,7 +175,7 @@ export async function getProducts({
 }) {
   const offset = (page - 1) * limit;
 
-  // Build the query
+  // Build the query  
   let query = supabase.from("products").select("*", { count: "exact" });
 
   // Apply search filter - search across name, description, and brand

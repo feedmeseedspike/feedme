@@ -20,7 +20,6 @@ import Rating from "@components/shared/product/rating";
 import CollapsibleOnMobile from "@components/shared/collapsible-on-mobile";
 import Container from "@components/shared/Container";
 import ProductdetailsCard from "@components/shared/product/productDetails-card";
-import Headertags from "@components/shared/header/Headertags";
 import { Suspense } from "react";
 import { ProductSkeletonGrid } from "@components/shared/product/product-skeleton";
 import PriceRangeSlider from "@components/shared/product/price-range-slider";
@@ -190,12 +189,12 @@ const SearchPage = async (props: {
       colors: product.colors ?? [],
       options: product.options ?? [],
       reviews: product.reviews ?? [],
+      in_season: product.in_season,
     };
   }
 
   return (
     <main>
-      <Headertags />
       {!noResults && (
         <div className="py-2 md:border-b shadow-sm">
           <Container className="lg:!px-[40px]">

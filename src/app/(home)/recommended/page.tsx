@@ -6,7 +6,7 @@ import { RootState } from "src/store";
 import { cn } from "src/lib/utils";
 import Container from "@components/shared/Container";
 import ProductdetailsCard from "@components/shared/product/productDetails-card";
-import Headertags from "@components/shared/header/Headertags";
+// HeaderTags is now in the layout
 
 export default function RecommendedProductsPage() {
   const products = useSelector(
@@ -40,7 +40,6 @@ export default function RecommendedProductsPage() {
 
   return (
     <main>
-      <Headertags />
       <div className="py-2 md:border-b shadow-sm">
         <Container>
           <div className="flex justify-between items-center">

@@ -31,7 +31,7 @@ import { Checkbox } from "@components/ui/checkbox";
 import { BiEdit } from "react-icons/bi";
 import { Trash2 } from "lucide-react";
 import Link from "next/link";
-import { deleteCategory } from "../../../../lib/api";
+import { deleteCategoryAction } from "./add-new/actions";
 import Image from "next/image";
 import {
   Dialog,
@@ -45,6 +45,7 @@ import {
 import { Category } from "src/types/category";
 import { useRouter, useSearchParams } from "next/navigation";
 import PaginationBar from "../../../../components/shared/pagination";
+import { useToast } from "../../../../hooks/useToast";
 
 export default function CategoriesClient({
   initialCategories,
@@ -63,6 +64,7 @@ export default function CategoriesClient({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { showToast } = useToast();
   const [search, setSearch] = useState(initialSearch || "");
   const [selectedTags, setSelectedTags] = useState<string[]>(initialTags || []);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -118,15 +120,25 @@ export default function CategoriesClient({
     if (categoryToDelete) {
       try {
         setLoading(true);
-        await deleteCategory(categoryToDelete.id);
-        alert("Category deleted successfully!");
+        console.log("Deleting category:", categoryToDelete.id);
+        await deleteCategoryAction(categoryToDelete.id);
+        console.log("Category deleted successfully");
+        
+        // Show success message
+        showToast("Category deleted successfully!", "success");
+        
         // Remove the deleted category from the UI
         setCategories((prev) =>
           prev.filter((cat) => cat.id !== categoryToDelete.id)
         );
-        setLoading(false);
+        
+        // Refresh the page to get updated data
+        router.refresh();
       } catch (err: any) {
+        console.error("Error deleting category:", err);
         setError(err.message || "Failed to delete category");
+        showToast(`Failed to delete category: ${err.message || "Unknown error"}`, "error");
+      } finally {
         setLoading(false);
       }
     }
@@ -312,7 +324,10 @@ export default function CategoriesClient({
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => handleDeleteClick(category)}
+                      onClick={() => {
+                        console.log("Delete button clicked for category:", category.id);
+                        handleDeleteClick(category);
+                      }}
                     >
                       <Trash2 size={16} />
                     </Button>
@@ -348,8 +363,12 @@ export default function CategoriesClient({
             >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDeleteConfirm}>
-              Delete
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteConfirm}
+              disabled={loading}
+            >
+              {loading ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>

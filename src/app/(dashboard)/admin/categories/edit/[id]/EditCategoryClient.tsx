@@ -20,18 +20,10 @@ import { Badge } from "@components/ui/badge";
 import { X } from "lucide-react";
 import Image from "next/image";
 import { Category } from "src/types/category";
-import { updateCategory, uploadImage } from "../../../../../../lib/api";
 import { useToast } from "../../../../../../hooks/useToast";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
-} from "@components/ui/breadcrumb";
+import { updateCategoryAction, uploadCategoryImageAction } from "./actions";
+
 import { createClient } from "src/utils/supabase/client";
-import supabaseAdmin from "@/utils/supabase/admin";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +33,14 @@ import {
 import { useEffect } from "react";
 
 const supabase = createClient();
+
+// Server-side image upload using server action
+async function uploadCategoryImage(file: File, bucketName = "category-images") {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('bucketName', bucketName);
+  return await uploadCategoryImageAction(formData);
+}
 
 export default function EditCategoryClient({
   initialCategory,
@@ -151,17 +151,13 @@ export default function EditCategoryClient({
 
     if (imageFile) {
       try {
-        const fileExt = imageFile.name.split(".").pop();
-        const filePath = `${Date.now()}.${fileExt}`;
-        const uploadedUrl = await uploadImage(imageFile, "category-images");
-        const { data: publicUrlData } = supabase.storage
-          .from("category-images")
-          .getPublicUrl(filePath);
+        const uploadResult = await uploadCategoryImage(imageFile, "category-images");
         thumbnail = {
-          url: (publicUrlData && publicUrlData.publicUrl) || uploadedUrl || "",
-          public_id: filePath,
+          url: uploadResult.url,
+          public_id: uploadResult.public_id,
         };
       } catch (err: any) {
+        console.error("Thumbnail upload error:", err);
         showToast(err.message || "Failed to upload image", "error");
         setSubmitting(false);
         return;
@@ -170,14 +166,10 @@ export default function EditCategoryClient({
 
     if (bannerFile) {
       try {
-        const bannerExt = bannerFile.name.split(".").pop();
-        const bannerPath = `banner_${Date.now()}.${bannerExt}`;
-        await uploadImage(bannerFile, "category-images");
-        const { data: bannerUrlData } = supabaseAdmin.storage
-          .from("category-images")
-          .getPublicUrl(bannerPath);
-        banner_url = bannerUrlData.publicUrl || null;
+        const bannerResult = await uploadCategoryImage(bannerFile, "category-images");
+        banner_url = bannerResult.url;
       } catch (err: any) {
+        console.error("Banner upload error:", err);
         showToast(err.message || "Failed to upload banner image", "error");
         setSubmitting(false);
         return;
@@ -193,10 +185,15 @@ export default function EditCategoryClient({
         thumbnail,
         banner_url,
       };
-      await updateCategory(initialCategory.id, updatedData);
+      console.log("Category data to be updated:", updatedData);
+      const result = await updateCategoryAction(initialCategory.id, updatedData);
+      console.log("Category updated successfully:", result);
       showToast("Category updated successfully!", "success");
+      // Clear the draft from localStorage
+      localStorage.removeItem(`categoryDraft_${initialCategory.id}`);
       router.push("/admin/categories");
     } catch (err: any) {
+      console.error("Error updating category:", err);
       showToast(err.message || "Failed to update category", "error");
     } finally {
       setSubmitting(false);
@@ -466,6 +463,7 @@ export default function EditCategoryClient({
             type="submit"
             className="bg-[#1B6013] text-white"
             disabled={submitting}
+            onClick={() => console.log("Save Changes button clicked")}
           >
             {submitting ? "Saving..." : "Save Changes"}
           </Button>

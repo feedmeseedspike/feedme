@@ -20,10 +20,10 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@components/ui/badge";
 import { X } from "lucide-react";
 import Image from "next/image";
-import { addCategory } from "../../../../../lib/api";
 import { useToast } from "../../../../../hooks/useToast";
 import ReactSelect from "react-select";
 import { supabase } from "src/lib/supabaseClient";
+import { addCategoryAction, uploadCategoryImageAction } from "./actions";
 import {
   Dialog,
   DialogContent,
@@ -31,19 +31,12 @@ import {
   DialogTitle,
 } from "@components/ui/dialog";
 
-// Client-side image upload utility
-async function uploadCategoryImageClient(
-  file: File,
-  bucketName = "category-images"
-) {
-  const fileExt = file.name.split(".").pop();
-  const filePath = `${Date.now()}.${fileExt}`;
-  const { error } = await supabase.storage
-    .from(bucketName)
-    .upload(filePath, file);
-  if (error) throw new Error(error.message);
-  const { data } = supabase.storage.from(bucketName).getPublicUrl(filePath);
-  return { url: data.publicUrl, public_id: filePath };
+// Server-side image upload using server action
+async function uploadCategoryImage(file: File, bucketName = "category-images") {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('bucketName', bucketName);
+  return await uploadCategoryImageAction(formData);
 }
 
 export default function AddNewCategory() {
@@ -185,17 +178,18 @@ export default function AddNewCategory() {
     let thumbnail = null;
     let banner_url = null;
     try {
-      // Upload thumbnail image client-side
-      thumbnail = await uploadCategoryImageClient(imageFile, "category-images");
+      // Upload thumbnail image using server action
+      thumbnail = await uploadCategoryImage(imageFile, "category-images");
       if (bannerFile) {
-        // Upload banner image client-side
-        const bannerObj = await uploadCategoryImageClient(
+        // Upload banner image using server action
+        const bannerObj = await uploadCategoryImage(
           bannerFile,
           "category-images"
         );
         banner_url = bannerObj.url;
       }
     } catch (err: any) {
+      console.error("Image upload error:", err);
       showToast(err.message || "Failed to upload image", "error");
       setSubmitting(false);
       return;
@@ -210,7 +204,9 @@ export default function AddNewCategory() {
         thumbnail,
         banner_url,
       };
-      const created = await addCategory(newCategoryData);
+      console.log("Category data to be sent:", newCategoryData);
+      const created = await addCategoryAction(newCategoryData);
+      console.log("Category created successfully:", created);
       // Update selected products' category_ids
       if (created && selectedProducts.length > 0) {
         for (const prod of selectedProducts) {
@@ -234,8 +230,11 @@ export default function AddNewCategory() {
         }
       }
       showToast("Category created successfully!", "success");
+      // Clear the draft from localStorage
+      localStorage.removeItem("categoryDraft");
       router.push("/admin/categories");
     } catch (err: any) {
+      console.error("Error creating category:", err);
       showToast(err.message || "Failed to create category", "error");
     } finally {
       setSubmitting(false);
@@ -518,6 +517,7 @@ export default function AddNewCategory() {
               type="submit"
               className="bg-[#1B6013] text-white"
               disabled={submitting}
+              onClick={() => console.log("Create Category button clicked")}
             >
               {submitting ? "Creating..." : "Create Category"}
             </Button>

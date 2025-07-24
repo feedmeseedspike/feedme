@@ -23,6 +23,7 @@ import ErrorBoundary from "@components/shared/ErrorBoundary";
 import { getAllCategories } from "src/lib/api";
 import { Tables } from "../../../../utils/database.types"; // Corrected import path
 import Head from "next/head";
+import { notFound } from "next/navigation";
 
 type Product = Tables<"products">;
 
@@ -85,7 +86,7 @@ async function CategoryContent({
   categoryName,
   sort,
   page,
-  allCategories, 
+  allCategories,
 }: {
   categoryId: string;
   categoryName: string;
@@ -148,25 +149,21 @@ export default async function CategoryPage({
   const { sort = "best-selling", page = "1" } = searchParams;
 
   const allCategories = await getAllCategories();
+  
+  // Debug: Log available categories and their slugs
+  console.log("Available categories:", allCategories.map(c => ({ 
+    title: c.title, 
+    slug: toSlug(c.title).toLowerCase() 
+  })));
+  console.log("Looking for slug:", categorySlug.toLowerCase());
+  
   const categoryObj = allCategories.find(
     (c) => toSlug(c.title).toLowerCase() === categorySlug.toLowerCase()
   );
 
   if (!categoryObj) {
-    return (
-      <main>
-        <div className="bg-white py-4">
-          <Container>
-            <CustomBreadcrumb hideCategorySegment={true} />
-          </Container>
-        </div>
-        <Container className="py-8">
-          <div className="text-2xl md:text-3xl font-semibold text-center">
-            Category not found
-          </div>
-        </Container>
-      </main>
-    );
+    console.log("Category not found for slug:", categorySlug);
+    return notFound();
   }
 
   const categoryId = categoryObj.id;

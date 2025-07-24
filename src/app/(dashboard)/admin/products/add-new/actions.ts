@@ -3,9 +3,8 @@
 import { createClient } from "src/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
-export async function updateProductAction(productId: string, productData: any) {
-  console.log('[DEBUG] SERVER ACTION CALLED!');
-  console.log('[DEBUG] productId:', productId);
+export async function addProductAction(productData: any) {
+  console.log('[DEBUG] ADD PRODUCT SERVER ACTION CALLED!');
   console.log('[DEBUG] Received productData:', JSON.stringify(productData, null, 2));
   
   const supabase = await createClient();
@@ -50,29 +49,32 @@ export async function updateProductAction(productId: string, productData: any) {
     }
   }
   
-  console.log('[DEBUG] About to update product in DB with:', JSON.stringify(cleanData, null, 2));
+  console.log('[DEBUG] About to insert product in DB with:', JSON.stringify(cleanData, null, 2));
   
   const { data, error } = await supabase
     .from("products")
-    .update(cleanData)
-    .eq("id", productId)
+    .insert([cleanData])
     .select();
     
-  console.log('[DEBUG] Supabase update result:', JSON.stringify({ data, error }, null, 2));
+  console.log('[DEBUG] Supabase insert result:', JSON.stringify({ data, error }, null, 2));
   
   if (error) {
-    console.error('[ERROR] Supabase update error:', error);
+    console.error('[ERROR] Supabase insert error:', error);
     throw new Error(error.message);
   }
   
   // Revalidate relevant paths
   revalidatePath("/admin/products");
-  revalidatePath(`/admin/products/edit/${productId}`);
   return data?.[0];
 }
 
-export async function uploadProductImageAction(file: File, bucketName: string = "product-images") {
+export async function uploadProductImageAction(formData: FormData) {
   const supabase = await createClient();
+  const file = formData.get('file') as File;
+  const bucketName = formData.get('bucketName') as string || "product-images";
+  
+  if (!file) throw new Error('No file provided');
+  
   const fileExt = file.name.split(".").pop();
   const filePath = `${Date.now()}.${fileExt}`;
   

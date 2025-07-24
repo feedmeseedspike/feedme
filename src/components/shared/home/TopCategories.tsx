@@ -1,58 +1,26 @@
-"use client";
-
 import Stroke from "@components/shared/home/Stroke";
 import Image from "next/image";
 import Link from "next/link";
 import { toSlug } from "src/lib/utils";
-import { Skeleton } from "@components/ui/skeleton";
 import { Tables } from "../../../utils/database.types";
 type Category = Tables<"categories">;
-import { useQuery } from "@tanstack/react-query";
 
-import { createClient } from "@utils/supabase/client";
+import { createClient } from "@utils/supabase/server";
 
 import { getAllCategoriesQuery } from "src/queries/categories";
 
-const TopCategories = () => {
-  const supabase = createClient();
+const TopCategories = async () => {
+  const supabase = await createClient();
+  let categories: Category[] = [];
+  let error: string | null = null;
 
-  const queryKey = ["categories"];
-
-  // Define the query function
-  const queryFn = async () => {
+  try {
     const queryBuilder = getAllCategoriesQuery(supabase);
-    const { data, error } = await queryBuilder.select("*");
-    if (error) throw error;
-    return data;
-  };
-
-  const {
-    data: categories,
-    isLoading,
-    error,
-  } = useQuery<Category[] | null, any>({
-    queryKey: queryKey,
-    queryFn: queryFn,
-  });
-
-
-  if (isLoading) {
-    return (
-      <section className="w-full pb-[80px]">
-        <Stroke />
-        <div className="flex gap-3 md:gap-6 pt-6 cursor-pointer overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide w-full">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="flex flex-col gap-2 justify-center items-center flex-shrink-0"
-            >
-              <Skeleton className="size-[6rem] md:size-[8rem] rounded-[100%]" />
-              <Skeleton className="h-4 w-20" />
-            </div>
-          ))}
-        </div>
-      </section>
-    );
+    const { data, error: fetchError } = await queryBuilder.select("*");
+    if (fetchError) throw fetchError;
+    categories = (data || []) as Category[];
+  } catch (err: any) {
+    error = err.message || "Failed to fetch categories";
   }
 
   if (error || !categories || !Array.isArray(categories)) {

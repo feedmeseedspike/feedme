@@ -102,7 +102,7 @@ export async function addProduct(product: any) {
   if (product.images && Array.isArray(product.images)) {
     product.images = product.images.map((img: any) => typeof img === 'string' ? img : (img.url || img));
   }
-  const { data, error } = await supabase.from('products').insert([product]).select();
+  const { data, error } = await supabase.from('products').insert([{ ...product, in_season: product.in_season ?? true }]).select();
   if (error) throw error;
   return data?.[0];
 }
