@@ -29,7 +29,7 @@ export async function getAllProducts(client: TypedSupabaseClient, {
     .from('products')
     .select('*')
     .eq('is_published', true)
-    .eq('in_season', true);
+    // .in('in_season', [true, null]); // Include both in_season=true and in_season=null
 
   // Apply tag filter if provided
   if (tag === 'new-arrival') {

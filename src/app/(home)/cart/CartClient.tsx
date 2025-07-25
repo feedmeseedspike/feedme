@@ -38,7 +38,6 @@ interface CartClientProps {
   recommendedProducts: IProductInput[];
 }
 
-// Type guard for ProductOption
 function isProductOption(option: unknown): option is ProductOption {
   return (
     typeof option === "object" &&
@@ -48,7 +47,6 @@ function isProductOption(option: unknown): option is ProductOption {
   );
 }
 
-// Type guard for IProductInput
 function isIProductInput(product: any): product is IProductInput {
   return (
     typeof product === "object" &&
@@ -73,7 +71,6 @@ const CartClient: React.FC<CartClientProps> = ({
   const { showToast } = useToast();
   const [items, setItems] = useState<CartItem[]>(cartItems);
 
-  // Group cart items by product and option for display
   const groupedItems = useMemo(() => {
     return items.reduce(
       (acc: Record<string, GroupedCartItem>, item: CartItem) => {
@@ -251,7 +248,6 @@ const CartClient: React.FC<CartClientProps> = ({
     router.push("/checkout");
   };
 
-  // Recently viewed products (client-side, from localStorage)
   const [recentlyViewedProductSlugs, setRecentlyViewedProductSlugs] = useState<
     string[]
   >([]);
@@ -274,8 +270,6 @@ const CartClient: React.FC<CartClientProps> = ({
       recommendedProducts &&
       allCategories
     ) {
-      // Simulate fetching all products (already in recommendedProducts + cartItems)
-      // In a real app, you might want to fetch all products here
       const allProducts = [
         ...recommendedProducts,
         ...items.map((item) => {
@@ -334,7 +328,6 @@ const CartClient: React.FC<CartClientProps> = ({
         )
         .filter(isIProductInput)
         .filter((p) => p.stockStatus === "in_stock");
-      // Filter out products that are already in the cart or recommended
       const filteredRecentlyViewedProducts =
         mappedRecentlyViewedProducts.filter(
           (rvProduct) =>
@@ -359,8 +352,6 @@ const CartClient: React.FC<CartClientProps> = ({
       <div className="min-h-screen bg-gray-50">
         <Container className="py-10">
           {/* Header */}
-
-
           {items.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24">
               <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-6">
@@ -382,53 +373,55 @@ const CartClient: React.FC<CartClientProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
               {/* Cart Items Table */}
               <div className="md:col-span-2">
-                          {/* Free Shipping Progress Bar */}
-          {items.length > 0 &&
-            (() => {
-              const FREE_SHIPPING_THRESHOLD = 50000;
-              const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
-              const percent = Math.min(
-                100,
-                (subtotal / FREE_SHIPPING_THRESHOLD) * 100
-              );
-              return (
-                <div
-                  className={`rounded border px-4 py-3 mb-8 ${
-                    subtotal >= FREE_SHIPPING_THRESHOLD
-                      ? "bg-green-50 border-green-200"
-                      : "bg-[#FFF5EC] border-[#F0800F]"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-lg">📦</span>
-                    {subtotal >= FREE_SHIPPING_THRESHOLD ? (
-                      <span className="font-semibold text-green-700">
-                        Congratulations! You have unlocked <b>free shipping</b>!
-                      </span>
-                    ) : (
-                      <span className="font-medium text-black">
-                        Add{" "}
-                        <span className="font-bold text-[#F0800F]">
-                          {formatNaira(remaining)}
-                        </span>{" "}
-                        to cart and get <b>free shipping</b>!
-                      </span>
-                    )}
-                  </div>
-                  <div className="w-full h-2 bg-[#FFE1C7] rounded">
-                    <div
-                      className={`h-2 rounded transition-all duration-300 ${
-                        subtotal >= FREE_SHIPPING_THRESHOLD
-                          ? "bg-green-500"
-                          : "bg-[#F0800F]"
-                      }`}
-                      style={{ width: `${percent}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })()}
-                <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+                {/* Free Shipping Progress Bar */}
+                {items.length > 0 &&
+                  (() => {
+                    const FREE_SHIPPING_THRESHOLD = 50000;
+                    const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
+                    const percent = Math.min(
+                      100,
+                      (subtotal / FREE_SHIPPING_THRESHOLD) * 100
+                    );
+                    return (
+                      <div
+                        className={`rounded border px-4 py-3 mb-8 ${
+                          subtotal >= FREE_SHIPPING_THRESHOLD
+                            ? "bg-green-50 border-green-200"
+                            : "bg-[#FFF5EC] border-[#F0800F]"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-lg">📦</span>
+                          {subtotal >= FREE_SHIPPING_THRESHOLD ? (
+                            <span className="font-semibold text-green-700">
+                              Congratulations! You have unlocked <b>free shipping</b>!
+                            </span>
+                          ) : (
+                            <span className="font-medium text-black">
+                              Add{" "}
+                              <span className="font-bold text-[#F0800F]">
+                                {formatNaira(remaining)}
+                              </span>{" "}
+                              to cart and get <b>free shipping</b>!
+                            </span>
+                          )}
+                        </div>
+                        <div className="w-full h-2 bg-[#FFE1C7] rounded">
+                          <div
+                            className={`h-2 rounded transition-all duration-300 ${
+                              subtotal >= FREE_SHIPPING_THRESHOLD
+                                ? "bg-green-500"
+                                : "bg-[#F0800F]"
+                            }`}
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                {/* Desktop Table (hidden on mobile) */}
+                <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-200 bg-white">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
@@ -463,7 +456,6 @@ const CartClient: React.FC<CartClientProps> = ({
                                 : null;
                               return (
                                 <tr key={item.id}>
-                                  {/* Product cell */}
                                   <td className="px-6 py-4 whitespace-nowrap flex items-center gap-4">
                                     <button
                                       className="text-gray-400 hover:text-red-500 focus:outline-none mr-2"
@@ -489,7 +481,7 @@ const CartClient: React.FC<CartClientProps> = ({
                                           item.bundles?.name ||
                                           "Product image"
                                         }
-                                        className="h-14 w-14 rounded object-cover border border-gray-200"
+                                        className="h-14 w-14 rounded border border-gray-200 "
                                       />
                                     </Link>
                                     <div>
@@ -498,16 +490,13 @@ const CartClient: React.FC<CartClientProps> = ({
                                           item.products?.name ||
                                           item.bundles?.name}
                                       </div>
-                                      {/* Optionally, show category or other info here */}
                                     </div>
                                   </td>
-                                  {/* Price cell */}
                                   <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-900">
                                     {formatNaira(
                                       productOption?.price ?? item.price ?? 0
                                     )}
                                   </td>
-                                  {/* Quantity cell */}
                                   <td className="px-6 py-4 whitespace-nowrap text-center">
                                     <div className="flex items-center justify-center gap-2">
                                       <Button
@@ -535,7 +524,6 @@ const CartClient: React.FC<CartClientProps> = ({
                                       </Button>
                                     </div>
                                   </td>
-                                  {/* Subtotal cell */}
                                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-gray-900">
                                     {formatNaira(
                                       (productOption?.price ??
@@ -543,7 +531,6 @@ const CartClient: React.FC<CartClientProps> = ({
                                         0) * item.quantity
                                     )}
                                   </td>
-                                  {/* Remove button cell (for spacing/alignment) */}
                                   <td className="px-2 py-4"></td>
                                 </tr>
                               );
@@ -553,6 +540,104 @@ const CartClient: React.FC<CartClientProps> = ({
                       )}
                     </tbody>
                   </table>
+                </div>
+
+                {/* Mobile Cart Items (shown only on mobile) */}
+                <div className="md:hidden space-y-4">
+                  {Object.entries(groupedItems).map(
+                    ([groupKey, productGroup]: [string, GroupedCartItem]) => {
+                      const optionEntries = Object.entries(productGroup.options);
+                      return optionEntries.map(
+                        ([optionKey, item]: [string, CartItem]) => {
+                          const productOption = isProductOption(item.option)
+                            ? item.option
+                            : null;
+                          return (
+                            <div key={item.id} className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                              <div className="flex justify-between items-start">
+                                <div className="flex items-start gap-3">
+                                  <Link
+                                    href={`/product/${item.products?.slug || item.bundles?.id}`}
+                                    className="shrink-0"
+                                  >
+                                    <Image
+                                      width={80}
+                                      height={80}
+                                      src={
+                                        productOption?.image ||
+                                        item.products?.images?.[0] ||
+                                        item.bundles?.thumbnail_url ||
+                                        "/placeholder.png"
+                                      }
+                                      alt={
+                                        item.products?.name ||
+                                        item.bundles?.name ||
+                                        "Product image"
+                                      }
+                                      className="h-16 w-16 rounded border border-gray-200"
+                                    />
+                                  </Link>
+                                  <div>
+                                    <div className="font-semibold text-gray-900 text-sm">
+                                      {productOption?.name ||
+                                        item.products?.name ||
+                                        item.bundles?.name}
+                                    </div>
+                                    <div className="text-sm text-gray-600 mt-1">
+                                      {formatNaira(
+                                        productOption?.price ?? item.price ?? 0
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => handleRemoveItem(item)}
+                                  className="text-gray-400 hover:text-red-500"
+                                  aria-label="Remove item"
+                                >
+                                  <Trash2Icon className="h-4 w-4" />
+                                </button>
+                              </div>
+
+                              <div className="flex justify-between items-center mt-3">
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="size-7 rounded border border-gray-300 text-gray-700"
+                                    onClick={() =>
+                                      handleQuantityChange(item, false)
+                                    }
+                                  >
+                                    <AiOutlineMinus className="size-4" />
+                                  </Button>
+                                  <span className="font-medium text-base text-gray-900">
+                                    {item.quantity}
+                                  </span>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="size-7 rounded border border-gray-300 text-gray-700"
+                                    onClick={() =>
+                                      handleQuantityChange(item, true)
+                                    }
+                                  >
+                                    <AiOutlinePlus className="size-4" />
+                                  </Button>
+                                </div>
+                                <div className="text-sm font-semibold">
+                                  {formatNaira(
+                                    (productOption?.price ?? item.price ?? 0) *
+                                      item.quantity
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+                      );
+                    }
+                  )}
                 </div>
               </div>
 
@@ -581,7 +666,7 @@ const CartClient: React.FC<CartClientProps> = ({
                     Delivery fees not included yet.
                   </p>
                   <Button
-                    className="w-full  text-primary-foreground py-3  mt-2"
+                    className="w-full text-primary-foreground py-3 mt-2"
                     onClick={handleCheckout}
                     disabled={items.length === 0}
                   >
@@ -595,7 +680,7 @@ const CartClient: React.FC<CartClientProps> = ({
           {/* Recommended Products */}
           {recommendedProducts && recommendedProducts.length > 0 && (
             <section className="mt-16">
-              <div className=" mb-8">
+              <div className="mb-8">
                 <h2 className="text-2xl font-bold text-primary mb-2">
                   Recommended for You
                 </h2>
