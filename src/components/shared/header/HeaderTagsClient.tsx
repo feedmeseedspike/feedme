@@ -58,7 +58,7 @@ const HeaderTagsClient = ({ categories, productsByCategory, error }: HeaderTagsC
             <div className="text-gray-500">No categories found.</div>
           )}
           {!error && categories.length > 0 && (
-            <div className="grid grid-cols-3 lg:grid-cols-4 gap-2 ">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 ">
               {categories.map((category) => {
                 const slug = toSlug(category.title);
                 console.log(`Category: "${category.title}" -> Slug: "${slug}"`);
