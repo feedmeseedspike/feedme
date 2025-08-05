@@ -8,8 +8,8 @@ interface FetchOrdersParams {
   page?: number;
   itemsPerPage?: number;
   search?: string;
-  status?: Database['public']['Enums']['order_status_enum'][];
-  paymentStatus?: Database['public']['Enums']['payment_status_enum'][];
+  status?: Database["public"]["Enums"]["order_status_enum"][];
+  paymentStatus?: Database["public"]["Enums"]["payment_status_enum"][];
   paymentMethod?: string[];
   startDate?: string;
   endDate?: string;
@@ -17,7 +17,13 @@ interface FetchOrdersParams {
 
 interface AddPurchaseBody {
   userId: string;
-  cartItems: Array<{ productId: string; quantity: number; option?: Json; price?: number | null; bundleId?: string }>;
+  cartItems: Array<{
+    productId: string;
+    quantity: number;
+    option?: Json;
+    price?: number | null;
+    bundleId?: string;
+  }>;
   shippingAddress: Json | null;
   totalAmount: number;
   totalAmountPaid: number;
@@ -105,7 +111,7 @@ export async function fetchOrderById(orderId: string) {
       )
     `
     )
-    .eq("id", orderId)
+    .eq("order_id", orderId)
     .single();
 
   if (error) {
@@ -121,14 +127,15 @@ export async function fetchUserOrders(
   itemsPerPage: number = 5
 ) {
   const supabase = createClient();
-  
+
   let query = supabase
     .from("orders")
     .select(
       `
       *,
       order_items(*, products(name, images))
-    `, { count: 'exact' } // Request exact count
+    `,
+      { count: "exact" } // Request exact count
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
@@ -147,49 +154,90 @@ export async function fetchUserOrders(
   return { data, count };
 }
 
+export async function fetchUserOrder(userId: string) {
+  const supabase = createClient();
+
+  let query = supabase
+    .from("orders")
+    .select(
+      `
+      *,
+      order_items(*, products(name, images))
+    `,
+      { count: "exact" } // Request exact count
+    )
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    throw error;
+  }
+
+  return { data, count };
+}
+
 export async function addPurchase(body: AddPurchaseBody) {
   const supabase = createClient();
 
-  const { data: { user: authenticatedUser }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user: authenticatedUser },
+    error: authError,
+  } = await supabase.auth.getUser();
   if (authError || !authenticatedUser) {
-    return { success: false, error: 'Authentication required to place an order.' };
+    return {
+      success: false,
+      error: "Authentication required to place an order.",
+    };
   }
 
   try {
     // --- VOUCHER USAGE COUNT PATCH ---
-    let voucherToUse: Database['public']['Tables']['vouchers']['Row'] | null = null;
+    let voucherToUse: Database["public"]["Tables"]["vouchers"]["Row"] | null =
+      null;
     if (body.voucherId) {
       // Fetch the voucher row
       const { data: voucher, error: voucherError } = await supabase
-        .from('vouchers')
-        .select('*')
-        .eq('id', body.voucherId)
+        .from("vouchers")
+        .select("*")
+        .eq("id", body.voucherId)
         .single();
       if (voucherError || !voucher) {
-        return { success: false, error: 'Voucher not found or invalid.' };
+        return { success: false, error: "Voucher not found or invalid." };
       }
       // Check usage limit
-      if (voucher.max_uses !== null && (voucher.used_count || 0) >= voucher.max_uses) {
-        return { success: false, error: 'Voucher has reached its maximum uses.' };
+      if (
+        voucher.max_uses !== null &&
+        (voucher.used_count || 0) >= voucher.max_uses
+      ) {
+        return {
+          success: false,
+          error: "Voucher has reached its maximum uses.",
+        };
       }
       voucherToUse = voucher;
     }
 
     // --- CREATE ORDER ---
-    const { data: order, error: orderError } = await supabase.from('orders').insert({
-      user_id: body.userId,
-      payment_method: body.paymentMethod,
-      shipping_address: body.shippingAddress,
-      total_amount: body.totalAmount,
-      status: 'order confirmed',
-      payment_status: body.paymentMethod === 'wallet' ? 'Paid' : 'Pending',
-      voucher_id: body.voucherId,
-    }).select().single();
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .insert({
+        user_id: body.userId,
+        payment_method: body.paymentMethod,
+        shipping_address: body.shippingAddress,
+        total_amount: body.totalAmount,
+        status: "order confirmed",
+        payment_status: body.paymentMethod === "wallet" ? "Paid" : "Pending",
+        voucher_id: body.voucherId,
+      })
+      .select()
+      .single();
 
     if (orderError) throw orderError;
     if (!order) throw new Error("Failed to create order.");
 
-    const orderItemsToInsert = body.cartItems.map(item => ({
+    const orderItemsToInsert = body.cartItems.map((item) => ({
       order_id: order.id,
       product_id: item.productId || null,
       bundle_id: item.bundleId || null,
@@ -198,34 +246,42 @@ export async function addPurchase(body: AddPurchaseBody) {
       option: item.option || null,
     }));
 
-    const { error: orderItemsError } = await supabase.from('order_items').insert(orderItemsToInsert);
+    const { error: orderItemsError } = await supabase
+      .from("order_items")
+      .insert(orderItemsToInsert);
     if (orderItemsError) throw orderItemsError;
 
     // --- ATOMICALLY INCREMENT VOUCHER USAGE ---
     if (voucherToUse) {
       const { error: voucherUpdateError } = await supabase
-        .from('vouchers')
+        .from("vouchers")
         .update({ used_count: (voucherToUse.used_count || 0) + 1 })
-        .eq('id', voucherToUse.id)
-        .eq('used_count', voucherToUse.used_count || 0); // Optimistic concurrency
+        .eq("id", voucherToUse.id)
+        .eq("used_count", voucherToUse.used_count || 0); // Optimistic concurrency
       if (voucherUpdateError) {
-        return { success: false, error: 'Failed to update voucher usage. Please try again.' };
+        return {
+          success: false,
+          error: "Failed to update voucher usage. Please try again.",
+        };
       }
       // Insert into voucher_usages for per-user tracking
       const { error: usageInsertError } = await supabase
-        .from('voucher_usages')
+        .from("voucher_usages")
         .insert({ user_id: body.userId, voucher_id: voucherToUse.id });
       if (usageInsertError) {
-        return { success: false, error: 'Failed to record voucher usage. Please try again.' };
+        return {
+          success: false,
+          error: "Failed to record voucher usage. Please try again.",
+        };
       }
     }
 
     // --- REFERRAL PATCH: Mark referred_discount_given after successful order ---
     const { data: referral, error: referralFetchError } = await supabase
-      .from('referrals')
-      .select('*')
-      .eq('referred_user_id', body.userId)
-      .eq('status', 'applied')
+      .from("referrals")
+      .select("*")
+      .eq("referred_user_id", body.userId)
+      .eq("status", "applied")
       .maybeSingle();
 
     if (referralFetchError) {
@@ -233,21 +289,28 @@ export async function addPurchase(body: AddPurchaseBody) {
     }
 
     if (referral) {
-      const newReferredPurchaseAmount = (referral.referred_purchase_amount || 0) + body.totalAmount;
-      const updateData: Partial<Database['public']['Tables']['referrals']['Update']> = {
+      const newReferredPurchaseAmount =
+        (referral.referred_purchase_amount || 0) + body.totalAmount;
+      const updateData: Partial<
+        Database["public"]["Tables"]["referrals"]["Update"]
+      > = {
         referred_purchase_amount: newReferredPurchaseAmount,
         updated_at: new Date().toISOString(),
       };
       let newStatus = referral.status;
       // If this order used a referral voucher, mark as completed
-      if (voucherToUse && voucherToUse.code.startsWith('REF-') && !referral.referred_discount_given) {
+      if (
+        voucherToUse &&
+        voucherToUse.code.startsWith("REF-") &&
+        !referral.referred_discount_given
+      ) {
         updateData.referred_discount_given = true;
-        updateData.status = 'completed';
-        newStatus = 'completed';
+        updateData.status = "completed";
+        newStatus = "completed";
       }
       // If purchase amount qualifies for referrer reward
-      if (newReferredPurchaseAmount >= 5000 && referral.status === 'applied') {
-        newStatus = 'qualified';
+      if (newReferredPurchaseAmount >= 5000 && referral.status === "applied") {
+        newStatus = "qualified";
         updateData.status = newStatus;
         // Trigger the referrer discount
         const referrerDiscountResult = await issueReferrerDiscount({
@@ -258,9 +321,9 @@ export async function addPurchase(body: AddPurchaseBody) {
         });
       }
       const { error: updateError } = await supabase
-        .from('referrals')
+        .from("referrals")
         .update(updateData)
-        .eq('id', referral.id);
+        .eq("id", referral.id);
     }
 
     return { success: true, data: { orderId: order.id } };
@@ -275,8 +338,8 @@ export const useAddPurchaseMutation = () => {
     mutationFn: addPurchase,
     onSuccess: (data) => {
       if (data.success) {
-        queryClient.invalidateQueries({ queryKey: ['orders'] });
-        queryClient.invalidateQueries({ queryKey: ['cart'] }); // Invalidate cart after successful order
+        queryClient.invalidateQueries({ queryKey: ["orders"] });
+        queryClient.invalidateQueries({ queryKey: ["cart"] }); // Invalidate cart after successful order
       }
     },
   });
@@ -300,7 +363,7 @@ export async function fetchPendingOrdersCount(): Promise<number> {
 export async function getUnviewedOrdersCount() {
   // Temporarily disabled due to missing admin_viewed column
   return 0;
-  
+
   // const supabase = createClient();
   // const { count, error } = await supabase
   //   .from('orders')
@@ -314,7 +377,7 @@ export async function getUnviewedOrdersCount() {
 export async function markOrdersAsViewed(orderIds?: string[]) {
   // Temporarily disabled due to missing admin_viewed column
   return true;
-  
+
   // const supabase = createClient();
   // let query = supabase.from('orders').update({ admin_viewed: true });
   // if (orderIds && orderIds.length > 0) {
@@ -323,4 +386,4 @@ export async function markOrdersAsViewed(orderIds?: string[]) {
   // const { error } = await query;
   // if (error) throw error;
   // return true;
-} 
+}

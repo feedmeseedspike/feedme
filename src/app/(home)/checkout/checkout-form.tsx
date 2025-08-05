@@ -71,6 +71,7 @@ import { Pencil, Trash2, Loader2 } from "lucide-react";
 import { clearCart } from "src/store/features/cartSlice";
 import { useClearCartMutation } from "src/queries/cart";
 import axios from "axios";
+import { sendPushNotification } from "@/lib/actions/pushnotification.action";
 
 interface GroupedCartItem {
   product?: CartItem["products"];
@@ -699,6 +700,7 @@ const CheckoutForm = ({
                         serviceCharge: /*serviceCharge*/ 0, // Service charge commented out
                         totalAmount: subtotal,
                         totalAmountPaid: totalAmountPaid,
+                        userid:user.user_id
                       },
                     }),
                   }
@@ -719,6 +721,11 @@ const CheckoutForm = ({
                   "error"
                 );
               }
+              // await sendPushNotification(
+              //   "Success",
+              //   "Order created successfully!",
+              //   user.user_id
+              // );
               // Clear voucher from localStorage after successful order
               localStorage.removeItem("voucherCode");
               localStorage.removeItem("voucherDiscount");
@@ -796,7 +803,12 @@ const CheckoutForm = ({
             });
             if (response.data.authorization_url) {
               // Store orderId for use after Paystack redirect (optional, for fallback)
-              console.log(orderResult.data)
+              // await sendPushNotification(
+              //   "Success",
+              //   "Order created successfully!",
+              //   user.user_id
+              // );
+              console.log(orderResult.data);
               if (orderResult.data.orderId) {
                 localStorage.setItem("lastOrderId", orderResult.data.orderId);
               }

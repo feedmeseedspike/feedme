@@ -1,10 +1,11 @@
-export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import paystack from "../../../../utils/paystack";
 import { authMiddleware } from "middleware/auth";
 import { supabase } from "src/lib/supabaseClient";
+import { getRandomOrderNumber } from "@/utils/generator";
 
 export const POST = authMiddleware(
   async (request: Request, user_id: string) => {
@@ -12,59 +13,84 @@ export const POST = authMiddleware(
       const { email, amount, orderDetails } = await request.json();
 
       if (!email || !amount || !orderDetails) {
+        console.log({ email, amount, orderDetails });
         return NextResponse.json(
           { message: "Missing required fields" },
           { status: 400 }
         );
       }
+      const orderid = getRandomOrderNumber();
+
+      const reference = {
+        reference: orderid,
+        user_id,
+        order_id: orderid,
+      };
+
+      const { error: rfError } = await supabase
+        .from("reference")
+        .insert(reference);
+
+      if (rfError) {
+        console.error("Failed to save reference:", rfError);
+        throw new Error(`Failed to save transaction: ${rfError.message}`);
+      }
 
       // Initialize Paystack transaction
-      const callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL!}/order/order-confirmation`;
-      const transactionData = await paystack.initializeTransaction({
-        email,
-        amount,
-        callback_url: callbackUrl,
-        metadata: { user_id, ...orderDetails },
-      });
+      // const callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL!}/order/order-confirmation`;
+      // const transactionData = await paystack.initializeTransaction({
+      //   email,
+      //   amount,
+      //   callback_url: callbackUrl,
+      //   metadata: { user_id, ...orderDetails },
+      // });
 
       // Ensure user_id exists in profiles
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('user_id', user_id)
-        .single();
-      if (profileError || !profile) {
-        return NextResponse.json(
-          { message: "User profile not found for order creation." },
-          { status: 400 }
-        );
-      }
+      // const { data: profile, error: profileError } = await supabase
+      //   .from("profiles")
+      //   .select("user_id")
+      //   .eq("user_id", user_id)
+      //   .single();
+      // if (profileError || !profile) {
+      //   console.log({ profileError });
+      //   return NextResponse.json(
+      //     { message: "User profile not found for order creation." },
+      //     { status: 400 }
+      //   );
+      // }
       // Save pending order/transaction and get the inserted order
-      const { data: order, error: txError } = await supabase.from("orders").insert({
-        user_id: profile.user_id,
-        total_amount: amount,
-        total_amount_paid: orderDetails.totalAmountPaid,
-        delivery_fee: orderDetails.deliveryFee,
-        local_government: orderDetails.local_government,
-        voucher_id: orderDetails.voucherId,
-        payment_method: orderDetails.paymentMethod,
-        shipping_address: orderDetails.shippingAddress,
-        payment_status: "Pending",
-      }).select().single();
+      const { data: order, error: txError } = await supabase
+        .from("orders")
+        .insert({
+          user_id: user_id,
+          total_amount: amount,
+          total_amount_paid: orderDetails.totalAmountPaid,
+          delivery_fee: orderDetails.deliveryFee,
+          local_government: orderDetails.local_government,
+          voucher_id: orderDetails.voucherId,
+          payment_method: orderDetails.paymentMethod,
+          shipping_address: orderDetails.shippingAddress,
+          payment_status: "Pending",
+          order_id: orderid,
+        })
+        .select()
+        .single();
       if (txError || !order) throw txError;
 
       // Insert order items
-      const orderItemsToInsert = (orderDetails.cartItems || []).map((item: any) => ({
-        order_id: order.id,
-        product_id: item.productId || null,
-        bundle_id: item.bundleId || null,
-        quantity: item.quantity,
-        price: item.price,
-        option: item.option || null,
-      }));
+      const orderItemsToInsert = (orderDetails.cartItems || []).map(
+        (item: any) => ({
+          order_id: order.id,
+          product_id: item.productId || null,
+          bundle_id: item.bundleId || null,
+          quantity: item.quantity,
+          price: item.price,
+          option: item.option || null,
+        })
+      );
       if (orderItemsToInsert.length > 0) {
         const { error: orderItemsError } = await supabase
-          .from('order_items')
+          .from("order_items")
           .insert(orderItemsToInsert);
         if (orderItemsError) throw orderItemsError;
       }
@@ -77,8 +103,12 @@ export const POST = authMiddleware(
       if (orderItemsError) throw orderItemsError;
 
       // Fetch product and bundle names
-      const productIds = orderItems.filter(i => i.product_id).map(i => i.product_id);
-      const bundleIds = orderItems.filter(i => i.bundle_id).map(i => i.bundle_id);
+      const productIds = orderItems
+        .filter((i) => i.product_id)
+        .map((i) => i.product_id);
+      const bundleIds = orderItems
+        .filter((i) => i.bundle_id)
+        .map((i) => i.bundle_id);
 
       const { data: products } = await supabase
         .from("products")
@@ -90,12 +120,14 @@ export const POST = authMiddleware(
         .select("id, name")
         .in("id", bundleIds.length ? bundleIds : ["dummy"]);
 
-      const itemsOrdered = orderItems.map(item => {
+      const itemsOrdered = orderItems.map((item) => {
         let title = "";
         if (item.product_id) {
-          title = products?.find(p => p.id === item.product_id)?.name || "Product";
+          title =
+            products?.find((p) => p.id === item.product_id)?.name || "Product";
         } else if (item.bundle_id) {
-          title = bundles?.find(b => b.id === item.bundle_id)?.name || "Bundle";
+          title =
+            bundles?.find((b) => b.id === item.bundle_id)?.name || "Bundle";
         }
         return {
           title,
@@ -105,9 +137,10 @@ export const POST = authMiddleware(
       });
 
       // Parse shipping address
-      const shipping = typeof order.shipping_address === "string"
-        ? JSON.parse(order.shipping_address)
-        : order.shipping_address;
+      const shipping =
+        typeof order.shipping_address === "string"
+          ? JSON.parse(order.shipping_address)
+          : order.shipping_address;
 
       // Prepare email fields
       const orderNumber = order.id;
@@ -126,11 +159,8 @@ export const POST = authMiddleware(
       return NextResponse.json({
         success: true,
         data: {
-          orderId: order.id,
-          access_code: transactionData.data.access_code,
-          authorization_url: transactionData.data.authorization_url,
-          reference: transactionData.data.reference,
-        }
+          orderId: orderid,
+        },
       });
     } catch (error: any) {
       console.error(error);
@@ -140,4 +170,4 @@ export const POST = authMiddleware(
       );
     }
   }
-); 
+);

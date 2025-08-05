@@ -1,9 +1,12 @@
+"use server";
 import { createClient } from "../utils/supabase/client";
 import { Tables } from "../utils/database.types";
 import { AddressWithId, UserAddress } from "../lib/validator";
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-export async function getUserAddresses(userId: string): Promise<AddressWithId[] | null> {
+export async function getUserAddresses(
+  userId: string
+): Promise<AddressWithId[] | null> {
   const supabase = await createClient();
   if (!userId) return null;
   const { data, error } = await supabase
@@ -18,11 +21,22 @@ export async function getUserAddresses(userId: string): Promise<AddressWithId[] 
 }
 
 // Client-side: pass supabase client
-export async function addAddress(address: Omit<Tables<"addresses">, "id" | "user_id" | "created_at" | "updated_at">, user_id: string, supabase: SupabaseClient): Promise<AddressWithId | null> {
+export async function addAddress(
+  address: Omit<
+    Tables<"addresses">,
+    "id" | "user_id" | "created_at" | "updated_at"
+  >,
+  user_id: string,
+  supabas?: SupabaseClient
+): Promise<AddressWithId | null> {
+  const supabase = createClient();
   if (!user_id) {
     throw new Error("User not authenticated.");
   }
-  const addressToInsert: Omit<Tables<"addresses">, "id" | "created_at" | "updated_at"> = { ...address, user_id };
+  const addressToInsert: Omit<
+    Tables<"addresses">,
+    "id" | "created_at" | "updated_at"
+  > = { ...address, user_id };
   const { data, error } = await supabase
     .from("addresses")
     .insert(addressToInsert)
@@ -36,7 +50,13 @@ export async function addAddress(address: Omit<Tables<"addresses">, "id" | "user
   return data[0] as AddressWithId;
 }
 
-export async function updateAddress(id: string, updates: Partial<UserAddress>, user_id: string, supabase: SupabaseClient): Promise<AddressWithId | null> {
+export async function updateAddress(
+  id: string,
+  updates: Partial<UserAddress>,
+  user_id: string,
+  supabas: SupabaseClient
+): Promise<AddressWithId | null> {
+  const supabase = createClient();
   if (!user_id) {
     throw new Error("User not authenticated.");
   }
@@ -49,10 +69,14 @@ export async function updateAddress(id: string, updates: Partial<UserAddress>, u
   if (error) {
     throw new Error(error.message || "Failed to update address.");
   }
-  return data && data.length > 0 ? data[0] as AddressWithId : null;
+  return data && data.length > 0 ? (data[0] as AddressWithId) : null;
 }
 
-export async function deleteAddress(id: string, user_id: string, supabase: SupabaseClient): Promise<boolean> {
+export async function deleteAddress(
+  id: string,
+  user_id: string,
+  supabase: SupabaseClient
+): Promise<boolean> {
   if (!user_id) {
     throw new Error("User not authenticated.");
   }
@@ -65,4 +89,4 @@ export async function deleteAddress(id: string, user_id: string, supabase: Supab
     throw new Error(error.message || "Failed to delete address.");
   }
   return true;
-} 
+}

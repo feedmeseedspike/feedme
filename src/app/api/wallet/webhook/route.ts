@@ -2,11 +2,15 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { supabase } from "src/lib/supabaseClient";
 import axios from "axios";
+import admin from "@/utils/firebase/admin";
 
 export async function POST(request: Request) {
   try {
     // Verify Paystack webhook signature
     const body = await request.json();
+    console.log({
+      body: body.data,
+    });
     const hash = crypto
       .createHmac("sha512", process.env.PAYSTACK_SECRET_KEY as string)
       .update(JSON.stringify(body))
@@ -22,13 +26,13 @@ export async function POST(request: Request) {
     if (body.event === "charge.success") {
       console.log("charge success");
       const { reference, amount, metadata } = body.data;
-      console.log({ reference, amount, metadata });
+      console.log({ amount, metadata });
 
       // Update transaction status
       const { data: transaction, error: txError } = await supabase
         .from("transactions")
         .update({ payment_status: "successful" })
-        .eq("reference", reference)
+        .eq("reference", metadata.orderId)
         .eq("user_id", metadata.user_id)
         .select()
         .single();
@@ -41,8 +45,16 @@ export async function POST(request: Request) {
         if (metadata.type === "wallet_funding") {
           await handleWalletFunding(metadata, amount);
         } else if (metadata.type === "direct_payment") {
-          await handleDirectPayment(metadata, amount, reference);
+          await handleDirectPayment(metadata, amount, metadata.orderId);
         }
+
+        // Send push notification
+        await sendPushNotification(
+          metadata.user_id,
+          metadata.type,
+          amount,
+          metadata
+        );
       }
     }
 
@@ -97,33 +109,15 @@ async function handleDirectPayment(
       reference: reference,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", metadata.orderId)
+    .eq("order_id", metadata.orderId)
     .eq("user_id", metadata.user_id);
 
   if (orderError) throw orderError;
 
-  // Handle referral voucher if applicable
-  // if (metadata.autoAppliedReferralVoucher && metadata.user_id) {
-  //   try {
-  //     await fetch(`${process.env.NEXT_PUBLIC_SITE_URL!}/api/referral/status`, {
-  //       method: "PATCH",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({
-  //         userId: metadata.user_id,
-  //         status: "qualified",
-  //         referred_discount_given: true,
-  //       }),
-  //     });
-  //     console.log("Referral status updated successfully");
-  //   } catch (err) {
-  //     console.error("Failed to update referral status after order:", err);
-  //   }
-  // }
-
   // Send order confirmation emails to admin and user
   try {
     const emailRes = await axios.post(
-      process.env.NEXT_PUBLIC_SITE_URL!+ "/api/email/send-order-confirmation",
+      `${process.env.NEXT_PUBLIC_SITE_URL!}/api/email/send-order-confirmation`,
       {
         adminEmail: "orders.feedmeafrica@gmail.com",
         userEmail: metadata.userEmail,
@@ -145,6 +139,7 @@ async function handleDirectPayment(
           serviceCharge: metadata.serviceCharge,
           totalAmount: metadata.subtotal,
           totalAmountPaid: metadata.totalAmountPaid,
+          userid: metadata.user_id,
         },
       }
     );
@@ -162,4 +157,78 @@ async function handleDirectPayment(
   }
 
   console.log(`Order ${metadata.orderId} marked as paid and processed`);
+}
+
+async function sendPushNotification(
+  userId: string,
+  paymentType: string,
+  amount: number,
+  metadata: any
+) {
+  try {
+    // Fetch all FCM tokens for the user (web and mobile)
+    const { data: tokens, error: tokenError } = await supabase
+      .from("fcm_tokens")
+      .select("fcm_token, device_type")
+      .eq("user_id", userId);
+
+    console.log({ tokenError, tokens });
+
+    if (tokenError || !tokens || tokens.length === 0) {
+      console.error("No FCM tokens found for user:", userId);
+      return;
+    }
+
+    // Prepare notification message based on payment type
+    let title: string, body: string;
+    if (paymentType === "wallet_funding") {
+      title = "Wallet Funded";
+      body = `Your wallet has been funded with N${amount / 100}.`;
+    } else if (paymentType === "direct_payment") {
+      title = "Order Confirmed";
+      body = `Your order #${metadata.orderId} for N${amount / 100} has been confirmed!`;
+    } else {
+      return; // Skip if payment type is unrecognized
+    }
+
+    // Send notification to all user devices
+    const message = {
+      notification: { title, body },
+      tokens: tokens.map((token) => token.fcm_token), // Multi-device support
+    };
+
+    try {
+      // Use sendToDevice for multiple tokens
+      const response = await admin.messaging().sendEachForMulticast(message);
+      console.log("Push notification sent:", response);
+
+      // Log failed tokens (e.g., expired or invalid)
+      if (response.failureCount > 0) {
+        response.responses.forEach((resp: any, idx: any) => {
+          if (!resp.success) {
+            console.error(
+              `Failed to send to token ${tokens[idx].fcm_token}:`,
+              resp.error.message
+            );
+            // Optionally delete invalid tokens
+            if (
+              resp.error.code === "messaging/registration-token-not-registered"
+            ) {
+              supabase
+                .from("fcm_tokens")
+                .delete()
+                .eq("fcm_token", tokens[idx].fcm_token)
+                .then(() =>
+                  console.log(`Deleted invalid token: ${tokens[idx].fcm_token}`)
+                );
+            }
+          }
+        });
+      }
+    } catch (err: any) {
+      console.error("Error sending push notification:", err.message);
+    }
+  } catch (err: any) {
+    console.error("Error in sendPushNotification:", err.message);
+  }
 }

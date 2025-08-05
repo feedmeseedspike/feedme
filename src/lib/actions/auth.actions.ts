@@ -5,15 +5,23 @@ import { revalidatePath } from "next/cache";
 import { formatError } from "src/lib/utils";
 import { createClient } from "src/utils/supabase/server";
 import { Tables } from "src/utils/database.types";
-import supabaseAdmin from '@/utils/supabase/admin';
+import supabaseAdmin from "@/utils/supabase/admin";
 
-export interface AuthSuccess<T> { success: true; data: T; }
-interface AuthFailure { success: false; error: { message: string } | string; }
+export interface AuthSuccess<T> {
+  success: true;
+  data: T;
+}
+interface AuthFailure {
+  success: false;
+  error: { message: string } | string;
+}
 
 export type RegisterUserReturn = AuthSuccess<any> | AuthFailure;
 export type SignInUserReturn = AuthSuccess<any> | AuthFailure;
 export type SignOutUserReturn = { success: true };
-export type GetUserReturn = (Tables<'profiles'> & { email: string | null }) | null;
+export type GetUserReturn =
+  | (Tables<"profiles"> & { email: string | null })
+  | null;
 export type UpdatePasswordReturn = AuthSuccess<any> | AuthFailure;
 
 // Example usage of sendEmail for password reset:
@@ -25,7 +33,12 @@ export type UpdatePasswordReturn = AuthSuccess<any> | AuthFailure;
 // });
 
 // Sign Up
-export async function registerUser(userData: { name: string; email: string; password: string; avatar_url?: string }): Promise<RegisterUserReturn> {
+export async function registerUser(userData: {
+  name: string;
+  email: string;
+  password: string;
+  avatar_url?: string;
+}): Promise<RegisterUserReturn> {
   const supabase = await createClient();
 
   try {
@@ -34,48 +47,78 @@ export async function registerUser(userData: { name: string; email: string; pass
       email: userData.email,
       password: userData.password,
       options: {
-        data: { display_name: userData.name, name: userData.name, avatar_url: userData.avatar_url },
+        data: {
+          display_name: userData.name,
+          name: userData.name,
+          avatar_url: userData.avatar_url,
+        },
         emailRedirectTo: process.env.NEXT_PUBLIC_SITE_URL + "/auth/callback",
       },
     });
 
     if (signUpError) {
-      if (signUpError.message.includes('User already registered')) {
-        return { success: false, error: { message: 'This email is already registered. Try signing in instead.' } };
+      if (signUpError.message.includes("User already registered")) {
+        return {
+          success: false,
+          error: {
+            message:
+              "This email is already registered. Try signing in instead.",
+          },
+        };
       }
       return { success: false, error: { message: signUpError.message } };
     }
 
     if (!data.user) {
-      return { success: false, error: { message: 'Failed to create user account' } };
+      return {
+        success: false,
+        error: { message: "Failed to create user account" },
+      };
     }
 
     // Create wallet for the new user
     await supabase
-      .from('wallets')
-      .insert({ user_id: data.user.id, balance: 0, currency: 'NGN' });
+      .from("wallets")
+      .insert({ user_id: data.user.id, balance: 0, currency: "NGN" });
 
     return { success: true, data };
   } catch (error: any) {
-    return { success: false, error: { message: error?.message || 'Something went wrong' } };
+    return {
+      success: false,
+      error: { message: error?.message || "Something went wrong" },
+    };
   }
 }
 
 // Sign In
-export async function signInUser(credentials: { email: string; password: string }): Promise<SignInUserReturn> {
+export async function signInUser(credentials: {
+  email: string;
+  password: string;
+}): Promise<SignInUserReturn> {
   // Enforce single sign-in method: block email/password login for Google users
   try {
     // Fetch the first page of users (up to 1000, adjust if needed)
-    const { data, error: userQueryError } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    const { data, error: userQueryError } =
+      await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
     if (userQueryError) {
-      return { success: false, error: { message: 'Error checking user provider.' } };
+      return {
+        success: false,
+        error: { message: "Error checking user provider." },
+      };
     }
     if (data && data.users && data.users.length > 0) {
       const user = data.users.find((u: any) => u.email === credentials.email);
       if (user) {
         const providers = user.app_metadata?.providers;
-        if (providers && Array.isArray(providers) && providers.includes('google')) {
-          return { success: false, error: { message: 'Incorrect email or password.' } };
+        if (
+          providers &&
+          Array.isArray(providers) &&
+          providers.includes("google")
+        ) {
+          return {
+            success: false,
+            error: { message: "Incorrect email or password." },
+          };
         }
       }
     }
@@ -89,22 +132,23 @@ export async function signInUser(credentials: { email: string; password: string 
       email: credentials.email,
       password: credentials.password,
     });
-    
-    if (error) throw error;
 
+    if (error) throw error;
 
     return { success: true, data };
   } catch (error: any) {
     if (
       error.message &&
-      error.message.toLowerCase().includes('invalid login credentials')
+      error.message.toLowerCase().includes("invalid login credentials")
     ) {
-      return { success: false, error: { message: 'Incorrect email or password.' } };
+      return {
+        success: false,
+        error: { message: "Incorrect email or password." },
+      };
     }
     return { success: false, error: formatError(error.message) };
   }
 }
-
 
 // Sign Out
 export async function signOutUser(): Promise<SignOutUserReturn> {
@@ -121,14 +165,16 @@ export async function signOutUser(): Promise<SignOutUserReturn> {
 export async function getUser(): Promise<GetUserReturn> {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (!user) return null;
 
     const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', user.id)
+      .from("profiles")
+      .select("*")
+      .eq("user_id", user.id)
       .single();
 
     if (profile) {
@@ -138,10 +184,18 @@ export async function getUser(): Promise<GetUserReturn> {
     // Fallback: use the auth user if no profile row
     return {
       user_id: user.id,
-      display_name: typeof user.user_metadata?.display_name === 'string' ? user.user_metadata.display_name : (typeof user.email === 'string' ? user.email : null),
-      avatar_url: typeof user.user_metadata?.avatar_url === 'string' ? user.user_metadata.avatar_url : null,
+      display_name:
+        typeof user.user_metadata?.display_name === "string"
+          ? user.user_metadata.display_name
+          : typeof user.email === "string"
+            ? user.email
+            : null,
+      avatar_url:
+        typeof user.user_metadata?.avatar_url === "string"
+          ? user.user_metadata.avatar_url
+          : null,
       birthday: null,
-      created_at: typeof user.created_at === 'string' ? user.created_at : null,
+      created_at: typeof user.created_at === "string" ? user.created_at : null,
       favorite_fruit: null,
       is_staff: null,
       role: null,
@@ -153,16 +207,49 @@ export async function getUser(): Promise<GetUserReturn> {
   }
 }
 
+// Get User Data (Persist Login)
+export async function getTransaction(id: string): Promise<any> {
+  try {
+    const supabase = await createClient();
+
+    const {
+      data: transactions,
+      error: txError,
+      count,
+    } = await supabase
+      .from("transactions")
+      .select("*", { count: "exact" })
+      .eq("user_id", id)
+      .order("created_at", { ascending: false });
+
+    if (txError) {
+      throw txError;
+    }
+
+    return transactions;
+  } catch (error) {
+    return null;
+  }
+}
+
 // Request Password Reset
 // Direct Password Reset (without token)
-export async function updatePassword(currentPassword: string, newPassword: string): Promise<UpdatePasswordReturn> {
+export async function updatePassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<UpdatePasswordReturn> {
   const supabase = await createClient();
   try {
     // Get the current user's email to verify the current password
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
     if (userError || !user?.email) {
-      throw new Error(userError?.message || "User not authenticated or email not found.");
+      throw new Error(
+        userError?.message || "User not authenticated or email not found."
+      );
     }
 
     // Verify current password by attempting to sign in with email and current password
@@ -172,8 +259,11 @@ export async function updatePassword(currentPassword: string, newPassword: strin
     });
 
     if (signInError) {
-      if (signInError.message.includes('Invalid login credentials')) {
-        return { success: false, error: { message: 'Incorrect current password' } };
+      if (signInError.message.includes("Invalid login credentials")) {
+        return {
+          success: false,
+          error: { message: "Incorrect current password" },
+        };
       }
       throw signInError;
     }
@@ -204,11 +294,13 @@ export async function requestPasswordReset(email: string) {
     }
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error?.message || 'Something went wrong.' };
+    return { success: false, error: error?.message || "Something went wrong." };
   }
 }
 
-export async function resetPassword(newPassword: string): Promise<UpdatePasswordReturn> {
+export async function resetPassword(
+  newPassword: string
+): Promise<UpdatePasswordReturn> {
   const supabase = await createClient();
   try {
     const { data, error } = await supabase.auth.updateUser({
@@ -219,6 +311,9 @@ export async function resetPassword(newPassword: string): Promise<UpdatePassword
     }
     return { success: true, data };
   } catch (error: any) {
-    return { success: false, error: { message: error?.message || "Failed to reset password." } };
+    return {
+      success: false,
+      error: { message: error?.message || "Failed to reset password." },
+    };
   }
 }

@@ -21,10 +21,24 @@ export const POST = authMiddleware(
         localGovernment,
         deliveryFee,
         serviceCharge,
-        subtotal,
+        subtotal
       } = await request.json();
 
-      console.log({ email, amount, type, orderId });
+      console.log({
+        email,
+        amount,
+        type,
+        orderId,
+        autoAppliedReferralVoucher,
+        customerName,
+        customerPhone,
+        itemsOrdered,
+        deliveryAddress,
+        localGovernment,
+        deliveryFee,
+        serviceCharge,
+        subtotal,
+      });
 
       // Validate common fields
       if (!email || !amount || !type) {
@@ -101,14 +115,14 @@ export const POST = authMiddleware(
         };
 
         // Update the order with pending status (we'll add reference after Paystack response)
-        const { error: orderUpdateError } = await supabase
-          .from("orders")
-          .update({ payment_status: "Pending" })
-          .eq("id", orderId);
+        // const { error: orderUpdateError } = await supabase
+        //   .from("orders")
+        //   .update({ payment_status: "Pending" })
+        //   .eq("id", orderId);
 
-        if (orderUpdateError) {
-          console.error("Failed to update order status:", orderUpdateError);
-        }
+        // if (orderUpdateError) {
+        //   console.error("Failed to update order status:", orderUpdateError);
+        // }
       } else {
         return NextResponse.json(
           {
@@ -124,7 +138,6 @@ export const POST = authMiddleware(
         "Paystack Secret Key present:",
         !!process.env.PAYSTACK_SECRET_KEY
       );
-
       // Initialize Paystack transaction
       const transactionData = await paystack.initializeTransaction({
         email,
@@ -134,14 +147,17 @@ export const POST = authMiddleware(
       });
 
       // Save transaction with type-specific data
-      const transactionRecord:any = {
+      const transactionRecord: any = {
         user_id,
-        transaction_id: transactionData.data.reference,
+        transaction_id: orderId,
         amount,
         currency: "NGN",
         payment_status: "pending",
-        reference: transactionData.data.reference,
+        reference: orderId,
+        order_id: orderId,
       };
+
+     
 
       // Add wallet_id for funding transactions
       if (type === "wallet_funding" && wallet) {
@@ -152,16 +168,20 @@ export const POST = authMiddleware(
         .from("transactions")
         .insert(transactionRecord);
 
+    
+
       if (txError) {
         throw new Error(`Failed to save transaction: ${txError.message}`);
       }
+
+   
 
       // Update order with Paystack reference for direct payments
       if (type === "direct_payment") {
         const { error: orderUpdateError } = await supabase
           .from("orders")
-          .update({ reference: transactionData.data.reference })
-          .eq("id", orderId);
+          .update({ reference: orderId })
+          .eq("order_id", orderId);
 
         if (orderUpdateError) {
           console.error(
@@ -174,7 +194,7 @@ export const POST = authMiddleware(
       return NextResponse.json({
         access_code: transactionData.data.access_code,
         authorization_url: transactionData.data.authorization_url,
-        reference: transactionData.data.reference,
+        reference: orderId,
         type: type, // Return the type for frontend handling
       });
     } catch (error: any) {
