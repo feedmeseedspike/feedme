@@ -53,12 +53,33 @@ export async function getProductByTag({
   tag: string;
 }) {
   const supabase = await createClient(); // Initialize client inside the function
+  if (tag === "new-arrival") {
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .eq("is_published", true)
+      .limit(limit);
+    if (error) throw error;
+    return data;
+  } else {
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .contains("tags", [tag])
+      .eq("is_published", true)
+      .limit(limit);
+    if (error) throw error;
+    return data;
+  }
+}
+
+export async function getBundle() {
+  const supabase = await createClient(); // Initialize client inside the function
   const { data, error } = await supabase
-    .from("products")
+    .from("bundles")
     .select("*")
-    .contains("tags", [tag])
-    .eq("is_published", true)
-    .limit(limit);
+    .order("created_at", { ascending: false })
   if (error) throw error;
   return data;
 }
@@ -66,6 +87,13 @@ export async function getProductByTag({
 export async function getCategory() {
   const supabase = await createClient(); // Initialize client inside the function
   const { data, error } = await supabase.from("categories").select("*");
+  if (error) throw error;
+  return data;
+}
+
+export async function getBanner() {
+  const supabase = await createClient(); // Initialize client inside the function
+  const { data, error } = await supabase.from("banners").select("*");
   if (error) throw error;
   return data;
 }

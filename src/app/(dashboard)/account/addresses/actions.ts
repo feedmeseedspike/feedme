@@ -4,7 +4,12 @@ import { getUser } from "src/lib/actions/auth.actions";
 import { Tables } from "src/utils/database.types";
 
 // Add Address
-export async function addAddressAction(addressData: Omit<Tables<"addresses">, "id" | "user_id" | "created_at" | "updated_at">) {
+export async function addAddressAction(
+  addressData: Omit<
+    Tables<"addresses">,
+    "id" | "user_id" | "created_at" | "updated_at"
+  >
+) {
   const user = await getUser();
   if (!user) throw new Error("Not authenticated");
   const supabase = await createClient();
@@ -18,7 +23,10 @@ export async function addAddressAction(addressData: Omit<Tables<"addresses">, "i
 }
 
 // Update Address
-export async function updateAddressAction(id: string, updates: Partial<Tables<"addresses">>) {
+export async function updateAddressAction(
+  id: string,
+  updates: Partial<Tables<"addresses">>
+) {
   const user = await getUser();
   if (!user) throw new Error("Not authenticated");
   const supabase = await createClient();
@@ -47,6 +55,16 @@ export async function deleteAddressAction(id: string) {
   return { success: true };
 }
 
+export async function getDeliveryLocations() {
+  // Fetch delivery locations server-side
+  const supabase = await createClient();
+  const { data: locations, error: locationsError } = await supabase
+    .from("delivery_locations")
+    .select("*");
+  if (locationsError) throw locationsError;
+  return locations;
+}
+
 // Fetch all addresses for the current user (server-side)
 export async function getAddressesForCurrentUser() {
   const user = await getUser();
@@ -69,8 +87,4 @@ export async function getAddressesForCurrentUser() {
     country: addr.country ?? "",
     phone: addr.phone ?? "",
   }));
-} 
- 
- 
- 
- 
+}

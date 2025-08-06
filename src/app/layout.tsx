@@ -19,6 +19,7 @@ import { PathnameProvider } from "@components/shared/pathname-provider";
 import { getReferralStatus } from "@/queries/referrals";
 import Script from "next/script";
 import RegisterSW from "../components/register-sw";
+import RegisterPush from "@/app/registerToken/page";
 
 const DynamicReferralBanner = dynamic(
   () => import("@components/shared/ReferralBanner"),
@@ -268,8 +269,7 @@ export default async function RootLayout({
             src="https://www.googletagmanager.com/ns.html?id=GTM-W8L93RRF"
             height="0"
             width="0"
-            style={{ display: "none", visibility: "hidden" }}
-          ></iframe>
+            style={{ display: "none", visibility: "hidden" }}></iframe>
         </noscript>
         <noscript>
           <img
@@ -280,6 +280,7 @@ export default async function RootLayout({
           />
         </noscript>
         <NextTopLoader showSpinner={false} color="#F0800F" shadow="0" />
+        {user?.user_id && <RegisterPush userId={user.user_id} />}
         <LocationProvider>
           <ReactQueryClientProvider>
             <ReduxProvider>
@@ -287,8 +288,7 @@ export default async function RootLayout({
                 <CartMergeProvider>
                   <SupabaseAuthProvider
                     initialSession={session}
-                    initialUser={user}
-                  >
+                    initialUser={user}>
                     <CustomScrollbar>
                       <PathnameProvider hasReferralStatus={hasReferralStatus}>
                         {children}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendMail } from "@/utils/email/mailer";
 import { renderOrderEmails } from "@/utils/email/renderOrderEmails";
+import { sendPushNotification } from "@/lib/actions/pushnotification.action";
 
 interface OrderEmailRequestBody {
   adminEmail: string;
@@ -11,10 +12,15 @@ interface OrderEmailRequestBody {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json() as OrderEmailRequestBody;
+    const body = (await req.json()) as OrderEmailRequestBody;
+    console.log({ body });
     const { adminEmail, userEmail, adminOrderProps, userOrderProps } = body;
+    console.log(userOrderProps);
 
-    const { adminHtml, userHtml } = await renderOrderEmails({ adminOrderProps, userOrderProps });
+    const { adminHtml, userHtml } = await renderOrderEmails({
+      adminOrderProps,
+      userOrderProps,
+    });
 
     // Send to admin
     await sendMail({
@@ -25,12 +31,21 @@ export async function POST(req: Request) {
     // Send to user
     await sendMail({
       to: userEmail,
-      subject: `Order Confirmed! Your Fresh Produce is On Its Way` ,
+      subject: `Order Confirmed! Your Fresh Produce is On Its Way`,
       html: userHtml,
     });
 
+    // await sendPushNotification(
+    //   "Success",
+    //   "Order created successfully!",
+    //   userOrderProps.userid
+    // );
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
   }
-} 
+}

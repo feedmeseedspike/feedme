@@ -21,7 +21,7 @@ export async function sendMail({
   from?: string;
 }) {
   const mailOptions = {
-    from: from || "orders.feedmeafrica@gmail.com",
+    from: "orders.feedmeafrica@gmail.com",
     to,
     subject,
     html,
