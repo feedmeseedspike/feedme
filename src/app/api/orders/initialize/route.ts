@@ -78,16 +78,14 @@ export const POST = authMiddleware(
       if (txError || !order) throw txError;
 
       // Insert order items
-      const orderItemsToInsert = (orderDetails.cartItems || []).map(
-        (item: any) => ({
-          order_id: order.id,
-          product_id: item.productId || null,
-          bundle_id: item.bundleId || null,
-          quantity: item.quantity,
-          price: item.price,
-          option: item.option || null,
-        })
-      );
+      const orderItemsToInsert = (orderDetails.cartItems || []).map((item: any) => ({
+        order_id: order.id,
+        product_id: item.productId || null,
+        bundle_id: item.bundleId || null,
+        quantity: item.quantity,
+        price: item.price,
+        option: item.option || null,
+      }));
       if (orderItemsToInsert.length > 0) {
         const { error: orderItemsError } = await supabase
           .from("order_items")
@@ -103,12 +101,8 @@ export const POST = authMiddleware(
       if (orderItemsError) throw orderItemsError;
 
       // Fetch product and bundle names
-      const productIds = orderItems
-        .filter((i) => i.product_id)
-        .map((i) => i.product_id);
-      const bundleIds = orderItems
-        .filter((i) => i.bundle_id)
-        .map((i) => i.bundle_id);
+      const productIds = orderItems.filter(i => i.product_id).map(i => i.product_id);
+      const bundleIds = orderItems.filter(i => i.bundle_id).map(i => i.bundle_id);
 
       const { data: products } = await supabase
         .from("products")
@@ -120,14 +114,15 @@ export const POST = authMiddleware(
         .select("id, name")
         .in("id", bundleIds.length ? bundleIds : ["dummy"]);
 
-      const itemsOrdered = orderItems.map((item) => {
+      const itemsOrdered = orderItems.map(item => {
         let title = "";
         if (item.product_id) {
           title =
             products?.find((p) => p.id === item.product_id)?.name || "Product";
         } else if (item.bundle_id) {
-          title =
-            bundles?.find((b) => b.id === item.bundle_id)?.name || "Bundle";
+          title = bundles?.find(b => b.id === item.bundle_id)?.name || "Bundle";
+        } else if (item.offer_id) {
+          title = offers?.find(o => o.id === item.offer_id)?.title || "Offer";
         }
         return {
           title,

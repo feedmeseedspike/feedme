@@ -18,11 +18,14 @@ export default function ProductSortSelector({
   sortOrders: { value: string; name: string }[]
   sort: string
   params: {
+    q?: string
+    category?: string
     tag?: string
     price?: string
     rating?: string
     sort?: string
     page?: string
+    season?: string
   }
 }) {
   const router = useRouter()
@@ -53,7 +56,13 @@ export default function ProductSortSelector({
     // For other pages use the existing getFilterUrl
     router.push(getFilterUrl({ 
       params: newParams, 
-      sort: value 
+      category: newParams.category,
+      tag: newParams.tag,
+      price: newParams.price,
+      rating: newParams.rating,
+      sort: value,
+      page: newParams.page,
+      season: newParams.season
     }))
   }
 

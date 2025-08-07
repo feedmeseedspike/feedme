@@ -12,27 +12,28 @@ import { mapSupabaseProductToIProductInput } from "src/lib/utils";
 import { redirect } from "next/navigation";
 
 export default async function CartPage() {
-  // 1. Get authenticated user
+  // 1. Get authenticated user (optional for anonymous cart)
   const user = await getUser();
-  if (!user) {
-    return redirect("/login?callbackUrl=/cart");
-  }
 
   // 2. Create server-side supabase client
   const supabase = await createClient();
 
-  // 3. Fetch cart items
-  const cartResult = await getCart();
-  const cartItems = cartResult.success ? cartResult.data : [];
-
-  // 4. Fetch purchased product IDs
+  // 3. Fetch cart items (only for authenticated users)
+  let cartItems: any[] = [];
   let purchasedProductIds: string[] = [];
-  try {
-    purchasedProductIds = await getUsersPurchasedProductIds(
-      supabase,
-      user.user_id
-    );
-  } catch {}
+  
+  if (user) {
+    const cartResult = await getCart();
+    cartItems = cartResult.success ? cartResult.data : [];
+
+    // 4. Fetch purchased product IDs
+    try {
+      purchasedProductIds = await getUsersPurchasedProductIds(
+        supabase,
+        user.user_id
+      );
+    } catch {}
+  }
 
   // 5. Fetch all categories
   let allCategories: any[] = [];

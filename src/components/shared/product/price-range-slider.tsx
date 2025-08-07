@@ -19,25 +19,29 @@ const PriceRangeSlider = ({
   const priceParam = searchParams?.get("price");
   const isInitialMount = useRef(true);
 
-  // Calculate step based on maxPrice
-  const step = Math.max(100, Math.floor(maxPrice / 100));
-
   // Initialize values from URL or defaults
   const [values, setValues] = useState<[number, number]>(() => {
     if (priceParam && priceParam !== "all") {
       const [min, max] = priceParam.split("-").map(Number);
       if (!isNaN(min) && !isNaN(max)) {
-        return [Math.max(0, min), Math.min(maxPrice, max)];
+        return [Math.max(0, min), max]; // Don't limit max to current maxPrice
       }
     }
-    return [0, maxPrice];
+    return [0, maxPrice || 10000]; // Fallback if maxPrice is 0
   });
+
+  // Calculate step based on maxPrice
+  const step = Math.max(100, Math.floor((maxPrice || 10000) / 100));
+  
+  // Ensure maxPrice is always at least as large as the current max value
+  const effectiveMaxPrice = Math.max(maxPrice || 10000, values[1]);
 
   const debouncedUpdateUrl = useMemo(
     () =>
       debounce((newValues: [number, number]) => {
         const newParams = new URLSearchParams(searchParams?.toString() || "");
-        if (newValues[0] === 0 && newValues[1] === maxPrice) {
+        // Only remove price param if it's at the true defaults (0 and the full available maxPrice)
+        if (newValues[0] === 0 && newValues[1] >= effectiveMaxPrice) {
           newParams.delete("price");
         } else {
           newParams.set("price", `${newValues[0]}-${newValues[1]}`);
@@ -47,7 +51,7 @@ const PriceRangeSlider = ({
           scroll: false,
         });
       }, 500),
-    [maxPrice, pathname, router, searchParams]
+    [effectiveMaxPrice, pathname, router, searchParams]
   );
 
   // Handle value changes
@@ -68,13 +72,15 @@ const PriceRangeSlider = ({
 
     if (priceParam) {
       if (priceParam === "all") {
-        setValues([0, maxPrice]);
+        setValues([0, maxPrice || 10000]);
       } else {
         const [min, max] = priceParam.split("-").map(Number);
         if (!isNaN(min) && !isNaN(max)) {
-          setValues([Math.max(0, min), Math.min(maxPrice, max)]);
+          setValues([Math.max(0, min), max]); // Don't limit max value
         }
       }
+    } else {
+      setValues([0, maxPrice || 10000]);
     }
   }, [priceParam, maxPrice]);
 
@@ -94,7 +100,7 @@ const PriceRangeSlider = ({
       <Range
         step={step}
         min={0}
-        max={maxPrice}
+        max={effectiveMaxPrice}
         values={values}
         onChange={handleChange}
         renderTrack={({ props, children }) => (
@@ -102,11 +108,11 @@ const PriceRangeSlider = ({
             {...props}
             className="h-1 w-full bg-gray-200 rounded-full"
             style={{
-              background: `linear-gradient(to right, #1B6013 ${
-                (values[0] / maxPrice) * 100
-              }%, #1B6013 ${(values[0] / maxPrice) * 100}%, #1B6013 ${
-                (values[1] / maxPrice) * 100
-              }%, #e5e7eb ${(values[1] / maxPrice) * 100}%)`,
+              background: `linear-gradient(to right, #e5e7eb 0%, #e5e7eb ${
+                (values[0] / effectiveMaxPrice) * 100
+              }%, #1B6013 ${(values[0] / effectiveMaxPrice) * 100}%, #1B6013 ${
+                (values[1] / effectiveMaxPrice) * 100
+              }%, #e5e7eb ${(values[1] / effectiveMaxPrice) * 100}%, #e5e7eb 100%)`,
             }}
           >
             {children}
@@ -122,7 +128,7 @@ const PriceRangeSlider = ({
       <div className="flex justify-between mt-2">
         <span className="text-xs text-gray-500">Min: {formatNaira(0)}</span>
         <span className="text-xs text-gray-500">
-          Max: {formatNaira(maxPrice)}
+          Max: {formatNaira(effectiveMaxPrice)}
         </span>
       </div>
     </div>

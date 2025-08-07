@@ -10,6 +10,8 @@ import { getUser } from "src/lib/actions/auth.actions";
 import { Skeleton } from "@components/ui/skeleton";
 import { Suspense } from "react";
 import ProductSliderSkeleton from "@components/shared/product/product-slider-skeleton";
+import BundleSlider from "@components/shared/bundles/bundle-slider";
+import FeaturedOffers from "@components/shared/home/FeaturedOffers";
 import {
   QueryClient,
   dehydrate,
@@ -23,6 +25,7 @@ import {
   getProductsByTagQuery,
   getUsersPurchasedProductIds,
 } from "src/queries/products";
+import { fetchBundles } from "src/queries/bundles";
 import { mapSupabaseProductToIProductInput, CategoryData } from "src/lib/utils";
 import { IProductInput } from "src/types";
 
@@ -193,6 +196,14 @@ export default async function Home() {
         return data || [];
       },
     }),
+    queryClient.prefetchQuery({
+      queryKey: ["bundles", { limit: 10 }],
+      queryFn: () =>
+        fetchBundles({
+          itemsPerPage: 10,
+          publishedStatus: ["published"],
+        }),
+    }),
   ]);
 
   let { data: rawCategories, error: allCategoriesError } =
@@ -284,6 +295,7 @@ export default async function Home() {
               <TopCategories />
             </Suspense>
 
+
             <div className="flex flex-col gap-6">
               <Suspense fallback={<ProductSliderSkeleton />}>
                 <ProductSlider
@@ -293,6 +305,17 @@ export default async function Home() {
                   limit={10}
                 />
               </Suspense>
+
+              <Suspense 
+              fallback={<ProductSliderSkeleton />}>
+              <BundleSlider
+                title="Bundles "
+                href="/bundles"
+                limit={10}
+              />
+            </Suspense>
+
+              <FeaturedOffers />
 
               <Suspense fallback={<ProductSliderSkeleton />}>
                 <ProductSlider

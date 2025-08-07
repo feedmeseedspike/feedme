@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { AiOutlineMinus, AiOutlinePlus } from "react-icons/ai";
 import { useUser } from "src/hooks/useUser";
+import { useAnonymousCart } from "src/hooks/useAnonymousCart";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useCartQuery,
@@ -49,6 +50,7 @@ interface ProductOption {
 interface GroupedCartItem {
   product?: CartItem["products"];
   bundle?: CartItem["bundles"];
+  offer?: CartItem["offers"];
   options: Record<string, CartItem>;
 }
 
@@ -70,16 +72,12 @@ const CartProductGroupDisplay = React.memo(
     handleRemoveItem,
     handleQuantityChange,
   }: CartProductGroupDisplayProps) => {
+    const groupName = productGroup.product?.name || productGroup.bundle?.name || productGroup.offer?.title || "Product";
+    
     return (
       <div key={productId} className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
-          {productGroup.product?.name || productGroup.bundle?.name ? (
-            <p className="h6-bold text-lg">
-              {productGroup.product?.name || productGroup.bundle?.name}
-            </p>
-          ) : (
-            <div className="h-6 w-32 bg-gray-200 animate-pulse rounded" />
-          )}
+          <p className="h6-bold text-lg">{groupName}</p>
         </div>
         {Object.entries(productGroup.options).map(
           ([optionKey, item]: [string, CartItem]) => (
@@ -111,11 +109,13 @@ interface CartItemDisplayProps {
 const CartItemDisplay = React.memo(
   ({ item, handleRemoveItem, handleQuantityChange }: CartItemDisplayProps) => {
     const productOption = isProductOption(item.option) ? item.option : null;
+    const productName = productOption?.name || item.products?.name || item.bundles?.name || item.offers?.title || "Product";
+    const productSlug = item.products?.slug || item.product_id || item.bundle_id || item.offer_id || "";
 
     return (
       <React.Fragment>
         <div className="flex items-center gap-3 sm:gap-4 overflow-y-visible">
-          <Link href={`/product/${item.products?.slug}`}>
+          <div>
             <Image
               width={64}
               height={64}
@@ -123,17 +123,16 @@ const CartItemDisplay = React.memo(
                 productOption?.image ||
                 item.products?.images?.[0] ||
                 item.bundles?.thumbnail_url ||
+                item.offers?.image_url ||
                 "/placeholder.png"
               }
-              alt={item.products?.name || item.bundles?.name || "Product image"}
+              alt={productName}
               className="h-[64px] rounded-[5px] border-[0.31px] border-[#DDD5DD] object-contain"
             />
-          </Link>
+          </div>
           <div className="flex flex-col gap-[6px] w-full">
             <div className="flex justify-between">
-              {productOption?.name && (
-                <p className="h6-light !text-[14px]">{productOption.name}</p>
-              )}
+              <p className="h6-light !text-[14px]">{productName}</p>
               <Trash2Icon
                 className="size-4 cursor-pointer"
                 onClick={() => handleRemoveItem(item as CartItem)}
@@ -143,11 +142,17 @@ const CartItemDisplay = React.memo(
             <div className="flex justify-between items-center">
               <p className="text-[#101828] font-bold">
                 {formatNaira(
-                  (isProductOption(item.option) &&
-                  item.option.price !== undefined &&
-                  item.option.price !== null
-                    ? item.option.price
-                    : item.price) || 0
+                  (() => {
+                    if (item.offer_id && item.offers) {
+                      return item.offers.price_per_slot || item.price || 0;
+                    } else if (isProductOption(item.option) &&
+                      item.option.price !== undefined &&
+                      item.option.price !== null) {
+                      return item.option.price;
+                    } else {
+                      return item.price || 0;
+                    }
+                  })()
                 )}{" "}
               </p>
               <div className="flex items-center gap-2 sm:gap-4">
@@ -193,25 +198,115 @@ function isProductOption(option: unknown): option is ProductOption {
 const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
   const router = useRouter();
   const { data: cartItems, isLoading, isError, error } = useCartQuery();
-  const user = useUser();
+  const { user } = useUser();
+  const anonymousCart = useAnonymousCart();
   const prefetchCart = usePrefetchCart();
   const queryClient = useQueryClient();
 
   const [open, setOpen] = useState(false);
+  const [forceUpdate, setForceUpdate] = useState(0);
 
-  const items: CartItem[] = useMemo(() => cartItems || [], [cartItems]);
+  // Listen for anonymous cart updates
+  useEffect(() => {
+    if (!user) {
+      const handleAnonymousCartUpdate = () => {
+        setForceUpdate(prev => prev + 1);
+      };
+      
+      const handleStorageChange = (e: StorageEvent) => {
+        if (e.key === 'feedme_anonymous_cart') {
+          setForceUpdate(prev => prev + 1);
+        }
+      };
+      
+      window.addEventListener('anonymousCartUpdated', handleAnonymousCartUpdate);
+      window.addEventListener('storage', handleStorageChange);
+      return () => {
+        window.removeEventListener('anonymousCartUpdated', handleAnonymousCartUpdate);
+        window.removeEventListener('storage', handleStorageChange);
+      };
+    }
+  }, [user]);
+
+  const [enrichedAnonItems, setEnrichedAnonItems] = useState<CartItem[]>([]);
+
+  // Enrich anonymous cart items with offer data
+  useEffect(() => {
+    if (!user && anonymousCart.items && anonymousCart.items.length > 0) {
+      const enrichItems = async () => {
+        const enriched = await Promise.all(
+          anonymousCart.items.map(async (anonItem) => {
+            let offerData = null;
+            
+            // Fetch offer data if this is an offer item
+            if (anonItem.offer_id) {
+              try {
+                const response = await fetch(`/api/offers/${anonItem.offer_id}`);
+                if (response.ok) {
+                  const { offer } = await response.json();
+                  offerData = offer;
+                }
+              } catch (error) {
+                console.error(`Failed to fetch offer data for ${anonItem.offer_id}:`, error);
+              }
+            }
+
+            return {
+              id: anonItem.id,
+              product_id: anonItem.product_id,
+              bundle_id: anonItem.bundle_id,
+              offer_id: anonItem.offer_id || null,
+              quantity: anonItem.quantity,
+              price: anonItem.price,
+              option: anonItem.option,
+              created_at: anonItem.created_at,
+              user_id: null,
+              cart_id: null,
+              products: null,
+              bundles: null,
+              offers: offerData
+            } as CartItem;
+          })
+        );
+        
+        setEnrichedAnonItems(enriched);
+      };
+
+      enrichItems();
+    } else if (!user) {
+      setEnrichedAnonItems([]);
+    }
+  }, [user, anonymousCart.items, forceUpdate]);
+
+  const items: CartItem[] = useMemo(() => {
+    if (user) {
+      return cartItems || [];
+    } else {
+      return enrichedAnonItems;
+    }
+  }, [user, cartItems, enrichedAnonItems]);
 
   const subtotal = useMemo(
     () =>
       items.reduce(
-        (acc, item) =>
-          acc +
-          ((isProductOption(item.option) &&
-          item.option.price !== undefined &&
-          item.option.price !== null
-            ? item.option.price
-            : item.price) || 0) *
-            item.quantity,
+        (acc, item) => {
+          let itemPrice = 0;
+          
+          if (item.offer_id && item.offers) {
+            // For offers, use price_per_slot
+            itemPrice = item.offers.price_per_slot || item.price || 0;
+          } else if (isProductOption(item.option) &&
+            item.option.price !== undefined &&
+            item.option.price !== null) {
+            // For products with options, use option price
+            itemPrice = item.option.price;
+          } else {
+            // For regular products and bundles, use item price
+            itemPrice = item.price || 0;
+          }
+          
+          return acc + (itemPrice * item.quantity);
+        },
         0
       ),
     [items]
@@ -322,6 +417,16 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
           }
           // For bundles, use a consistent key for options as there isn't a product option
           acc[key].options["bundle-item"] = item;
+        } else if (item.offer_id) {
+          key = `offer-${item.offer_id}`;
+          if (!acc[key]) {
+            acc[key] = {
+              offer: item.offers,
+              options: {},
+            };
+          }
+          // For offers, use a consistent key for options as there isn't a product option
+          acc[key].options["offer-item"] = item;
         }
         return acc;
       },
@@ -341,14 +446,23 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
   const handleRemoveItem = useCallback(
     async (itemToRemove: CartItem) => {
       try {
-        if (itemToRemove.id) {
-          await removeCartItemMutation.mutateAsync(itemToRemove.id);
+        if (user) {
+          // Authenticated user - use API
+          if (itemToRemove.id) {
+            await removeCartItemMutation.mutateAsync(itemToRemove.id);
+          }
+        } else {
+          // Anonymous user - use local storage
+          if (itemToRemove.id) {
+            anonymousCart.removeItem(itemToRemove.id);
+            setForceUpdate(prev => prev + 1);
+          }
         }
       } catch (error: any) {
         console.error("Failed to remove item:", error);
       }
     },
-    [removeCartItemMutation]
+    [removeCartItemMutation, user, anonymousCart]
   );
 
   const handleQuantityChange = useCallback(
@@ -358,83 +472,119 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
         : itemToUpdate.quantity - 1;
 
       if (newQuantity >= 0) {
-        const existingItemInCart = items.find(
-          (cartItem) => cartItem.id === itemToUpdate.id
-        );
-
-        if (!existingItemInCart) {
-          console.error(
-            "AddToCart: handleQuantityChange - Item not found in current cart data.",
-            itemToUpdate
+        if (user) {
+          // Authenticated user - use API
+          const existingItemInCart = items.find(
+            (cartItem) => cartItem.id === itemToUpdate.id
           );
-          return;
-        }
 
-        if (newQuantity === 0) {
-          if (existingItemInCart.id) {
+          if (!existingItemInCart) {
+            console.error(
+              "Cart: handleQuantityChange - Item not found in current cart data.",
+              itemToUpdate
+            );
+            return;
+          }
+
+          if (newQuantity === 0) {
+            if (existingItemInCart.id) {
+              try {
+                await removeCartItemMutation.mutateAsync(existingItemInCart.id);
+              } catch (error: any) {
+                console.error("Failed to remove item via quantity 0:", error);
+              }
+            }
+          } else {
+            const itemsForMutation: ItemToUpdateMutation[] = items
+              .map((cartItem) => {
+                const productOption = isProductOption(cartItem.option)
+                  ? cartItem.option
+                  : null;
+                const priceToUse =
+                  (productOption?.price !== undefined &&
+                  productOption?.price !== null
+                    ? productOption.price
+                    : cartItem.price) || 0;
+
+                // Determine if it's a bundle, offer, or product
+                const isBundle =
+                  cartItem.bundle_id !== null && cartItem.bundle_id !== undefined;
+                const isOffer =
+                  cartItem.offer_id !== null && cartItem.offer_id !== undefined;
+
+                return {
+                  product_id: isBundle || isOffer ? null : cartItem.product_id || "", // Set to null for bundles and offers
+                  bundle_id: isBundle ? cartItem.bundle_id : null, // Set to bundle_id for bundles, null for others
+                  offer_id: isOffer ? cartItem.offer_id : null, // Set to offer_id for offers, null for others
+                  option: isBundle || isOffer ? null : cartItem.option, // Set option to null for bundles and offers
+                  quantity:
+                    cartItem.id === itemToUpdate.id
+                      ? newQuantity
+                      : cartItem.quantity,
+                  price: priceToUse,
+                };
+              })
+              .filter((item) => item.quantity > 0);
+
             try {
-              await removeCartItemMutation.mutateAsync(existingItemInCart.id);
+              await updateCartMutation.mutateAsync(itemsForMutation);
+              // Invalidate and refetch cart data after successful update
+              queryClient.invalidateQueries({ queryKey: cartQueryKey });
             } catch (error: any) {
-              console.error("Failed to remove item via quantity 0:", error);
+              console.error("Failed to update cart item quantity:", error);
             }
           }
         } else {
-          const itemsForMutation: ItemToUpdateMutation[] = items
-            .map((cartItem) => {
-              const productOption = isProductOption(cartItem.option)
-                ? cartItem.option
-                : null;
-              const priceToUse =
-                (productOption?.price !== undefined &&
-                productOption?.price !== null
-                  ? productOption.price
-                  : cartItem.price) || 0;
-
-              // Determine if it's a bundle or a product
-              const isBundle =
-                cartItem.bundle_id !== null && cartItem.bundle_id !== undefined;
-
-              return {
-                product_id: isBundle ? null : cartItem.product_id || "", // Set to null for bundles
-                bundle_id: isBundle ? cartItem.bundle_id : null, // Set to bundle_id for bundles, null for products
-                option: isBundle ? null : cartItem.option, // Set option to null for bundles
-                quantity:
-                  cartItem.id === itemToUpdate.id
-                    ? newQuantity
-                    : cartItem.quantity,
-                price: priceToUse,
-              };
-            })
-            .filter((item) => item.quantity > 0);
-
+          // Anonymous user - use local storage
           try {
-            await updateCartMutation.mutateAsync(itemsForMutation);
-            // Invalidate and refetch cart data after successful update
-            queryClient.invalidateQueries({ queryKey: cartQueryKey });
+            if (newQuantity === 0) {
+              anonymousCart.removeItem(itemToUpdate.id);
+            } else {
+              await anonymousCart.updateQuantity(itemToUpdate.id, newQuantity);
+            }
+            setForceUpdate(prev => prev + 1);
           } catch (error: any) {
-            console.error("Failed to update cart item quantity:", error);
+            console.error("Failed to update anonymous cart quantity:", error);
+            showToast(error.message || "Failed to update quantity", "error");
           }
         }
       }
     },
-    [items, removeCartItemMutation, updateCartMutation, queryClient]
+    [items, removeCartItemMutation, updateCartMutation, queryClient, user, anonymousCart, showToast]
   );
 
   // Remove voucher from localStorage when clearing cart
   const handleClearCart = useCallback(async () => {
     try {
-      await clearCartMutation.mutateAsync();
+      if (user) {
+        await clearCartMutation.mutateAsync();
+      } else {
+        anonymousCart.clearCart();
+      }
       localStorage.removeItem("voucherCode");
       localStorage.removeItem("voucherDiscount");
     } catch (error: any) {
       console.error("Failed to clear cart:", error);
     }
-  }, [clearCartMutation]);
+  }, [clearCartMutation, user, anonymousCart]);
 
-  const totalQuantity = useMemo(
-    () => items.reduce((acc, item) => acc + item.quantity, 0),
-    [items]
-  );
+  const totalQuantity = useMemo(() => {
+    if (user) {
+      return items.reduce((acc, item) => acc + item.quantity, 0);
+    } else {
+      // For anonymous users, use the enriched items to get accurate count
+      return items.reduce((acc, item) => acc + item.quantity, 0);
+    }
+  }, [items, user, forceUpdate]);
+
+  // Check if cart is loading (for authenticated users) or anonymous cart is loading
+  const isCartLoading = useMemo(() => {
+    if (user) {
+      return isLoading;
+    } else {
+      return anonymousCart.isLoading;
+    }
+  }, [user, isLoading, anonymousCart.isLoading]);
 
   const totalAmount = useMemo(
     () => subtotal - voucherDiscount,
@@ -457,14 +607,21 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
     return (
       <div className="relative" onMouseEnter={prefetchCart}>
         <ShoppingCart className="size-[24px]" />
-        {items.length > 0 && (
+        {isCartLoading ? (
+          <div
+            className="absolute -top-2 -right-2 bg-gray-200 w-5 h-5 flex items-center justify-center rounded-full animate-pulse"
+            style={{ minWidth: 20, minHeight: 20 }}
+          >
+            <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+          </div>
+        ) : totalQuantity > 0 ? (
           <span
             className="absolute -top-2 -right-2 bg-[#D0D5DD] w-5 h-5 flex items-center justify-center rounded-full text-xs text-white font-semibold "
             style={{ minWidth: 20, minHeight: 20 }}
           >
             {totalQuantity}
           </span>
-        )}
+        ) : null}
       </div>
     );
   }
@@ -478,14 +635,21 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
         onMouseEnter={prefetchCart}
       >
         <ShoppingCart className="size-[24px]" />
-        {items.length > 0 && (
+        {isCartLoading ? (
+          <div
+            className="absolute -top-2 -right-[6px] sm:-right-2 bg-gray-200 w-5 h-5 flex items-center justify-center rounded-full animate-pulse"
+            style={{ minWidth: 20, minHeight: 20 }}
+          >
+            <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+          </div>
+        ) : totalQuantity > 0 ? (
           <span
             className="absolute -top-2 -right-[6px] sm:-right-2 bg-[#D0D5DD] w-5 h-5 flex items-center justify-center rounded-full text-[10px] sm:text-xs text-white font-semibold "
             style={{ minWidth: 20, minHeight: 20 }}
           >
             {totalQuantity}
           </span>
-        )}
+        ) : null}
       </div>
     );
   }
@@ -500,14 +664,21 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
           onClick={() => setOpen(true)}
         >
           <ShoppingCart className="size-[24px]" />
-          {items.length > 0 && (
+          {isCartLoading ? (
+            <div
+              className="absolute -top-2 -right-[6px] sm:-right-2 bg-gray-200 w-5 h-5 flex items-center justify-center rounded-full animate-pulse"
+              style={{ minWidth: 20, minHeight: 20 }}
+            >
+              <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+            </div>
+          ) : totalQuantity > 0 ? (
             <span
               className="absolute -top-2 -right-[6px] sm:-right-2 bg-[#D0D5DD] w-5 h-5 flex items-center justify-center rounded-full text-[10px] sm:text-xs text-white font-semibold "
               style={{ minWidth: 20, minHeight: 20 }}
             >
               {totalQuantity}
             </span>
-          )}
+          ) : null}
         </div>
       </SheetTrigger>
       <SheetContent className="flex flex-col gap-4 md:!max-w-xl">
@@ -516,9 +687,15 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
             <ArrowLeft className="size-[22px]" />
           </SheetClose>
           <SheetTitle className="h2-bold flex-1 text-center">
-            Cart ({totalQuantity})
+            {isCartLoading ? (
+              <>
+                Cart (<div className="inline-block w-4 h-4 bg-gray-200 rounded animate-pulse"></div>)
+              </>
+            ) : (
+              `Cart (${totalQuantity})`
+            )}
           </SheetTitle>
-          {items.length > 0 && (
+          {totalQuantity > 0 && (
             <p
               className="badge cursor-pointer w-fit select-none"
               onClick={handleClearCart}
@@ -579,7 +756,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
           {isLoading && <p>Loading cart...</p>}
           {isError && <p>Error loading cart: {error?.error}</p>}
 
-          {!isLoading && !isError && items.length === 0 ? (
+          {!isLoading && !isError && items.length === 0 && totalQuantity === 0 ? (
             <div className="text-center text-gray-500 mt-10">
               <p className="text-lg font-semibold">Your cart is empty.</p>
               <p className="text-sm text-gray-400">
@@ -601,7 +778,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
           )}
         </div>
 
-        {items.length > 0 && (
+        {totalQuantity > 0 && (
           <SheetFooter className="mt-auto">
             <div className="w-full">
               <Separator className="my-2" />

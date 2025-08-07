@@ -360,19 +360,24 @@ export default function EditProductClient({
 
   // Edit Option
   const handleOptionEditSubmit = async (optionData: any) => {
+    console.log("EditProductClient handleOptionEditSubmit called with:", optionData);
     setOptionModalLoading(true);
     try {
       let imageUrl = optionData.image;
+      console.log("Initial imageUrl:", imageUrl, "Type:", typeof imageUrl, "instanceof File:", imageUrl instanceof File);
       const currentOptions = form.getValues("options") || [];
       if (
         !imageUrl &&
         editOptionIndex !== null &&
         currentOptions[editOptionIndex]
       ) {
+        console.log("No new image, using existing image from option:", currentOptions[editOptionIndex].image);
         imageUrl = currentOptions[editOptionIndex].image;
       }
       if (imageUrl instanceof File) {
+        console.log("Uploading File object to storage...");
         imageUrl = await uploadProductImageClient(imageUrl, "option-images");
+        console.log("Upload completed, new URL:", imageUrl);
       }
       const updatedOption = {
         ...optionData,

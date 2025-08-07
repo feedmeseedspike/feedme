@@ -23,7 +23,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
 import LogoutButton from "@components/shared/header/LogoutButton";
 import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Brain, Tag } from "lucide-react";
 import { Button } from "@components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@components/ui/sheet";
 import { getUnviewedOrdersCount } from "src/queries/orders";
@@ -103,9 +103,11 @@ export function AdminSidebar({ user }: AppSidebarProps) {
     { title: "Products", url: "/admin/products", icon: Product },
     { title: "Categories", url: "/admin/categories", icon: Product },
     { title: "Bundles", url: "/admin/bundles", icon: Bundle },
+    { title: "Offers", url: "/admin/offers", icon: Tag },
     { title: "Agents", url: "/admin/agents", icon: User },
     { title: "Customers", url: "/admin/customers", icon: Profile },
     { title: "Promotions", url: "/admin/promotions", icon: Product },
+    { title: "AI Analytics", url: "/admin/ai-analytics", icon: Brain },
     {
       title: "Delivery Locations",
       url: "/admin/delivery-locations",

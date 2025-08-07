@@ -5,8 +5,52 @@ const nextConfig = {
       allowedOrigins: ["c7jc2vm8-3000.uks1.devtunnels.ms", "localhost:3000","shopfeedme.com","www.shopfeedme.com"],
     },
   },
+  
+  async redirects() {
+    return [
+      // Redirect www to non-www
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: 'www.shopfeedme.com',
+          },
+        ],
+        destination: 'https://shopfeedme.com/:path*',
+        permanent: true,
+      },
+      // Redirect HTTP to HTTPS
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'header',
+            key: 'x-forwarded-proto',
+            value: 'http',
+          },
+        ],
+        destination: 'https://shopfeedme.com/:path*',
+        permanent: true,
+      },
+    ]
+  },
+
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-Robots-Tag',
+            value: 'index, follow',
+          },
+        ],
+      },
+    ]
+  },
   images: {
-    unoptimized: process.env.NODE_ENV === 'production',
+    // unoptimized: process.env.NODE_ENV === 'production',
     remotePatterns: [
       {
         protocol: "https",
@@ -116,12 +160,12 @@ const nextConfig = {
         port: "",
         pathname: "**/*",
       },
-      // {
-      //   protocol: "https",
-      //   hostname: "qafbcposwxopeoiuwyji.supabase.co",
-      //   port: "",
-      //   pathname: "**/*",
-      // },
+      {
+        protocol: "https",
+        hostname: "qafbcposwxopeoiuwyji.supabase.co",
+        port: "",
+        pathname: "**/*",
+      },
       {
         protocol: "https",
         hostname: "fyldgskqxrfmrhyluxmw.supabase.co",
@@ -134,23 +178,31 @@ const nextConfig = {
         port: "",
         pathname: "**/*",
       },
+      {
+        protocol: "https",
+        hostname: "images.pexels.com",
+        port: "",
+        pathname: "**/*",
+      },
     ],
-    domains: ["images.unsplash.com", "images.pexels.com"],
   },
   webpack(config) {
     config.module.rules.push({
       test: /\.svg$/,
       use: ["@svgr/webpack"],
     });
+    
+    // Ignore specific warnings in webpack
+    config.ignoreWarnings = [
+      (warning) =>
+        typeof warning.message === "string" &&
+        warning.message.includes(
+          "Critical dependency: the request of a dependency is an expression"
+        ),
+    ];
+    
     return config;
   },
-  ignoreWarnings: [
-    (warning) =>
-      typeof warning.message === "string" &&
-      warning.message.includes(
-        "Critical dependency: the request of a dependency is an expression"
-      ),
-  ],
 };
 
 export default nextConfig;

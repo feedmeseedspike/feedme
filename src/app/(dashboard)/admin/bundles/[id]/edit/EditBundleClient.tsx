@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useRouter } from "next/navigation";
 import { Input } from "@components/ui/input";
 import { Button } from "@components/ui/button";
 import { Label } from "@components/ui/label";
@@ -22,14 +23,13 @@ import AddProductModal from "@components/admin/addProductModal";
 import { Tables } from "@utils/database.types";
 import { formatNaira } from "src/lib/utils";
 import { useToast } from "../../../../../../hooks/useToast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateBundleWithProducts } from "../../../../../../queries/bundles";
+import { updateBundleAction, uploadBundleImageAction } from "../../build/actions";
 import CustomBreadcrumb from "@components/shared/breadcrumb";
+import { RichTextEditor } from "@components/ui/rich-text-editor";
 
 const EditBundleSchema = z.object({
   name: z.string().min(1, "Bundle name is required"),
   price: z.coerce.number().min(0, "Price must be a positive number"),
-  discount: z.coerce.number().min(0).max(100).optional().nullable(),
   bundle_image: z.instanceof(FileList).optional(),
 });
 
@@ -43,11 +43,13 @@ export default function EditBundleClient({
   allProducts: Tables<"products">[];
 }) {
   const { showToast } = useToast();
-  const queryClient = useQueryClient();
+  const router = useRouter();
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [bundleProducts, setBundleProducts] = useState<Tables<"products">[]>(
     initialBundle.products || []
   );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [description, setDescription] = useState(initialBundle.description || "");
 
   const {
     register,
@@ -59,7 +61,6 @@ export default function EditBundleClient({
     defaultValues: {
       name: initialBundle.name || "",
       price: initialBundle.price || 0,
-      discount: initialBundle.discount_percentage || undefined,
     },
   });
 
@@ -67,27 +68,44 @@ export default function EditBundleClient({
     reset({
       name: initialBundle.name || "",
       price: initialBundle.price || 0,
-      discount: initialBundle.discount_percentage || undefined,
     });
-    setBundleProducts(
-      Array.isArray(initialBundle.products) ? initialBundle.products : []
-    );
+    setDescription(initialBundle.description || "");
+    const products = Array.isArray(initialBundle.products) ? initialBundle.products : [];
+    setBundleProducts(products);
   }, [initialBundle, reset]);
 
-  const updateBundleMutation = useMutation({
-    mutationFn: updateBundleWithProducts,
-    onSuccess: () => {
-      showToast("Bundle updated successfully.", "success");
-      queryClient.invalidateQueries({
-        queryKey: ["bundle", initialBundle.id] as const,
-      });
-      queryClient.invalidateQueries({ queryKey: ["bundles"] as const });
-    },
-    onError: (error: any) => {
-      console.error("Error updating bundle:", error);
-      showToast(`Failed to update bundle: ${error.message}`, "error");
-    },
-  });
+  // Function to handle bundle update with image upload
+  const updateBundleWithProducts = async (data: {
+    id: string;
+    name: string;
+    price: number;
+    description?: string;
+    imageFile?: File;
+    productIds: string[];
+  }) => {
+    let thumbnail = null;
+    
+    // Upload image if provided, otherwise keep existing image
+    if (data.imageFile) {
+      const formData = new FormData();
+      formData.append('file', data.imageFile);
+      formData.append('bucketName', 'bundle-thumbnails');
+      thumbnail = await uploadBundleImageAction(formData);
+    } else if (initialBundle.thumbnail_url) {
+      // Keep existing image
+      thumbnail = { url: initialBundle.thumbnail_url };
+    }
+    
+    // Update the bundle
+    return await updateBundleAction({
+      id: data.id,
+      name: data.name,
+      price: data.price,
+      description: data.description,
+      thumbnail,
+      productIds: data.productIds,
+    });
+  };
 
   const handleAddProductsClick = () => {
     setIsAddProductModalOpen(true);
@@ -108,23 +126,84 @@ export default function EditBundleClient({
 
   const handleRemoveProduct = (productId: string) => {
     setBundleProducts(
-      bundleProducts.filter((product) => product.id !== productId)
+      bundleProducts.filter((product) => 
+        product.id !== productId && ((product as any).originalId || product.id) !== productId
+      )
     );
   };
 
-  const onSubmit = (data: EditBundleFormValues) => {
+  // Helper function to get the correct price display for products
+  const getProductPriceDisplay = (product: Tables<"products">) => {
+    // If product has a selected option, use that option's price
+    if ((product as any).selectedOption && product.options && Array.isArray(product.options)) {
+      const selectedOption = product.options.find((opt: any) => opt.name === (product as any).selectedOption);
+      if (selectedOption && (selectedOption as any).price) {
+        return (selectedOption as any).price;
+      }
+    }
+
+    // If product has a base price, use it
+    if (product.price && product.price > 0) {
+      return product.price;
+    }
+    
+    // If product has options, show the minimum price
+    if (product.options && Array.isArray(product.options) && product.options.length > 0) {
+      const prices = product.options
+        .map((option: any) => option.price)
+        .filter((price: any) => typeof price === 'number' && price > 0);
+      
+      if (prices.length > 0) {
+        return Math.min(...prices);
+      }
+    }
+    
+    return 0;
+  };
+
+  const onSubmit = async (data: EditBundleFormValues) => {
     if (bundleProducts.length === 0) {
       showToast("Please add at least one product to the bundle.", "error");
       return;
     }
-    updateBundleMutation.mutate({
-      id: initialBundle.id,
-      name: data.name,
-      price: data.price,
-      discount: data.discount,
-      imageFile: data.bundle_image?.[0],
-      productIds: bundleProducts.map((p) => p.id),
-    });
+    
+    setIsSubmitting(true);
+    
+    try {
+      const productIds = bundleProducts.map((p) => (p as any).originalId || p.id);
+      
+      // Validate UUID format before sending to server
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const invalidIds = productIds.filter(id => !uuidRegex.test(id));
+      
+      if (invalidIds.length > 0) {
+        console.error('Invalid product IDs detected:', invalidIds);
+        console.error('Bundle products with invalid IDs:', bundleProducts.filter(p => invalidIds.includes(p.id)));
+        showToast(`Invalid product IDs detected: ${invalidIds.join(', ')}`, "error");
+        return;
+      }
+      
+      const updateData = {
+        id: initialBundle.id,
+        name: data.name,
+        price: data.price,
+        description: description,
+        imageFile: data.bundle_image?.[0],
+        productIds: productIds,
+      };
+      
+      console.log('Updating bundle with data:', updateData);
+      
+      await updateBundleWithProducts(updateData);
+      
+      showToast("Bundle updated successfully.", "success");
+      router.push("/admin/bundles");
+    } catch (error: any) {
+      console.error("Error updating bundle:", error);
+      showToast(`Failed to update bundle: ${error.message}`, "error");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -170,28 +249,37 @@ export default function EditBundleClient({
               )}
             </div>
             <div>
-              <Label htmlFor="bundle-discount">Discount (%)</Label>
-              <Input
-                id="bundle-discount"
-                type="number"
-                step="1"
-                placeholder="e.g., 5"
-                {...register("discount")}
+              <RichTextEditor
+                label="Description"
+                value={description}
+                onChange={setDescription}
+                placeholder="Enter bundle description with rich text formatting..."
               />
-              {errors.discount && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.discount.message}
-                </p>
-              )}
             </div>
             <div>
               <Label htmlFor="bundle-image">Bundle Image(s)</Label>
+              {initialBundle.thumbnail_url && (
+                <div className="mb-3">
+                  <p className="text-sm text-gray-600 mb-2">Current image:</p>
+                  <div className="relative w-32 h-32 rounded-md overflow-hidden border">
+                    <Image
+                      src={initialBundle.thumbnail_url}
+                      alt={initialBundle.name || "Bundle image"}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                </div>
+              )}
               <Input
                 id="bundle-image"
                 type="file"
                 accept="image/*"
                 {...register("bundle_image")}
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Leave empty to keep current image, or select a new image to replace it.
+              </p>
               {errors.bundle_image && (
                 <p className="text-red-500 text-sm mt-1">
                   {errors.bundle_image.message}
@@ -216,7 +304,8 @@ export default function EditBundleClient({
               isOpen={isAddProductModalOpen}
               onClose={() => setIsAddProductModalOpen(false)}
               onSubmit={handleProductsSelected}
-              existingProductIds={bundleProducts.map((p) => p.id)}
+              existingProductIds={bundleProducts.map((p) => (p as any).originalId || p.id)}
+              allProducts={allProducts}
             />
             <div className="overflow-x-auto">
               <Table>
@@ -256,8 +345,17 @@ export default function EditBundleClient({
                             <div className="w-12 h-12 rounded-md bg-gray-200" />
                           )}
                         </TableCell>
-                        <TableCell>{product.name}</TableCell>
-                        <TableCell>{formatNaira(product.price)}</TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{product.name}</div>
+                            {(product as any).selectedOption && (
+                              <div className="text-xs text-gray-500">
+                                Option: {(product as any).selectedOption}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{formatNaira(getProductPriceDisplay(product))}</TableCell>
                         <TableCell>
                           <Button
                             type="button"
@@ -279,11 +377,9 @@ export default function EditBundleClient({
         <Button
           type="submit"
           className="bg-[#1B6013] text-white"
-          disabled={updateBundleMutation.status === "pending"}
+          disabled={isSubmitting}
         >
-          {updateBundleMutation.status === "pending"
-            ? "Saving..."
-            : "Save Changes"}
+          {isSubmitting ? "Saving..." : "Save Changes"}
         </Button>
       </form>
     </div>

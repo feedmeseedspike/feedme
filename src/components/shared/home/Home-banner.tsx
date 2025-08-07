@@ -69,21 +69,35 @@ const Banner = () => {
               .map(
                 (banner: Banner) =>
                   banner.active && (
-                    <Link
-                      href={`/${banner.tag}`}
+                    <div
                       key={banner.id!}
-                      className="w-1/2 md:w-full md:max-w-[445px] aspect-[35/15] h-1/2 md:h-full hover:opacity-90 transition-opacity"
+                      className="w-1/2 md:w-full md:max-w-[445px] aspect-[35/15] h-1/2 md:h-full"
                     >
-                      <Image
-                        src={banner.image_url}
-                        alt={`${banner.tag} banner`}
-                        // fill
-                        sizes="(max-width: 768px) 50vw, 445px"
-                        width={445}
-                        height={700}
-                        className="h-full w-full object-cover"
-                      />
-                    </Link>
+                      {(banner as any).link_url && (banner as any).link_url.trim() !== '' ? (
+                        <Link 
+                          href={(banner as any).link_url} 
+                          className="block h-full w-full hover:opacity-90 transition-opacity"
+                        >
+                          <Image
+                            src={banner.image_url}
+                            alt={`${banner.tag} banner`}
+                            sizes="(max-width: 768px) 50vw, 445px"
+                            width={445}
+                            height={700}
+                            className="h-full w-full object-contain"
+                          />
+                        </Link>
+                      ) : (
+                        <Image
+                          src={banner.image_url}
+                          alt={`${banner.tag} banner`}
+                          sizes="(max-width: 768px) 50vw, 445px"
+                          width={445}
+                          height={700}
+                          className="h-full w-full object-contain"
+                        />
+                      )}
+                    </div>
                   )
               )
           ) : (

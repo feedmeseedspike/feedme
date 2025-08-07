@@ -13,6 +13,7 @@ import {
   cartQueryKey,
 } from "src/queries/cart";
 import { useUser } from "src/hooks/useUser";
+import { useAnonymousCart } from "src/hooks/useAnonymousCart";
 import { Loader2 } from "lucide-react";
 import { showToast } from "src/lib/utils";
 import { Json } from "src/utils/database.types";
@@ -61,6 +62,7 @@ const AddToCart = React.memo(
 
     const { data: cartItems } = useCartQuery();
     const user = useUser();
+    const anonymousCart = useAnonymousCart();
 
     const updateCartMutation = useUpdateCartMutation();
     const removeCartItemMutation = useRemoveFromCartMutation();
@@ -76,7 +78,44 @@ const AddToCart = React.memo(
     const handleQuantityChange = useCallback(
       async (newQuantity: number) => {
         if (!user) {
-          onAuthRequired?.();
+          // Handle anonymous cart
+          if (newQuantity === 0) {
+            const existingAnonymousItem = anonymousCart.items.find(
+              (cartItem) =>
+                cartItem.product_id === item.id &&
+                JSON.stringify(cartItem.option || null) ===
+                  JSON.stringify(item.option || null)
+            );
+            if (existingAnonymousItem) {
+              anonymousCart.removeItem(existingAnonymousItem.id);
+              showToast(
+                `${item.name}${item.option?.name ? ` (${item.option.name})` : ""} removed from cart`,
+                "info"
+              );
+            }
+          } else {
+            const existingAnonymousItem = anonymousCart.items.find(
+              (cartItem) =>
+                cartItem.product_id === item.id &&
+                JSON.stringify(cartItem.option || null) ===
+                  JSON.stringify(item.option || null)
+            );
+            if (existingAnonymousItem) {
+              anonymousCart.updateQuantity(existingAnonymousItem.id, newQuantity);
+            } else {
+              anonymousCart.addItem(
+                item.bundleId ? null : item.id,
+                newQuantity,
+                item.price,
+                item.option,
+                item.bundleId ? item.id : null
+              );
+            }
+            setQuantity(newQuantity);
+            setShowQuantityControls(true);
+            // Trigger cart update event
+            window.dispatchEvent(new Event('anonymousCartUpdated'));
+          }
           return;
         }
         if (newQuantity < 0) return;
@@ -156,6 +195,8 @@ const AddToCart = React.memo(
               });
             }
             await updateCartMutation.mutateAsync(itemsForMutation);
+            // Invalidate cart query for authenticated users
+            queryClient.invalidateQueries({ queryKey: cartQueryKey });
             onAddToCart?.();
           } catch (error: any) {
             console.error("Failed to update cart:", error);
@@ -171,6 +212,7 @@ const AddToCart = React.memo(
       [
         user,
         cartItems,
+        anonymousCart,
         onAuthRequired,
         item.id,
         item.option,
@@ -195,7 +237,50 @@ const AddToCart = React.memo(
 
     const handleAddToCartClick = useCallback(async () => {
       if (!user) {
-        onAuthRequired?.();
+        // Handle anonymous cart
+        try {
+          if (
+            item.countInStock !== null &&
+            item.countInStock !== undefined &&
+            item.countInStock <= 0
+          ) {
+            return;
+          }
+          if (
+            item.options &&
+            item.options.length > 0 &&
+            (item.selectedOption === undefined ||
+              item.selectedOption === null ||
+              item.selectedOption === "")
+          ) {
+            setMissingOption(true);
+            setTimeout(() => setMissingOption(false), 500);
+            onError?.();
+            return;
+          }
+
+          anonymousCart.addItem(
+            item.bundleId ? null : item.id,
+            1,
+            item.price,
+            item.option,
+            item.bundleId ? item.id : null
+          );
+          
+          setShowQuantityControls(true);
+          setQuantity(1);
+          showToast(
+            `${item.name}${item.option?.name ? ` (${item.option.name})` : ""} added to cart!`,
+            "success"
+          );
+          // Trigger cart update event
+          window.dispatchEvent(new Event('anonymousCartUpdated'));
+          onAddToCart?.();
+        } catch (error: any) {
+          console.error("Failed to add to anonymous cart:", error);
+          showToast("Failed to add to cart.", "error");
+          onError?.();
+        }
         return;
       }
       try {
@@ -263,6 +348,8 @@ const AddToCart = React.memo(
           `${item.name}${item.option?.name ? ` (${item.option.name})` : ""} added to cart!`,
           "success"
         );
+        // Invalidate cart query for authenticated users
+        queryClient.invalidateQueries({ queryKey: cartQueryKey });
         onAddToCart?.();
       } catch (error: any) {
         console.error("Failed to add to cart:", error);
@@ -275,6 +362,7 @@ const AddToCart = React.memo(
       }
     }, [
       user,
+      anonymousCart,
       onAuthRequired,
       item.countInStock,
       item.options,
@@ -291,13 +379,22 @@ const AddToCart = React.memo(
     ]);
 
     const isInCart = useMemo(() => {
-      return (cartItems || []).some(
-        (cartItem) =>
-          cartItem.product_id === item.id &&
-          JSON.stringify(cartItem.option || null) ===
-            JSON.stringify(item.option || null)
-      );
-    }, [cartItems, item.id, item.option]);
+      if (user) {
+        return (cartItems || []).some(
+          (cartItem) =>
+            cartItem.product_id === item.id &&
+            JSON.stringify(cartItem.option || null) ===
+              JSON.stringify(item.option || null)
+        );
+      } else {
+        return anonymousCart.items.some(
+          (cartItem) =>
+            cartItem.product_id === item.id &&
+            JSON.stringify(cartItem.option || null) ===
+              JSON.stringify(item.option || null)
+        );
+      }
+    }, [cartItems, anonymousCart.items, item.id, item.option, user]);
 
     useEffect(() => {
       setShowQuantityControls(isInCart);
@@ -307,23 +404,38 @@ const AddToCart = React.memo(
     }, [isInCart]);
 
     useEffect(() => {
-      const currentItemInCart = (cartItems || []).find(
-        (cartItem) =>
-          cartItem.product_id === item.id &&
-          JSON.stringify(cartItem.option || null) ===
-            JSON.stringify(item.option || null)
-      );
-      if (currentItemInCart) {
-        setQuantity(currentItemInCart.quantity);
-      } else if (!isInCart) {
-        setQuantity(1);
+      if (user) {
+        const currentItemInCart = (cartItems || []).find(
+          (cartItem) =>
+            cartItem.product_id === item.id &&
+            JSON.stringify(cartItem.option || null) ===
+              JSON.stringify(item.option || null)
+        );
+        if (currentItemInCart) {
+          setQuantity(currentItemInCart.quantity);
+        } else if (!isInCart) {
+          setQuantity(1);
+        }
+      } else {
+        const currentAnonymousItem = anonymousCart.items.find(
+          (cartItem) =>
+            cartItem.product_id === item.id &&
+            JSON.stringify(cartItem.option || null) ===
+              JSON.stringify(item.option || null)
+        );
+        if (currentAnonymousItem) {
+          setQuantity(currentAnonymousItem.quantity);
+        } else if (!isInCart) {
+          setQuantity(1);
+        }
       }
-    }, [cartItems, item.id, item.option, isInCart]);
+    }, [cartItems, anonymousCart.items, item.id, item.option, isInCart, user]);
 
     const isOutOfSeason = item.in_season === false;
 
     // Check if cart data is loading
-    if (useCartQuery().isLoading) {
+    const cartQuery = useCartQuery();
+    if (user && cartQuery.isLoading) {
       return (
         <div className="space-y-4">
           <div className="h-6 bg-gray-200 rounded w-20 animate-pulse"></div>{" "}

@@ -11,6 +11,7 @@ import {
 import { SlSocialInstagram } from "react-icons/sl";
 import Waitlist from "@components/shared/WaitList";
 import { ContactModal } from "@components/shared/ContactModal";
+import { EmailModal } from "@components/shared/EmailModal";
 import { toSlug } from "src/lib/utils";
 import {
   Dialog,
@@ -21,6 +22,7 @@ import {
 } from "@components/ui/dialog";
 import { Button } from "@components/ui/button";
 import { Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
 
 const footerData = [
   {
@@ -37,7 +39,7 @@ const footerData = [
     title: "Get Help",
     links: [
       { name: "Chat With Us", href: "/" },
-      { name: "Send An Email", href: "/" },
+      { name: "Send An Email", isEmailModal: true },
     ],
   },
   {
@@ -155,34 +157,53 @@ export default function FooterClient({
                     ) : (
                       categories
                         .filter((category) => !!category.id)
-                        .map((category) => (
-                          <li key={category.id} className="text-sm">
+                        .map((category, index) => (
+                          <motion.li 
+                            key={category.id} 
+                            className="text-sm"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05, duration: 0.3 }}
+                          >
                             <Link
                               href={`/category/${toSlug(category?.title)}`}
-                              className="hover:underline hover:underline-offset-2"
+                              className="relative inline-block after:content-[''] after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:origin-bottom-right after:scale-x-0 after:bg-[#1B6013] after:transition-transform after:duration-300 after:ease-[cubic-bezier(0.65,0.05,0.36,1)] hover:after:origin-bottom-left hover:after:scale-x-100 w-fit"
                             >
                               {category.title}
                             </Link>
-                          </li>
+                          </motion.li>
                         ))
                     )}
                   </ul>
                 </div>
                 {footerData.map((section, index) => (
-                  <div key={index}>
+                  <motion.div 
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1, duration: 0.4 }}
+                  >
                     <h3 className="font-semibold text-[#101828] mb-4 uppercase text-sm">
                       {section.title}
                     </h3>
                     <ul className="space-y-2">
                       {section.links.map((link, linkIndex) => (
-                        <li key={linkIndex} className="text-sm">
-                          {link.isModal ? (
+                        <motion.li 
+                          key={linkIndex} 
+                          className="text-sm"
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: (index * 0.1) + (linkIndex * 0.05), duration: 0.3 }}
+                        >
+                          {'isModal' in link && link.isModal ? (
                             <ContactModal />
-                          ) : link.href === "/" ? (
+                          ) : 'isEmailModal' in link && link.isEmailModal ? (
+                            <EmailModal />
+                          ) : 'href' in link && link.href === "/" ? (
                             <>
                               <button
                                 type="button"
-                                className="hover:underline hover:underline-offset-2 text-left w-full bg-transparent border-none p-0 m-0 text-inherit cursor-pointer"
+                                className="relative inline-block text-left bg-transparent border-none p-0 m-0 text-inherit cursor-pointer after:content-[''] after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:origin-bottom-right after:scale-x-0 after:bg-[#1B6013] after:transition-transform after:duration-300 after:ease-[cubic-bezier(0.65,0.05,0.36,1)] hover:after:origin-bottom-left hover:after:scale-x-100"
                                 onClick={() => setComingSoonOpen(true)}
                               >
                                 {link.name}
@@ -194,16 +215,16 @@ export default function FooterClient({
                             </>
                           ) : (
                             <a
-                              href={link.href}
-                              className="hover:underline hover:underline-offset-2"
+                              href={'href' in link ? link.href : "/"}
+                              className="relative inline-block after:content-[''] after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:origin-bottom-right after:scale-x-0 after:bg-[#1B6013] after:transition-transform after:duration-300 after:ease-[cubic-bezier(0.65,0.05,0.36,1)] hover:after:origin-bottom-left hover:after:scale-x-100"
                             >
                               {link.name}
                             </a>
                           )}
-                        </li>
+                        </motion.li>
                       ))}
                     </ul>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             </div>
@@ -214,16 +235,39 @@ export default function FooterClient({
           <div className="pb-8 flex flex-col md:flex-row gap-6 items-center justify-between">
             <p>&copy; {year} Seedspike. All rights reserved.</p>
             <div className="flex gap-3">
-              {Icons.map((icon) => (
-                <a
+              {Icons.map((icon, index) => (
+                <motion.a
                   href={icon.href}
                   target="_blank"
                   rel="noreferrer"
                   key={icon.href}
-                  className="text-2xl hover:text-green-600 hover:transition-colors hover:ease-in-out"
+                  className="text-2xl transition-colors duration-300 hover:text-[#1B6013] relative group"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.1, duration: 0.3 }}
+                  whileHover={{ 
+                    scale: 1.2,
+                    y: -2,
+                    transition: { duration: 0.2, type: "spring", stiffness: 400 }
+                  }}
+                  whileTap={{ scale: 0.9 }}
                 >
-                  {icon.icon}
-                </a>
+                  {/* Glow effect */}
+                  <motion.div
+                    className="absolute inset-0 rounded-full bg-[#1B6013]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-md"
+                    initial={false}
+                  />
+                  
+                  <motion.div
+                    whileHover={{ 
+                      rotate: [0, -10, 10, 0],
+                      transition: { duration: 0.4 }
+                    }}
+                    className="relative z-10"
+                  >
+                    {icon.icon}
+                  </motion.div>
+                </motion.a>
               ))}
             </div>
           </div>
