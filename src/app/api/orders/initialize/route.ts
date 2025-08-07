@@ -121,8 +121,6 @@ export const POST = authMiddleware(
             products?.find((p) => p.id === item.product_id)?.name || "Product";
         } else if (item.bundle_id) {
           title = bundles?.find(b => b.id === item.bundle_id)?.name || "Bundle";
-        } else if (item.offer_id) {
-          title = offers?.find(o => o.id === item.offer_id)?.title || "Offer";
         }
         return {
           title,

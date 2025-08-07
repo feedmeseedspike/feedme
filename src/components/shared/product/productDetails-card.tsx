@@ -152,13 +152,9 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
     // Handler to update quantity via mutation
     const handleUpdateCartQuantity = useCallback(
       async (newQuantity: number) => {
-        console.log("ProductDetailsCard: handleUpdateCartQuantity called", { newQuantity, productId: product.id, user: user ? "authenticated" : "anonymous" });
-        
         if (!product.id) return;
 
         if (!user) {
-          console.log("ProductDetailsCard: Using anonymous cart");
-          // Handle anonymous cart
           const existingAnonymousItem = anonymousCart.items.find(
             (item) =>
               item.product_id === product.id &&
@@ -168,7 +164,6 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
 
           if (newQuantity === 0) {
             if (existingAnonymousItem) {
-              console.log("ProductDetailsCard: Removing item from anonymous cart", existingAnonymousItem.id);
               anonymousCart.removeItem(existingAnonymousItem.id);
               showToast(
                 `${product.name}${selectedOptionData?.name ? ` (${selectedOptionData.name})` : ""} removed from cart`,
@@ -177,22 +172,15 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
             }
           } else {
             if (existingAnonymousItem) {
-              console.log("ProductDetailsCard: Updating quantity in anonymous cart", existingAnonymousItem.id, newQuantity);
               anonymousCart.updateQuantity(existingAnonymousItem.id, newQuantity);
             } else {
-              console.log("ProductDetailsCard: Adding new item to anonymous cart", {
-                productId: product.bundleId ? null : product.id,
-                quantity: newQuantity,
-                price: selectedOptionData?.price ?? product.price ?? 0,
-                option: selectedOptionData,
-                bundleId: product.bundleId ? product.id : null
-              });
               anonymousCart.addItem(
                 product.bundleId ? null : product.id,
                 newQuantity,
                 selectedOptionData?.price ?? product.price ?? 0,
                 selectedOptionData as any,
-                product.bundleId ? product.id : null
+                product.bundleId ? product.id : null,
+                null
               );
             }
             showToast(
@@ -215,9 +203,9 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
             return {
               product_id: item.product_id || null,
               bundle_id: item.bundle_id || null,
+              offer_id: item.offer_id || null,
               option: item.option,
               quantity: isTargetItem ? newQuantity : item.quantity,
-              // Use product.price if item.option is null and item.price is not set
               price:
                 (item.option as ProductOption | null)?.price ??
                 item.price ??
@@ -240,11 +228,12 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           itemsForMutation.push({
             product_id: product.bundleId ? null : product.id,
             bundle_id: product.bundleId ? product.id : null,
+            offer_id: null,
             option: selectedOptionData
               ? JSON.parse(JSON.stringify(selectedOptionData))
               : null,
             quantity: newQuantity,
-            price: itemPriceForNew, // Use the determined price
+            price: itemPriceForNew,
           });
         }
 

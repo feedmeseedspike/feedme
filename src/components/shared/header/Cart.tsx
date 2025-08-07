@@ -569,13 +569,8 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
   }, [clearCartMutation, user, anonymousCart]);
 
   const totalQuantity = useMemo(() => {
-    if (user) {
-      return items.reduce((acc, item) => acc + item.quantity, 0);
-    } else {
-      // For anonymous users, use the enriched items to get accurate count
-      return items.reduce((acc, item) => acc + item.quantity, 0);
-    }
-  }, [items, user, forceUpdate]);
+    return items.reduce((acc, item) => acc + item.quantity, 0);
+  }, [items]);
 
   // Check if cart is loading (for authenticated users) or anonymous cart is loading
   const isCartLoading = useMemo(() => {

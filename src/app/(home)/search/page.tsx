@@ -471,7 +471,7 @@ const SearchPage = async (props: {
         <div className="md:col-span-6 space-y-4">
           {q !== "all" && q !== "" ? (
             <div className="bg-white rounded-md p-4 w-full">
-              <h1 className="font-bold text-xl mb-2">Search results for "{q}"</h1>
+              <h1 className="font-bold text-xl mb-2">Search results for &quot;{q}&quot;</h1>
               <div className="text-gray-600">{`Showing ${data.from}-${data.to} of ${data.totalProducts} results`}</div>
             </div>
           ) : category !== "all" ? (

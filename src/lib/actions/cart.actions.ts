@@ -14,6 +14,7 @@ export interface ProductOption {
 // Update CartItem type to include product, bundle, and offer relationships
 export type CartItem = Tables<'cart_items'> &
   {
+    offer_id?: string | null; // Add offer_id property
     products: Tables<'products'> | null;
     bundles: Tables<'bundles'> | null;
     offers: Tables<'offers'> | null; // Add offers relationship
@@ -100,7 +101,7 @@ export type UpdateCartItemsSuccess = { success: true };
 export type UpdateCartItemsFailure = { success: false; error: string };
 
 // Define the structure of the items array expected by the update_cart_items function
-interface ItemToUpdate {
+export interface ItemToUpdate {
   product_id?: string | null;
   bundle_id?: string | null;
   offer_id?: string | null;

@@ -158,7 +158,8 @@ const CartClient: React.FC<CartClientProps> = ({
         user_id: null,
         cart_id: null, // Add missing cart_id property
         products: null,
-        bundles: null
+        bundles: null,
+        offers: null, // Add missing offers property
       } as CartItem));
       
       console.log('Setting items from anonymous cart:', updatedItems);
@@ -176,7 +177,8 @@ const CartClient: React.FC<CartClientProps> = ({
           user_id: null,
           cart_id: null, // Add missing cart_id property
           products: null,
-          bundles: null
+          bundles: null,
+          offers: null, // Add missing offers property
         } as CartItem));
         console.log('Anonymous cart updated:', updatedItems);
         setItems(updatedItems);

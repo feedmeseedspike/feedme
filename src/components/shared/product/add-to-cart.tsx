@@ -108,7 +108,8 @@ const AddToCart = React.memo(
                 newQuantity,
                 item.price,
                 item.option,
-                item.bundleId ? item.id : null
+                item.bundleId ? item.id : null,
+                null
               );
             }
             setQuantity(newQuantity);
@@ -264,7 +265,8 @@ const AddToCart = React.memo(
             1,
             item.price,
             item.option,
-            item.bundleId ? item.id : null
+            item.bundleId ? item.id : null,
+            null
           );
           
           setShowQuantityControls(true);
@@ -308,6 +310,7 @@ const AddToCart = React.memo(
           .map((cartItem) => ({
             product_id: cartItem.product_id || null,
             bundle_id: cartItem.bundle_id || null,
+            offer_id: cartItem.offer_id || null,
             option:
               cartItem.option && typeof cartItem.option === "object"
                 ? JSON.parse(JSON.stringify(cartItem.option))
@@ -333,6 +336,7 @@ const AddToCart = React.memo(
           itemsForMutation.push({
             product_id: item.bundleId ? null : item.id,
             bundle_id: item.bundleId ? item.id : null,
+            offer_id: null,
             option:
               item.option && typeof item.option === "object"
                 ? JSON.parse(JSON.stringify(item.option))
@@ -341,6 +345,7 @@ const AddToCart = React.memo(
             price: item.price,
           });
         }
+        
         await updateCartMutation.mutateAsync(itemsForMutation);
         setShowQuantityControls(true);
         setQuantity(1);
@@ -348,8 +353,9 @@ const AddToCart = React.memo(
           `${item.name}${item.option?.name ? ` (${item.option.name})` : ""} added to cart!`,
           "success"
         );
-        // Invalidate cart query for authenticated users
-        queryClient.invalidateQueries({ queryKey: cartQueryKey });
+        // Invalidate and refetch cart query for authenticated users  
+        await queryClient.invalidateQueries({ queryKey: cartQueryKey });
+        await queryClient.refetchQueries({ queryKey: cartQueryKey });
         onAddToCart?.();
       } catch (error: any) {
         console.error("Failed to add to cart:", error);

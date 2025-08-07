@@ -43,7 +43,7 @@ export const useCartQuery = () => {
       }
       return result.data;
     },
-    staleTime: 1000 * 60 * 5, // Data is considered fresh for 5 minutes
+    staleTime: 0, // Always refetch when invalidated
     gcTime: 1000 * 60 * 30, // Cache is kept for 30 minutes
     refetchOnWindowFocus: true,
     refetchOnMount: true,

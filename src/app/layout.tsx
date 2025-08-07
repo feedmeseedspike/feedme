@@ -49,8 +49,8 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://shopfeedme.com/"),
-  manifest: "/manifest.json", // Added for PWA support
-  themeColor: "#ff6600", // PWA theme color
+  manifest: "/manifest.json", 
+  themeColor: "#ff6600", 
   appleWebApp: {
     capable: true,
     title: "FeedMe",

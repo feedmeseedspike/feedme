@@ -205,6 +205,7 @@ export default function OrdersClient({
     initialData: {
       data: initialOrders.map((order) => ({
         ...order,
+        order_id: order.id ?? null, // Add order_id mapping from id
         delivery_fee: order.delivery_fee ?? null,
         local_government: order.local_government ?? null,
         total_amount_paid: order.total_amount_paid ?? null,
