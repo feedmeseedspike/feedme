@@ -147,6 +147,29 @@ export async function updateCartItems(
   }
 }
 
+// Server action to update the entire cart using the update_cart_items function
+export async function sendOffers(data: {
+  name: string;
+  email: string;
+  phone: string;
+}) {
+  const supabase = await createClient();
+  try {
+    const { data: formData, error } = await supabase
+      .from("form")
+      .insert([{ name: data.name, email: data.email, phone: data.phone }])
+      .select();
+
+    console.log("Form data inserted:", formData);
+
+    if (error) throw error;
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false };
+  }
+}
+
 export type AddToCartSuccess = { success: true };
 export type AddToCartFailure = { success: false; error: string };
 
