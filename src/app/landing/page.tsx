@@ -130,7 +130,6 @@ export default function Home() {
           </p>
         </div>
       </motion.section>
-
       <Carousel data={offers} setLoading={setLoading} />
 
       {/* Product Showcase */}
