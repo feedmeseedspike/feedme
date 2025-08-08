@@ -1,15 +1,20 @@
 /* eslint-disable react/no-unescaped-entities */
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import axios from "axios";
 import Image from "next/image";
 import ProductCarousel from "./component/landing";
 import { useRouter } from "next/navigation";
+import { Offer } from "@/app/(home)/offers/OffersClient";
+import Carousel from "@/app/landing/component/carousel";
+import AnimatedLogo from "@/app/loading";
 
 export default function Home() {
   const router = useRouter();
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [loading, setLoading] = useState(false);
   // Form state
   const [formData, setFormData] = useState({
     name: "",
@@ -49,6 +54,27 @@ export default function Home() {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
   };
+
+  useEffect(() => {
+    // Scroll to top on page load
+    const fetchOffers = async () => {
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_SITE_URL!}/api/offers?status=active`
+      );
+      if (response.status === 200) {
+        console.log("Offers fetched:", response.data.offers);
+        return setOffers(response.data.offers);
+      } else {
+        return setOffers([]);
+      }
+    };
+    fetchOffers();
+    return () => {
+      // Cleanup if needed
+      fetchOffers();
+      window.scrollTo(0, 0);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -105,35 +131,7 @@ export default function Home() {
         </div>
       </motion.section>
 
-      <motion.section
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true }}
-        variants={fadeIn}
-        className="py-16 bg-white">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl text-black font-bold text-center mb-8">
-            See Our Offers
-          </h2>
-          <div>
-            <Image
-              src={
-                "https://fyldgskqxrfmrhyluxmw.supabase.co/storage/v1/object/public/product-images/1754484881194.jpg"
-              }
-              alt={"pr"}
-              width={600}
-              height={600}
-              className="w-full h-full object-cover rounded-xl mb-4"
-              loading="lazy"
-            />
-          </div>
-          <button
-            onClick={() => router.push("/offers")}
-            className="w-full bg-green-600 text-white font-semibold py-3 rounded-lg hover:bg-green-700 transition">
-            View All Offers
-          </button>
-        </div>
-      </motion.section>
+      <Carousel data={offers} setLoading={setLoading} />
 
       {/* Product Showcase */}
       <ProductCarousel />
@@ -331,6 +329,7 @@ export default function Home() {
           </p>
         </div>
       </footer>
+      {loading && <AnimatedLogo />}
 
       {/* JSON-LD Schema */}
       <script
