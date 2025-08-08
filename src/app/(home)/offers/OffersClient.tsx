@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import Container from '@/components/shared/Container';
 import { toSlug, formatNaira } from 'src/lib/utils';
 
-interface Offer {
+export interface Offer {
   id: string;
   title: string;
   description: string;
