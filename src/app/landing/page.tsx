@@ -32,10 +32,7 @@ export default function Home() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_SITE_URL!}/api/landing`,
-        formData
-      ); // Replace with your Formspree ID
+      await axios.post("/api/landing", formData); // Replace with your Formspree ID
       setFormStatus({
         message: "Successfully joined the list!",
         success: true,
@@ -58,9 +55,7 @@ export default function Home() {
   useEffect(() => {
     // Scroll to top on page load
     const fetchOffers = async () => {
-      const response = await axios.get(
-        `/api/offers?status=active`
-      );
+      const response = await axios.get("/api/offers?status=active");
       if (response.status === 200) {
         console.log("Offers fetched:", response.data.offers);
         return setOffers(response.data.offers);
