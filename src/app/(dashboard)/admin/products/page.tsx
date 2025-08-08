@@ -36,10 +36,9 @@ export default async function ProductsPage({
       getProducts({
         page: currentPage,
         limit: itemsPerPage,
-        query: initialSearch,
+        query: initialSearch || undefined,
         category: initialCategories[0] || "",
-        // Add other supported filters as needed
-        // tag, price, rating, sort
+        sort: `${sortBy}:${sortOrder}`,
       }),
       getAllCategories(),
     ]);

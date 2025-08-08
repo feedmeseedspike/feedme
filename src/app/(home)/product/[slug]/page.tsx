@@ -37,6 +37,7 @@ import {
 import { IProductInput } from "src/types";
 import { mapSupabaseProductToIProductInput, CategoryData } from "src/lib/utils";
 import Head from "next/head";
+import { notFound } from "next/navigation";
 
 type ProductType = Tables<"products">;
 
@@ -58,10 +59,14 @@ export async function generateMetadata({
         } Buy fresh and premium-quality ${
           product.name
         } online in Lagos with FeedMe. Enjoy competitive prices in Naira, swift delivery in Lagos, and the convenience of cash on delivery. Shop now and bring nature's goodness to your kitchen in Lagos, Ikeja, Lekki, Victoria Island, and more!`,
+        alternates: {
+          canonical: `https://shopfeedme.com/product/${slug}`,
+        },
         openGraph: {
           title: product.name,
           description: product.description || "",
           images: product.images?.[0] || "/opengraph-image.jpg",
+          url: `https://shopfeedme.com/product/${slug}`,
         },
         twitter: {
           card: "summary_large_image",
@@ -100,16 +105,7 @@ const ProductDetails = async (props: {
   const product: ProductType = await getProductBySlug(slug);
 
   if (!product) {
-    return (
-      <section>
-        <Container>
-          <h1 className="h2-bold text-center">Product Not Found</h1>
-          <p className="text-center">
-            The product you are looking for does not exist or has been removed.
-          </p>
-        </Container>
-      </section>
-    );
+    return notFound();
   }
 
   const supabase = await createServerComponentClient();
@@ -303,6 +299,7 @@ const ProductDetails = async (props: {
                 displayName: (product as any).vendor_displayName || "",
                 logo: (product as any).vendor_logo || "",
               },
+              in_season: product.in_season ?? true,
             }}
             cartItemId={cartItemId}
           />

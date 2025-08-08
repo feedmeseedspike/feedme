@@ -191,6 +191,7 @@ export const ProductInputSchema = z.object({
   colors: z.array(z.string()).default([]),
   options: z.array(OptionSchema).default([]),
   reviews: z.array(z.any()).default([]),
+  in_season: z.boolean().nullable().default(null),
 });
 
 export const ProductUpdateSchema = ProductInputSchema.extend({

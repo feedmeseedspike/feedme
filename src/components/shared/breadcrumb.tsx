@@ -11,6 +11,7 @@ import {
   BreadcrumbSeparator,
 } from "@components/ui/breadcrumb";
 import { usePathname } from "next/navigation";
+import { toSlug } from "src/lib/utils";
 
 interface CustomBreadcrumbProps {
   hideCategorySegment?: boolean;
@@ -64,15 +65,20 @@ const CustomBreadcrumb = ({
               if (accountHref && index === 0) return null;
               const isLast = index === displayPathNames.length - 1;
               // Build href for category, but not for product name
-              const href = index === 0 ? `/category/${link}` : undefined;
+              // Use toSlug to convert the link to proper URL format
+              // Special handling for offers - don't prefix with /category
+              const isOffers = decodeURIComponent(link).toLowerCase() === 'offers';
+              const href = index === 0 ? 
+                (isOffers ? `/offers` : `/category/${toSlug(decodeURIComponent(link))}`) : 
+                undefined;
               return (
                 <React.Fragment key={index}>
                   <BreadcrumbItem>
                     {isLast ? (
-                      <BreadcrumbPage>{link}</BreadcrumbPage>
+                      <BreadcrumbPage>{decodeURIComponent(link)}</BreadcrumbPage>
                     ) : (
                       <BreadcrumbLink asChild>
-                        <Link href={href || "#"}>{link}</Link>
+                        <Link href={href || "#"}>{decodeURIComponent(link)}</Link>
                       </BreadcrumbLink>
                     )}
                   </BreadcrumbItem>

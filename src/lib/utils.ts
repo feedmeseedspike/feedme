@@ -55,10 +55,11 @@ export function cn(...inputs: ClassValue[]) {
 export const toSlug = (text: string): string =>
   text
     .toLowerCase()
-    .replace(/[^\w\s-]+/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-+/g, '-')
+    .replace(/&/g, '') // Remove & specifically first
+    .replace(/[^\w\s-]+/g, '') // Remove other special characters
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single
 
 export function formatNaira(amount: number | null | undefined): string {
   if (amount === null || amount === undefined || isNaN(amount)) {
@@ -81,6 +82,7 @@ export const getFilterUrl = ({
   rating,
   sort,
   page,
+  season,
   params,
 }: {
   category?: string;
@@ -88,36 +90,60 @@ export const getFilterUrl = ({
   price?: string;
   rating?: string;
   sort?: string;
-  page?: string;
+  page?: string;  
+  season?: string;
   params: any;
 }) => {
-  // Create a new URLSearchParams object with existing params
-  const searchParams = new URLSearchParams(params);
+  // Create a new URLSearchParams object
+  const searchParams = new URLSearchParams();
 
-  // Update or remove parameters
-  if (category) searchParams.set("category", category);
-  if (tag) searchParams.set("tag", tag);
-  if (price) searchParams.set("price", price);
-  if (rating) searchParams.set("rating", rating);
-  if (sort) searchParams.set("sort", sort);
-  if (page) searchParams.set("page", page);
+  // Only add non-default parameters
+  const q = params.q || "";
+  if (q && q !== "" && q !== "all") {
+    searchParams.set("q", q);
+  }
 
-  // Remove parameters if they are "all"
-  if (category === "all") searchParams.delete("category");
-  if (tag === "all") searchParams.delete("tag");
-  if (price === "all") searchParams.delete("price");
-  if (rating === "all") searchParams.delete("rating");
-  if (sort === "best-selling") searchParams.delete("sort");
-  if (page === "1") searchParams.delete("page");
+  if (category && category !== "all") {
+    searchParams.set("category", category);
+  }
+
+  if (tag && tag !== "all") {
+    searchParams.set("tag", tag);
+  }
+
+  if (price && price !== "all") {
+    searchParams.set("price", price);
+  }
+
+  if (rating && rating !== "all") {
+    searchParams.set("rating", rating);
+  }
+
+  // Only add sort if it's not the default
+  if (sort && sort !== "price-low-to-high") {
+    searchParams.set("sort", sort);
+  }
+
+  // Only add page if it's not page 1
+  if (page && page !== "1") {
+    searchParams.set("page", page);
+  }
+
+  // Only add season if it's not the default
+  if (season && season !== "all") {
+    searchParams.set("season", season);
+  }
+
+  const queryString = searchParams.toString();
 
   // For category pages
-  if (params.category && params.category !== "all") {
-    const categorySlug = category?.toLowerCase().replace(/ /g, "-");
-    return `/category/${categorySlug}?${searchParams.toString()}`;
+  if (category && category !== "all") {
+    const categorySlug = category.toLowerCase().replace(/ /g, "-");
+    return queryString ? `/category/${categorySlug}?${queryString}` : `/category/${categorySlug}`;
   }
 
   // For search pages
-  return `/search?${searchParams.toString()}`;
+  return queryString ? `/search?${queryString}` : `/search`;
 };
 
 export const formatError = (error: any): string => {
@@ -230,6 +256,7 @@ export const mapSupabaseProductToIProductInput = (
     vendor: undefined,
     reviews: [],
     colors: [],
+    in_season: supabaseProduct.in_season ?? null,
   };
 };
 
@@ -258,6 +285,7 @@ export const mapSupabaseBundleToIProductInput = (
     vendor: undefined,
     reviews: [],
     colors: [],
+    in_season: null, // Default bundles to null (no badge)
     bundleId: supabaseBundle.id, // Crucially, set the bundleId here
   };
 };

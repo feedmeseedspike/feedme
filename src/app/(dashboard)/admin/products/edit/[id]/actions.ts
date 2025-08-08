@@ -21,7 +21,8 @@ export async function updateProductAction(productId: string, productData: any) {
     "is_published",
     "category_ids",
     "images",
-    "options"
+    "options",
+    "in_season"
   ];
   
   const cleanData: any = {};

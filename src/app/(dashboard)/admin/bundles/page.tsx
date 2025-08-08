@@ -11,7 +11,6 @@ export default async function BundlesPage({
   const itemsPerPage = 10;
   const initialSearch = searchParams?.search || "";
 
-  // Fetch bundles server-side
   const { data: bundles, count: totalBundles } = await fetchBundles({
     page: currentPage,
     itemsPerPage,

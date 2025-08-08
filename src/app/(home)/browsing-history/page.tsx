@@ -7,7 +7,7 @@ import { RootState } from "src/store";
 import { cn } from "src/lib/utils";
 import Container from "@components/shared/Container";
 import ProductdetailsCard from "@components/shared/product/productDetails-card";
-import Headertags from "@components/shared/header/Headertags";
+// HeaderTags is now in the layout
 import CustomBreadcrumb from "@components/shared/breadcrumb";
 import ProductCardSkeleton from "@components/shared/product/product-skeleton";
 

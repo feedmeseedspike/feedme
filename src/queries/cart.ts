@@ -43,7 +43,7 @@ export const useCartQuery = () => {
       }
       return result.data;
     },
-    staleTime: 1000 * 60 * 5, // Data is considered fresh for 5 minutes
+    staleTime: 0, // Always refetch when invalidated
     gcTime: 1000 * 60 * 30, // Cache is kept for 30 minutes
     refetchOnWindowFocus: true,
     refetchOnMount: true,
@@ -55,6 +55,7 @@ export const useCartQuery = () => {
 export interface ItemToUpdateMutation {
   product_id?: string | null; // Make optional and allow null
   bundle_id?: string | null; // Add optional bundle_id
+  offer_id?: string | null; // Add optional offer_id
   option?: Json | null; // Changed to Json | null (removed undefined possibility)
   quantity: number;
   price?: number | null; // Make optional
@@ -72,34 +73,12 @@ export const useUpdateCartMutation = () => {
     mutationFn: (items) => {
       return updateCartItems(items);
     },
-    onMutate: async (newItems) => {
-      await queryClient.cancelQueries({ queryKey: cartQueryKey });
-      const previousCart = queryClient.getQueryData<CartItem[]>(cartQueryKey);
-
-      const optimisticNewItems: CartItem[] = newItems.map((item: ItemToUpdateMutation): CartItem => ({
-        id: 'temp-' + Math.random().toString(36).substr(2, 9),
-        product_id: item.product_id || null,
-        bundle_id: item.bundle_id || null,
-        quantity: item.quantity,
-        option: item.option === undefined ? null : item.option,
-        price: item.price || null,
-        cart_id: null,
-        created_at: null,
-        products: previousCart?.find(p => p.product_id === item.product_id)?.products || null,
-        bundles: previousCart?.find(b => b.bundle_id === item.bundle_id)?.bundles || null,
-      }));
-
-      // Merge new items with previous cart, avoiding duplicates for existing product/bundle combinations
-      const updatedCart = (previousCart || []).filter(existingItem => 
-        !optimisticNewItems.some(newItem => 
-          (newItem.product_id && newItem.product_id === existingItem.product_id && JSON.stringify(newItem.option) === JSON.stringify(existingItem.option)) ||
-          (newItem.bundle_id && newItem.bundle_id === existingItem.bundle_id)
-        )
-      ).concat(optimisticNewItems);
-
-      queryClient.setQueryData<CartItem[]>(cartQueryKey, updatedCart);
-      return { previousCart };
-    },
+    // Disable optimistic updates for now to fix multiplication bug
+    // onMutate: async (newItems) => {
+    //   await queryClient.cancelQueries({ queryKey: cartQueryKey });
+    //   const previousCart = queryClient.getQueryData<CartItem[]>(cartQueryKey);
+    //   return { previousCart };
+    // },
     onSuccess: (data) => {
       // Invalidate the cart query to refetch and get the correct state from the server
       queryClient.invalidateQueries({ queryKey: cartQueryKey });

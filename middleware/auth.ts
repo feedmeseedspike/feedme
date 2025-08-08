@@ -28,9 +28,6 @@ export function authMiddleware(
       );
       // Use Supabase to get the user from the session
       const { data: { user }, error } = await supabase.auth.getUser();
-      if (process.env.NODE_ENV === "development") {
-        console.log("Auth middleware: user object", user);
-      }
       if (error || !user?.id) {
         if (error?.message?.includes("invalid JWT")) {
           return NextResponse.json(

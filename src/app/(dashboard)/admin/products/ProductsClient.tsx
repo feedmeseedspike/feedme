@@ -127,16 +127,6 @@ export default function ProductsClient({
     setInputValue(urlSearch);
   }, [searchParams]);
 
-  // Helper to get array params from URL
-  const getArrayParam = (param: string) => {
-    const values = searchParams?.getAll(param) || [];
-    return values.length > 0 ? values : [];
-  };
-  // Helper to get string param from URL with fallback
-  const getStringParam = (param: string, fallback: string) => {
-    return searchParams?.get(param) || fallback;
-  };
-
   // Filter and sort state always in sync with URL
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     initialCategories || []
@@ -154,6 +144,16 @@ export default function ProductsClient({
 
   // Sync filter and sort state with URL params
   useEffect(() => {
+    // Helper to get array params from URL
+    const getArrayParam = (param: string) => {
+      const values = searchParams?.getAll(param) || [];
+      return values.length > 0 ? values : [];
+    };
+    // Helper to get string param from URL with fallback
+    const getStringParam = (param: string, fallback: string) => {
+      return searchParams?.get(param) || fallback;
+    };
+
     setSelectedCategories(getArrayParam("category"));
     setSelectedStock(getArrayParam("stock"));
     setSelectedPublished(getArrayParam("published"));
@@ -241,7 +241,7 @@ export default function ProductsClient({
     (searchParams?.get("sortOrder") as "asc" | "desc") || "desc";
 
   const {
-    data: productsData,
+    data: queryResult,
     isLoading,
     error,
     refetch,
@@ -301,13 +301,14 @@ export default function ProductsClient({
         }
       }
 
-      return data || [];
+      return { data: data || [], count: count || 0 };
     },
     placeholderData: (prev) => prev,
-    initialData: initialProducts,
+    initialData: { data: initialProducts, count: totalProductsCount },
   });
 
-  const products = productsData || initialProducts || [];
+  const products = queryResult?.data || initialProducts || [];
+  const currentTotalCount = queryResult?.count ?? totalProductsCount;
 
   const stockStatuses = ["In stock", "Out of stock"];
   const publishedStatuses = ["Published", "Archived"];
@@ -393,7 +394,7 @@ export default function ProductsClient({
     setProductToDelete(null);
   };
 
-  const totalPages = Math.ceil((totalProductsCount || 0) / itemsPerPage);
+  const totalPages = Math.ceil((currentTotalCount || 0) / itemsPerPage);
 
   // Get current sort option display
   const currentSortOption =
@@ -742,8 +743,8 @@ export default function ProductsClient({
                   </TableCell>
                 </TableRow>
               ))
-            ) : products && products.length > 0 ? (
-              products.map((product) => (
+            ) : !isLoading && products && products.length > 0 ? (
+              products.map((product: any) => (
                 <TableRow key={product.id}>
                   <TableCell className="">
                     {product.images?.[0] && (
@@ -787,19 +788,39 @@ export default function ProductsClient({
                         product.category_ids.length > 0
                       ) {
                         return product.category_ids
-                          .map(
-                            (catId: string) =>
+                          .map((catId: string) => {
+                            // Try multiple lookup strategies
+                            const categoryName = 
                               allCategoryMap[String(catId)] ||
                               categoryNames[String(catId)] ||
-                              "Unknown Category"
-                          )
-                          .join(", ");
+                              allCategories.find(cat => cat.id === catId)?.title ||
+                              allCategories.find(cat => String(cat.id) === String(catId))?.title ||
+                              `Category ${catId}`;
+                            return categoryName;
+                          })
+                          .filter((name: string) => !name.startsWith(`Category `)) // Filter out failed lookups
+                          .join(", ") || "Unknown Categories";
                       } else {
                         return "Uncategorized";
                       }
                     })()}
                   </TableCell>
-                  <TableCell>{formatNaira(product.price)}</TableCell>
+                  <TableCell>
+                    {(() => {
+                      // Check if product has options with pricing
+                      if (product.options && Array.isArray(product.options) && product.options.length > 0) {
+                        const firstOption = product.options[0];
+                        if (firstOption && typeof firstOption === 'object' && firstOption.price) {
+                          return formatNaira(firstOption.price);
+                        }
+                      }
+                      // Fall back to product price
+                      if (product.price !== null && product.price !== undefined) {
+                        return formatNaira(product.price);
+                      }
+                      return "N/A";
+                    })()}
+                  </TableCell>
                   <TableCell>
                     {product.list_price !== undefined &&
                     product.list_price !== null
@@ -807,17 +828,44 @@ export default function ProductsClient({
                       : "-"}
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      className={
-                        product.stock_status === "in_stock"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-orange-100 text-orange-800"
+                    {(() => {
+                      // Check if product has options with stock status
+                      if (product.options && Array.isArray(product.options) && product.options.length > 0) {
+                        // Check if any option is in stock
+                        const hasInStock = product.options.some((option: any) => 
+                          option && typeof option === 'object' && 
+                          (option.stockStatus === "In Stock" || option.stock_status === "in_stock")
+                        );
+                        const isInStock = hasInStock;
+                        return (
+                          <Badge
+                            className={
+                              isInStock
+                                ? "bg-green-100 text-green-800"
+                                : "bg-orange-100 text-orange-800"
+                            }
+                          >
+                            {isInStock ? "In stock" : "Out of stock"}
+                          </Badge>
+                        );
                       }
-                    >
-                      {product.stock_status === "in_stock"
-                        ? "In stock"
-                        : "Out of stock"}
-                    </Badge>
+                      
+                      // Fall back to product stock status
+                      const isInStock = product.stock_status === "in_stock" || 
+                                       product.stock_status === "In Stock" ||
+                                       product.stockStatus === "In Stock";
+                      return (
+                        <Badge
+                          className={
+                            isInStock
+                              ? "bg-green-100 text-green-800"
+                              : "bg-orange-100 text-orange-800"
+                          }
+                        >
+                          {isInStock ? "In stock" : "Out of stock"}
+                        </Badge>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     <Badge
@@ -848,8 +896,8 @@ export default function ProductsClient({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
-                  No products found.
+                <TableCell colSpan={8} className="text-center py-8">
+                  {isLoading ? "Loading products..." : "No products found."}
                 </TableCell>
               </TableRow>
             )}

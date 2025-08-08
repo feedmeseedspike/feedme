@@ -103,7 +103,7 @@ const SearchFilter = () => {
     (event: FormEvent) => {
       event.preventDefault();
       if (searchTerm) {
-        router.push(`/search?query=${encodeURIComponent(searchTerm)}`);
+        router.push(`/search?q=${encodeURIComponent(searchTerm)}`);
         setIsOpen(false);
       }
     },

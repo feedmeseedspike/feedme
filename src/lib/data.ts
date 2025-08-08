@@ -6,6 +6,14 @@ export const headerMenus =  [
     href: '/todays-deal',
   },
   {
+    name: 'Bundles',
+    href: '/bundles',
+  },
+  {
+    name: 'Special Offers',
+    href: '/offers',
+  },
+  {
     name: 'Completed Orders',
     href: '/account/order',
   },

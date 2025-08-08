@@ -23,14 +23,13 @@ import AddProductModal from "@components/admin/addProductModal";
 import { Tables } from "@utils/database.types";
 import { formatNaira } from "src/lib/utils";
 import { useToast } from "../../../../../hooks/useToast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createBundleWithProducts } from "../../../../../queries/bundles";
 import CustomBreadcrumb from "@components/shared/breadcrumb";
+import { createBundleAction, uploadBundleImageAction } from "./actions";
+import { RichTextEditor } from "@components/ui/rich-text-editor";
 
 const BuildBundleSchema = z.object({
   name: z.string().min(1, "Bundle name is required"),
   price: z.coerce.number().min(0, "Price must be a positive number"),
-  discount: z.coerce.number().min(0).max(100).optional(),
   bundle_image: z.instanceof(FileList).optional(),
 });
 
@@ -43,12 +42,13 @@ export default function BuildBundleClient({
 }) {
   const router = useRouter();
   const { showToast } = useToast();
-  const queryClient = useQueryClient();
   const [mounted, setMounted] = useState(false);
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [bundleProducts, setBundleProducts] = useState<Tables<"products">[]>(
     []
   );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [description, setDescription] = useState("");
 
   React.useEffect(() => {
     setMounted(true);
@@ -85,31 +85,102 @@ export default function BuildBundleClient({
     );
   };
 
-  const createBundleMutation = useMutation({
-    mutationFn: createBundleWithProducts,
-    onSuccess: () => {
-      showToast("Bundle created successfully.", "success");
-      router.push("/admin/bundles");
-      queryClient.invalidateQueries({ queryKey: ["bundles"] as const });
-    },
-    onError: (error: any) => {
-      console.error("Error creating bundle:", error);
-      showToast(`Failed to create bundle: ${error.message}`, "error");
-    },
-  });
+  // Function to handle bundle creation with image upload
+  const createBundleWithProducts = async (data: {
+    name: string;
+    price: number;
+    description?: string;
+    imageFile?: File;
+    productIds: string[];
+  }) => {
+    let thumbnail = null;
+    
+    // Upload image if provided
+    if (data.imageFile) {
+      const formData = new FormData();
+      formData.append('file', data.imageFile);
+      formData.append('bucketName', 'bundle-thumbnails');
+      thumbnail = await uploadBundleImageAction(formData);
+    }
+    
+    // Create the bundle
+    return await createBundleAction({
+      name: data.name,
+      price: data.price,
+      description: data.description,
+      thumbnail,
+      productIds: data.productIds,
+    });
+  };
 
-  const onSubmit = (data: BuildBundleFormValues) => {
+  // Helper function to get the correct price display for products
+  const getProductPriceDisplay = (product: Tables<"products">) => {
+    // If product has a selected option, use that option's price
+    if ((product as any).selectedOption && product.options && Array.isArray(product.options)) {
+      const selectedOption = product.options.find((opt: any) => opt.name === (product as any).selectedOption);
+      if (selectedOption && (selectedOption as any).price) {
+        return (selectedOption as any).price;
+      }
+    }
+
+    // If product has a base price, use it
+    if (product.price && product.price > 0) {
+      return product.price;
+    }
+    
+    // If product has options, show the minimum price
+    if (product.options && Array.isArray(product.options) && product.options.length > 0) {
+      const prices = product.options
+        .map((option: any) => option.price)
+        .filter((price: any) => typeof price === 'number' && price > 0);
+      
+      if (prices.length > 0) {
+        return Math.min(...prices);
+      }
+    }
+    
+    return 0;
+  };
+
+  const onSubmit = async (data: BuildBundleFormValues) => {
     if (bundleProducts.length === 0) {
       showToast("Please add at least one product to the bundle.", "error");
       return;
     }
-    createBundleMutation.mutate({
-      name: data.name,
-      price: data.price,
-      discount: data.discount,
-      imageFile: data.bundle_image?.[0],
-      productIds: bundleProducts.map((p) => p.id),
-    });
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Extract original UUIDs from potentially modified product IDs
+      const productIds = bundleProducts.map((p) => (p as any).originalId || p.id);
+      
+      // Validate UUID format before sending to server
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const invalidIds = productIds.filter(id => !uuidRegex.test(id));
+      
+      if (invalidIds.length > 0) {
+        console.error('Invalid product IDs detected:', invalidIds);
+        console.error('Bundle products with invalid IDs:', bundleProducts.filter(p => invalidIds.includes(p.id)));
+        showToast(`Invalid product IDs detected: ${invalidIds.join(', ')}`, "error");
+        return;
+      }
+
+      await createBundleWithProducts({
+        name: data.name,
+        price: data.price,
+        description: description,
+        imageFile: data.bundle_image?.[0],
+        productIds: productIds,
+      });
+      
+      showToast("Bundle created successfully.", "success");
+      router.push("/admin/bundles");
+    } catch (error: any) {
+      console.error("Error creating bundle:", error);
+      showToast(`Failed to create bundle: ${error.message}`, "error");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -156,19 +227,12 @@ export default function BuildBundleClient({
                 )}
               </div>
               <div>
-                <Label htmlFor="bundle-discount">Discount (%)</Label>
-                <Input
-                  id="bundle-discount"
-                  type="number"
-                  step="1"
-                  placeholder="e.g., 5"
-                  {...register("discount")}
+                <RichTextEditor
+                  label="Description"
+                  value={description}
+                  onChange={setDescription}
+                  placeholder="Enter bundle description with rich text formatting..."
                 />
-                {errors.discount && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.discount.message}
-                  </p>
-                )}
               </div>
               <div>
                 <Label htmlFor="bundle-image">Bundle Image(s)</Label>
@@ -203,6 +267,7 @@ export default function BuildBundleClient({
                 onClose={() => setIsAddProductModalOpen(false)}
                 onSubmit={handleProductsSelected}
                 existingProductIds={bundleProducts.map((p) => p.id)}
+                allProducts={allProducts}
               />
               <div className="overflow-x-auto">
                 <Table>
@@ -242,8 +307,17 @@ export default function BuildBundleClient({
                               <div className="w-12 h-12 rounded-md bg-gray-200" />
                             )}
                           </TableCell>
-                          <TableCell>{product.name}</TableCell>
-                          <TableCell>{formatNaira(product.price)}</TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{product.name}</div>
+                              {(product as any).selectedOption && (
+                                <div className="text-xs text-gray-500">
+                                  Option: {(product as any).selectedOption}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>{formatNaira(getProductPriceDisplay(product))}</TableCell>
                           <TableCell>
                             <Button
                               type="button"
@@ -264,12 +338,10 @@ export default function BuildBundleClient({
           </Card>
           <Button
             type="submit"
-            className="bg-[#1B6013] text-white"
-            disabled={createBundleMutation.status === "pending"}
+            className="bg-[#1B6013] text-white"  
+            disabled={isSubmitting}
           >
-            {createBundleMutation.status === "pending"
-              ? "Creating..."
-              : "Create Bundle"}
+            {isSubmitting ? "Creating..." : "Create Bundle"}
           </Button>
         </form>
       )}

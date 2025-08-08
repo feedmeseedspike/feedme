@@ -33,11 +33,11 @@ import { useUser } from "src/hooks/useUser";
 const HeaderClient = ({ categories, categoriesError }: any) => {
   const { user, isLoading: isUserLoading } = useUser();
   const [openAccountSheet, setOpenAccountSheet] = useState(false);
-  const [openMobileSheet, setOpenMobileSheet] = useState(false); // Add state for mobile menu
-  const [isCategoriesLoading] = useState(false); // Always false, categories are from props
+  const [openMobileSheet, setOpenMobileSheet] = useState(false); 
+  const [isCategoriesLoading] = useState(false); 
 
   if (isUserLoading) {
-    return null; // Or return a skeleton if you want a loading state
+    return null; 
   }
   const isLoggedIn = !!user;
 
