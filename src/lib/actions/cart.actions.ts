@@ -16,7 +16,7 @@ export type CartItem = Tables<"cart_items"> & {
   offer_id?: string | null; // Add offer_id property
   products: Tables<"products"> | null;
   bundles: Tables<"bundles"> | null;
-  // offers: Tables<"offers"> | null; // Add offers relationship
+  offers: Tables<"offers"> | null; // Add offers relationship
 };
 
 export type GetCartSuccess = { success: true; data: CartItem[]; error: null };
