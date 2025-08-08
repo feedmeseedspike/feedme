@@ -351,7 +351,7 @@ export async function getProductsBySearch(query: string, limit = 10) {
   const { data, error } = await supabase
     .from("products")
     .select("id, slug, name, images")
-    .ilike("name", `%${query}%`)
+    .or(`name.ilike.%${query}%,description.ilike.%${query}%,brand.ilike.%${query}%`)
     .eq("is_published", true)
     .limit(limit);
   if (error) throw error;

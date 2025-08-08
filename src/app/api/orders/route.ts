@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { authMiddleware } from "middleware/auth";
-import { fetchUserOrder } from "@/queries/orders";
+import { fetchUserOrders } from "@/queries/orders";
 
 export const GET = authMiddleware(async (request: Request, user_id: string) => {
   try {
-    const user = await fetchUserOrder(user_id);
+    const user = await fetchUserOrders(user_id);
     return NextResponse.json({
       success: true,
       data: user,

@@ -8,6 +8,7 @@ import { createClient } from "@utils/supabase/client";
 import { Tables } from "src/utils/database.types";
 import { Skeleton } from "@components/ui/skeleton";
 import Link from "next/link";
+import { toSlug } from "src/lib/utils";
 
 type Banner = Tables<"banners"> & {
   bundles?: Tables<"bundles"> | null;
@@ -138,8 +139,8 @@ const Images = ({
       {carouselBanners
         .filter((banner) => !!banner.id)
         .map((banner, idx) => {
-          const linkHref = banner.bundle_id
-            ? `/bundles/${banner.bundle_id}`
+          const linkHref = banner.bundle_id && banner.bundles?.name
+            ? `/bundles/${toSlug(banner.bundles.name)}`
             : `/${banner.tag}`;
 
           const altText = banner.bundle_id
@@ -170,7 +171,7 @@ const Images = ({
                   fill
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 1200px"
                   priority={idx === imgIndex}
-                  className="object-cover w-full h-full"
+                  className=" w-full h-full"
                 />
               </motion.div>
             </Link>
@@ -199,7 +200,7 @@ const Dots = ({
               key={idx}
               onClick={() => setImgIndex(idx)}
               className={`size-[6px] md:size-[10px] rounded-full transition-colors ${
-                idx === imgIndex ? "bg-[#D8D8D8]" : "bg-[#4A4A4A]"
+                idx === imgIndex ? "bg-[#4A4A4A]" : "bg-[#D8D8D8]"
               }`}
             />
           );

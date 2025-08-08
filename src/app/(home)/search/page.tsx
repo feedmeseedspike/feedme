@@ -32,9 +32,9 @@ import { IProductInput } from "src/types";
 const sortOrders = [
   { value: "price-low-to-high", name: "Price: Low to high" },
   { value: "price-high-to-low", name: "Price: High to low" },
+  { value: "best-selling", name: "Best selling" },
   { value: "newest-arrivals", name: "Newest arrivals" },
   { value: "avg-customer-review", name: "Avg. customer review" },
-  { value: "best-selling", name: "Best selling" },
 ];
 
 export async function generateMetadata(props: {
@@ -46,6 +46,7 @@ export async function generateMetadata(props: {
     rating: string;
     sort: string;
     page: string;
+    season: string;
   }>;
 }) {
   const searchParams = await props.searchParams;
@@ -87,6 +88,7 @@ const SearchPage = async (props: {
     rating: string;
     sort: string;
     page: string;
+    season: string;
   }>;
 }) => {
   const searchParams = await props.searchParams;
@@ -97,11 +99,12 @@ const SearchPage = async (props: {
     tag = "all",
     price = "all",
     rating = "all",
-    sort = "best-selling",
+    sort = "price-low-to-high",
     page = "1",
+    season = "all",
   } = searchParams;
 
-  const params = { q, category, tag, price, rating, sort, page };
+  const params = { q, category, tag, price, rating, sort, page, season };
 
   const categories = await getAllCategories();
   const tags = await getAllTags();
@@ -114,6 +117,7 @@ const SearchPage = async (props: {
     rating,
     page: Number(page),
     sort,
+    season,
   });
 
   // Safely get a category for related products
@@ -162,7 +166,10 @@ const SearchPage = async (props: {
               )
               .map((p) => p.category_ids![0])
           )
-        )
+        ).map(categoryId => {
+          const foundCategory = categories.find(cat => cat.id === categoryId);
+          return foundCategory || { id: categoryId, title: categoryId };
+        }).filter(cat => cat.title !== cat.id) // Filter out categories where title is the same as ID (UUID)
       : categories;
 
   // Add a mapping function for Supabase product row to IProductInput
@@ -189,7 +196,7 @@ const SearchPage = async (props: {
       colors: product.colors ?? [],
       options: product.options ?? [],
       reviews: product.reviews ?? [],
-      in_season: product.in_season,
+      in_season: product.in_season ?? true,
     };
   }
 
@@ -210,7 +217,8 @@ const SearchPage = async (props: {
                     {(q !== "all" && q !== "") ||
                     tag !== "all" ||
                     rating !== "all" ||
-                    price !== "all" ? (
+                    price !== "all" ||
+                    season !== "all" ? (
                       <Button variant={"link"} asChild>
                         <Link href="/search">Clear</Link>
                       </Button>
@@ -256,7 +264,7 @@ const SearchPage = async (props: {
                                 >
                                   <Link
                                     className={`${
-                                      c === category && "text-green-600"
+                                      (typeof c === "string" ? c : c.id) === category && "text-green-600"
                                     }`}
                                     href={getFilterUrl({
                                       category:
@@ -281,64 +289,69 @@ const SearchPage = async (props: {
                             <PriceRangeSlider
                               params={params}
                               maxPrice={Math.max(
-                                ...data.products.map((p) =>
-                                  typeof p.price === "number" ? p.price : 0
-                                ),
-                                0
+                                ...data.products.flatMap((p) => {
+                                  const prices = [typeof p.price === "number" ? p.price : 0];
+                                  // Include option prices if they exist
+                                  if (p.options && Array.isArray(p.options)) {
+                                    p.options.forEach((option: any) => {
+                                      if (option.price && typeof option.price === "number") {
+                                        prices.push(option.price);
+                                      }
+                                    });
+                                  }
+                                  return prices;
+                                }),
+                                1000 // Minimum fallback value
                               )}
                             />
                           </AccordionContent>
                         </AccordionItem>
                       </Accordion>
 
-                      {/* Customer Review */}
+                      {/* Season */}
                       <Accordion type="single" collapsible>
-                        <AccordionItem value="customer-review">
-                          <AccordionTrigger>Customer Review</AccordionTrigger>
+                        <AccordionItem value="season">
+                          <AccordionTrigger>Season</AccordionTrigger>
                           <AccordionContent>
                             <ul className="flex flex-col gap-2">
                               <li className="border px-2 py-1 rounded-md border-gray-400">
                                 <Link
-                                  href={getFilterUrl({ rating: "all", params })}
+                                  href={getFilterUrl({ season: "all", params })}
                                   className={`${
-                                    !rating || rating === "all"
+                                    !season || season === "all"
                                       ? "text-primary"
                                       : ""
                                   }`}
                                 >
-                                  All Ratings
+                                  All Seasons
                                 </Link>
                               </li>
-                              {[5, 4, 3, 2, 1].map((ratingValue) => (
-                                <li
-                                  key={ratingValue}
-                                  className="border px-2 py-1 rounded-md border-gray-400"
+                              <li className="border px-2 py-1 rounded-md border-gray-400">
+                                <Link
+                                  href={getFilterUrl({ season: "true", params })}
+                                  className={`${
+                                    season === "true" ? "text-primary" : ""
+                                  }`}
                                 >
-                                  <Link
-                                    href={getFilterUrl({
-                                      rating: ratingValue.toString(),
-                                      params: {
-                                        ...params,
-                                        rating: ratingValue.toString(),
-                                      },
-                                    })}
-                                    className={`${
-                                      rating === ratingValue.toString()
-                                        ? "text-primary"
-                                        : ""
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <Rating size={4} rating={ratingValue} />
-                                      <span>& Up</span>
-                                    </div>
-                                  </Link>
-                                </li>
-                              ))}
+                                  In Season
+                                </Link>
+                              </li>
+                              <li className="border px-2 py-1 rounded-md border-gray-400">
+                                <Link
+                                  href={getFilterUrl({ season: "false", params })}
+                                  className={`${
+                                    season === "false" ? "text-primary" : ""
+                                  }`}
+                                >
+                                  Out of Season
+                                </Link>
+                                
+                              </li>
                             </ul>
                           </AccordionContent>
                         </AccordionItem>
                       </Accordion>
+
                     </div>
                   </CollapsibleOnMobile>
                 )}
@@ -349,7 +362,7 @@ const SearchPage = async (props: {
       )}
 
       <Container className="lg:!px-[40px] grid md:grid-cols-8 md:gap-4 py-4">
-        <aside className="hidden md:block space-y-4 bg-white h-fit p-4 py-8 rounded-md col-span-2 lg:sticky lg:top-10">
+        <aside className="hidden md:block space-y-4 bg-white h-fit p-4 py-8 rounded-md col-span-2">
           {relevantCategories.length > 0 && (
             <div>
               <div className="font-bold flex gap-1 items-center w-full">
@@ -372,9 +385,9 @@ const SearchPage = async (props: {
                   <li key={typeof c === "string" ? c : c.id}>
                     <Link
                       className={`${
-                        c === category && "text-[#1B6013]"
+                        (typeof c === "string" ? c : c.id) === category && "text-[#1B6013]"
                       } grid gap-2`}
-                      href={`/category/${typeof c === "string" ? c : c.id}`}
+                      href={`/category/${typeof c === "string" ? toSlug(c) : toSlug(c.title)}`}
                     >
                       {typeof c === "string" ? c : c.title}
                     </Link>
@@ -395,17 +408,26 @@ const SearchPage = async (props: {
               <PriceRangeSlider
                 params={params}
                 maxPrice={Math.max(
-                  ...data.products.map((p) =>
-                    typeof p.price === "number" ? p.price : 0
-                  ),
-                  0
+                  ...data.products.flatMap((p) => {
+                    const prices = [typeof p.price === "number" ? p.price : 0];
+                    // Include option prices if they exist
+                    if (p.options && Array.isArray(p.options)) {
+                      p.options.forEach((option: any) => {
+                        if (option.price && typeof option.price === "number") {
+                          prices.push(option.price);
+                        }
+                      });
+                    }
+                    return prices;
+                  }),
+                  1000 // Minimum fallback value
                 )}
               />
             </div>
           </div>
           <div>
-            <div className="font-bold flex gap-1 items-center w-full whitespace-nowrap">
-              Customer Review{" "}
+            <div className="font-bold flex gap-1 items-center w-full">
+              Season{" "}
               <div className="flex items-center w-full">
                 <span className="bg-[#1B6013] flex items-center h-1 w-10 rounded-md"></span>
                 <span className="w-full border-b" />
@@ -414,38 +436,45 @@ const SearchPage = async (props: {
             <ul className="pl-2 pt-2 space-y-2">
               <li>
                 <Link
-                  href={getFilterUrl({ rating: "all", params })}
+                  href={getFilterUrl({ season: "all", params })}
                   className={`${
-                    !rating || rating === "all" ? "text-[#1B6013]" : ""
+                    !season || season === "all" ? "text-[#1B6013]" : ""
                   }`}
                 >
-                  All Ratings
+                  All Seasons
                 </Link>
               </li>
-              {[5, 4, 3, 2, 1].map((ratingValue) => (
-                <li key={ratingValue}>
-                  <Link
-                    href={getFilterUrl({
-                      rating: ratingValue.toString(),
-                      params: { ...params, rating: ratingValue.toString() },
-                    })}
-                    className={`${
-                      rating === ratingValue.toString() ? "text-[#1B6013]" : ""
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Rating size={4} rating={ratingValue} />
-                      <span>& Up</span>
-                    </div>
-                  </Link>
-                </li>
-              ))}
+              <li>
+                <Link
+                  href={getFilterUrl({ season: "true", params })}
+                  className={`${
+                    season === "true" ? "text-[#1B6013]" : ""
+                  }`}
+                >
+                  In Season
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href={getFilterUrl({ season: "false", params })}
+                  className={`${
+                    season === "false" ? "text-[#1B6013]" : ""
+                  }`}
+                >
+                  Out of Season
+                </Link>
+              </li>
             </ul>
           </div>
         </aside>
 
         <div className="md:col-span-6 space-y-4">
-          {category !== "all" ? (
+          {q !== "all" && q !== "" ? (
+            <div className="bg-white rounded-md p-4 w-full">
+              <h1 className="font-bold text-xl mb-2">Search results for &quot;{q}&quot;</h1>
+              <div className="text-gray-600">{`Showing ${data.from}-${data.to} of ${data.totalProducts} results`}</div>
+            </div>
+          ) : category !== "all" ? (
             <div className="font-medium text-lg bg-white rounded-md p-3 w-full">{`Showing ${data.from}-${data.to} of ${data.totalProducts} results`}</div>
           ) : (
             <div>
@@ -488,15 +517,19 @@ const SearchPage = async (props: {
             <Pagination page={page} totalPages={data.totalPages} />
           )}
         </div>
-        {relatedProducts.data.length > 0 && (
-          <section className="mt-10">
+      </Container>
+
+      {/* Related Products Section */}
+      {relatedProducts.data.length > 0 && (
+        <Container className="lg:!px-[40px] mt-8">
+          <section>
             <ProductSlider
               products={relatedProducts.data}
               title={"You may also like"}
             />
           </section>
-        )}
-      </Container>
+        </Container>
+      )}
     </main>
   );
 };

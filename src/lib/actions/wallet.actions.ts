@@ -41,32 +41,51 @@ export async function processWalletPayment(orderData: OrderData) {
       .eq("user_id", userId)
       .single());
     if (walletError || !walletData) {
-      return {
-        success: false,
-        error: "Could not retrieve wallet information.",
-      };
+      return { success: false, error: "Could not retrieve wallet information." };
     }
   }
 
   // Check if balance is null and handle it
   if (walletData.balance === null) {
-    return { success: false, error: "Invalid wallet balance." };
+      return { success: false, error: "Invalid wallet balance." };
   }
 
   const currentBalance = walletData.balance;
   const amountToDeduct = Math.max(orderData.totalAmountPaid, 0);
 
-  // Check if balance is sufficient (should also be checked on frontend, but double-check here)
+  // Check if balance is sufficient 
   if (currentBalance < amountToDeduct) {
     return { success: false, error: "Insufficient wallet balance." };
   }
 
   // Start a transaction (basic implementation, consider using database transactions if available)
   try {
+    // Validate offer availability before processing payment
+    const offerItems = orderData.cartItems.filter(item => item.offerId);
+    for (const offerItem of offerItems) {
+      const { data: offerData, error: offerError } = await supabase
+        .from('offers')
+        .select('available_slots, status, title')
+        .eq('id', offerItem.offerId)
+        .single();
+
+      if (offerError || !offerData) {
+        return { success: false, error: `Failed to validate offer availability.` };
+      }
+
+      if (offerData.status !== 'active') {
+        return { success: false, error: `Offer "${offerData.title}" is no longer active.` };
+      }
+
+      if (offerData.available_slots < offerItem.quantity) {
+        return { success: false, error: `Only ${offerData.available_slots} slots available for "${offerData.title}".` };
+      }
+    }
+
     // Deduct amount from wallet
     const { error: deductionError } = await supabase
       .from("wallets")
-      .update({ balance: +currentBalance - amountToDeduct })
+      .update({ balance: currentBalance - amountToDeduct })
       .eq("user_id", userId);
 
     if (deductionError) {
@@ -83,8 +102,7 @@ export async function processWalletPayment(orderData: OrderData) {
         voucher_id: orderData.voucherId || null,
         shipping_address: JSON.stringify(orderData.shippingAddress),
         payment_method: orderData.paymentMethod, // 'wallet'
-        payment_status: "Paid", // Mark as paid since wallet deduction is immediate
-        // Add other necessary order fields
+        payment_status: "Paid", 
       })
       .select()
       .single();
@@ -94,31 +112,22 @@ export async function processWalletPayment(orderData: OrderData) {
     }
 
     // Insert order items
-    const orderItems = orderData.cartItems.map(
-      (item: {
-        productId: string;
-        quantity: number;
-        price?: number | null;
-        option?: any;
-        bundleId?: string;
-      }) => ({
+    const orderItems = orderData.cartItems.map((item: { productId: string; quantity: number; price?: number | null; option?: any; bundleId?: string; offerId?: string }) => ({
         order_id: orderResult.id,
         product_id: item.productId || null,
         bundle_id: item.bundleId || null,
+        offer_id: item.offerId || null,
         quantity: item.quantity,
         price: item.price,
         option: item.option || null,
-      })
-    );
-
-    console.log({ orderItems });
+    }));
 
     const { error: orderItemsError } = await supabase
-      .from("order_items")
-      .insert(orderItems);
+        .from('order_items')
+        .insert(orderItems);
 
-    if (orderItemsError) {
-      throw new Error("Failed to create order items.");
+    if(orderItemsError) {
+        throw new Error("Failed to create order items.");
     }
 
     // Insert transaction row for this order
@@ -137,22 +146,19 @@ export async function processWalletPayment(orderData: OrderData) {
     revalidatePath("/account/orders");
 
     return { success: true, data: { orderId: orderResult.id } };
+
   } catch (error: any) {
     // Basic rollback mechanism: if order creation/items failed, try to refund the wallet
-    if (walletData && walletData.balance !== null) {
-      // Only attempt refund if initial deduction happened and balance was not null
-      await supabase
-        .from("wallets")
-        .update({ balance: walletData.balance })
-        .eq("user_id", userId);
-      // Log refund attempt result
+    if (walletData && walletData.balance !== null) { // Only attempt refund if initial deduction happened and balance was not null
+        await supabase
+            .from("wallets")
+            .update({ balance: walletData.balance })
+            .eq("user_id", userId);
+        // Log refund attempt result
     }
-    return {
-      success: false,
-      error: error.message || "An error occurred during payment processing.",
-    };
+    return { success: false, error: error.message || "An error occurred during payment processing." };
   }
-}
+} 
 
 export async function getWalletBalanceServer(userId: string): Promise<number> {
   const supabase = await createClient();
@@ -163,4 +169,4 @@ export async function getWalletBalanceServer(userId: string): Promise<number> {
     .maybeSingle();
   if (error || !data) return 0;
   return data.balance || 0;
-}
+} 

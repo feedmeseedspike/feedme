@@ -76,6 +76,7 @@ import { sendPushNotification } from "@/lib/actions/pushnotification.action";
 interface GroupedCartItem {
   product?: CartItem["products"];
   bundle?: CartItem["bundles"];
+  offer?: CartItem["offers"];
   options: Record<string, CartItem>;
 }
 
@@ -89,9 +90,9 @@ const CartProductGroupDisplay = React.memo(
     return (
       <div key={productId} className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
-          {productGroup.product?.name || productGroup.bundle?.name ? (
+          {productGroup.product?.name || productGroup.bundle?.name || productGroup.offer?.title ? (
             <p className="h6-bold text-lg">
-              {productGroup.product?.name || productGroup.bundle?.name}
+              {productGroup.product?.name || productGroup.bundle?.name || productGroup.offer?.title}
             </p>
           ) : (
             <div className="h-6 w-32 bg-gray-200 animate-pulse rounded" />
@@ -127,9 +128,10 @@ const CartItemDisplay = React.memo(({ item }: CartItemDisplayProps) => {
             productOption?.image ||
             item.products?.images?.[0] ||
             item.bundles?.thumbnail_url ||
+            item.offers?.image_url ||
             "/placeholder.png"
           }
-          alt={item.products?.name || item.bundles?.name || "Product image"}
+          alt={item.products?.name || item.bundles?.name || item.offers?.title || "Product image"}
           className="h-[64px] rounded-[5px] border-[0.31px] border-[#DDD5DD] object-contain"
         />
         <div className="flex flex-col gap-[6px] w-full">
@@ -339,6 +341,8 @@ const CheckoutForm = ({
             (productOption?.price !== undefined && productOption?.price !== null
               ? productOption.price
               : item.price) || 0;
+        } else if (item.offer_id && item.offers) {
+          itemPrice = item.offers.price_per_slot || 0;
         }
         return acc + itemPrice * item.quantity;
       }, 0),
@@ -508,6 +512,16 @@ const CheckoutForm = ({
           }
           // For bundles, use a consistent key for options as there isn't a product option
           acc[key].options["bundle-item"] = item;
+        } else if (item.offer_id) {
+          key = `offer-${item.offer_id}`;
+          if (!acc[key]) {
+            acc[key] = {
+              offer: item.offers,
+              options: {},
+            };
+          }
+          // For offers, use a consistent key for options
+          acc[key].options["offer-item"] = item;
         }
         return acc;
       },
@@ -609,6 +623,7 @@ const CheckoutForm = ({
             cartItems: (items || []).map((item) => ({
               productId: item.product_id || "",
               bundleId: item.bundle_id || "",
+              offerId: item.offer_id || "",
               quantity: item.quantity,
               price: item.price,
               option: item.option,
@@ -675,7 +690,7 @@ const CheckoutForm = ({
                         customerPhone: shippingAddressForm.getValues().phone,
                         itemsOrdered: items.map((item) => ({
                           title:
-                            item.products?.name || item.bundles?.name || "",
+                            item.products?.name || item.bundles?.name || item.offers?.title || "",
                           price: item.price,
                           quantity: item.quantity,
                         })),
@@ -691,7 +706,7 @@ const CheckoutForm = ({
                         customerPhone: shippingAddressForm.getValues().phone,
                         itemsOrdered: items.map((item) => ({
                           title:
-                            item.products?.name || item.bundles?.name || "",
+                            item.products?.name || item.bundles?.name || item.offers?.title || "",
                           price: item.price,
                           quantity: item.quantity,
                         })),

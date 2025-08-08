@@ -68,8 +68,8 @@ export default function OptionModal({
     },
   });
 
-  const [image, setImage] = useState<File | null>(
-    safeInitialData.image instanceof File ? safeInitialData.image : null
+  const [image, setImage] = useState<File | string | null>(
+    safeInitialData.image || null
   );
 
   // Only reset form when modal is opened and initialData changes
@@ -88,11 +88,17 @@ export default function OptionModal({
           list_price: toNumberOrUndefined(safeInitialData.list_price),
           image: safeInitialData.image || undefined,
         });
+        setImage(safeInitialData.image || null);
         prevInitialDataRef.current = safeInitialData;
+      }
+    } else {
+      // Reset image state when modal closes (in add mode only)
+      if (mode === "add") {
+        setImage(null);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, safeInitialData, reset]);
+  }, [isOpen, safeInitialData, reset, mode]);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -103,6 +109,7 @@ export default function OptionModal({
   };
 
   const submitForm = async (data: OptionFormValues) => {
+    console.log("OptionModal submitForm called with:", { data, imageState: image });
     const formData = {
       ...data,
       price: parseFloat(String(data.price)),
@@ -112,7 +119,10 @@ export default function OptionModal({
           : undefined,
       image: image,
     };
+    console.log("OptionModal formData being submitted:", formData);
     if (onSubmit) onSubmit(formData);
+    // Reset image state after successful submit
+    setImage(null);
     onClose();
   };
 
@@ -219,7 +229,11 @@ export default function OptionModal({
               >
                 {image ? (
                   <Image
-                    src={URL.createObjectURL(image)}
+                    src={
+                      image instanceof File 
+                        ? URL.createObjectURL(image)
+                        : image
+                    }
                     alt="Preview"
                     width={80}
                     height={80}

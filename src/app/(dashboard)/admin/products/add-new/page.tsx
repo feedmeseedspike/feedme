@@ -48,8 +48,8 @@ import OptionModal from "@components/admin/optionsModal";
 import { OptionSchema, option as OptionType } from "src/lib/validator";
 import Image from "next/image";
 import { formatNaira, toSlug } from "src/lib/utils";
-import Edit from "@components/icons/edit.svg";
 import Trash from "@components/icons/trash.svg";
+import Edit from "@components/icons/edit.svg";
 import { useToast } from "src/hooks/useToast";
 import { getAllCategories } from "src/lib/actions/product.actions";
 import { Label } from "@/components/ui/label";
@@ -173,6 +173,8 @@ export default function AddProduct() {
   const [loading, setLoading] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [pendingProduct, setPendingProduct] = useState<any>(null);
+  const [editOptionIndex, setEditOptionIndex] = useState<number | null>(null);
+  const [editOptionData, setEditOptionData] = useState<any>(null);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -469,6 +471,65 @@ export default function AddProduct() {
       showToast(err.message || "Failed to add product", "error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOptionSubmit = async (optionData: any) => {
+    try {
+      let imageUrl = optionData.image;
+      
+      // Handle image upload if it's a File
+      if (imageUrl instanceof File) {
+        imageUrl = await uploadProductImage(imageUrl, "option-images");
+      }
+      
+      const newOption = {
+        ...optionData,
+        image: typeof imageUrl === "string" ? imageUrl : null,
+      };
+      
+      const current = form.watch("options") || [];
+      form.setValue("options", [...current, newOption], {
+        shouldValidate: true,
+      });
+      setIsDialogOpen(false);
+    } catch (err: any) {
+      showToast(err.message || "Failed to add option", "error");
+    }
+  };
+
+  const handleOptionEditSubmit = async (optionData: any) => {
+    try {
+      let imageUrl = optionData.image;
+      const currentOptions = form.getValues("options") || [];
+      
+      // If no new image provided, keep the existing image
+      if (!imageUrl && editOptionIndex !== null && currentOptions[editOptionIndex]) {
+        imageUrl = currentOptions[editOptionIndex].image;
+      }
+      
+      // Handle image upload if it's a File
+      if (imageUrl instanceof File) {
+        imageUrl = await uploadProductImage(imageUrl, "option-images");
+      }
+      
+      const updatedOption = {
+        ...optionData,
+        image: typeof imageUrl === "string" ? imageUrl : null,
+      };
+      
+      if (editOptionIndex !== null) {
+        const updatedOptions = [...currentOptions];
+        updatedOptions[editOptionIndex] = updatedOption;
+        form.setValue("options", updatedOptions);
+        setEditOptionIndex(null);
+        setEditOptionData(null);
+        setTimeout(() => {
+          form.trigger("options");
+        }, 0);
+      }
+    } catch (err: any) {
+      showToast(err.message || "Failed to update option", "error");
     }
   };
 
@@ -892,6 +953,15 @@ export default function AddProduct() {
                                   <TableCell className="text-center flex gap-2 w-full h-full">
                                     <button
                                       type="button"
+                                      onClick={() => {
+                                        setEditOptionIndex(index);
+                                        setEditOptionData(option);
+                                      }}
+                                    >
+                                      <Edit />
+                                    </button>
+                                    <button
+                                      type="button"
                                       className="size-5"
                                       onClick={() => {
                                         const current =
@@ -924,13 +994,19 @@ export default function AddProduct() {
                   <OptionModal
                     isOpen={isDialogOpen}
                     onClose={() => setIsDialogOpen(false)}
-                    onSubmit={(data) => {
-                      const current = form.watch("options") || [];
-                      form.setValue("options", [...current, data], {
-                        shouldValidate: true,
-                      });
-                      setIsDialogOpen(false);
+                    onSubmit={handleOptionSubmit}
+                  />
+                  
+                  {/* Edit Option Modal */}
+                  <OptionModal
+                    isOpen={editOptionIndex !== null}
+                    onClose={() => {
+                      setEditOptionIndex(null);
+                      setEditOptionData(null);
                     }}
+                    onSubmit={handleOptionEditSubmit}
+                    mode="edit"
+                    initialData={editOptionData || undefined}
                   />
                 </div>
               </div>

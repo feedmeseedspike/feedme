@@ -28,6 +28,7 @@ import { debounce } from "lodash";
 import { cn } from "src/lib/utils";
 import { useUser } from "src/hooks/useUser";
 import { useRouter } from "next/navigation";
+import { useAnonymousCart } from "src/hooks/useAnonymousCart";
 
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
@@ -62,8 +63,9 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
   }) => {
     const dispatch = useDispatch();
     const { showToast } = useToast();
-    const user = useUser();
+    const { user } = useUser();
     const router = useRouter();
+    const anonymousCart = useAnonymousCart();
 
     // Tanstack Query for Cart
     const { data: cartItems, isLoading: isLoadingCart } = useCartQuery();
@@ -81,7 +83,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
     // Combined loading state
     const isLoading =
       isLoadingFavorites ||
-      isLoadingCart ||
+      (user && isLoadingCart) ||  // Only check cart loading for authenticated users
       addFavoriteMutation.isPending ||
       removeFavoriteMutation.isPending;
 
@@ -109,17 +111,28 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       return option || sortedOptions[0];
     }, [selectedOption, sortedOptions]);
 
-    // Find the item in the cart
+    // Find the item in the cart (authenticated or anonymous)
     const currentCartItem = useMemo(() => {
-      if (!cartItems) return undefined;
-      return cartItems.find((item) => {
-        return (
-          item.product_id === product.id &&
-          JSON.stringify(item.option || null) ===
-            JSON.stringify(selectedOptionData || null)
-        );
-      });
-    }, [cartItems, product.id, selectedOptionData]);
+      if (user) {
+        if (!cartItems) return undefined;
+        return cartItems.find((item) => {
+          return (
+            item.product_id === product.id &&
+            JSON.stringify(item.option || null) ===
+              JSON.stringify(selectedOptionData || null)
+          );
+        });
+      } else {
+        // For anonymous users, find item in anonymous cart
+        return anonymousCart.items.find((item) => {
+          return (
+            item.product_id === product.id &&
+            JSON.stringify(item.option || null) ===
+              JSON.stringify(selectedOptionData || null)
+          );
+        });
+      }
+    }, [user, cartItems, anonymousCart.items, product.id, selectedOptionData]);
 
     const [quantity, setQuantity] = useState(currentCartItem?.quantity ?? 1);
     const [showQuantityControls, setShowQuantityControls] = useState(
@@ -142,10 +155,39 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
         if (!product.id) return;
 
         if (!user) {
-          showToast("Please log in to add items to cart", "error");
-          router.push(
-            `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+          const existingAnonymousItem = anonymousCart.items.find(
+            (item) =>
+              item.product_id === product.id &&
+              JSON.stringify(item.option || null) ===
+                JSON.stringify(selectedOptionData || null)
           );
+
+          if (newQuantity === 0) {
+            if (existingAnonymousItem) {
+              anonymousCart.removeItem(existingAnonymousItem.id);
+              showToast(
+                `${product.name}${selectedOptionData?.name ? ` (${selectedOptionData.name})` : ""} removed from cart`,
+                "info"
+              );
+            }
+          } else {
+            if (existingAnonymousItem) {
+              anonymousCart.updateQuantity(existingAnonymousItem.id, newQuantity);
+            } else {
+              anonymousCart.addItem(
+                product.bundleId ? null : product.id,
+                newQuantity,
+                selectedOptionData?.price ?? product.price ?? 0,
+                selectedOptionData as any,
+                product.bundleId ? product.id : null,
+                null
+              );
+            }
+            showToast(
+              `${product.name}${selectedOptionData?.name ? ` (${selectedOptionData.name})` : ""} ${newQuantity === 1 ? 'added to' : 'updated in'} cart`,
+              "success"
+            );
+          }
           return;
         }
 
@@ -161,9 +203,9 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
             return {
               product_id: item.product_id || null,
               bundle_id: item.bundle_id || null,
+              offer_id: item.offer_id || null,
               option: item.option,
               quantity: isTargetItem ? newQuantity : item.quantity,
-              // Use product.price if item.option is null and item.price is not set
               price:
                 (item.option as ProductOption | null)?.price ??
                 item.price ??
@@ -186,11 +228,12 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           itemsForMutation.push({
             product_id: product.bundleId ? null : product.id,
             bundle_id: product.bundleId ? product.id : null,
+            offer_id: null,
             option: selectedOptionData
               ? JSON.parse(JSON.stringify(selectedOptionData))
               : null,
             quantity: newQuantity,
-            price: itemPriceForNew, // Use the determined price
+            price: itemPriceForNew,
           });
         }
 
@@ -203,10 +246,12 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       },
       [
         product.id,
+        product.name,
         product.price,
         product.bundleId,
         user,
         cartItems,
+        anonymousCart,
         selectedOptionData,
         showToast,
         router,
@@ -219,9 +264,13 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       if (!currentCartItem?.id) return;
 
       if (!user) {
-        showToast("Please log in to modify cart", "error");
-        router.push(
-          `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+        // Handle anonymous cart removal
+        anonymousCart.removeItem(currentCartItem.id);
+        setShowQuantityControls(false);
+        setQuantity(1);
+        showToast(
+          `${product.name}${selectedOptionData?.name ? ` (${selectedOptionData.name})` : ""} removed from cart`,
+          "info"
         );
         return;
       }
@@ -234,7 +283,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
         console.error("Failed to remove cart item:", error);
         showToast("Failed to remove item from cart.", "error");
       }
-    }, [currentCartItem, user, showToast, router, removeCartItemMutation]);
+    }, [currentCartItem, user, anonymousCart, product.name, selectedOptionData, showToast, router, removeCartItemMutation]);
 
     const handleOptionChange = useCallback(
       (value: string) => {
@@ -254,34 +303,23 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       e.preventDefault();
       e.stopPropagation();
 
+
       // Check if product is out of season
       if (product.in_season === false) {
         showToast("This product is currently out of season and cannot be added to cart", "error");
         return;
       }
 
-      if (!user) {
-        showToast("Please log in to add items to cart", "error");
-        router.push(
-          `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`
-        );
-        return;
-      }
-
+      // Immediately show quantity controls for instant UI feedback
       setShowQuantityControls(true);
+      setQuantity(1);
+      
+      // Update cart (works for both authenticated and anonymous users)
       handleUpdateCartQuantity(1);
     };
 
     const handleQuantityChange = useCallback(
       (newQuantity: number) => {
-        if (!user) {
-          showToast("Please log in to modify cart", "error");
-          router.push(
-            `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`
-          );
-          return;
-        }
-
         // Check if product is out of season and user is trying to increase quantity
         if (product.in_season === false && newQuantity > (currentCartItem?.quantity ?? 0)) {
           showToast("Cannot increase quantity for out of season products", "error");
@@ -294,7 +332,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           handleUpdateCartQuantity(newQuantity);
         }
       },
-      [user, showToast, router, handleRemoveFromCart, handleUpdateCartQuantity, product.in_season, currentCartItem?.quantity]
+      [showToast, handleRemoveFromCart, handleUpdateCartQuantity, product.in_season, currentCartItem?.quantity]
     );
 
     // Handle favorite toggle
@@ -393,16 +431,40 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
 
           {/* Add to cart button */}
           <div className="absolute bottom-2 right-2 z-10">
-            <AnimatePresence>
+            <AnimatePresence mode="wait">
               {showQuantityControls ? (
                 <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.5 }}
-                  className="flex items-center gap-2 bg-white rounded-full shadow-md p-1 border border-gray-100"
+                  key="quantity-controls"
+                  initial={{ 
+                    width: 40,
+                    opacity: 0,
+                    scale: 0.8,
+                    x: 20
+                  }}
+                  animate={{ 
+                    width: "auto",
+                    opacity: 1,
+                    scale: 1,
+                    x: 0
+                  }}
+                  exit={{ 
+                    width: 40,
+                    opacity: 0,
+                    scale: 0.8,
+                    x: 20
+                  }}
+                  transition={{ 
+                    type: "spring",
+                    stiffness: 400,
+                    damping: 30,
+                    duration: 0.3
+                  }}
+                  className="flex items-center gap-2 bg-white rounded-full shadow-md p-1 border border-gray-100 overflow-hidden"
                 >
-                  <button
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.05, type: "spring", stiffness: 400 }}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -418,17 +480,41 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                     aria-label={
                       quantity === 1 ? "Remove item" : "Decrease quantity"
                     }
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
                   >
-                    {quantity === 1 ? (
-                      <Trash2 className="size-[14px]" />
-                    ) : (
-                      <Minus className="size-[14px]" />
-                    )}
-                  </button>
-                  <span className="text-sm font-medium w-4 text-center">
-                    {quantity}
-                  </span>
-                  <button
+                    <motion.div
+                      animate={{ rotate: quantity === 1 ? [0, 10, -10, 0] : 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      {quantity === 1 ? (
+                        <Trash2 className="size-[14px]" />
+                      ) : (
+                        <Minus className="size-[14px]" />
+                      )}
+                    </motion.div>
+                  </motion.button>
+                  
+                  <motion.span 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1, type: "spring", stiffness: 400 }}
+                    className="text-sm font-medium w-4 text-center"
+                    key={quantity}
+                  >
+                    <motion.span
+                      initial={{ scale: 1.3, opacity: 0.7 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                    >
+                      {quantity}
+                    </motion.span>
+                  </motion.span>
+                  
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.15, type: "spring", stiffness: 400 }}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -450,39 +536,73 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                         : "bg-[#1B6013]/70 hover:bg-[#1B6013]/90"
                     )}
                     aria-label="Increase quantity"
+                    whileHover={{ scale: product.in_season !== false ? 1.1 : 1 }}
+                    whileTap={{ scale: product.in_season !== false ? 0.9 : 1 }}
                   >
-                    <Plus className="w-4 h-4" />
-                  </button>
+                    <motion.div
+                      animate={{ 
+                        rotate: product.in_season !== false ? [0, 90, 0] : 0 
+                      }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Plus className="w-4 h-4 text-white" />
+                    </motion.div>
+                  </motion.button>
                 </motion.div>
               ) : (
                 <motion.button
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ duration: 0.2 }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    // Check if product is out of season
-                    if (product.in_season === false) {
-                      showToast("This product is currently out of season and cannot be added to cart", "error");
-                      return;
-                    }
-                    
-                    setShowQuantityControls(true);
-                    handleUpdateCartQuantity(1);
+                  key="add-to-cart"
+                  initial={{ opacity: 0, scale: 0.8, rotate: -90 }}
+                  animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                  exit={{ 
+                    opacity: 0, 
+                    scale: 0.3, 
+                    rotate: 180,
+                    x: -60
                   }}
+                  transition={{ 
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 20,
+                    duration: 0.4
+                  }}
+                  onClick={handleAddToCartClick}
                   disabled={product.in_season === false}
                   className={cn(
-                    "p-2 rounded-full backdrop-blur-sm shadow-md transition-colors",
+                    "p-2 rounded-full backdrop-blur-sm shadow-md transition-all duration-300 relative overflow-hidden",
                     product.in_season === false
                       ? "bg-gray-300 cursor-not-allowed opacity-50"
-                      : "bg-[#1B6013]/90 hover:bg-[#1B6013]"
+                      : "bg-[#1B6013]/90 hover:bg-[#1B6013] hover:shadow-lg"
                   )}
                   aria-label={product.in_season === false ? "Product out of season" : "Add to cart"}
+                  whileHover={{ 
+                    scale: product.in_season !== false ? 1.1 : 1,
+                    boxShadow: product.in_season !== false ? "0 8px 25px rgba(27, 96, 19, 0.3)" : undefined
+                  }}
+                  whileTap={{ 
+                    scale: product.in_season !== false ? 0.95 : 1
+                  }}
                 >
-                  <Plus className="w-4 h-4 text-white" />
+                  <motion.div
+                    animate={{
+                      rotate: product.in_season !== false ? [0, 180, 360] : 0,
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "linear"
+                    }}
+                    className="absolute inset-0 rounded-full bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                  />
+                  
+                  <motion.div
+                    whileHover={{
+                      rotate: product.in_season !== false ? [0, 90, 0] : 0
+                    }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Plus className="w-4 h-4 text-white relative z-10" />
+                  </motion.div>
                 </motion.button>
               )}
             </AnimatePresence>

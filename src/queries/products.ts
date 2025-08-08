@@ -13,6 +13,7 @@ export async function getAllProducts(client: TypedSupabaseClient, {
   price,
   rating,
   sort,
+  season,
   timeout = 30000,
 }: {
   query?: string;
@@ -23,6 +24,7 @@ export async function getAllProducts(client: TypedSupabaseClient, {
   price?: string;
   rating?: string;
   sort?: string;
+  season?: string;
   timeout?: number;
 }) {
   let queryBuilder = client
@@ -30,6 +32,35 @@ export async function getAllProducts(client: TypedSupabaseClient, {
     .select('*')
     .eq('is_published', true)
     // .in('in_season', [true, null]); // Include both in_season=true and in_season=null
+
+  // Apply search filter if provided
+  if (query && query !== 'all' && query !== '') {
+    queryBuilder = queryBuilder.ilike('name', `%${query}%`);
+  }
+
+  // Apply category filter if provided
+  if (category && category !== 'all') {
+    queryBuilder = queryBuilder.contains('category_ids', [category]);
+  }
+
+  // Apply price filter if provided
+  if (price && price !== 'all') {
+    const [minPrice, maxPrice] = price.split('-').map(Number);
+    if (!isNaN(minPrice) && !isNaN(maxPrice)) {
+      queryBuilder = queryBuilder.gte('price', minPrice).lte('price', maxPrice);
+    }
+  }
+
+  // Apply season filter if provided
+  if (season && season !== 'all') {
+    if (season === 'true') {
+      // Filter for products that are in season (true)
+      queryBuilder = queryBuilder.eq('in_season', true);
+    } else if (season === 'false') {
+      // Filter for products that are explicitly out of season (false only)
+      queryBuilder = queryBuilder.eq('in_season', false);
+    }
+  }
 
   // Apply tag filter if provided
   if (tag === 'new-arrival') {
@@ -39,7 +70,34 @@ export async function getAllProducts(client: TypedSupabaseClient, {
     queryBuilder = queryBuilder.contains('tags', [tag]);
   }
 
-  queryBuilder = queryBuilder.order('id', { ascending: true }); // Keep a default order
+  // Apply sorting (only if not already sorted by tag filter)
+  if (tag !== 'new-arrival') {
+    if (sort) {
+      switch (sort) {
+        case 'price-low-to-high':
+          queryBuilder = queryBuilder.order('price', { ascending: true });
+          break;
+        case 'price-high-to-low':
+          queryBuilder = queryBuilder.order('price', { ascending: false });
+          break;
+        case 'newest-arrivals':
+          queryBuilder = queryBuilder.order('created_at', { ascending: false });
+          break;
+        case 'avg-customer-review':
+          queryBuilder = queryBuilder.order('avg_rating', { ascending: false });
+          break;
+        case 'best-selling':
+        default:
+          queryBuilder = queryBuilder.order('num_sales', { ascending: false });
+          break;
+      }
+    } else {
+      queryBuilder = queryBuilder.order('num_sales', { ascending: false });
+    }
+  }
+
+  // Add a secondary sort for consistency
+  queryBuilder = queryBuilder.order('id', { ascending: true });
 
   // Apply limit and pagination after all filters and sorts
   const from = (page - 1) * limit;
@@ -84,6 +142,33 @@ export async function getAllProducts(client: TypedSupabaseClient, {
 
   // Fetch total count for pagination if data is not null
   let countQuery = client.from('products').select('*', { count: 'exact', head: true }).eq('is_published', true);
+  
+  // Apply the same filters to count query
+  if (query && query !== 'all' && query !== '') {
+    countQuery = countQuery.ilike('name', `%${query}%`);
+  }
+  
+  if (category && category !== 'all') {
+    countQuery = countQuery.contains('category_ids', [category]);
+  }
+  
+  if (price && price !== 'all') {
+    const [minPrice, maxPrice] = price.split('-').map(Number);
+    if (!isNaN(minPrice) && !isNaN(maxPrice)) {
+      countQuery = countQuery.gte('price', minPrice).lte('price', maxPrice);
+    }
+  }
+  
+  if (season && season !== 'all') {
+    if (season === 'true') {
+      // Filter for products that are in season (true)
+      countQuery = countQuery.eq('in_season', true);
+    } else if (season === 'false') {
+      // Filter for products that are explicitly out of season (false only)
+      countQuery = countQuery.eq('in_season', false);
+    }
+  }
+  
   if (tag === 'new-arrival') {
     // no tag filter
   } else if (tag && tag !== 'all') {
@@ -133,25 +218,32 @@ interface FetchProductsForBundleModalParams {
   search?: string;
 }
 
-export async function fetchProductsForBundleModal(client: TypedSupabaseClient, { search = '' }: FetchProductsForBundleModalParams): Promise<Tables<'products'>[] | null> {
-  let queryBuilder = client
-    .from('products')
-    .select('*')
-    .eq('is_published', true);
+export async function fetchProductsForBundleModal(client: TypedSupabaseClient, { search = '' }: FetchProductsForBundleModalParams): Promise<Tables<'products'>[]> {
+  try {
+    let queryBuilder = client
+      .from('products')
+      .select('*')
+      .eq('is_published', true)
+      .in('in_season', [true, null]); // Only include products that are in season or have no season status
 
-  if (search) {
-    queryBuilder = queryBuilder.ilike('name', `%{search}%`);
-  }
+    if (search && search.trim() !== '') {
+      queryBuilder = queryBuilder.ilike('name', `%${search.trim()}%`);
+    }
 
-  queryBuilder = queryBuilder.limit(50); 
+    queryBuilder = queryBuilder.limit(50).order('name', { ascending: true });
 
-  const { data, error } = await queryBuilder;
+    const { data, error } = await queryBuilder;
 
-  if (error) {
+    if (error) {
+      console.error('Error fetching products for bundle modal:', error);
+      throw new Error(`Failed to fetch products: ${error.message}`);
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error in fetchProductsForBundleModal:', error);
     throw error;
   }
-
-  return data;
 }
 
 export async function getProducts({

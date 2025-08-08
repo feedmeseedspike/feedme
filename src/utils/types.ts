@@ -5,7 +5,7 @@ export type TypedSupabaseClient = SupabaseClient<Database>
 
 export interface OrderData {
   userId: string;
-  cartItems: Array<{ productId: string; quantity: number; price?: number | null; option?: any; bundleId?: string }>;
+  cartItems: Array<{ productId: string; quantity: number; price?: number | null; option?: any; bundleId?: string; offerId?: string }>;
   shippingAddress: {
     fullName: string;
     street: string;

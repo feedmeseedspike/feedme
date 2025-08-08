@@ -66,7 +66,11 @@ const CustomBreadcrumb = ({
               const isLast = index === displayPathNames.length - 1;
               // Build href for category, but not for product name
               // Use toSlug to convert the link to proper URL format
-              const href = index === 0 ? `/category/${toSlug(decodeURIComponent(link))}` : undefined;
+              // Special handling for offers - don't prefix with /category
+              const isOffers = decodeURIComponent(link).toLowerCase() === 'offers';
+              const href = index === 0 ? 
+                (isOffers ? `/offers` : `/category/${toSlug(decodeURIComponent(link))}`) : 
+                undefined;
               return (
                 <React.Fragment key={index}>
                   <BreadcrumbItem>

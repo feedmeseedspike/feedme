@@ -26,7 +26,7 @@ export async function fetchBundles({
   let query = supabase.from('bundles').select('*', { count: 'exact' });
 
   if (search) {
-    query = query.ilike('name', `%{search}%`);
+    query = query.ilike('name', `%${search}%`);
   }
 
   // Apply filters only if the arrays are not empty
@@ -58,7 +58,7 @@ export async function fetchBundles({
 interface CreateBundleData {
   name: string;
   price: number;
-  discount?: number;
+  description?: string;
   imageFile?: File; // Optional image file
   productIds: string[]; // Array of product IDs
 }
@@ -95,7 +95,7 @@ export const createBundleWithProducts = async (data: CreateBundleData) => {
     .insert({
       name: data.name,
       price: data.price,
-      discount_percentage: data.discount, // Assuming column name is discount_percentage
+      description: data.description, // Add description field
       thumbnail_url: thumbnailUrl, // Store the uploaded image URL
       stock_status: 'in_stock', // Default status
       published_status: 'archived', // Default status
@@ -178,8 +178,10 @@ export async function createBundle({ name, price, stock_status, published_status
 }
 
 // Function to fetch a single bundle by ID, including its products
-export const fetchBundleByIdWithProducts = async (bundleId: string) => {
-  const supabase = createClient();
+export const fetchBundleByIdWithProducts = async (bundleId: string, supabase?: any) => {
+  if (!supabase) {
+    supabase = createClient();
+  }
 
   // Fetch the bundle details and join with bundle_products and products
   const { data, error } = await supabase
@@ -216,11 +218,67 @@ export const fetchBundleByIdWithProducts = async (bundleId: string) => {
   return transformedBundle;
 };
 
+// Function to fetch a single bundle by slug, including its products
+export const fetchBundleBySlugWithProducts = async (bundleSlug: string) => {
+  const supabase = createClient();
+  
+  // First, try to get all bundles and find the one that matches the slug
+  const { data: allBundles, error: fetchError } = await supabase
+    .from('bundles')
+    .select('*');
+
+  if (fetchError) {
+    throw fetchError;
+  }
+
+  // Find the bundle whose name, when converted to slug, matches the provided slug
+  const matchingBundle = allBundles?.find(bundle => {
+    if (!bundle.name) return false;
+    const bundleSlug_generated = bundle.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    return bundleSlug_generated === bundleSlug;
+  });
+
+  if (!matchingBundle) {
+    throw new Error('Bundle not found');
+  }
+
+  // Now fetch the bundle with its products using the ID
+  const { data, error } = await supabase
+    .from('bundles')
+    .select(
+      `
+      *,
+      bundle_products (
+        product:products (*)
+      )
+      `
+    )
+    .eq('id', matchingBundle.id)
+    .single(); // Expecting a single bundle
+
+  if (error) {
+    throw error; // Propagate the error
+  }
+
+  // Supabase returns the joined data in a nested structure.
+  // We need to transform it into a more usable format:
+  // { ...bundleDetails, products: [...productObjects] }
+  const bundleDetails = data;
+  const linkedProducts = data?.bundle_products?.map((bp: { product: Tables<'products'> | null }) => bp.product).filter(Boolean) || [];
+
+  const transformedBundle = {
+    ...bundleDetails,
+    products: linkedProducts as Tables<'products'>[] // Extract product objects and cast
+  };
+
+  return transformedBundle;
+};
+
 interface UpdateBundleData {
   id: string; // Bundle ID
   name: string;
   price: number;
-  discount?: number | null; // Optional and can be null
+  description?: string; // Optional description
   imageFile?: File; // Optional new image file
   productIds: string[]; // Array of product IDs
 }
@@ -257,7 +315,7 @@ export const updateBundleWithProducts = async (data: UpdateBundleData) => {
   const updateBundlePayload: {
     name: string;
     price: number;
-    discount_percentage?: number | null;
+    description?: string;
     thumbnail_url?: string | null;
     updated_at: string;
   } = {
@@ -266,9 +324,9 @@ export const updateBundleWithProducts = async (data: UpdateBundleData) => {
     updated_at: new Date().toISOString(),
   };
 
-  // Only include discount_percentage if it's provided (could be null or a number)
-   if (data.discount !== undefined) {
-       updateBundlePayload.discount_percentage = data.discount;
+  // Only include description if it's provided
+   if (data.description !== undefined) {
+       updateBundlePayload.description = data.description;
    }
 
   // Only include thumbnail_url if a new image was uploaded or it's explicitly set to null
@@ -319,15 +377,15 @@ export const updateBundleWithProducts = async (data: UpdateBundleData) => {
 };
 
 // Function to delete a bundle by ID
-export async function deleteBundle(bundleId: string): Promise<void> {
-  const supabase = createClient();
+export async function deleteBundle(bundleId: string) {
+  const response = await fetch(`/api/bundles/${bundleId}`, {
+    method: 'DELETE',
+  });
 
-  const { error } = await supabase
-    .from('bundles')
-    .delete()
-    .eq('id', bundleId);
-
-  if (error) {
-    throw error; // Propagate the error
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to delete bundle');
   }
+
+  return await response.json();
 } 

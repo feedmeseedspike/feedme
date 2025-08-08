@@ -1,96 +1,73 @@
-"use client";
+export const dynamic = "force-dynamic";
 
-import { useQuery } from "@tanstack/react-query";
-import { fetchBundles } from "src/queries/bundles";
-import Link from "next/link";
-import Image from "next/image";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@components/ui/card";
-import { formatNaira } from "src/lib/utils";
+import { createServerComponentClient } from "src/utils/supabase/server";
+import Container from "@components/shared/Container";
+import CustomBreadcrumb from "@components/shared/breadcrumb";
+import BundleCard from "@components/shared/bundles/BundleCard";
 
-export default function BundlesPage() {
-  const {
-    data: bundles,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["bundles"],
-    queryFn: () => fetchBundles({}), // Fetch all bundles initially
-  });
+export default async function BundlesPage() {
+  try {
+    const supabase = await createServerComponentClient();
+    
+    // Fetch all published bundles
+    const { data: bundles, error } = await supabase
+      .from('bundles')
+      .select('*')
+      .eq('published_status', 'published')
+      .order('created_at', { ascending: false });
 
-  if (isLoading) {
-    return <div className="container mx-auto p-4">Loading bundles...</div>;
-  }
+    if (error) {
+      throw error;
+    }
 
-  if (error) {
+    return (
+      <main className="min-h-screen">
+        <div className="bg-white py-4">
+          <Container>
+            <CustomBreadcrumb />
+          </Container>
+        </div>
+        
+        <div className="py-2 md:border-b shadow-sm">
+          <Container>
+            <div className="flex justify-between items-center mt-2">
+              <div className="flex items-center">
+                <h1 className="text-[#1B6013] text-2xl md:text-3xl font-bold">
+                  Our Bundles
+                </h1>
+              </div>
+            </div>
+          </Container>
+        </div>
+        
+        <Container className="py-8">
+          {!bundles || bundles.length === 0 ? (
+            <p className="text-center text-gray-500">
+              No bundles available at the moment.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {bundles.map((bundle) => (
+                <BundleCard
+                  key={bundle.id}
+                  bundle={bundle}
+                />
+              ))}
+            </div>
+          )}
+        </Container>
+      </main>
+    );
+  } catch (error) {
     console.error("Error fetching bundles:", error);
     return (
-      <div className="container mx-auto p-4 text-red-500">
-        Error loading bundles.
-      </div>
+      <main className="min-h-screen">
+        <Container className="py-8">
+          <div className="text-center text-red-600">
+            Error loading bundles. Please try again later.
+          </div>
+        </Container>
+      </main>
     );
   }
-
-  if (!bundles || bundles.data?.length === 0) {
-    return (
-      <div className="container mx-auto p-4">
-        No bundles available at the moment.
-      </div>
-    );
-  }
-
-  return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold mb-6">Our Bundles</h1>
-      {bundles && bundles.data && bundles.data.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {bundles.data.map((bundle) => (
-            <Card key={bundle.id}>
-              <Link href={`/bundles/${bundle.id}`} passHref>
-                <CardHeader>
-                  {bundle.thumbnail_url && (
-                    <div className="relative w-full h-48">
-                      <Image
-                        src={bundle.thumbnail_url}
-                        alt={bundle.name || "Bundle image"}
-                        fill
-                        style={{ objectFit: "cover" }}
-                        className="rounded-t-md"
-                      />
-                    </div>
-                  )}
-                  {!bundle.thumbnail_url && (
-                    <div className="w-full h-48 bg-gray-200 rounded-t-md flex items-center justify-center text-gray-500">
-                      No Image
-                    </div>
-                  )}
-                </CardHeader>
-                <CardContent className="p-4">
-                  <CardTitle className="text-lg font-semibold truncate">
-                    {bundle.name}
-                  </CardTitle>
-                </CardContent>
-                <CardFooter className="p-4 pt-0 flex flex-col items-start">
-                  <div className="text-xl font-bold text-primary">
-                    {formatNaira(bundle.price || 0)}
-                  </div>
-                  {bundle.discount_percentage !== null &&
-                    bundle.discount_percentage !== undefined && (
-                      <span className="text-sm text-green-600">
-                        {bundle.discount_percentage}% Discount
-                      </span>
-                    )}
-                </CardFooter>
-              </Link>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }

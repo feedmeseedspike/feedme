@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@components/ui/button";
 import {
   Table,
@@ -34,11 +35,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@components/ui/dialog";
-import { deleteBundle } from "../../../../queries/bundles";
+import { deleteBundle, fetchBundles } from "../../../../queries/bundles";
 
 export default function BundlesClient({
   initialBundles,
-  totalBundles,
+  totalBundles: initialTotalBundles,
   itemsPerPage,
   currentPage,
   initialSearch,
@@ -51,15 +52,36 @@ export default function BundlesClient({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState(initialSearch || "");
-  const [bundles, setBundles] = useState<any[]>(initialBundles);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [bundleToDeleteId, setBundleToDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { showToast } = useToast();
 
-  const page = currentPage;
-  const ITEMS_PER_PAGE = itemsPerPage;
-  const totalPages = Math.ceil(totalBundles / ITEMS_PER_PAGE);
+  // Use TanStack Query for bundles data
+  const {
+    data: bundlesData,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ["bundles", currentPage, search],
+    queryFn: async () => {
+      const { data, count } = await fetchBundles({
+        page: currentPage,
+        itemsPerPage,
+        search: search,
+      });
+      return { bundles: data || [], totalBundles: count || 0 };
+    },
+    initialData: { bundles: initialBundles, totalBundles: initialTotalBundles },
+    placeholderData: (prev) => prev,
+  });
+
+  const bundles = bundlesData?.bundles || [];
+  const totalBundles = bundlesData?.totalBundles || 0;
+  const totalPages = Math.ceil(totalBundles / itemsPerPage);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newSearch = e.target.value;
@@ -80,17 +102,41 @@ export default function BundlesClient({
   };
 
   const handleDeleteConfirm = async () => {
-    if (bundleToDeleteId) {
-      try {
-        await deleteBundle(bundleToDeleteId);
-        showToast("Bundle deleted successfully.", "success");
-        setBundles((prev) => prev.filter((b) => b.id !== bundleToDeleteId));
-      } catch (err: any) {
-        showToast(err.message || "Failed to delete bundle.", "error");
-      }
+    if (!bundleToDeleteId) {
+      console.log('No bundle ID to delete');
+      setIsDeleteDialogOpen(false);
+      return;
     }
-    setIsDeleteDialogOpen(false);
-    setBundleToDeleteId(null);
+
+    setIsDeleting(true);
+    
+    try {
+      console.log('Calling deleteBundle with ID:', bundleToDeleteId);
+      const result = await deleteBundle(bundleToDeleteId);
+      console.log('Delete result:', result);
+      
+      // Immediately close modal and reset state
+      setIsDeleteDialogOpen(false);
+      setBundleToDeleteId(null);
+      setIsDeleting(false);
+      
+      showToast("Bundle deleted successfully.", "success");
+      
+      // Force refresh the page to show updated data
+      console.log('Refreshing page to show updated data...');
+      window.location.reload();
+      
+    } catch (err: any) {
+      console.error('Delete error details:', err);
+      console.error('Error message:', err.message);
+      console.error('Error stack:', err.stack);
+      showToast(err.message || "Failed to delete bundle.", "error");
+      
+      // Only close modal on error
+      setIsDeleteDialogOpen(false);
+      setBundleToDeleteId(null);
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -177,7 +223,12 @@ export default function BundlesClient({
                     <div>
                       <div className="font-medium">{bundle.name}</div>
                       <div className="text-xs text-gray-500">
-                        {bundle.description || "No description"}
+                        {bundle.description 
+                          ? bundle.description.length > 50 
+                            ? `${bundle.description.substring(0, 50)}...` 
+                            : bundle.description
+                          : "No description"
+                        }
                       </div>
                     </div>
                   </TableCell>
@@ -209,30 +260,34 @@ export default function BundlesClient({
 
       <div className="mt-4 flex justify-center">
         <PaginationBar
-          page={page}
+          page={currentPage}
           totalPages={totalPages}
           urlParamName="page"
         />
       </div>
 
+      {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this bundle? This action cannot be
+              undone.
+            </DialogDescription>
           </DialogHeader>
-          <DialogDescription>
-            Are you sure you want to delete this bundle? This action cannot be
-            undone.
-          </DialogDescription>
-          <DialogFooter>
+          <DialogFooter className="flex justify-end gap-2">
             <Button
               variant="outline"
-              onClick={() => setIsDeleteDialogOpen(false)}
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setBundleToDeleteId(null);
+              }}
             >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDeleteConfirm}>
-              Delete
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
+              {isDeleting ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
