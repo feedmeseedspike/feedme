@@ -58,6 +58,29 @@ async function getUserCartId(userId: string) {
   return cart.id;
 }
 
+// Server action to update the entire cart using the update_cart_items function
+export async function sendOffers(data: {
+  name: string;
+  email: string;
+  phone: string;
+}) {
+  const supabase = await createClient();
+  try {
+    const { data: formData, error } = await supabase
+      .from("form")
+      .insert([{ name: data.name, email: data.email, phone: data.phone }])
+      .select();
+
+    console.log("Form data inserted:", formData);
+
+    if (error) throw error;
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false };
+  }
+}
+
 // Server action to fetch the user's cart
 export async function getCart(): Promise<GetCartSuccess | GetCartFailure> {
   const supabase = await createClient();
