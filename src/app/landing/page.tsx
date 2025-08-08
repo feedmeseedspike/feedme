@@ -129,7 +129,7 @@ export default function Home() {
           </div>
           <button
             onClick={() => router.push("/offers")}
-            className="w-full bg-green-600 text-white font-semibold py-3 rounded-lg hover:bg-green-700 transition">
+            className="w-full bg-green-600 h-[50px] text-white font-semibold py-3 rounded-lg hover:bg-green-700 transition">
             View All Offers
           </button>
         </div>
