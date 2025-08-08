@@ -11,10 +11,12 @@ export interface ProductOption {
   stockStatus?: string;
 }
 
-// Update CartItem type to include both product and bundle relationships
+// Update CartItem type to include product, bundle, and offer relationships
 export type CartItem = Tables<"cart_items"> & {
+  offer_id?: string | null; // Add offer_id property
   products: Tables<"products"> | null;
-  bundles: Tables<"bundles"> | null; // Add bundles relationship
+  bundles: Tables<"bundles"> | null;
+  // offers: Tables<"offers"> | null; // Add offers relationship
 };
 
 export type GetCartSuccess = { success: true; data: CartItem[]; error: null };
@@ -56,6 +58,29 @@ async function getUserCartId(userId: string) {
   return cart.id;
 }
 
+// Server action to update the entire cart using the update_cart_items function
+export async function sendOffers(data: {
+  name: string;
+  email: string;
+  phone: string;
+}) {
+  const supabase = await createClient();
+  try {
+    const { data: formData, error } = await supabase
+      .from("form")
+      .insert([{ name: data.name, email: data.email, phone: data.phone }])
+      .select();
+
+    console.log("Form data inserted:", formData);
+
+    if (error) throw error;
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false };
+  }
+}
+
 // Server action to fetch the user's cart
 export async function getCart(): Promise<GetCartSuccess | GetCartFailure> {
   const supabase = await createClient();
@@ -73,7 +98,7 @@ export async function getCart(): Promise<GetCartSuccess | GetCartFailure> {
 
     const { data, error } = await supabase
       .from("cart_items")
-      .select("*, products(*), bundles(*)") // Select cart item fields and join with products and bundles
+      .select("*, products(*), bundles(*), offers(*)") // Select cart item fields and join with products, bundles, and offers
       .eq("cart_id", cartId) // Use cart_id instead of user_id
       .order("created_at", { ascending: true });
 
@@ -86,7 +111,10 @@ export async function getCart(): Promise<GetCartSuccess | GetCartFailure> {
       ...item,
       products: item.products,
       bundles: item.bundles, // Map bundles data
+      offers: item.offers, // Map offers data
     }));
+
+    // Debug logging removed
 
     return { success: true, data: typedData, error: null };
   } catch (error: any) {
@@ -105,6 +133,7 @@ export type UpdateCartItemsFailure = { success: false; error: string };
 export interface ItemToUpdate {
   product_id?: string | null;
   bundle_id?: string | null;
+  offer_id?: string | null;
   option?: Json | null;
   quantity: number;
   price?: number | null;
@@ -123,7 +152,7 @@ export async function updateCartItems(
   if (authError || !user) {
     return {
       success: false,
-      error: "You must be logged in to update your cart.",
+      error: "ANONYMOUS_USER",
     };
   }
 
@@ -155,7 +184,8 @@ export async function addToCart(
   productId: string | null,
   quantity: number,
   selectedOption?: Tables<"products">["options"] | null,
-  bundleId?: string | null
+  bundleId?: string | null,
+  offerId?: string | null
 ): Promise<AddToCartSuccess | AddToCartFailure> {
   const supabase = await createClient();
   const {
@@ -164,11 +194,11 @@ export async function addToCart(
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
+    // For anonymous users, we'll handle this on the client side
     return {
       success: false,
-      error:
-        "You must be logged in to add items to cart (anonymous cart coming soon)",
-    }; // Handle unauthenticated cart later
+      error: "ANONYMOUS_USER",
+    };
   }
 
   try {
@@ -213,6 +243,77 @@ export async function addToCart(
             quantity: quantity,
             price: bundleData.price, // Use bundle's price
             product_id: null, // No product_id for bundle items
+          });
+
+        if (insertError) throw insertError;
+      }
+    } else if (offerId) {
+      // Debug logging removed
+      // Handle adding an offer to cart
+      const { data: existingOfferItem, error: fetchError } = await supabase
+        .from("cart_items")
+        .select("id, quantity")
+        .eq("cart_id", cartId)
+        .eq("offer_id", offerId)
+        .single();
+
+      if (fetchError && fetchError.code !== "PGRST116") throw fetchError;
+
+      if (existingOfferItem) {
+        // Fetch offer details to validate availability for quantity update
+        const { data: offerData, error: offerFetchError } = await supabase
+          .from("offers")
+          .select("available_slots, title")
+          .eq("id", offerId)
+          .single();
+
+        if (offerFetchError) throw offerFetchError;
+        if (!offerData) throw new Error("Offer not found.");
+
+        const newTotalQuantity = existingOfferItem.quantity + quantity;
+
+        // Debug logging removed
+
+        // Check if the new total quantity exceeds available slots
+        if (newTotalQuantity > offerData.available_slots) {
+          throw new Error(
+            `Only ${offerData.available_slots} slots available for "${offerData.title}". You currently have ${existingOfferItem.quantity} in cart.`
+          );
+        }
+
+        // If offer item exists, update its quantity
+        const { error: updateError } = await supabase
+          .from("cart_items")
+          .update({ quantity: newTotalQuantity })
+          .eq("id", existingOfferItem.id);
+
+        if (updateError) throw updateError;
+      } else {
+        // Fetch offer details to get price and other info for the cart item
+        const { data: offerData, error: offerFetchError } = await supabase
+          .from("offers")
+          .select("id, title, price_per_slot, available_slots")
+          .eq("id", offerId)
+          .single();
+
+        if (offerFetchError) throw offerFetchError;
+        if (!offerData) throw new Error("Offer not found.");
+
+        // Check if there are enough slots available
+        if (quantity > offerData.available_slots) {
+          throw new Error(`Only ${offerData.available_slots} slots available.`);
+        }
+
+        // Insert new offer item into cart_items
+        const { error: insertError } = await supabase
+          .from("cart_items")
+          .insert({
+            cart_id: cartId,
+            offer_id: offerId,
+            quantity: quantity,
+            price: offerData.price_per_slot, // Use offer's price per slot
+            product_id: null, // No product_id for offer items
+            bundle_id: null, // No bundle_id for offer items
           });
 
         if (insertError) throw insertError;
@@ -277,8 +378,11 @@ export async function addToCart(
         if (insertError) throw insertError;
       }
     } else {
-      // Neither productId nor bundleId was provided
-      return { success: false, error: "No product or bundle ID provided." };
+      // Neither productId, bundleId, nor offerId was provided
+      return {
+        success: false,
+        error: "No product, bundle, or offer ID provided.",
+      };
     }
 
     return { success: true };
@@ -303,9 +407,8 @@ export async function removeFromCart(
   if (authError || !user) {
     return {
       success: false,
-      error:
-        "You must be logged in to modify cart (anonymous cart coming soon)",
-    }; // Handle unauthenticated cart later
+      error: "ANONYMOUS_USER",
+    };
   }
 
   try {
@@ -345,22 +448,56 @@ export async function updateCartItemQuantity(
   if (authError || !user) {
     return {
       success: false,
-      error:
-        "You must be logged in to modify cart (anonymous cart coming soon)",
-    }; // Handle unauthenticated cart later
+      error: "ANONYMOUS_USER",
+    };
   }
 
   try {
     if (quantity <= 0) {
       // If quantity is 0 or less, remove the item
-      await removeFromCart(cartItemId);
+      return removeFromCart(cartItemId);
+    }
+
+    const cartId = await getUserCartId(user.id);
+
+    // Get the cart item to check if it's an offer
+    const { data: cartItem, error: fetchError } = await supabase
+      .from("cart_items")
+      .select("offer_id")
+      .eq("id", cartItemId)
+      .eq("cart_id", cartId)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!cartItem) throw new Error("Cart item not found");
+
+    // If this is an offer, validate availability
+    if (cartItem.offer_id) {
+      const { data: offerData, error: offerError } = await supabase
+        .from("offers")
+        .select("available_slots, status, title")
+        .eq("id", cartItem.offer_id)
+        .single();
+
+      if (offerError) throw offerError;
+      if (!offerData) throw new Error("Offer not found");
+
+      if (offerData.status !== "active") {
+        throw new Error(`Offer "${offerData.title}" is no longer active`);
+      }
+
+      if (quantity > offerData.available_slots) {
+        throw new Error(
+          `Only ${offerData.available_slots} slots available for "${offerData.title}"`
+        );
+      }
     }
 
     const { error } = await supabase
       .from("cart_items")
       .update({ quantity: quantity })
       .eq("id", cartItemId)
-      .select();
+      .eq("cart_id", cartId); // Use cart_id instead of user_id
 
     if (error) throw error;
 
@@ -389,8 +526,8 @@ export async function clearCart(): Promise<
   if (authError || !user) {
     return {
       success: false,
-      error: "You must be logged in to clear cart (anonymous cart coming soon)",
-    }; // Handle unauthenticated cart later
+      error: "ANONYMOUS_USER",
+    };
   }
 
   try {
