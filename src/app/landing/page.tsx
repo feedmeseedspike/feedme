@@ -59,7 +59,7 @@ export default function Home() {
     // Scroll to top on page load
     const fetchOffers = async () => {
       const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_SITE_URL!}/api/offers?status=active`
+        `/api/offers?status=active`
       );
       if (response.status === 200) {
         console.log("Offers fetched:", response.data.offers);
