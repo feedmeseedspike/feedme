@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendMail } from "@/utils/email/mailer";
 import { renderOrderEmails } from "@/utils/email/renderOrderEmails";
-import { sendPushNotification } from "@/lib/actions/pushnotification.action";
 
 interface OrderEmailRequestBody {
   adminEmail: string;
@@ -34,12 +33,6 @@ export async function POST(req: Request) {
       subject: `Order Confirmed! Your Fresh Produce is On Its Way`,
       html: userHtml,
     });
-
-    // await sendPushNotification(
-    //   "Success",
-    //   "Order created successfully!",
-    //   userOrderProps.userid
-    // );
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

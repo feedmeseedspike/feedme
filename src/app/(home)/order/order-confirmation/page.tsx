@@ -31,15 +31,16 @@ function OrderConfirmationClientWrapper({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const dispatch = useDispatch();
-    const clearCartMutation = useClearCartMutation();
+  const clearCartMutation = useClearCartMutation();
 
-  async function clearData(){
+  async function clearData() {
     await clearCartMutation.mutateAsync();
   }
 
-  useEffect(()=>{
-    console.log('removing carts')
-    clearData()},[])
+  useEffect(() => {
+    console.log("removing carts");
+    clearData();
+  }, []);
 
   useEffect(() => {
     let id = orderId;
@@ -165,7 +166,7 @@ function OrderConfirmationClientWrapper({
                 Order ID
               </p>
               <p className="text-sm md:text-base font-mono tracking-wider">
-                {order.id?.slice(-8)}
+                {order.order_id}
               </p>
             </div>
             <div className="grid gap-2 text-center md:text-left">

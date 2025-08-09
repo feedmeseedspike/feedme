@@ -78,6 +78,7 @@ type UserOrder = Pick<
   | "payment_status"
   | "local_government"
   | "total_amount_paid"
+  | "order_id"
 > & {
   voucher_discount: number | null;
   shipping_address: ShippingAddress | string | null;
@@ -482,7 +483,8 @@ const OrderDetailsModal = ({
         <div className="grid gap-4 py-4 text-gray-700 overflow-y-auto">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">
-              Order ID: {order.id?.substring(0, 8) || "N/A"}
+              Order ID:{" "}
+              {order.order_id ? order.order_id : order.id?.substring(0, 8)}
             </h3>
             <Badge className={badgeColor}>{order.status || "Unknown"}</Badge>
           </div>
@@ -538,8 +540,7 @@ const OrderDetailsModal = ({
               <Button
                 variant="link"
                 onClick={() => setShowAllProducts(!showAllProducts)}
-                className="mt-2 p-0"
-              >
+                className="mt-2 p-0">
                 {showAllProducts
                   ? "Show Less Products"
                   : `View All ${order.order_items.length} Products`}
@@ -573,8 +574,7 @@ const OrderDetailsModal = ({
           <div className="flex justify-end gap-2 mt-4">
             <Button
               variant="outline"
-              onClick={() => downloadOrderInvoice(order)}
-            >
+              onClick={() => downloadOrderInvoice(order)}>
               <Download size={16} className="mr-2" /> Download Invoice
             </Button>
           </div>
@@ -634,7 +634,8 @@ export default function OrderClient({
             <Card key={order.id} className="shadow-sm">
               <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Order ID: {order.id?.substring(0, 8)}
+                  Order ID:{" "}
+                  {order.order_id ? order.order_id : order.id?.substring(0, 8)}
                 </CardTitle>
                 <Badge className={getStatusDetails(order.status).badgeColor}>
                   {order.status || "Unknown"}
@@ -658,7 +659,7 @@ export default function OrderClient({
                   </div>
                   <div className="flex items-center text-sm">
                     <CreditCard className="mr-2 h-4 w-4 text-gray-500" />
-                    Payment: {order.payment_method || "N/A"} ({" "}
+                    Payment: {order.payment_method || "Wallet"} ({" "}
                     {order.payment_status || "N/A"})
                   </div>
                   <div className="flex items-center text-sm">
@@ -671,15 +672,13 @@ export default function OrderClient({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleViewDetails(order)}
-                  >
+                    onClick={() => handleViewDetails(order)}>
                     <Eye className="mr-2 h-4 w-4" /> View Details
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleDownloadInvoice(order)}
-                  >
+                    onClick={() => handleDownloadInvoice(order)}>
                     <Download className="mr-2 h-4 w-4" /> Invoice
                   </Button>
                 </div>

@@ -46,23 +46,23 @@ export const POST = authMiddleware(
       // });
 
       // Ensure user_id exists in profiles
-      // const { data: profile, error: profileError } = await supabase
-      //   .from("profiles")
-      //   .select("user_id")
-      //   .eq("user_id", user_id)
-      //   .single();
-      // if (profileError || !profile) {
-      //   console.log({ profileError });
-      //   return NextResponse.json(
-      //     { message: "User profile not found for order creation." },
-      //     { status: 400 }
-      //   );
-      // }
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("user_id", user_id)
+        .single();
+      if (profileError || !profile) {
+        console.log({ profileError });
+        return NextResponse.json(
+          { message: "User profile not found for order creation." },
+          { status: 400 }
+        );
+      }
       // Save pending order/transaction and get the inserted order
       const { data: order, error: txError } = await supabase
         .from("orders")
         .insert({
-          user_id: user_id,
+          user_id: profile.user_id,
           total_amount: amount,
           total_amount_paid: orderDetails.totalAmountPaid,
           delivery_fee: orderDetails.deliveryFee,

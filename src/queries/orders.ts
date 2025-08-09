@@ -105,7 +105,7 @@ export async function fetchOrderById(orderId: string) {
       )
     `
     )
-    .eq("id", orderId)
+    .eq("order_id", orderId)
     .single();
 
   if (error) {

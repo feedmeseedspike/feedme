@@ -817,12 +817,6 @@ const CheckoutForm = ({
               subtotal: subtotal,
             });
             if (response.data.authorization_url) {
-              // Store orderId for use after Paystack redirect (optional, for fallback)
-              // await sendPushNotification(
-              //   "Success",
-              //   "Order created successfully!",
-              //   user.user_id
-              // );
               console.log(orderResult.data);
               if (orderResult.data.orderId) {
                 localStorage.setItem("lastOrderId", orderResult.data.orderId);
