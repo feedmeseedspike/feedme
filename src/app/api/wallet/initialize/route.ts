@@ -110,8 +110,8 @@ export const POST = authMiddleware(
           localGovernment: localGovernment || "",
           deliveryFee: deliveryFee || 0,
           serviceCharge: serviceCharge || 0,
-          subtotal: subtotal || amount,
-          totalAmountPaid: amount,
+          subtotal: amount,
+          totalAmountPaid: subtotal,
         };
 
         // Update the order with pending status (we'll add reference after Paystack response)

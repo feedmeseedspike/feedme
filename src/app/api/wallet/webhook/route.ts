@@ -8,9 +8,6 @@ export async function POST(request: Request) {
   try {
     // Verify Paystack webhook signature
     const body = await request.json();
-    console.log({
-      body: body.data,
-    });
     const hash = crypto
       .createHmac("sha512", process.env.PAYSTACK_SECRET_KEY as string)
       .update(JSON.stringify(body))
@@ -120,7 +117,7 @@ async function handleDirectPayment(
       `${process.env.NEXT_PUBLIC_SITE_URL!}/api/email/send-order-confirmation`,
       {
         adminEmail: "orders.feedmeafrica@gmail.com",
-        userEmail: metadata.userEmail,
+        userEmail: metadata.email,
         adminOrderProps: {
           orderNumber: metadata.orderId,
           customerName: metadata.customerName,
@@ -137,8 +134,8 @@ async function handleDirectPayment(
           deliveryAddress: metadata.deliveryAddress,
           deliveryFee: metadata.deliveryFee,
           serviceCharge: metadata.serviceCharge,
-          totalAmount: metadata.subtotal,
-          totalAmountPaid: metadata.totalAmountPaid,
+          totalAmount: metadata.amount,
+          totalAmountPaid: metadata.subtotal,
           userid: metadata.user_id,
         },
       }

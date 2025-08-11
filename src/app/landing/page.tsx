@@ -202,11 +202,12 @@ export default function Home() {
         className="py-16 bg-white">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl text-black font-bold text-center mb-8">
-            Join Our List & Never Miss a Deal
+            Join Our Inner Circle and be the First to know of the best deals
           </h2>
           <p className="text-lg text-black max-w-2xl mx-auto text-center mb-8">
-            Want first access to promos, special offers, and updates? Leave your
-            contact info below and we’ll keep you in the loop!
+            When we roll out new special offers, promotions, and updates, who do
+            you think would be the first to know about it? You, of course! But
+            that only happens if you fill in your contact info below.
           </p>
           <form onSubmit={handleSubmit} className="max-w-md mx-auto">
             <div className="mb-4">

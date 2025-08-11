@@ -31,7 +31,7 @@ export default async function Headertags() {
       
     if (fetchError) throw fetchError;
     categories = (data || []) as CategoryListItem[];
-    console.log("HeaderTags categories:", categories);
+    // console.log("HeaderTags categories:", categories);
 
     // Fetch products for each category (limit to 2 per category)
     const productsPromises = categories.map(async (cat) => {
@@ -62,7 +62,7 @@ export default async function Headertags() {
       productsByCategory[categoryId] = products;
     });
     
-    console.log("HeaderTags products by category:", productsByCategory);
+    // console.log("HeaderTags products by category:", productsByCategory);
   } catch (err: any) {
     console.error("HeaderTags error:", err);
     error = err.message || "Failed to fetch categories";

@@ -47,9 +47,13 @@ export default function Carousel({
   return (
     <section className="py-12 bg-white">
       <div className="container mx-auto px-4 py-9">
-        <h2 className="text-3xl text-black font-bold text-center mb-8">
-          See Our Offers
+        <h2 className="text-3xl text-black font-bold text-center mb-4">
+          Exclusive deals available for a short time only
         </h2>
+        <p className="text-lg text-black max-w-2xl mx-auto text-center mb-4">
+          Act fast—these exclusive deals have limited slots and
+          won&apos;t last long.
+        </p>
         <div
           ref={carouselRef}
           className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
