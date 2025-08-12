@@ -1,5 +1,6 @@
 "use server";
 
+import { ProductInterface } from "@/utils/productsiinterface";
 import { createClient } from "../../utils/supabase/server";
 
 // Removed top-level supabase initialization
@@ -31,6 +32,16 @@ export async function getTrendingProducts({ limit = 10 }: { limit?: number }) {
     .limit(limit);
   if (error) throw error;
   return data;
+}
+
+export async function getProduct(): Promise<ProductInterface[]> {
+  const supabase = await createClient(); // Initialize client inside the function
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .eq("is_published", true);
+  if (error) throw error;
+  return data as ProductInterface[];
 }
 
 export async function getFreshFruits({ limit = 10 }: { limit?: number }) {
@@ -79,7 +90,7 @@ export async function getBundle() {
   const { data, error } = await supabase
     .from("bundles")
     .select("*")
-    .order("created_at", { ascending: false })
+    .order("created_at", { ascending: false });
   if (error) throw error;
   return data;
 }
@@ -351,7 +362,9 @@ export async function getProductsBySearch(query: string, limit = 10) {
   const { data, error } = await supabase
     .from("products")
     .select("id, slug, name, images")
-    .or(`name.ilike.%${query}%,description.ilike.%${query}%,brand.ilike.%${query}%`)
+    .or(
+      `name.ilike.%${query}%,description.ilike.%${query}%,brand.ilike.%${query}%`
+    )
     .eq("is_published", true)
     .limit(limit);
   if (error) throw error;
