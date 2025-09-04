@@ -6,6 +6,7 @@ import { formatError } from "src/lib/utils";
 import { createClient } from "src/utils/supabase/server";
 import { Tables } from "src/utils/database.types";
 import supabaseAdmin from "@/utils/supabase/admin";
+import { SignInWithIdTokenCredentials } from "@supabase/supabase-js";
 
 export interface AuthSuccess<T> {
   success: true;
@@ -147,6 +148,31 @@ export async function signInUser(credentials: {
       };
     }
     return { success: false, error: formatError(error.message) };
+  }
+}
+
+export async function signinWithOAuth(
+  provider: SignInWithIdTokenCredentials["provider"],
+  id: string
+) {
+  const supabase = await createClient();
+  try {
+    const { data, error } = await supabase.auth.signInWithIdToken({
+      provider: provider,
+      token: id,
+    });
+
+    if (error) {
+      throw error; // Or redirect to an error page
+    }
+    console.log({ data });
+    return { success: true, data };
+  } catch (err: any) {
+    console.log(err);
+    return {
+      success: false,
+      data: { message: "OAuth sign-in failed. " + err.message },
+    };
   }
 }
 

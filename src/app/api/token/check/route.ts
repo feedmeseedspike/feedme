@@ -6,9 +6,11 @@ export const POST = async (request: Request) => {
     const { type, userId }: { userId: string; type: "web" | "mobile" } =
       await request.json();
     const response = await checkToken(userId, type);
-    if (response) {
-      return NextResponse.json(response);
-    }
+    console.log(response)
+    // if (response) {
+    //   return NextResponse.json(response);
+    // }
+          return NextResponse.json(response);
   } catch (error: any) {
     console.error(error);
     return NextResponse.json(
