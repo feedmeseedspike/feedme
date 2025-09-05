@@ -73,7 +73,7 @@ const CartProductGroupDisplay = React.memo(
     handleQuantityChange,
   }: CartProductGroupDisplayProps) => {
     const groupName = productGroup.product?.name || productGroup.bundle?.name || productGroup.offer?.title || "Product";
-    
+
     return (
       <div key={productId} className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
@@ -206,27 +206,42 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
   const [open, setOpen] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(0);
 
-  // Listen for anonymous cart updates
+  // Listen for cart updates (both anonymous and authenticated)
   useEffect(() => {
-    if (!user) {
-      const handleAnonymousCartUpdate = () => {
+    const handleCartUpdate = () => {
+      setForceUpdate(prev => prev + 1);
+      // Also invalidate the cart query for authenticated users
+      if (user) {
+        queryClient.invalidateQueries({ queryKey: ['cart'] });
+      }
+    };
+
+    const handleAnonymousCartUpdate = () => {
+      setForceUpdate(prev => prev + 1);
+    };
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'feedme_anonymous_cart') {
         setForceUpdate(prev => prev + 1);
-      };
-      
-      const handleStorageChange = (e: StorageEvent) => {
-        if (e.key === 'feedme_anonymous_cart') {
-          setForceUpdate(prev => prev + 1);
-        }
-      };
-      
+      }
+    };
+
+    // Listen for cart updates from AI chat
+    window.addEventListener('cartUpdated', handleCartUpdate);
+
+    if (!user) {
       window.addEventListener('anonymousCartUpdated', handleAnonymousCartUpdate);
       window.addEventListener('storage', handleStorageChange);
-      return () => {
+    }
+
+    return () => {
+      window.removeEventListener('cartUpdated', handleCartUpdate);
+      if (!user) {
         window.removeEventListener('anonymousCartUpdated', handleAnonymousCartUpdate);
         window.removeEventListener('storage', handleStorageChange);
-      };
-    }
-  }, [user]);
+      }
+    };
+  }, [user, queryClient]);
 
   const [enrichedAnonItems, setEnrichedAnonItems] = useState<CartItem[]>([]);
 
@@ -237,7 +252,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
         const enriched = await Promise.all(
           anonymousCart.items.map(async (anonItem) => {
             let offerData = null;
-            
+
             // Fetch offer data if this is an offer item
             if (anonItem.offer_id) {
               try {
@@ -268,7 +283,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
             } as CartItem;
           })
         );
-        
+
         setEnrichedAnonItems(enriched);
       };
 
@@ -291,7 +306,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
       items.reduce(
         (acc, item) => {
           let itemPrice = 0;
-          
+
           if (item.offer_id && item.offers) {
             // For offers, use price_per_slot
             itemPrice = item.offers.price_per_slot || item.price || 0;
@@ -304,7 +319,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
             // For regular products and bundles, use item price
             itemPrice = item.price || 0;
           }
-          
+
           return acc + (itemPrice * item.quantity);
         },
         0
@@ -502,7 +517,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
                   : null;
                 const priceToUse =
                   (productOption?.price !== undefined &&
-                  productOption?.price !== null
+                    productOption?.price !== null
                     ? productOption.price
                     : cartItem.price) || 0;
 
@@ -593,11 +608,14 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
+
     checkMobile();
     window.addEventListener("resize", checkMobile);
+
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  // Render logic
   if (asLink) {
     return (
       <div className="relative" onMouseEnter={prefetchCart}>
@@ -676,6 +694,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
           ) : null}
         </div>
       </SheetTrigger>
+
       <SheetContent className="flex flex-col gap-4 md:!max-w-xl">
         <SheetHeader className="flex justify-between w-full items-center">
           <SheetClose className="rounded-sm opacity-70 transition-opacity hover:opacity-100">
@@ -701,25 +720,16 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
         </SheetHeader>
 
         {/* Free Shipping Progress Bar */}
-        {items.length > 0 &&
-          (() => {
-            const FREE_SHIPPING_THRESHOLD = 50000;
-            const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
-            const percent = Math.min(
-              100,
-              (subtotal / FREE_SHIPPING_THRESHOLD) * 100
-            );
-            return (
-              <div
-                className={`rounded border px-4 py-3 mb-2 ${
-                  subtotal >= FREE_SHIPPING_THRESHOLD
+        {items.length > 0 ? (
+          <div
+            className={`rounded border px-4 py-3 mb-2 ${subtotal >= 50000
                     ? "bg-green-50 border-green-200"
                     : "bg-red-50 border-red-200"
                 }`}
               >
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-lg">📦</span>
-                  {subtotal >= FREE_SHIPPING_THRESHOLD ? (
+              {subtotal >= 50000 ? (
                     <span className="font-semibold text-[14px] text-green-700">
                       Congratulations! You have unlocked <b>free shipping</b>!
                     </span>
@@ -727,25 +737,23 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
                     <span className="font-medium text-black">
                       Add{" "}
                       <span className="font-bold text-red-600">
-                        {formatNaira(remaining)}
+                    {formatNaira(Math.max(0, 50000 - subtotal))}
                       </span>{" "}
                       to cart and get <b>free shipping</b>!
                     </span>
                   )}
                 </div>
                 <div className="w-full h-2 bg-red-100 rounded">
-                  <div
-                    className={`h-2 rounded transition-all duration-300 ${
-                      subtotal >= FREE_SHIPPING_THRESHOLD
-                        ? "bg-green-500"
-                        : "bg-red-500"
-                    }`}
-                    style={{ width: `${percent}%` }}
-                  />
+              <div
+                className={`h-2 rounded transition-all duration-300 ${subtotal >= 50000 ? "bg-green-500" : "bg-red-500"
+                  }`}
+                style={{
+                  width: `${Math.min(100, (subtotal / 50000) * 100)}%`,
+                }}
+              />
                 </div>
               </div>
-            );
-          })()}
+        ) : null}
 
         <div className="flex grow flex-col space-y-5 overflow-y-auto pt-1">
           {isLoading && <p>Loading cart...</p>}
@@ -841,3 +849,6 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
 Cart.displayName = "Cart";
 
 export default Cart;
+
+
+

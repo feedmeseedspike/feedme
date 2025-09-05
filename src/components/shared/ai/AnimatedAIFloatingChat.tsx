@@ -14,12 +14,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@components/ui/select";
-import { Camera, Send, Bot, User, ShoppingCart, MessageCircle, X, Minimize2, Sparkles, Zap, RotateCcw, Plus, Minus, Trash2, Heart, Star, AlertCircle, Clock } from "lucide-react";
+import { Camera, Send, Bot, User, ShoppingCart, MessageCircle, X, Minimize2, Sparkles, Zap, RotateCcw, Plus, Minus, Trash2, Heart, Star, AlertCircle, Clock, Edit2, Check } from "lucide-react";
 import Image from "next/image";
 import { formatNaira, cn } from "src/lib/utils";
 import { useToast } from "src/hooks/useToast";
 import { useUser } from "src/hooks/useUser";
 import { useAnonymousCart } from "src/hooks/useAnonymousCart";
+import { useRouter } from "next/navigation";
 
 // Product Card Component matching ProductDetailsCard style
 interface ProductCardProps {
@@ -30,12 +31,12 @@ interface ProductCardProps {
   onAddToCart: (suggestion: ProductSuggestion, index: number) => void;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ 
-  suggestion, 
-  index, 
-  selectedOptions, 
-  onOptionSelect, 
-  onAddToCart 
+const ProductCard: React.FC<ProductCardProps> = ({
+  suggestion,
+  index,
+  selectedOptions,
+  onOptionSelect,
+  onAddToCart
 }) => {
   const [quantity, setQuantity] = useState(1);
   const [showQuantityControls, setShowQuantityControls] = useState(false);
@@ -43,7 +44,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   const selectedOption = selectedOptions[index];
   const hasOptions = suggestion.product?.options && suggestion.product.options.length > 0;
-  
+
   // Sort options by price like in ProductDetailsCard
   const sortedOptions = useMemo(() => {
     if (!hasOptions) return [];
@@ -55,7 +56,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
       showToast("This product is currently out of season and cannot be added to cart", "error");
       return;
     }
-    
+
     // Auto-select first option if none selected but options exist
     if (hasOptions && !selectedOption && sortedOptions.length > 0) {
       onOptionSelect(index, sortedOptions[0]);
@@ -150,9 +151,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 >
                   {quantity === 1 ? <Trash2 className="size-3" /> : <Minus className="size-3" />}
                 </motion.button>
-                
+
                 <span className="text-xs font-medium w-4 text-center">{quantity}</span>
-                
+
                 <motion.button
                   onClick={() => handleQuantityChange(quantity + 1)}
                   disabled={suggestion.product?.inSeason === false}
@@ -179,7 +180,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     ? "bg-gray-300 cursor-not-allowed opacity-50"
                     : "bg-[#1B6013]/90 hover:bg-[#1B6013] hover:shadow-lg"
                 )}
-                whileHover={{ 
+                whileHover={{
                   scale: suggestion.product?.inSeason !== false ? 1.1 : 1,
                   boxShadow: suggestion.product?.inSeason !== false ? "0 8px 25px rgba(27, 96, 19, 0.3)" : undefined
                 }}
@@ -196,7 +197,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
       <div className="p-3 space-y-2">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
-            <h5 
+            <h5
               className="font-semibold text-sm text-gray-900 line-clamp-2 leading-tight"
               title={suggestion.productName}
             >
@@ -211,9 +212,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
         {suggestion.product && (
           <div className="flex items-center justify-between">
             <div className="font-bold text-sm">
-              {selectedOption && selectedOption.price 
+              {selectedOption && selectedOption.price
                 ? formatNaira(selectedOption.price)
-                : suggestion.product.price 
+                : suggestion.product.price
                   ? formatNaira(suggestion.product.price)
                   : "Price N/A"
               }
@@ -295,6 +296,13 @@ interface Message {
   imageUrl?: string;
 }
 
+// Minimal dish suggestion type for typing purposes
+interface DishSuggestion {
+  id: string;
+  name: string;
+  reason?: string;
+}
+
 interface Question {
   id: string;
   question: string;
@@ -317,14 +325,19 @@ interface ProductSuggestion {
   };
   available?: boolean;
   isRecommended?: boolean;
+  type?: 'product' | 'bundle' | 'action'; // Added type for filtering
+  action?: string; // Added action for action suggestions
+  data?: any; // Added data for product suggestions
 }
 
 interface AIResponse {
   message: string;
   questions: Question[];
-  productSuggestions: ProductSuggestion[];
+  productSuggestions?: ProductSuggestion[];
   needsMoreInfo: boolean;
   conversationId: string;
+  response?: string; // Added for new response structure
+  suggestions?: any[]; // RAG suggestions
 }
 
 const chatVariants = {
@@ -382,7 +395,7 @@ const messageVariants = {
 
 const buttonVariants = {
   idle: { scale: 1 },
-  hover: { 
+  hover: {
     scale: 1.1,
     transition: {
       type: "spring" as const,
@@ -394,11 +407,11 @@ const buttonVariants = {
 };
 
 const floatingButtonVariants = {
-  idle: { 
+  idle: {
     scale: 1,
     rotate: 0,
   },
-  hover: { 
+  hover: {
     scale: 1.1,
     rotate: 10,
     transition: {
@@ -426,24 +439,98 @@ const sparkleVariants = {
 export default function AnimatedAIFloatingChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "1",
+      type: "ai",
+      content:
+        "Hi! I'm your AI meal planning assistant. Tell me what you'd like to cook or upload a photo of a dish you want to make, and I'll help you find the right ingredients! 🍳",
+      timestamp: new Date(),
+    },
+  ]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<any[]>([]);
   const [currentQuestions, setCurrentQuestions] = useState<Question[]>([]);
-  const [currentSuggestions, setCurrentSuggestions] = useState<ProductSuggestion[]>([]);
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
+  const [currentDishSuggestions, setCurrentDishSuggestions] = useState<
+    DishSuggestion[]
+  >([]);
+  const [currentSuggestions, setCurrentSuggestions] = useState<
+    ProductSuggestion[]
+  >([]);
+  const [selectedAnswers, setSelectedAnswers] = useState<
+    Record<string, string>
+  >({});
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
-  const [typingIndicator, setTypingIndicator] = useState(false);
+  const [selectedOptions, setSelectedOptions] = useState<Record<number, any>>(
+    {}
+  );
+  const [showDishes, setShowDishes] = useState(false);
+  const [lastSelectedDish, setLastSelectedDish] =
+    useState<DishSuggestion | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState("");
+  const [pendingImage, setPendingImage] = useState<string | null>(null);
+
+  // Conversation and quota state
   const [conversationLoaded, setConversationLoaded] = useState(false);
-  const [selectedOptions, setSelectedOptions] = useState<Record<number, any>>({});
-  const [quotaStatus, setQuotaStatus] = useState<{ remaining: number; total: number; exceeded: boolean } | null>(null);
-  
+  const [quotaStatus, setQuotaStatus] = useState<{ remaining: number; total: number } | null>(null);
+
+  // Typing indicator for AI responses
+  const [typingIndicator, setTypingIndicator] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
+  const router = useRouter();
   const user = useUser();
   const controls = useAnimation();
+
+  // Last user message id (to allow editing like ChatGPT)
+  const lastUserMessageId = useMemo(() => {
+    const last = [...messages].reverse().find(m => m.type === 'user');
+    return last?.id || null;
+  }, [messages]);
+
+  const beginEditMessage = (message: Message) => {
+    setEditingMessageId(message.id);
+    setEditingContent(message.content);
+  };
+
+  const cancelEditMessage = () => {
+    setEditingMessageId(null);
+    setEditingContent("");
+  };
+
+  const saveEditedMessage = async () => {
+    if (!editingMessageId) return;
+    const idx = messages.findIndex(m => m.id === editingMessageId);
+    if (idx === -1) return;
+
+    // Trim conversation to the edited user message
+    const updatedUserMessage: Message = { ...messages[idx], content: editingContent };
+    const trimmedMessages = [...messages.slice(0, idx), updatedUserMessage];
+    setMessages(trimmedMessages);
+
+    // Trim conversationHistory to before this user turn
+    let cutIndex = conversationHistory.findIndex((h, i) => h.role === 'user' && h.content === messages[idx].content);
+    if (cutIndex === -1) {
+      // fallback: cut to last user turn
+      cutIndex = conversationHistory.map(h => h.role).lastIndexOf('user');
+    }
+    const trimmedHistory = cutIndex >= 0 ? conversationHistory.slice(0, cutIndex) : [];
+    setConversationHistory(trimmedHistory);
+    setCurrentQuestions([]);
+    setCurrentSuggestions([]);
+
+    // Clear edit state
+    const newContent = editingContent;
+    setEditingMessageId(null);
+    setEditingContent("");
+
+    // Resend from this point with edited content (avoid duplicating the echoed user message)
+    await handleSendMessage(newContent, undefined, { echoUser: false });
+  };
 
   // Get storage key based on user
   const getStorageKey = () => {
@@ -453,7 +540,7 @@ export default function AnimatedAIFloatingChat() {
   // Save conversation to localStorage
   const saveConversation = () => {
     if (typeof window === 'undefined') return;
-    
+
     const conversationData = {
       messages,
       conversationHistory,
@@ -463,25 +550,25 @@ export default function AnimatedAIFloatingChat() {
       timestamp: new Date().toISOString(),
       userId: user?.user?.user_id || 'anonymous'
     };
-    
+
     localStorage.setItem(getStorageKey(), JSON.stringify(conversationData));
   };
 
   // Load conversation from localStorage
   const loadConversation = () => {
     if (typeof window === 'undefined') return;
-    
+
     const savedData = localStorage.getItem(getStorageKey());
-    
+
     if (savedData) {
       try {
         const conversationData = JSON.parse(savedData);
-        
+
         // Check if conversation is less than 7 days old
         const saveTime = new Date(conversationData.timestamp).getTime();
         const now = new Date().getTime();
         const sevenDays = 7 * 24 * 60 * 60 * 1000;
-        
+
         if (now - saveTime < sevenDays && conversationData.messages?.length > 0) {
           setMessages(conversationData.messages);
           setConversationHistory(conversationData.conversationHistory || []);
@@ -496,7 +583,7 @@ export default function AnimatedAIFloatingChat() {
         console.error('Failed to load conversation:', error);
       }
     }
-    
+
     // Start fresh conversation
     startFreshConversation();
   };
@@ -509,7 +596,7 @@ export default function AnimatedAIFloatingChat() {
       content: "Hi! I'm your AI meal planning assistant. Tell me what you'd like to cook or upload a photo of a dish you want to make, and I'll help you find the right ingredients! 🍳",
       timestamp: new Date()
     };
-    
+
     setMessages([initialMessage]);
     setConversationHistory([]);
     setSelectedAnswers({});
@@ -521,7 +608,7 @@ export default function AnimatedAIFloatingChat() {
   // Clear conversation
   const clearConversation = () => {
     if (typeof window === 'undefined') return;
-    
+
     localStorage.removeItem(getStorageKey());
     startFreshConversation();
     setUploadedImage(null);
@@ -543,6 +630,20 @@ export default function AnimatedAIFloatingChat() {
   useEffect(() => {
     loadConversation();
     checkQuota();
+    // Listen for prefill events to open chat with a message
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ message?: string }>;
+      const text = ce.detail?.message?.trim();
+      setIsOpen(true);
+      if (text) {
+        // slight delay to ensure chat is mounted
+        setTimeout(() => handleSendMessage(text), 100);
+      }
+    };
+    window.addEventListener("aiPrefill", handler as EventListener);
+    return () => {
+      window.removeEventListener("aiPrefill", handler as EventListener);
+    };
   }, [user?.user?.user_id]); // Reload when user changes (login/logout)
 
   // Save conversation whenever it changes
@@ -580,7 +681,7 @@ export default function AnimatedAIFloatingChat() {
       reader.onload = (e) => {
         const result = e.target?.result as string;
         setUploadedImage(result);
-        
+
         const newMessage: Message = {
           id: Date.now().toString(),
           type: 'user',
@@ -595,11 +696,16 @@ export default function AnimatedAIFloatingChat() {
     }
   };
 
-  const handleSendMessage = async (message?: string, imageBase64?: string) => {
+  const handleSendMessage = async (
+    message?: string,
+    imageBase64?: string,
+    options?: { echoUser?: boolean }
+  ) => {
     const messageToSend = message || inputMessage.trim();
     if (!messageToSend && !imageBase64) return;
 
-    if (message !== "I want to make this dish") {
+    const shouldEchoUser = options?.echoUser !== false; // default true
+    if (shouldEchoUser && message !== "I want to make this dish") {
       const newMessage: Message = {
         id: Date.now().toString(),
         type: 'user',
@@ -614,17 +720,17 @@ export default function AnimatedAIFloatingChat() {
     setTypingIndicator(true);
 
     try {
-      const response = await fetch('/api/ai/meal-planner', {
+      const response = await fetch('/api/ai', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(user?.user?.user_id && { 'user-id': user.user.user_id }),
         },
         body: JSON.stringify({
-          message: messageToSend,
-          conversationHistory,
-          imageBase64: imageBase64?.split(',')[1],
-          userPreferences: selectedAnswers
+          history: [
+            ...conversationHistory,
+            { role: 'user', content: messageToSend }
+          ],
+          image: imageBase64 || uploadedImage || null
         }),
       });
 
@@ -639,7 +745,7 @@ export default function AnimatedAIFloatingChat() {
         const aiMessage: Message = {
           id: Date.now().toString(),
           type: 'ai',
-          content: aiResponse.message,
+          content: aiResponse.response || aiResponse.message || 'No response received',
           timestamp: new Date()
         };
         setMessages(prev => [...prev, aiMessage]);
@@ -648,32 +754,57 @@ export default function AnimatedAIFloatingChat() {
         setConversationHistory(prev => [
           ...prev,
           { role: 'user', content: messageToSend },
-          { role: 'assistant', content: aiResponse.message }
+          { role: 'assistant', content: aiResponse.response || aiResponse.message || 'No response received' }
         ]);
 
-        setCurrentQuestions(aiResponse.questions || []);
-        setCurrentSuggestions(aiResponse.productSuggestions || []);
-        setUploadedImage(null);
-        
+        // Handle new response structure from RAG system
+        if (aiResponse.questions && Array.isArray(aiResponse.questions)) {
+          setCurrentQuestions(aiResponse.questions);
+        }
+
+        if (aiResponse.suggestions && Array.isArray(aiResponse.suggestions)) {
+          // Transform suggestions to match expected format
+          const transformedSuggestions = aiResponse.suggestions.map((suggestion: any) => {
+            if (suggestion.type === 'product' || suggestion.type === 'bundle') {
+              return {
+                product: suggestion.data,
+                productName: suggestion.data?.name || 'Unknown Product',
+                type: suggestion.type,
+                action: suggestion.action || 'add_to_cart',
+                data: suggestion.data
+              };
+            } else if (suggestion.type === 'action') {
+              return {
+                type: 'action',
+                action: suggestion.action,
+                data: suggestion.data,
+                productName: suggestion.data?.name || 'Action'
+              };
+            }
+            return suggestion;
+          });
+          setCurrentSuggestions(transformedSuggestions);
+        }
+
         // Update quota status after successful request
         checkQuota();
       }, 1000);
 
     } catch (error) {
       console.error('Error:', error);
-      
+
       // Check error type
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const isQuotaExceeded = errorMessage.includes('quota') || 
-                             errorMessage.includes('429') ||
-                             errorMessage.includes('exceeded your current quota');
-      const isOverloadError = errorMessage.includes('overloaded') || 
-                             errorMessage.includes('503') || 
-                             errorMessage.includes('Service Unavailable');
-      
+      const isQuotaExceeded = errorMessage.includes('quota') ||
+        errorMessage.includes('429') ||
+        errorMessage.includes('exceeded your current quota');
+      const isOverloadError = errorMessage.includes('overloaded') ||
+        errorMessage.includes('503') ||
+        errorMessage.includes('Service Unavailable');
+
       if (isQuotaExceeded) {
         showToast("AI daily quota reached. Service will reset tomorrow.", "error");
-        
+
         // Add a helpful AI message about quota
         const quotaAiMessage = {
           id: Date.now().toString(),
@@ -684,7 +815,7 @@ export default function AnimatedAIFloatingChat() {
         setMessages(prev => [...prev, quotaAiMessage]);
       } else if (isOverloadError) {
         showToast("AI service is temporarily busy. Please wait a moment and try again.", "error");
-        
+
         // Add a helpful AI message
         const errorAiMessage = {
           id: Date.now().toString(),
@@ -696,7 +827,7 @@ export default function AnimatedAIFloatingChat() {
       } else {
         showToast("Failed to get AI response. Please try again.", "error");
       }
-      
+
       setTypingIndicator(false);
     } finally {
       setIsLoading(false);
@@ -714,7 +845,7 @@ export default function AnimatedAIFloatingChat() {
       // Create a more natural answer message that continues the conversation
       const answerMessage = `${answer}. Please suggest specific products for this.`;
       handleSendMessage(answerMessage);
-      
+
       // Clear questions after answering to avoid confusion
       setCurrentQuestions([]);
     }
@@ -724,7 +855,7 @@ export default function AnimatedAIFloatingChat() {
     if (suggestion.product) {
       try {
         const { addToCart } = await import("src/lib/actions/cart.actions");
-        
+
         // Get selected option for this product, or auto-select first option if none selected
         let selectedOption = selectedOptions[index];
         if (!selectedOption && suggestion.product.options && suggestion.product.options.length > 0) {
@@ -735,14 +866,14 @@ export default function AnimatedAIFloatingChat() {
             [index]: selectedOption
           }));
         }
-        
+
         // Add to cart with selected option or null if no options
         await addToCart(
-          suggestion.product.id, 
-          1, 
+          suggestion.product.id,
+          1,
           selectedOption && selectedOption.price !== undefined ? selectedOption : null
         );
-        
+
         const optionText = selectedOption ? ` (${selectedOption.name || selectedOption})` : '';
         showToast(`Added ${suggestion.product.name}${optionText} to cart!`, "success");
       } catch (error) {
@@ -761,10 +892,79 @@ export default function AnimatedAIFloatingChat() {
     }));
   };
 
+  const handleActionClick = (suggestion: ProductSuggestion) => {
+    const action = suggestion.action;
+
+    switch (action) {
+      case 'browse_products':
+      case 'browse_all_products':
+        showToast("Redirecting to products page...", "info");
+        // Navigate to products page
+        window.location.href = '/products';
+        break;
+
+      case 'view_bundles':
+      case 'view_all_bundles':
+        showToast("Redirecting to bundles page...", "info");
+        // Navigate to bundles page
+        window.location.href = '/bundles';
+        break;
+
+      case 'check_offers':
+      case 'check_current_offers':
+        showToast("Redirecting to offers page...", "info");
+        // Navigate to offers page
+        window.location.href = '/offers';
+        break;
+
+      case 'get_help':
+      case 'get_cooking_help':
+        showToast("Opening cooking help...", "info");
+        // Send a message to get cooking help
+        handleSendMessage("I need cooking help and recipe suggestions");
+        break;
+
+      case 'contact_support':
+        showToast("Contacting support...", "info");
+        // Navigate to contact page or show contact info
+        window.location.href = '/contact';
+        break;
+
+      case 'show_recipes':
+        showToast("Showing recipes...", "info");
+        // Send a message to get recipes
+        handleSendMessage("Show me recipes for the ingredients I selected");
+        break;
+
+      case 'browse_ingredients':
+        showToast("Browsing ingredients...", "info");
+        // Send a message to browse ingredients
+        handleSendMessage("Show me all available cooking ingredients");
+        break;
+
+      case 'compare_bundles':
+        showToast("Comparing bundles...", "info");
+        // Send a message to compare bundles
+        handleSendMessage("Compare the different bundle options and prices");
+        break;
+
+      case 'custom_bundle':
+        showToast("Creating custom bundle...", "info");
+        // Send a message to create custom bundle
+        handleSendMessage("Help me create a custom bundle for my needs");
+        break;
+
+      default:
+        showToast(`Action: ${suggestion.productName}`, "info");
+        // For unknown actions, just show the action name
+        break;
+    }
+  };
+
   // Floating button when closed
   if (!isOpen) {
     return (
-      <motion.div 
+      <motion.div
         className="fixed bottom-[140px] md:bottom-[80px] right-4 z-50"
         initial="idle"
         whileHover="hover"
@@ -773,7 +973,7 @@ export default function AnimatedAIFloatingChat() {
       >
         <motion.button
           onClick={() => setIsOpen(true)}
-          className="relative bg-gradient-to-r from-green-500 to-green-600 text-white p-4 rounded-full shadow-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 overflow-hidden"
+          className="relative bg-gradient-to-r from-green-600 to-green-700 text-white p-4 rounded-full shadow-lg hover:from-green-700 hover:to-green-800 transition-all duration-300 overflow-hidden"
           aria-label="Open AI Chat"
         >
           <motion.div
@@ -783,7 +983,7 @@ export default function AnimatedAIFloatingChat() {
           >
             <Sparkles size={12} className="text-yellow-300" />
           </motion.div>
-          
+
           <motion.div
             animate={{
               rotate: [0, 10, -10, 0],
@@ -796,7 +996,7 @@ export default function AnimatedAIFloatingChat() {
           >
             <Bot size={24} />
           </motion.div>
-          
+
           <motion.div
             className="absolute inset-0 bg-white"
             initial={{ scale: 0, opacity: 0.8 }}
@@ -818,10 +1018,10 @@ export default function AnimatedAIFloatingChat() {
 
   // Full chat interface when open
   return (
-    <motion.div 
+    <motion.div
       className="fixed bottom-2 right-2 left-2 sm:bottom-4 sm:right-4 sm:left-auto z-50 w-auto sm:w-full max-w-2xl h-[90vh] sm:h-[85vh] min-h-[400px]"
       variants={chatVariants}
-      initial="closed"
+      initial={false}
       animate={isMinimized ? "minimized" : "open"}
       exit="closed"
     >
@@ -831,18 +1031,14 @@ export default function AnimatedAIFloatingChat() {
         whileHover={{ y: -2 }}
         transition={{ type: "spring", stiffness: 300 }}
       >
-        <motion.div 
-          className="bg-gradient-to-r from-green-500 to-green-600 text-white p-4"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+        <motion.div
+          className="bg-gradient-to-r from-green-600 to-green-700 text-white p-4"
+          initial={false}
         >
           <div className="flex items-center justify-between">
-            <motion.div 
+            <motion.div
               className="flex items-center gap-2 text-white"
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.3 }}
+              initial={false}
             >
               <motion.div
                 animate={{
@@ -860,11 +1056,11 @@ export default function AnimatedAIFloatingChat() {
               {quotaStatus && (
                 <span className={cn(
                   "text-xs px-2 py-1 rounded-full",
-                  quotaStatus.remaining <= 5 
-                    ? "bg-red-500/20 text-red-100" 
-                    : quotaStatus.remaining <= 15 
-                    ? "bg-yellow-500/20 text-yellow-100"
-                    : "bg-green-500/20 text-green-100"
+                  quotaStatus.remaining <= 5
+                    ? "bg-red-500/20 text-red-100"
+                    : quotaStatus.remaining <= 15
+                      ? "bg-yellow-500/20 text-yellow-100"
+                      : "bg-green-500/20 text-green-100"
                 )}>
                   {quotaStatus.remaining}/{quotaStatus.total}
                 </span>
@@ -914,15 +1110,12 @@ export default function AnimatedAIFloatingChat() {
             </div>
           </div>
         </motion.div>
-        
+
         <AnimatePresence>
           {!isMinimized && (
-            <motion.div 
+            <motion.div
               className="flex flex-col flex-1 min-h-0"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ type: "spring", stiffness: 300 }}
+              initial={false}
             >
               {/* Messages Container */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
@@ -935,21 +1128,18 @@ export default function AnimatedAIFloatingChat() {
                       animate="visible"
                       exit="hidden"
                       transition={{ delay: index * 0.1 }}
-                      className={`flex gap-3 ${
-                        message.type === 'user' ? 'justify-end' : 'justify-start'
-                      }`}
+                      className={`flex gap-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'
+                        }`}
                     >
                       <div
-                        className={`flex gap-2 max-w-[85%] ${
-                          message.type === 'user' ? 'flex-row-reverse' : 'flex-row'
-                        }`}
+                        className={`flex gap-2 max-w-[85%] ${message.type === 'user' ? 'flex-row-reverse' : 'flex-row'
+                          }`}
                       >
                         <motion.div
-                          className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
-                            message.type === 'user'
+                          className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${message.type === 'user'
                               ? 'bg-blue-500'
                               : 'bg-green-500'
-                          }`}
+                            }`}
                           whileHover={{ scale: 1.2 }}
                         >
                           {message.type === 'user' ? (
@@ -959,16 +1149,15 @@ export default function AnimatedAIFloatingChat() {
                           )}
                         </motion.div>
                         <motion.div
-                          className={`rounded-xl p-3 shadow-sm ${
-                            message.type === 'user'
-                              ? 'bg-gradient-to-r from-green-500 to-green-600 text-white'
+                          className={`rounded-xl p-3 shadow-sm ${message.type === 'user'
+                            ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white'
                               : 'bg-white border border-gray-200 text-gray-800'
-                          }`}
+                            }`}
                           whileHover={{ scale: 1.02 }}
                           layout
                         >
                           {message.imageUrl && (
-                            <motion.div 
+                            <motion.div
                               className="mb-2"
                               initial={{ scale: 0.8, opacity: 0 }}
                               animate={{ scale: 1, opacity: 1 }}
@@ -983,7 +1172,36 @@ export default function AnimatedAIFloatingChat() {
                               />
                             </motion.div>
                           )}
-                          <p className="text-sm leading-relaxed">{message.content}</p>
+                          {editingMessageId === message.id ? (
+                            <div className="space-y-2">
+                              <textarea
+                                className="w-full text-sm p-2 rounded-md border border-gray-300 text-gray-800 bg-white"
+                                rows={3}
+                                value={editingContent}
+                                onChange={(e) => setEditingContent(e.target.value)}
+                              />
+                              <div className="flex items-center gap-2">
+                                <Button size="sm" className="h-7 px-2 bg-green-600 hover:bg-green-700" onClick={saveEditedMessage}>
+                                  <Check size={14} className="mr-1" /> Save
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-7 px-2" onClick={cancelEditMessage}>
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</div>
+                          )}
+                          {message.type === 'user' && message.id === lastUserMessageId && editingMessageId !== message.id && (
+                            <div className="mt-2 flex justify-end">
+                              <button
+                                className="flex items-center gap-1 text-xs text-white/90 hover:text-white"
+                                onClick={() => beginEditMessage(message)}
+                              >
+                                <Edit2 size={12} /> Edit
+                              </button>
+                            </div>
+                          )}
                         </motion.div>
                       </div>
                     </motion.div>
@@ -993,7 +1211,7 @@ export default function AnimatedAIFloatingChat() {
                 {/* Questions */}
                 <AnimatePresence>
                   {currentQuestions.length > 0 && (
-                    <motion.div 
+                    <motion.div
                       className="space-y-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -1003,8 +1221,8 @@ export default function AnimatedAIFloatingChat() {
                         💡 Help me understand:
                       </h4>
                       {currentQuestions.map((question, index) => (
-                        <motion.div 
-                          key={question.id} 
+                        <motion.div
+                          key={question.id}
                           className="space-y-2"
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
@@ -1043,7 +1261,7 @@ export default function AnimatedAIFloatingChat() {
                 {/* Product Suggestions */}
                 <AnimatePresence>
                   {currentSuggestions.length > 0 && (
-                    <motion.div 
+                    <motion.div
                       className="space-y-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200 shadow-sm"
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -1053,15 +1271,50 @@ export default function AnimatedAIFloatingChat() {
                         🛒 Recommended Products:
                       </h4>
                       {(() => {
-                        const availableProducts = currentSuggestions.filter(s => s.product && s.available !== false);
-                        const unavailableProducts = currentSuggestions.filter(s => !s.product || s.available === false);
-                        
+                        // Separate action suggestions from product suggestions
+                        const actionSuggestions = currentSuggestions.filter(s => s.type === 'action');
+                        const productSuggestions = currentSuggestions.filter(s => s.type !== 'action');
+
+                        const availableProducts = productSuggestions.filter(s => s.product && s.available !== false);
+                        const unavailableProducts = productSuggestions.filter(s => !s.product || s.available === false);
+
                         return (
                           <div className="space-y-3">
+                            {/* Action Suggestions */}
+                            {actionSuggestions.length > 0 && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="space-y-2"
+                              >
+                                <p className="text-xs font-medium text-green-700 mb-2">Quick Actions:</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {actionSuggestions.map((suggestion, index) => (
+                                    <motion.div
+                                      key={index}
+                                      initial={{ opacity: 0, scale: 0.9 }}
+                                      animate={{ opacity: 1, scale: 1 }}
+                                      transition={{ delay: index * 0.1 }}
+                                    >
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleActionClick(suggestion)}
+                                        className="text-xs px-3 py-1.5 h-auto border-green-300 hover:bg-green-50 hover:border-green-400 text-green-700"
+                                      >
+                                        {suggestion.productName}
+                                      </Button>
+                                    </motion.div>
+                                  ))}
+                                </div>
+                              </motion.div>
+                            )}
+
+                            {/* Product Suggestions */}
                             {availableProducts.length > 0 && (
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 {availableProducts.map((suggestion, index) => (
-                                  <ProductCard 
+                                  <ProductCard
                                     key={index}
                                     suggestion={suggestion}
                                     index={index}
@@ -1072,7 +1325,7 @@ export default function AnimatedAIFloatingChat() {
                                 ))}
                               </div>
                             )}
-                            
+
                             {unavailableProducts.length > 0 && (
                               <motion.div
                                 initial={{ opacity: 0, y: 10 }}
@@ -1097,8 +1350,8 @@ export default function AnimatedAIFloatingChat() {
                                 </div>
                               </motion.div>
                             )}
-                            
-                            {availableProducts.length === 0 && unavailableProducts.length === 0 && (
+
+                            {availableProducts.length === 0 && unavailableProducts.length === 0 && actionSuggestions.length === 0 && (
                               <motion.div
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
@@ -1119,7 +1372,7 @@ export default function AnimatedAIFloatingChat() {
                 {/* Typing Indicator */}
                 <AnimatePresence>
                   {typingIndicator && (
-                    <motion.div 
+                    <motion.div
                       className="flex justify-start"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -1155,7 +1408,7 @@ export default function AnimatedAIFloatingChat() {
               <Separator />
 
               {/* Input Area */}
-              <motion.div 
+              <motion.div
                 className="p-3 space-y-2"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1217,7 +1470,7 @@ export default function AnimatedAIFloatingChat() {
                   className="hidden"
                 />
 
-                <motion.p 
+                <motion.p
                   className="text-xs text-gray-500 text-center"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}

@@ -93,7 +93,8 @@ export async function fetchOrders({
 
 export async function fetchOrderById(orderId: string) {
   const supabase = createClient();
-  const { data, error } = await supabase
+  // Try finding by public order number first
+  let query = supabase
     .from("orders")
     .select(
       `
@@ -106,10 +107,36 @@ export async function fetchOrderById(orderId: string) {
     `
     )
     .eq("order_id", orderId)
-    .single();
+    .maybeSingle();
 
-  if (error) {
+  let { data, error } = await query;
+
+  // If not found, try by internal id
+  if ((!data || data === null) && (!error || error.code === 'PGRST116')) {
+    const fallback = await supabase
+      .from("orders")
+      .select(
+        `
+        *,
+        profiles(display_name),
+        order_items(*,
+          products(name, images),
+          bundles(name, thumbnail_url)
+        )
+      `
+      )
+      .eq("id", orderId)
+      .maybeSingle();
+    data = fallback.data as any;
+    error = fallback.error as any;
+  }
+
+  if (error && error.code !== 'PGRST116') {
     throw error;
+  }
+
+  if (!data) {
+    throw new Error('Order not found');
   }
 
   return data;

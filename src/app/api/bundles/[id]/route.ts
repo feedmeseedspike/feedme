@@ -1,6 +1,50 @@
 import { createClient } from 'src/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = await createClient();
+    const bundleId = params.id;
+
+    if (!bundleId) {
+      return NextResponse.json(
+        { error: 'Bundle ID is required' },
+        { status: 400 }
+      );
+    }
+
+    const { data: bundle, error } = await supabase
+      .from('bundles')
+      .select('id, slug, name, price, thumbnail_url')
+      .eq('id', bundleId)
+      .single();
+
+    if (error) {
+      return NextResponse.json(
+        { error: `Failed to fetch bundle: ${error.message}` },
+        { status: 500 }
+      );
+    }
+
+    if (!bundle) {
+      return NextResponse.json(
+        { error: 'Bundle not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ bundle }, { status: 200 });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: `Internal server error: ${error.message}` },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }

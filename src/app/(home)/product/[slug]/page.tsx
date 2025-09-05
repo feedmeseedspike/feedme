@@ -26,6 +26,7 @@ import Options from "../options";
 import ProductSlider from "@components/shared/product/product-slider";
 import Image from "next/image";
 import ProductDetailsClient from "@components/shared/product/product-details-client";
+import AISmartNudge from "@components/shared/ai/AISmartNudge";
 import Link from "next/link";
 import { getAllCategoriesQuery } from "src/queries/categories";
 import { createServerComponentClient } from "src/utils/supabase/server";
@@ -54,11 +55,9 @@ export async function generateMetadata({
     if (product) {
       return {
         title: product.name,
-        description: `${
-          product.description || ""
-        } Buy fresh and premium-quality ${
-          product.name
-        } online in Lagos with FeedMe. Enjoy competitive prices in Naira, swift delivery in Lagos, and the convenience of cash on delivery. Shop now and bring nature's goodness to your kitchen in Lagos, Ikeja, Lekki, Victoria Island, and more!`,
+        description: `${product.description || ""
+          } Buy fresh and premium-quality ${product.name
+          } online in Lagos with FeedMe. Enjoy competitive prices in Naira, swift delivery in Lagos, and the convenience of cash on delivery. Shop now and bring nature's goodness to your kitchen in Lagos, Ikeja, Lekki, Victoria Island, and more!`,
         alternates: {
           canonical: `https://shopfeedme.com/product/${slug}`,
         },
@@ -226,10 +225,10 @@ const ProductDetails = async (props: {
             aggregateRating:
               product.numReviews > 0
                 ? {
-                    "@type": "AggregateRating",
-                    ratingValue: product.avgRating,
-                    reviewCount: product.numReviews,
-                  }
+                  "@type": "AggregateRating",
+                  ratingValue: product.avgRating,
+                  reviewCount: product.numReviews,
+                }
                 : undefined,
           }),
         }}
@@ -348,6 +347,8 @@ const ProductDetails = async (props: {
           </section>
         </Container>
       </section>
+      {/* AI Smart Nudge */}
+      <AISmartNudge kind="product" productOrBundleName={product.name} inSeason={product.in_season ?? null} />
     </>
   );
 };

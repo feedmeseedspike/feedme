@@ -22,13 +22,13 @@ const DynamicWhatsAppButton = dynamic(
   }
 );
 
-// const DynamicAIFloatingChat = dynamic(
-//   () => import("@components/shared/ai/AnimatedAIFloatingChat"),
-//   {
-//     ssr: false,
-//     loading: () => null,
-//   }
-// );
+const DynamicAIFloatingChat = dynamic(
+  () => import("@components/shared/ai/AnimatedAIFloatingChat"),
+  {
+    ssr: false,
+    loading: () => null,
+  }
+);
 
 interface PathnameProviderProps {
   children: React.ReactNode;
@@ -59,9 +59,9 @@ export function PathnameProvider({
           message="Hello! I have a question about your products."
         />
       )}
-      {/* {!shouldHideNavAndBanner && (
+      {!shouldHideNavAndBanner && (
         <DynamicAIFloatingChat />
-      )} */}
+      )}
     </>
   );
 }

@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful chef assistant. When given a meal or recipe request, respond with a JSON object containing a recipe name, a list of ingredients, and step-by-step instructions. Example: { "recipe": "Spaghetti Bolognese", "ingredients": ["spaghetti", "ground beef", "tomato sauce"], "instructions": ["Boil spaghetti", "Cook beef", "Mix with sauce"] }',
+            content: 'You are a helpful chef assistant. When given a meal or recipe request, respond strictly as JSON with an array of 3 recipes. Each recipe must include: name (string), servings (number), prep_time_minutes (number), cook_time_minutes (number), total_time_minutes (number), ingredients (string[]), and steps (array of objects with: step_number, instruction, time_minutes). Keep ingredients limited to those implied by the prompt; suggest reasonable substitutions only if necessary. Example: { "recipes": [ { "name": "Chicken Fried Rice", "servings": 4, "prep_time_minutes": 15, "cook_time_minutes": 20, "total_time_minutes": 35, "ingredients": ["rice", "chicken", "oil"], "steps": [ { "step_number": 1, "instruction": "Boil rice until al dente.", "time_minutes": 12 }, { "step_number": 2, "instruction": "Stir-fry chicken.", "time_minutes": 6 } ] } ] }',
           },
           {
             role: 'user',
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
           },
         ],
         temperature: 0.7,
-        max_tokens: 500,
+        max_tokens: 1200,
       }),
     });
 
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to parse AI response as JSON', raw: message }, { status: 500 });
     }
 
-    return NextResponse.json({ recipe: recipeData });
+    return NextResponse.json({ recipes: recipeData.recipes || [] });
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error', details: (error as Error).message }, { status: 500 });
   }

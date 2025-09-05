@@ -52,14 +52,14 @@ interface Order {
   id: string;
   user_id: string | null;
   status:
-    | "In transit"
-    | "order delivered"
-    | "order confirmed"
-    | "Cancelled"
-    | null;
+  | "In transit"
+  | "order delivered"
+  | "order confirmed"
+  | "Cancelled"
+  | null;
   total_amount: number | null;
   voucher_id: string | null;
-  shipping_address: { city?: string | null; [key: string]: any } | null;
+  shipping_address: { city?: string | null;[key: string]: any } | null;
   payment_method: string | null;
   created_at: string;
   updated_at: string | null;
@@ -144,6 +144,31 @@ export default function OrdersClient({
   const { showToast } = useToast();
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
+
+  // Details sheet state
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
+  const [orderDetails, setOrderDetails] = useState<any | null>(null);
+
+  const openDetails = async (id: string, publicOrderId?: string | null) => {
+    setDetailsOpen(true);
+    setDetailsLoading(true);
+    setDetailsError(null);
+    setOrderDetails(null);
+    try {
+      const oid = publicOrderId || id;
+      const res = await fetch(`/api/orders/${oid}`);
+      if (!res.ok) throw new Error("Failed to fetch order details");
+      const data = await res.json();
+      setOrderDetails(data);
+      console.log(orderDetails)
+    } catch (e: any) {
+      setDetailsError(e.message || "Failed to load details");
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
 
   // Extract unique payment methods from initialOrders for filter options
   const paymentMethodOptions = Array.from(
@@ -296,16 +321,16 @@ export default function OrdersClient({
         prev.status as Database["public"]["Enums"]["order_status_enum"][]
       ).includes(value as Database["public"]["Enums"]["order_status_enum"])
         ? (
-            prev.status as Database["public"]["Enums"]["order_status_enum"][]
-          ).filter(
-            (item) =>
-              item !==
-              (value as Database["public"]["Enums"]["order_status_enum"])
-          )
+          prev.status as Database["public"]["Enums"]["order_status_enum"][]
+        ).filter(
+          (item) =>
+            item !==
+            (value as Database["public"]["Enums"]["order_status_enum"])
+        )
         : [
-            ...(prev.status as Database["public"]["Enums"]["order_status_enum"][]),
-            value as Database["public"]["Enums"]["order_status_enum"],
-          ],
+          ...(prev.status as Database["public"]["Enums"]["order_status_enum"][]),
+          value as Database["public"]["Enums"]["order_status_enum"],
+        ],
     }));
   };
 
@@ -579,7 +604,14 @@ export default function OrdersClient({
                     ""
                   }
                 >
-                  <TableCell>{order.id?.substring(0, 8) || "N/A"}</TableCell>
+                  <TableCell>
+                    <button
+                      className="text-[#1B6013] underline"
+                      onClick={() => openDetails(order.id, (order as any).order_id)}
+                    >
+                      {(order as any).order_id || order.id?.substring(0, 8) || "N/A"}
+                    </button>
+                  </TableCell>
                   <TableCell>
                     {order.created_at
                       ? new Date(order.created_at).toLocaleString()
@@ -591,11 +623,11 @@ export default function OrdersClient({
                       <AvatarFallback>
                         {order.profiles?.display_name
                           ? order.profiles.display_name
-                              .split(" ")
-                              .map((n: string) => n[0])
-                              .join("")
-                              .substring(0, 2)
-                              .toUpperCase()
+                            .split(" ")
+                            .map((n: string) => n[0])
+                            .join("")
+                            .substring(0, 2)
+                            .toUpperCase()
                           : ""}
                       </AvatarFallback>
                     </Avatar>
@@ -645,20 +677,20 @@ export default function OrdersClient({
                   </TableCell>
                   <TableCell>
                     {order.shipping_address &&
-                    typeof order.shipping_address === "object" &&
-                    !Array.isArray(order.shipping_address)
+                      typeof order.shipping_address === "object" &&
+                      !Array.isArray(order.shipping_address)
                       ? [
-                          order.shipping_address.city,
-                          order.shipping_address.state,
-                          order.shipping_address.local_government,
-                          order.shipping_address.country,
-                          order.shipping_address.street,
-                          order.shipping_address.zip,
-                        ]
-                          .filter(
-                            (v) => v && typeof v === "string" && v.trim() !== ""
-                          )
-                          .join(", ") || "Unknown Location"
+                        order.shipping_address.city,
+                        order.shipping_address.state,
+                        order.shipping_address.local_government,
+                        order.shipping_address.country,
+                        order.shipping_address.street,
+                        order.shipping_address.zip,
+                      ]
+                        .filter(
+                          (v) => v && typeof v === "string" && v.trim() !== ""
+                        )
+                        .join(", ") || "Unknown Location"
                       : "Unknown Location"}
                   </TableCell>
 
@@ -711,6 +743,59 @@ export default function OrdersClient({
       <div className="flex justify-center mt-6">
         <PaginationBar totalPages={totalPages} page={page} />
       </div>
+
+      {/* Details Sheet */}
+      <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <SheetContent side="right" className="!w-[480px] max-w-full overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Order Details</SheetTitle>
+          </SheetHeader>
+          <div className="py-4">
+            {detailsLoading && <p>Loading...</p>}
+            {detailsError && <p className="text-red-600">{detailsError}</p>}
+            {orderDetails && (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-500">Order No</p>
+                  <p className="font-semibold">{orderDetails.order_id || orderDetails.id}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Customer</p>
+                  <p className="font-semibold">{orderDetails.profiles?.display_name || 'Unknown User'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Shipping Address</p>
+                  <p className="text-sm">
+                    {(() => {
+                      const addr = typeof orderDetails.shipping_address === 'string'
+                        ? (() => { try { return JSON.parse(orderDetails.shipping_address) } catch { return null } })()
+                        : orderDetails.shipping_address;
+                      if (!addr) return 'N/A';
+                      const parts = [addr.fullName, addr.phone, addr.street, addr.city, addr.state, addr.local_government, addr.country, addr.zip]
+                        .filter((v: any) => v && String(v).trim() !== '');
+                      return parts.join(', ');
+                    })()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 mb-2">Items</p>
+                  <div className="space-y-2">
+                    {(orderDetails.order_items || []).map((it: any) => (
+                      <div key={it.id} className="flex justify-between text-sm">
+                        <div className="pr-2">
+                          {it.products?.name || it.bundles?.name || 'Item'}
+                        </div>
+                        <div className="text-gray-600">x{it.quantity}</div>
+                        <div className="font-semibold">{formatNaira(it.price || 0)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

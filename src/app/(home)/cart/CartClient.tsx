@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Trash2Icon } from "lucide-react";
 import { AiOutlineMinus, AiOutlinePlus } from "react-icons/ai";
-import { formatNaira } from "src/lib/utils";
+import { formatNaira, toSlug } from "src/lib/utils";
 import CustomBreadcrumb from "@components/shared/breadcrumb";
 import Link from "next/link";
 import { Badge } from "@components/ui/badge";
@@ -22,6 +22,7 @@ import {
   ItemToUpdateMutation,
   useUpdateCartMutation,
   useRemoveFromCartMutation,
+  useClearCartMutation,
 } from "src/queries/cart";
 import { IProductInput } from "src/types";
 import { Tables } from "src/utils/database.types";
@@ -73,11 +74,9 @@ const CartClient: React.FC<CartClientProps> = ({
   const router = useRouter();
   const { showToast } = useToast();
   const anonymousCart = useAnonymousCart();
-  
+
   // Initialize items based on user state
   const [items, setItems] = useState<CartItem[]>(() => {
-    console.log('CartClient initializing...', { user: !!user, cartItems: cartItems.length, anonymousItems: anonymousCart.items?.length || 0 });
-    
     if (user) {
       return cartItems;
     } else {
@@ -85,112 +84,92 @@ const CartClient: React.FC<CartClientProps> = ({
     }
   });
 
-  // Enrich anonymous cart items with offer data (similar to header Cart component)
-  useEffect(() => {
-    if (!user && anonymousCart.items && anonymousCart.items.length > 0) {
-      const enrichItems = async () => {
-        const enriched = await Promise.all(
-          anonymousCart.items.map(async (anonItem) => {
-            let offerData = null;
-            
-            // Fetch offer data if this is an offer item
-            if (anonItem.offer_id) {
-              try {
-                const response = await fetch(`/api/offers/${anonItem.offer_id}`);
-                if (response.ok) {
-                  const { offer } = await response.json();
-                  offerData = offer;
-                }
-              } catch (error) {
-                console.error(`Failed to fetch offer data for ${anonItem.offer_id}:`, error);
-              }
+  // Helper to enrich anonymous cart items with bundle/offer details
+  const enrichAnonymousItems = useCallback(async (anonItems: any[]) => {
+    const enriched = await Promise.all(
+      anonItems.map(async (anonItem) => {
+        let offerData = null;
+        let bundleData = null;
+
+        if (anonItem.offer_id) {
+          try {
+            const response = await fetch(`/api/offers/${anonItem.offer_id}`);
+            if (response.ok) {
+              const { offer } = await response.json();
+              offerData = offer;
             }
+          } catch (error) {
+            // Silently handle fetch errors
+          }
+        }
 
-            return {
-              id: anonItem.id,
-              product_id: anonItem.product_id,
-              bundle_id: anonItem.bundle_id,
-              offer_id: anonItem.offer_id || null,
-              quantity: anonItem.quantity,
-              price: anonItem.price,
-              option: anonItem.option,
-              created_at: anonItem.created_at,
-              user_id: null,
-              cart_id: null,
-              products: null,
-              bundles: null,
-              offers: offerData
-            } as CartItem;
-          })
-        );
-        
-        console.log('Anonymous cart items enriched:', enriched);
-        setItems(enriched);
-      };
+        if (anonItem.bundle_id) {
+          try {
+            const response = await fetch(`/api/bundles/${anonItem.bundle_id}`);
+            if (response.ok) {
+              const { bundle } = await response.json();
+              bundleData = bundle;
+            }
+          } catch (error) {
+            // Silently handle fetch errors
+          }
+        }
 
-      enrichItems();
-    } else if (user) {
-      setItems(cartItems);
-    } else {
-      setItems([]);
-    }
-  }, [user, cartItems, anonymousCart.items]);
-
-  // Initialize and keep items in sync with anonymous cart changes
-  useEffect(() => {
-    console.log('CartClient useEffect triggered', { 
-      user: !!user, 
-      anonymousItems: anonymousCart.items?.length || 0, 
-      isLoading: anonymousCart.isLoading,
-      localStorage: typeof window !== 'undefined' ? localStorage.getItem('feedme_anonymous_cart') : 'server'
-    });
-    
-    if (!user && !anonymousCart.isLoading) {
-      // Initial load or update of anonymous cart items
-      const updatedItems = (anonymousCart.items || []).map(anonItem => ({
-        id: anonItem.id,
-        product_id: anonItem.product_id,
-        bundle_id: anonItem.bundle_id,
-        quantity: anonItem.quantity,
-        price: anonItem.price,
-        option: anonItem.option,
-        created_at: anonItem.created_at,
-        user_id: null,
-        cart_id: null, // Add missing cart_id property
-        products: null,
-        bundles: null,
-        offers: null, // Add missing offers property
-      } as CartItem));
-      
-      console.log('Setting items from anonymous cart:', updatedItems);
-      setItems(updatedItems);
-
-      const handleAnonymousCartUpdate = () => {
-        const updatedItems = (anonymousCart.items || []).map(anonItem => ({
+        return {
           id: anonItem.id,
           product_id: anonItem.product_id,
           bundle_id: anonItem.bundle_id,
+          offer_id: anonItem.offer_id || null,
           quantity: anonItem.quantity,
           price: anonItem.price,
           option: anonItem.option,
           created_at: anonItem.created_at,
           user_id: null,
-          cart_id: null, // Add missing cart_id property
+          cart_id: null,
           products: null,
-          bundles: null,
-          offers: null, // Add missing offers property
-        } as CartItem));
-        console.log('Anonymous cart updated:', updatedItems);
-        setItems(updatedItems);
+          bundles: bundleData,
+          offers: offerData,
+        } as CartItem;
+      })
+    );
+    return enriched;
+  }, []);
+
+  // Enrich anonymous cart items with bundle/offer data (like header Cart)
+  useEffect(() => {
+    if (!user && anonymousCart.items && anonymousCart.items.length > 0) {
+      (async () => {
+        const enriched = await enrichAnonymousItems(anonymousCart.items);
+        setItems(enriched);
+      })();
+    } else if (user) {
+      setItems(cartItems);
+    } else {
+      setItems([]);
+    }
+  }, [user, cartItems, anonymousCart.items, enrichAnonymousItems]);
+
+  // Initialize and keep items in sync with anonymous cart changes
+  useEffect(() => {
+    if (!user && !anonymousCart.isLoading) {
+      // Initial load or update of anonymous cart items
+      (async () => {
+        const enriched = await enrichAnonymousItems(anonymousCart.items || []);
+        setItems(enriched);
+      })();
+
+      const handleAnonymousCartUpdate = async () => {
+        const enriched = await enrichAnonymousItems(anonymousCart.items || []);
+        setItems(enriched);
       };
 
       // Listen for anonymous cart updates
       window.addEventListener('anonymousCartUpdated', handleAnonymousCartUpdate);
-      
+
       // Also listen for storage changes (cross-tab sync)
-      const handleStorageChange = (e: StorageEvent) => {
+      const handleStorageChange = async (e: StorageEvent) => {
         if (e.key === 'feedme_anonymous_cart') {
-          handleAnonymousCartUpdate();
+          await handleAnonymousCartUpdate();
         }
       };
       window.addEventListener('storage', handleStorageChange);
@@ -200,7 +179,7 @@ const CartClient: React.FC<CartClientProps> = ({
         window.removeEventListener('storage', handleStorageChange);
       };
     }
-  }, [user, anonymousCart.items, anonymousCart.isLoading]);
+  }, [user, anonymousCart.items, anonymousCart.isLoading, enrichAnonymousItems]);
 
   const groupedItems = useMemo(() => {
     return items.reduce(
@@ -245,6 +224,7 @@ const CartClient: React.FC<CartClientProps> = ({
 
   const updateCartMutation = useUpdateCartMutation();
   const removeCartItemMutation = useRemoveFromCartMutation();
+  const clearCartMutation = useClearCartMutation();
 
   const handleRemoveItem = useCallback(
     async (itemToRemove: CartItem) => {
@@ -265,7 +245,6 @@ const CartClient: React.FC<CartClientProps> = ({
           }
         }
       } catch (error: any) {
-        console.error("Failed to remove item:", error);
         showToast("Failed to remove item from cart.", "error");
       }
     },
@@ -284,10 +263,6 @@ const CartClient: React.FC<CartClientProps> = ({
         );
 
         if (!existingItemInCart) {
-          console.error(
-            "CartClient: handleQuantityChange - Item not found in current cart data.",
-            itemToUpdate
-          );
           return;
         }
 
@@ -306,7 +281,6 @@ const CartClient: React.FC<CartClientProps> = ({
               );
               showToast("Item removed!", "info");
             } catch (error: any) {
-              console.error("Failed to remove item via quantity 0:", error);
               showToast("Failed to remove item.", "error");
             }
           }
@@ -324,7 +298,7 @@ const CartClient: React.FC<CartClientProps> = ({
                     : null;
                   priceToUse =
                     (productOption?.price !== undefined &&
-                    productOption?.price !== null
+                      productOption?.price !== null
                       ? productOption.price
                       : cartItem.price) || 0;
                 }
@@ -362,7 +336,6 @@ const CartClient: React.FC<CartClientProps> = ({
                 "success"
               );
             } catch (error: any) {
-              console.error("Failed to update cart item quantity:", error);
               showToast("Failed to update cart.", "error");
             }
           } else {
@@ -418,6 +391,25 @@ const CartClient: React.FC<CartClientProps> = ({
 
   const totalAmount = subtotal;
 
+  const handleClearCart = useCallback(async () => {
+    try {
+      if (user) {
+        await clearCartMutation.mutateAsync();
+        setItems([]);
+      } else {
+        anonymousCart.clearCart();
+        setItems([]);
+      }
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('voucherCode');
+        localStorage.removeItem('voucherDiscount');
+      }
+      showToast('Cart cleared', 'success');
+    } catch (error: any) {
+      showToast('Failed to clear cart', 'error');
+    }
+  }, [user, clearCartMutation, anonymousCart, showToast]);
+
   const handleCheckout = () => {
     if (!user) {
       router.push("/login?callbackUrl=/checkout");
@@ -461,8 +453,8 @@ const CartClient: React.FC<CartClientProps> = ({
             category: Array.isArray(prod?.category)
               ? prod.category
               : prod &&
-                  "category_ids" in prod &&
-                  Array.isArray((prod as any).category_ids)
+                "category_ids" in prod &&
+                Array.isArray((prod as any).category_ids)
                 ? (prod as any).category_ids
                 : [],
             images: Array.isArray(prod?.images) ? prod.images : [],
@@ -542,7 +534,7 @@ const CartClient: React.FC<CartClientProps> = ({
                 Start adding delicious items to your cart!
               </p>
               <Link href="/">
-                <Button  className="bg-[#1B6013] text-primary-foreground px-8 py-3 rounded-xl shadow-lg hover:bg-[#1B6013]/90 font-semibold">
+                <Button className="bg-[#1B6013] text-primary-foreground px-8 py-3 rounded-xl shadow-lg hover:bg-[#1B6013]/90 font-semibold">
                   Start Shopping
                 </Button>
               </Link>
@@ -562,11 +554,10 @@ const CartClient: React.FC<CartClientProps> = ({
                     );
                     return (
                       <div
-                        className={`rounded border px-4 py-3 mb-8 ${
-                          subtotal >= FREE_SHIPPING_THRESHOLD
-                            ? "bg-green-50 border-green-200"
-                            : "bg-[#FFF5EC] border-[#F0800F]"
-                        }`}
+                        className={`rounded border px-4 py-3 mb-8 ${subtotal >= FREE_SHIPPING_THRESHOLD
+                          ? "bg-green-50 border-green-200"
+                          : "bg-[#FFF5EC] border-[#F0800F]"
+                          }`}
                       >
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-lg">📦</span>
@@ -586,11 +577,10 @@ const CartClient: React.FC<CartClientProps> = ({
                         </div>
                         <div className="w-full h-2 bg-[#FFE1C7] rounded">
                           <div
-                            className={`h-2 rounded transition-all duration-300 ${
-                              subtotal >= FREE_SHIPPING_THRESHOLD
-                                ? "bg-green-500"
-                                : "bg-[#F0800F]"
-                            }`}
+                            className={`h-2 rounded transition-all duration-300 ${subtotal >= FREE_SHIPPING_THRESHOLD
+                              ? "bg-green-500"
+                              : "bg-[#F0800F]"
+                              }`}
                             style={{ width: `${percent}%` }}
                           />
                         </div>
@@ -600,6 +590,13 @@ const CartClient: React.FC<CartClientProps> = ({
 
                 {/* Desktop Table (hidden on mobile) */}
                 <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-200 bg-white">
+                  <div className="flex justify-end p-3">
+                    {totalQuantity > 0 && (
+                      <Button variant="ghost" className="text-red-600" onClick={handleClearCart}>
+                        <Trash2Icon className="h-4 w-4 mr-2" /> Clear Cart
+                      </Button>
+                    )}
+                  </div>
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
@@ -643,7 +640,7 @@ const CartClient: React.FC<CartClientProps> = ({
                                       &times;
                                     </button>
                                     <Link
-                                      href={`/product/${item.products?.slug || item.bundles?.id}`}
+                                      href={item.product_id ? `/product/${item.products?.slug}` : item.bundle_id ? `/bundles/${toSlug(item.bundles?.name || '')}` : '#'}
                                     >
                                       <Image
                                         width={60}
@@ -676,7 +673,7 @@ const CartClient: React.FC<CartClientProps> = ({
                                   </td>
                                   <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-900">
                                     {formatNaira(
-                                      productOption?.price ?? 
+                                      productOption?.price ??
                                       (item.offers?.price_per_slot || item.price) ?? 0
                                     )}
                                   </td>
@@ -727,6 +724,13 @@ const CartClient: React.FC<CartClientProps> = ({
 
                 {/* Mobile Cart Items (shown only on mobile) */}
                 <div className="md:hidden space-y-4">
+                  <div className="flex justify-end">
+                    {totalQuantity > 0 && (
+                      <Button variant="ghost" className="text-red-600" onClick={handleClearCart}>
+                        <Trash2Icon className="h-4 w-4 mr-2" /> Clear Cart
+                      </Button>
+                    )}
+                  </div>
                   {Object.entries(groupedItems).map(
                     ([groupKey, productGroup]: [string, GroupedCartItem]) => {
                       const optionEntries = Object.entries(productGroup.options);
@@ -740,7 +744,7 @@ const CartClient: React.FC<CartClientProps> = ({
                               <div className="flex justify-between items-start">
                                 <div className="flex items-start gap-3">
                                   <Link
-                                    href={`/product/${item.products?.slug || item.bundles?.id}`}
+                                    href={item.product_id ? `/product/${item.products?.slug}` : item.bundle_id ? `/bundles/${toSlug(item.bundles?.name || '')}` : '#'}
                                     className="shrink-0"
                                   >
                                     <Image
@@ -771,8 +775,8 @@ const CartClient: React.FC<CartClientProps> = ({
                                     </div>
                                     <div className="text-sm text-gray-600 mt-1">
                                       {formatNaira(
-                                        productOption?.price ?? 
-                                      (item.offers?.price_per_slot || item.price) ?? 0
+                                        productOption?.price ??
+                                        (item.offers?.price_per_slot || item.price) ?? 0
                                       )}
                                     </div>
                                   </div>
@@ -814,9 +818,9 @@ const CartClient: React.FC<CartClientProps> = ({
                                 </div>
                                 <div className="text-sm font-semibold">
                                   {formatNaira(
-                                    (productOption?.price ?? 
+                                    (productOption?.price ??
                                       (item.offers?.price_per_slot || item.price) ?? 0) *
-                                      item.quantity
+                                    item.quantity
                                   )}
                                 </div>
                               </div>

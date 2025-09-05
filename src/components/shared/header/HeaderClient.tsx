@@ -33,11 +33,11 @@ import { useUser } from "src/hooks/useUser";
 const HeaderClient = ({ categories, categoriesError }: any) => {
   const { user, isLoading: isUserLoading } = useUser();
   const [openAccountSheet, setOpenAccountSheet] = useState(false);
-  const [openMobileSheet, setOpenMobileSheet] = useState(false); 
-  const [isCategoriesLoading] = useState(false); 
+  const [openMobileSheet, setOpenMobileSheet] = useState(false);
+  const [isCategoriesLoading] = useState(false);
 
   if (isUserLoading) {
-    return null; 
+    return null;
   }
   const isLoggedIn = !!user;
 
@@ -96,7 +96,7 @@ const HeaderClient = ({ categories, categoriesError }: any) => {
                     </SheetHeader>
 
                     {/* Scrollable Categories Section */}
-                    <div className="flex- overflow-y-aut py-4">
+                    <div className="flex-1 overflow-y-auto py-4">
                       <div className="pb-4">
                         {isCategoriesLoading ? (
                           <div className="space-y-2">
@@ -113,6 +113,36 @@ const HeaderClient = ({ categories, categoriesError }: any) => {
                           <p className="text-red-300">{categoriesError}</p>
                         ) : (
                           <div className="space-y-2">
+                            {/* Explore */}
+                            <div className="pt-1 pb-3">
+                              <p className="uppercase text-xs text-white/70 px-2 mb-1">Explore</p>
+                              <div className="space-y-1">
+                                <Link
+                                  href="/bundles"
+                                  className="block py-2 hover:bg-white/10 rounded text-lg px-2 transition-colors"
+                                  onClick={() => setOpenMobileSheet(false)}
+                                >
+                                  Bundles
+                                </Link>
+                                <Link
+                                  href="/offers"
+                                  className="block py-2 hover:bg-white/10 rounded text-lg px-2 transition-colors"
+                                  onClick={() => setOpenMobileSheet(false)}
+                                >
+                                  Offers
+                                </Link>
+                                <Link
+                                  href="/customer-support"
+                                  className="block py-2 hover:bg-white/10 rounded text-lg px-2 transition-colors"
+                                  onClick={() => setOpenMobileSheet(false)}
+                                >
+                                  Customer Support
+                                </Link>
+                              </div>
+                            </div>
+
+                            {/* Categories */}
+                            <p className="uppercase text-xs text-white/70 px-2 mt-2 mb-1">Categories</p>
                             {categories?.map((category: any) => (
                               <Link
                                 key={category.id}
@@ -128,25 +158,41 @@ const HeaderClient = ({ categories, categoriesError }: any) => {
                       </div>
                     </div>
 
-                    {/* Mobile Auth Footer */}
-                    {!isLoggedIn && (
-                      <div className="bg-[#1B6013] pb-4 pt-2">
-                        <div className="flex flex-col gap-2 px-2">
-                          <Link
-                            href="/login"
-                            className="block w-full text-center bg-white/10 py-3 rounded transition-colors"
-                          >
-                            Sign In
-                          </Link>
-                          <Link
-                            href="/register"
-                            className="block w-full text-center bg-white text-[#1B6013] hover:bg-white/90 py-3 rounded transition-colors"
-                          >
-                            Create Account
-                          </Link>
-                        </div>
+                    {/* Mobile Footer */}
+                    <div className="bg-[#1B6013] pb-4 pt-2">
+                      <div className="flex flex-col gap-2 px-2">
+                        {/*   */}
+                        {!isLoggedIn ? (
+                          <>
+                            <Link
+                              href="/login"
+                              className="block w-full text-center bg-white/10 py-3 rounded transition-colors"
+                            >
+                              Sign In
+                            </Link>
+                            <Link
+                              href="/register"
+                              className="block w-full text-center bg-white text-[#1B6013] hover:bg-white/90 py-3 rounded transition-colors"
+                            >
+                              Create Account
+                            </Link>
+                          </>
+                        ) : (
+                          <>
+                            <Link
+                              href="/account"
+                              className="block w-full text-center bg-white/10 py-3 rounded transition-colors"
+                              onClick={() => setOpenMobileSheet(false)}
+                            >
+                              My Account
+                            </Link>
+                            <div className="flex justify-center">
+                              <LogoutButton showText={true} />
+                            </div>
+                          </>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </SheetContent>
                 </Sheet>
 

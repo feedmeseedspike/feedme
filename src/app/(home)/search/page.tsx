@@ -66,11 +66,9 @@ export async function generateMetadata(props: {
     price !== "all"
   ) {
     return {
-      title: `${q !== "all" ? q : ""}${
-        category !== "all" ? ` : Category ${category}` : ""
-      }${tag !== "all" ? ` : Tag ${tag}` : ""}${
-        price !== "all" ? ` : Price ${price}` : ""
-      }${rating !== "all" ? ` : Rating ${rating}` : ""}`,
+      title: `${q !== "all" ? q : ""}${category !== "all" ? ` : Category ${category}` : ""
+        }${tag !== "all" ? ` : Tag ${tag}` : ""}${price !== "all" ? ` : Price ${price}` : ""
+        }${rating !== "all" ? ` : Rating ${rating}` : ""}`,
     };
   } else {
     return {
@@ -157,19 +155,19 @@ const SearchPage = async (props: {
   const relevantCategories =
     q !== "all" && q !== ""
       ? Array.from(
-          new Set(
-            data.products
-              .filter(
-                (p) =>
-                  Array.isArray(p.category_ids) &&
-                  (p.category_ids?.length ?? 0) > 0
-              )
-              .map((p) => p.category_ids![0])
-          )
-        ).map(categoryId => {
-          const foundCategory = categories.find(cat => cat.id === categoryId);
-          return foundCategory || { id: categoryId, title: categoryId };
-        }).filter(cat => cat.title !== cat.id) // Filter out categories where title is the same as ID (UUID)
+        new Set(
+          data.products
+            .filter(
+              (p) =>
+                Array.isArray(p.category_ids) &&
+                (p.category_ids?.length ?? 0) > 0
+            )
+            .map((p) => p.category_ids![0])
+        )
+      ).map(categoryId => {
+        const foundCategory = categories.find(cat => cat.id === categoryId);
+        return foundCategory || { id: categoryId, title: categoryId };
+      }).filter(cat => cat.title !== cat.id) // Filter out categories where title is the same as ID (UUID)
       : categories;
 
   // Add a mapping function for Supabase product row to IProductInput
@@ -196,7 +194,7 @@ const SearchPage = async (props: {
       colors: product.colors ?? [],
       options: product.options ?? [],
       reviews: product.reviews ?? [],
-      in_season: product.in_season ?? true,
+      in_season: product.in_season ?? null,
     };
   }
 
@@ -215,10 +213,10 @@ const SearchPage = async (props: {
                   <>
                     <span className="">{`${data.from}-${data.to} of ${data.totalProducts} results`}</span>
                     {(q !== "all" && q !== "") ||
-                    tag !== "all" ||
-                    rating !== "all" ||
-                    price !== "all" ||
-                    season !== "all" ? (
+                      tag !== "all" ||
+                      rating !== "all" ||
+                      price !== "all" ||
+                      season !== "all" ? (
                       <Button variant={"link"} asChild>
                         <Link href="/search">Clear</Link>
                       </Button>
@@ -245,10 +243,9 @@ const SearchPage = async (props: {
                             <ul className="flex gap-3 flex-wrap ">
                               <li className="border-[2px] p-2 rounded-md border-gray-600">
                                 <Link
-                                  className={`${
-                                    ("all" === category || "" === category) &&
+                                  className={`${("all" === category || "" === category) &&
                                     "text-primary"
-                                  }`}
+                                    }`}
                                   href={getFilterUrl({
                                     category: "all",
                                     params,
@@ -263,9 +260,8 @@ const SearchPage = async (props: {
                                   className="border p-2 rounded-md border-gray-300"
                                 >
                                   <Link
-                                    className={`${
-                                      (typeof c === "string" ? c : c.id) === category && "text-green-600"
-                                    }`}
+                                    className={`${(typeof c === "string" ? c : c.id) === category && "text-green-600"
+                                      }`}
                                     href={getFilterUrl({
                                       category:
                                         typeof c === "string" ? c : c.id,
@@ -317,11 +313,10 @@ const SearchPage = async (props: {
                               <li className="border px-2 py-1 rounded-md border-gray-400">
                                 <Link
                                   href={getFilterUrl({ season: "all", params })}
-                                  className={`${
-                                    !season || season === "all"
-                                      ? "text-primary"
-                                      : ""
-                                  }`}
+                                  className={`${!season || season === "all"
+                                    ? "text-primary"
+                                    : ""
+                                    }`}
                                 >
                                   All Seasons
                                 </Link>
@@ -329,9 +324,8 @@ const SearchPage = async (props: {
                               <li className="border px-2 py-1 rounded-md border-gray-400">
                                 <Link
                                   href={getFilterUrl({ season: "true", params })}
-                                  className={`${
-                                    season === "true" ? "text-primary" : ""
-                                  }`}
+                                  className={`${season === "true" ? "text-primary" : ""
+                                    }`}
                                 >
                                   In Season
                                 </Link>
@@ -339,13 +333,12 @@ const SearchPage = async (props: {
                               <li className="border px-2 py-1 rounded-md border-gray-400">
                                 <Link
                                   href={getFilterUrl({ season: "false", params })}
-                                  className={`${
-                                    season === "false" ? "text-primary" : ""
-                                  }`}
+                                  className={`${season === "false" ? "text-primary" : ""
+                                    }`}
                                 >
                                   Out of Season
                                 </Link>
-                                
+
                               </li>
                             </ul>
                           </AccordionContent>
@@ -384,9 +377,8 @@ const SearchPage = async (props: {
                 {relevantCategories.map((c) => (
                   <li key={typeof c === "string" ? c : c.id}>
                     <Link
-                      className={`${
-                        (typeof c === "string" ? c : c.id) === category && "text-[#1B6013]"
-                      } grid gap-2`}
+                      className={`${(typeof c === "string" ? c : c.id) === category && "text-[#1B6013]"
+                        } grid gap-2`}
                       href={`/category/${typeof c === "string" ? toSlug(c) : toSlug(c.title)}`}
                     >
                       {typeof c === "string" ? c : c.title}
@@ -437,9 +429,8 @@ const SearchPage = async (props: {
               <li>
                 <Link
                   href={getFilterUrl({ season: "all", params })}
-                  className={`${
-                    !season || season === "all" ? "text-[#1B6013]" : ""
-                  }`}
+                  className={`${!season || season === "all" ? "text-[#1B6013]" : ""
+                    }`}
                 >
                   All Seasons
                 </Link>
@@ -447,9 +438,8 @@ const SearchPage = async (props: {
               <li>
                 <Link
                   href={getFilterUrl({ season: "true", params })}
-                  className={`${
-                    season === "true" ? "text-[#1B6013]" : ""
-                  }`}
+                  className={`${season === "true" ? "text-[#1B6013]" : ""
+                    }`}
                 >
                   In Season
                 </Link>
@@ -457,9 +447,8 @@ const SearchPage = async (props: {
               <li>
                 <Link
                   href={getFilterUrl({ season: "false", params })}
-                  className={`${
-                    season === "false" ? "text-[#1B6013]" : ""
-                  }`}
+                  className={`${season === "false" ? "text-[#1B6013]" : ""
+                    }`}
                 >
                   Out of Season
                 </Link>

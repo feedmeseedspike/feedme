@@ -25,33 +25,33 @@ export type GetCartFailure = { success: false; data: null; error: string };
 // Helper function to get or create a user's cart
 async function getUserCartId(userId: string) {
   const supabase = await createClient();
-  // Try to find existing cart
-  let { data: cart, error } = await supabase
+  // Prefer the earliest created cart for this user to avoid multiple-row errors
+  const { data: carts, error } = await supabase
     .from("cart")
-    .select("id")
+    .select("id, created_at")
     .eq("user_id", userId)
-    .single();
+    .order("created_at", { ascending: true })
+    .limit(1);
 
-  if (error && error.code !== "PGRST116") {
-    // PGRST116 means no rows found
+  if (error) {
     throw error;
   }
 
-  if (!cart) {
-    // If no cart exists, create one
-    const { data: newCart, error: insertError } = await supabase
-      .from("cart")
-      .insert({ user_id: userId })
-      .select("id")
-      .single();
-
-    if (insertError) {
-      throw insertError;
-    }
-    cart = newCart;
+  if (carts && carts.length > 0) {
+    return carts[0].id as string;
   }
 
-  return cart.id;
+  // If no cart exists, create one
+  const { data: newCart, error: insertError } = await supabase
+    .from("cart")
+    .insert({ user_id: userId })
+    .select("id")
+    .single();
+
+  if (insertError) {
+    throw insertError;
+  }
+  return newCart!.id as string;
 }
 
 // Server action to update the entire cart using the update_cart_items function
@@ -207,7 +207,9 @@ export async function addToCart(
         .select("id, quantity")
         .eq("cart_id", cartId)
         .eq("bundle_id", bundleId)
-        .single();
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
       if (fetchError && fetchError.code !== "PGRST116") throw fetchError;
 
@@ -251,7 +253,9 @@ export async function addToCart(
         .select("id, quantity")
         .eq("cart_id", cartId)
         .eq("offer_id", offerId)
-        .single();
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
       if (fetchError && fetchError.code !== "PGRST116") throw fetchError;
 
@@ -320,10 +324,57 @@ export async function addToCart(
         .from("products")
         .select("id, price, options") // Select price and options
         .eq("id", productId)
-        .single();
+        .limit(1)
+        .maybeSingle();
 
       if (productFetchError) throw productFetchError;
-      if (!productData) throw new Error("Product not found.");
+      
+      // If not a product, it might actually be a bundle id coming from AI – handle gracefully
+      if (!productData) {
+        const { data: bundleData, error: bundleFetchError } = await supabase
+          .from("bundles")
+          .select("id, price")
+          .eq("id", productId)
+          .limit(1)
+          .maybeSingle();
+
+        if (bundleFetchError) throw bundleFetchError;
+        if (bundleData) {
+          // Treat as bundle add
+          const { data: existingBundleItem, error: fetchError } = await supabase
+            .from("cart_items")
+            .select("id, quantity")
+            .eq("cart_id", cartId)
+            .eq("bundle_id", bundleData.id)
+            .order("created_at", { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+          if (fetchError && (fetchError as any).code !== "PGRST116") throw fetchError;
+
+          if (existingBundleItem) {
+            const { error: updateError } = await supabase
+              .from("cart_items")
+              .update({ quantity: existingBundleItem.quantity + quantity })
+              .eq("id", existingBundleItem.id);
+            if (updateError) throw updateError;
+          } else {
+            const { error: insertError } = await supabase
+              .from("cart_items")
+              .insert({
+                cart_id: cartId,
+                bundle_id: bundleData.id,
+                quantity: quantity,
+                price: bundleData.price,
+                product_id: null,
+              });
+            if (insertError) throw insertError;
+          }
+          return { success: true };
+        }
+        // Neither product nor bundle found
+        throw new Error("Product not found.");
+      }
 
       const { data: existingItems, error: fetchError } = await supabase
         .from("cart_items")
@@ -514,25 +565,25 @@ export async function clearCart(): Promise<
   ClearCartSuccess | ClearCartFailure
 > {
   const supabase = await createClient();
-  // const {
-  //   data: { user },
-  //   error: authError,
-  // } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
-  // if (authError || !user) {
-  //   return {
-  //     success: false,
-  //     error: "ANONYMOUS_USER",
-  //   };
-  // }
+  if (authError || !user) {
+    return {
+      success: false,
+      error: "ANONYMOUS_USER",
+    };
+  }
 
   try {
-    const cartId = await getUserCartId("4be3c6f5-ede4-41f1-b5be-4ea373a967d7");
+    const cartId = await getUserCartId(user.id);
 
     const { error } = await supabase
       .from("cart_items")
       .delete()
-      .eq("cart_id", cartId); // Use cart_id instead of user_id
+      .eq("cart_id", cartId);
 
     if (error) throw error;
 

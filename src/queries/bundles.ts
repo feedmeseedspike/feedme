@@ -2,6 +2,24 @@ import { createClient } from "@utils/supabase/client";
 import { Tables } from "@utils/database.types";
 import { v4 as uuidv4 } from 'uuid';
 
+// Simple function to get all bundles for AI processing
+export async function getBundles(): Promise<Tables<'bundles'>[]> {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase
+    .from('bundles')
+    .select('*')
+    .eq('published_status', 'published')
+    .eq('stock_status', 'in_stock');
+    
+  if (error) {
+    console.error('Error fetching bundles:', error);
+    return [];
+  }
+  
+  return data || [];
+}
+
 interface FetchBundlesParams {
   page?: number;
   itemsPerPage?: number;

@@ -46,14 +46,15 @@ export default async function OrdersPage({
     shipping_address:
       typeof order.shipping_address === "string"
         ? (() => {
-            try {
-              return JSON.parse(order.shipping_address);
-            } catch {
-              return null;
-            }
-          })()
+          try {
+            return JSON.parse(order.shipping_address);
+          } catch {
+            return null;
+          }
+        })()
         : order.shipping_address || null,
-    users: order.users || { display_name: "Unknown User" },
+    // Ensure profiles is forwarded for client to render display_name
+    profiles: order.profiles || null,
     created_at: order.created_at ?? null,
     updated_at: order.updated_at ?? null,
     delivery_fee: order.delivery_fee ?? null,

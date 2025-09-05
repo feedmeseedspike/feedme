@@ -84,7 +84,7 @@ const AddToCart = React.memo(
               (cartItem) =>
                 cartItem.product_id === item.id &&
                 JSON.stringify(cartItem.option || null) ===
-                  JSON.stringify(item.option || null)
+                JSON.stringify(item.option || null)
             );
             if (existingAnonymousItem) {
               anonymousCart.removeItem(existingAnonymousItem.id);
@@ -98,7 +98,7 @@ const AddToCart = React.memo(
               (cartItem) =>
                 cartItem.product_id === item.id &&
                 JSON.stringify(cartItem.option || null) ===
-                  JSON.stringify(item.option || null)
+                JSON.stringify(item.option || null)
             );
             if (existingAnonymousItem) {
               anonymousCart.updateQuantity(existingAnonymousItem.id, newQuantity);
@@ -125,7 +125,7 @@ const AddToCart = React.memo(
           (cartItem) =>
             cartItem.product_id === item.id &&
             JSON.stringify(cartItem.option || null) ===
-              JSON.stringify(item.option || null)
+            JSON.stringify(item.option || null)
         );
         if (newQuantity === 0) {
           if (existingItemInCart?.id) {
@@ -163,14 +163,14 @@ const AddToCart = React.memo(
                   (cartItem.product_id &&
                     cartItem.product_id === item.id &&
                     JSON.stringify(cartItem.option || null) ===
-                      JSON.stringify(item.option || null)) ||
-                  (cartItem.bundle_id && cartItem.bundle_id === item.id)
+                    JSON.stringify(item.option || null)) ||
+                    (cartItem.bundle_id && cartItem.bundle_id === item.id)
                     ? newQuantity
                     : cartItem.quantity,
                 price:
                   cartItem.option &&
-                  typeof cartItem.option === "object" &&
-                  "price" in cartItem.option
+                    typeof cartItem.option === "object" &&
+                    "price" in cartItem.option
                     ? ((cartItem.option as any).price ?? cartItem.price ?? 0)
                     : (cartItem.price ?? 0),
               }))
@@ -180,7 +180,7 @@ const AddToCart = React.memo(
                 (cartItem.product_id &&
                   cartItem.product_id === item.id &&
                   JSON.stringify(cartItem.option || null) ===
-                    JSON.stringify(item.option || null)) ||
+                  JSON.stringify(item.option || null)) ||
                 (cartItem.bundle_id && cartItem.bundle_id === item.id)
             );
             if (!targetItemExists) {
@@ -268,7 +268,7 @@ const AddToCart = React.memo(
             item.bundleId ? item.id : null,
             null
           );
-          
+
           setShowQuantityControls(true);
           setQuantity(1);
           showToast(
@@ -318,8 +318,8 @@ const AddToCart = React.memo(
             quantity: cartItem.quantity,
             price:
               cartItem.option &&
-              typeof cartItem.option === "object" &&
-              "price" in cartItem.option
+                typeof cartItem.option === "object" &&
+                "price" in cartItem.option
                 ? ((cartItem.option as any).price ?? cartItem.price ?? 0)
                 : (cartItem.price ?? 0),
           }))
@@ -329,7 +329,7 @@ const AddToCart = React.memo(
             (cartItem.product_id &&
               cartItem.product_id === item.id &&
               JSON.stringify(cartItem.option || null) ===
-                JSON.stringify(item.option || null)) ||
+              JSON.stringify(item.option || null)) ||
             (cartItem.bundle_id && cartItem.bundle_id === item.id)
         );
         if (!targetItemExists) {
@@ -345,7 +345,7 @@ const AddToCart = React.memo(
             price: item.price,
           });
         }
-        
+
         await updateCartMutation.mutateAsync(itemsForMutation);
         setShowQuantityControls(true);
         setQuantity(1);
@@ -390,14 +390,14 @@ const AddToCart = React.memo(
           (cartItem) =>
             cartItem.product_id === item.id &&
             JSON.stringify(cartItem.option || null) ===
-              JSON.stringify(item.option || null)
+            JSON.stringify(item.option || null)
         );
       } else {
         return anonymousCart.items.some(
           (cartItem) =>
             cartItem.product_id === item.id &&
             JSON.stringify(cartItem.option || null) ===
-              JSON.stringify(item.option || null)
+            JSON.stringify(item.option || null)
         );
       }
     }, [cartItems, anonymousCart.items, item.id, item.option, user]);
@@ -415,7 +415,7 @@ const AddToCart = React.memo(
           (cartItem) =>
             cartItem.product_id === item.id &&
             JSON.stringify(cartItem.option || null) ===
-              JSON.stringify(item.option || null)
+            JSON.stringify(item.option || null)
         );
         if (currentItemInCart) {
           setQuantity(currentItemInCart.quantity);
@@ -427,7 +427,7 @@ const AddToCart = React.memo(
           (cartItem) =>
             cartItem.product_id === item.id &&
             JSON.stringify(cartItem.option || null) ===
-              JSON.stringify(item.option || null)
+            JSON.stringify(item.option || null)
         );
         if (currentAnonymousItem) {
           setQuantity(currentAnonymousItem.quantity);
@@ -475,9 +475,9 @@ const AddToCart = React.memo(
             "hover:bg-[#1a5f13cc] hover:shadow-md",
             className,
             item.countInStock !== null &&
-              item.countInStock !== undefined &&
-              item.countInStock <= 0 &&
-              "opacity-50 cursor-not-allowed",
+            item.countInStock !== undefined &&
+            item.countInStock <= 0 &&
+            "opacity-50 cursor-not-allowed",
             isOutOfSeason && "opacity-50 cursor-not-allowed"
           )}
           disabled={
@@ -582,9 +582,9 @@ const AddToCart = React.memo(
                 missingOption && "animate-shake border border-red-500",
                 className,
                 item.countInStock !== null &&
-                  item.countInStock !== undefined &&
-                  item.countInStock <= 0 &&
-                  "opacity-50 cursor-not-allowed",
+                item.countInStock !== undefined &&
+                item.countInStock <= 0 &&
+                "opacity-50 cursor-not-allowed",
                 isOutOfSeason && "opacity-50 cursor-not-allowed"
               )}
               title={

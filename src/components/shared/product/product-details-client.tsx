@@ -114,7 +114,7 @@ export default function ProductDetailsClient({
       (item) =>
         item.product_id === product._id &&
         JSON.stringify(item.option || null) ===
-          JSON.stringify(selectedOptionData || null)
+        JSON.stringify(selectedOptionData || null)
     );
   }, [product._id, cartItems, selectedOptionData]);
 
@@ -220,11 +220,10 @@ export default function ProductDetailsClient({
               <button
                 key={index}
                 onClick={() => handleImageSelect(index)}
-                className={`shrink-0 w-16 h-16 border-2 rounded-lg overflow-hidden transition-all duration-200 ${
-                  selectedImageIndex === index
+                className={`shrink-0 w-16 h-16 border-2 rounded-lg overflow-hidden transition-all duration-200 ${selectedImageIndex === index
                     ? "border-[#F0800F] p-[1px]"
                     : "border-transparent hover:border-gray-300"
-                }`}
+                  }`}
                 aria-label={`View ${product.name} image ${index + 1}`}
               >
                 <Image

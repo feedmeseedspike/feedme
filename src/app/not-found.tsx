@@ -1,6 +1,6 @@
+import Headertags from "@/components/shared/header/Headertags";
 import Footer from "@components/shared/footer";
 import Header from "@components/shared/header";
-import Headertags from "@components/shared/header/Headertags";
 import Image from "next/image";
 import React from "react";
 
@@ -14,8 +14,9 @@ export const metadata = {
 const NotFound = () => {
   return (
     <>
-    <Header />
-    <Headertags />
+      <Header />
+      <Headertags/>
+      {/* <Header * /}
       <section className="flex justify-center items-center bg-white">
         <Image
           src="/404.gif"

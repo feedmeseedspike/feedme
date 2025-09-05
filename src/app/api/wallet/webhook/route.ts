@@ -117,7 +117,7 @@ async function handleDirectPayment(
       `${process.env.NEXT_PUBLIC_SITE_URL!}/api/email/send-order-confirmation`,
       {
         adminEmail: "orders.feedmeafrica@gmail.com",
-        userEmail: metadata.email,
+        userEmail: metadata.userEmail,
         adminOrderProps: {
           orderNumber: metadata.orderId,
           customerName: metadata.customerName,
