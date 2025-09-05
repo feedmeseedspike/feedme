@@ -23,7 +23,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
 import LogoutButton from "@components/shared/header/LogoutButton";
 import { useEffect, useState } from "react";
-import { Menu, X, Brain, Tag } from "lucide-react";
+import { Menu, X, Brain, Tag, FileText } from "lucide-react";
 import { Button } from "@components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@components/ui/sheet";
 import { getUnviewedOrdersCount } from "src/queries/orders";
@@ -104,6 +104,7 @@ export function AdminSidebar({ user }: AppSidebarProps) {
     { title: "Categories", url: "/admin/categories", icon: Product },
     { title: "Bundles", url: "/admin/bundles", icon: Bundle },
     { title: "Offers", url: "/admin/offers", icon: Tag },
+    { title: "Blog", url: "/admin/blog", icon: FileText },
     { title: "Agents", url: "/admin/agents", icon: User },
     { title: "Customers", url: "/admin/customers", icon: Profile },
     { title: "Promotions", url: "/admin/promotions", icon: Product },
@@ -151,6 +152,11 @@ export function AdminSidebar({ user }: AppSidebarProps) {
                         >
                           {item.title === "Delivery Locations" ? (
                             <TiLocation
+                              size={20}
+                              color={isActive ? "white" : "#667085"}
+                            />
+                          ) : item.title === "Blog" ? (
+                            <FileText
                               size={20}
                               color={isActive ? "white" : "#667085"}
                             />
