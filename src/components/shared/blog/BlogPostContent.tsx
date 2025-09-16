@@ -5,6 +5,7 @@ import { Clock, Eye, Heart, Share2, User, ChefHat, Users } from "lucide-react";
 import { BlogPost } from "@/lib/actions/blog.actions";
 import { formatDistanceToNow, format } from "date-fns";
 import { useState } from "react";
+import ProductLinkParser from "./ProductLinkParser";
 
 interface BlogPostContentProps {
   post: BlogPost;
@@ -191,10 +192,7 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
       )}
 
       {/* Main Content */}
-      <div 
-        className="prose prose-lg max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-a:text-[#F0800F] prose-a:no-underline hover:prose-a:underline prose-strong:text-gray-900 prose-img:rounded-xl prose-blockquote:border-l-[#1B6013] prose-blockquote:bg-green-50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg"
-        dangerouslySetInnerHTML={{ __html: post.content }}
-      />
+      <ProductLinkParser content={post.content} />
 
       {/* Instructions (if it's a recipe) */}
       {post.instructions && Array.isArray(post.instructions) && post.instructions.length > 0 && (

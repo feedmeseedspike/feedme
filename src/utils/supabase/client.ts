@@ -1,13 +1,13 @@
 // src/utils/supabase/client.ts
 import { createBrowserClient } from '@supabase/ssr'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../database.types'
-import type { TypedSupabaseClient } from '../types'
 import { useMemo } from 'react'
 
-let client: TypedSupabaseClient | undefined
+let client: any | undefined
 
 // Create a singleton client instance
-export function createClient(): TypedSupabaseClient {
+export function createClient(): any {
   if (!client) {
     // Validate environment variables
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
@@ -18,22 +18,22 @@ export function createClient(): TypedSupabaseClient {
       throw new Error('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable')
     }
 
-    client = createBrowserClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    client = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
     )
   }
 
-  return client
+  return client!
 }
 
 // Hook for React components
-export function useSupabaseBrowser(): TypedSupabaseClient {
+export function useSupabaseBrowser(): any {
   return useMemo(() => createClient(), [])
 }
 
 // Alternative hook name for consistency
-export function useSupabase(): TypedSupabaseClient {
+export function useSupabase(): any {
   return useSupabaseBrowser()
 }
 

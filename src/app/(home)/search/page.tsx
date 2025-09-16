@@ -28,6 +28,10 @@ import { getAllCategories } from "src/lib/api";
 import { createClient } from "@utils/supabase/client";
 import { getAllProducts } from "../../../queries/products";
 import { IProductInput } from "src/types";
+import { Tables } from "@/utils/database.types";
+
+type Category = Tables<"categories">;
+type ProductType = Tables<"products">;
 
 const sortOrders = [
   { value: "price-low-to-high", name: "Price: Low to high" },
@@ -160,14 +164,14 @@ const SearchPage = async (props: {
           new Set(
             data.products
               .filter(
-                (p) =>
+                (p: ProductType) =>
                   Array.isArray(p.category_ids) &&
                   (p.category_ids?.length ?? 0) > 0
               )
-              .map((p) => p.category_ids![0])
+              .map((p: ProductType) => p.category_ids![0])
           )
         ).map(categoryId => {
-          const foundCategory = categories.find(cat => cat.id === categoryId);
+          const foundCategory = categories.find((cat: Category) => cat.id === categoryId);
           return foundCategory || { id: categoryId, title: categoryId };
         }).filter(cat => cat.title !== cat.id) // Filter out categories where title is the same as ID (UUID)
       : categories;
@@ -257,7 +261,7 @@ const SearchPage = async (props: {
                                   All
                                 </Link>
                               </li>
-                              {relevantCategories.map((c) => (
+                              {relevantCategories.map((c: Category) => (
                                 <li
                                   key={typeof c === "string" ? c : c.id}
                                   className="border p-2 rounded-md border-gray-300"
@@ -289,7 +293,7 @@ const SearchPage = async (props: {
                             <PriceRangeSlider
                               params={params}
                               maxPrice={Math.max(
-                                ...data.products.flatMap((p) => {
+                                ...data.products.flatMap((p: ProductType) => {
                                   const prices = [typeof p.price === "number" ? p.price : 0];
                                   // Include option prices if they exist
                                   if (p.options && Array.isArray(p.options)) {
@@ -381,7 +385,7 @@ const SearchPage = async (props: {
                       All
                     </Link>
                   </li> */}
-                {relevantCategories.map((c) => (
+                {relevantCategories.map((c: Category) => (
                   <li key={typeof c === "string" ? c : c.id}>
                     <Link
                       className={`${
@@ -505,7 +509,7 @@ const SearchPage = async (props: {
               )}
             </div>
             <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4 ">
-              {data.products.map((product) => (
+              {data.products.map((product: ProductType) => (
                 <ProductdetailsCard
                   key={product.id}
                   product={mapSupabaseProductToIProductInput(product)}

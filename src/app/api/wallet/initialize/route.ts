@@ -101,7 +101,8 @@ export const POST = authMiddleware(
           user_id,
           orderId,
           // Additional data for webhook processing
-          userEmail: email,
+          email: email,
+          amount: amount,
           autoAppliedReferralVoucher: autoAppliedReferralVoucher || false,
           customerName: customerName || "",
           customerPhone: customerPhone || "",
@@ -110,8 +111,7 @@ export const POST = authMiddleware(
           localGovernment: localGovernment || "",
           deliveryFee: deliveryFee || 0,
           serviceCharge: serviceCharge || 0,
-          subtotal: amount,
-          totalAmountPaid: subtotal,
+          subtotal: subtotal || amount,
         };
 
         // Update the order with pending status (we'll add reference after Paystack response)

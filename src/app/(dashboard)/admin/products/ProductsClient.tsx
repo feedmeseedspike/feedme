@@ -276,7 +276,7 @@ export default function ProductsClient({
 
         if (categoryIds.length > 0) {
           const uniqueCategoryIds = [...new Set(categoryIds)].filter(
-            (id) => !(id in categoryNames)
+            (id): id is string => typeof id === 'string' && !(id in categoryNames)
           );
           if (uniqueCategoryIds.length > 0) {
             const fetchedCategoryNames: Record<string, string> = {};

@@ -43,14 +43,14 @@ export default function BlogCategories({ selectedCategory }: BlogCategoriesProps
 
   return (
     <div className="mb-8">
-      <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
         {/* All Categories */}
         <Link
           href="/blog"
-          className={`px-6 py-2 rounded-full font-medium whitespace-nowrap transition-colors ${
+          className={`px-5 py-2 rounded-full font-medium whitespace-nowrap transition-colors ${
             !selectedCategory
-              ? "bg-[#1B6013] text-white"
-              : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+              ? "bg-[#1B6013] text-white shadow-sm"
+              : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 shadow-sm"
           }`}
         >
           All Posts
@@ -64,10 +64,10 @@ export default function BlogCategories({ selectedCategory }: BlogCategoriesProps
             <Link
               key={category.id}
               href={`/blog?category=${category.slug}`}
-              className={`px-6 py-2 rounded-full font-medium whitespace-nowrap transition-colors flex items-center gap-2 ${
+              className={`px-5 py-2 rounded-full font-medium whitespace-nowrap transition-colors flex items-center gap-2 ${
                 isSelected
-                  ? "text-white"
-                  : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                  ? "text-white shadow-sm"
+                  : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 shadow-sm"
               }`}
               style={isSelected ? { backgroundColor: category.color } : {}}
             >

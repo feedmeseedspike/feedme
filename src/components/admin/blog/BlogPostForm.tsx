@@ -4,11 +4,8 @@ import { useState, useEffect } from "react";
 import { ArrowLeft, Save, Eye, Image as ImageIcon } from "lucide-react";
 import { Button } from "@components/ui/button";
 import { BlogPost, BlogCategory } from "@/lib/actions/blog.actions";
-import dynamic from 'next/dynamic';
-
-// Dynamically import React Quill to avoid SSR issues
-const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
-import 'react-quill/dist/quill.snow.css';
+import ImageUploadZone from "@/components/admin/ImageUploadZone";
+import EnhancedRichTextEditor from "./EnhancedRichTextEditor";
 
 interface BlogPostFormProps {
   post?: BlogPost | null;
@@ -16,21 +13,6 @@ interface BlogPostFormProps {
   onClose: () => void;
 }
 
-const quillModules = {
-  toolbar: [
-    [{ 'header': [1, 2, 3, false] }],
-    ['bold', 'italic', 'underline', 'strike'],
-    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-    ['blockquote', 'code-block'],
-    ['link', 'image'],
-    ['clean']
-  ],
-};
-
-const quillFormats = [
-  'header', 'bold', 'italic', 'underline', 'strike',
-  'list', 'bullet', 'blockquote', 'code-block', 'link', 'image'
-];
 
 export default function BlogPostForm({ post, categories, onClose }: BlogPostFormProps) {
   const [formData, setFormData] = useState({
@@ -56,6 +38,7 @@ export default function BlogPostForm({ post, categories, onClose }: BlogPostForm
   const [loading, setLoading] = useState(false);
   const [newIngredient, setNewIngredient] = useState('');
   const [newInstruction, setNewInstruction] = useState('');
+  const [imageInputMethod, setImageInputMethod] = useState<'url' | 'upload'>('upload');
 
   useEffect(() => {
     if (post) {
@@ -82,6 +65,14 @@ export default function BlogPostForm({ post, categories, onClose }: BlogPostForm
           post.instructions.map((inst: any) => typeof inst === 'string' ? inst : inst.text || inst) : 
           [],
       });
+      
+      // If editing and there's an existing image, check if it's from our upload system or external URL
+      if (post.featured_image) {
+        // If image is from Supabase storage (contains supabase in URL), use upload mode
+        // Otherwise, use URL mode for external images
+        const isSupabaseImage = post.featured_image.includes('supabase') || post.featured_image.includes('/storage/v1/object/');
+        setImageInputMethod(isSupabaseImage ? 'upload' : 'url');
+      }
     }
   }, [post]);
 
@@ -260,49 +251,102 @@ export default function BlogPostForm({ post, categories, onClose }: BlogPostForm
 
         {/* Featured Image */}
         <div className="bg-white p-6 rounded-lg shadow-sm border space-y-4">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <ImageIcon size={20} />
-            Featured Image
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Image URL
-              </label>
-              <input
-                type="url"
-                value={formData.featured_image}
-                onChange={(e) => setFormData(prev => ({ ...prev, featured_image: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#1B6013] focus:border-[#1B6013]"
-                placeholder="https://example.com/image.jpg"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Alt Text
-              </label>
-              <input
-                type="text"
-                value={formData.featured_image_alt}
-                onChange={(e) => setFormData(prev => ({ ...prev, featured_image_alt: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#1B6013] focus:border-[#1B6013]"
-                placeholder="Description for accessibility"
-              />
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <ImageIcon size={20} />
+              Featured Image
+            </h2>
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setImageInputMethod('upload')}
+                className={`px-3 py-1 text-sm font-medium ${
+                  imageInputMethod === 'upload' 
+                    ? 'bg-[#1B6013] text-white' 
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Upload
+              </button>
+              <button
+                type="button"
+                onClick={() => setImageInputMethod('url')}
+                className={`px-3 py-1 text-sm font-medium ${
+                  imageInputMethod === 'url' 
+                    ? 'bg-[#1B6013] text-white' 
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                URL
+              </button>
             </div>
           </div>
-
-          {formData.featured_image && (
-            <div className="mt-4">
-              <img
-                src={formData.featured_image}
-                alt={formData.featured_image_alt || 'Preview'}
-                className="w-full max-w-md h-48 object-cover rounded-lg"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
+          
+          {imageInputMethod === 'upload' ? (
+            <div className="space-y-4">
+              <ImageUploadZone
+                onImageUploaded={(url) => setFormData(prev => ({ ...prev, featured_image: url }))}
+                onImageRemoved={() => setFormData(prev => ({ ...prev, featured_image: '' }))}
+                initialImage={formData.featured_image}
+                title="Upload Featured Image"
+                description="Drag and drop or click to select an image"
+                maxFileSize={5}
+                acceptedTypes={['image/jpeg', 'image/png', 'image/webp']}
               />
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Alt Text
+                </label>
+                <input
+                  type="text"
+                  value={formData.featured_image_alt}
+                  onChange={(e) => setFormData(prev => ({ ...prev, featured_image_alt: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#1B6013] focus:border-[#1B6013]"
+                  placeholder="Description for accessibility"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Image URL
+                </label>
+                <input
+                  type="url"
+                  value={formData.featured_image}
+                  onChange={(e) => setFormData(prev => ({ ...prev, featured_image: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#1B6013] focus:border-[#1B6013]"
+                  placeholder="https://example.com/image.jpg"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Alt Text
+                </label>
+                <input
+                  type="text"
+                  value={formData.featured_image_alt}
+                  onChange={(e) => setFormData(prev => ({ ...prev, featured_image_alt: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#1B6013] focus:border-[#1B6013]"
+                  placeholder="Description for accessibility"
+                />
+              </div>
+              
+              {formData.featured_image && (
+                <div className="md:col-span-2 mt-4">
+                  <img
+                    src={formData.featured_image}
+                    alt={formData.featured_image_alt || 'Preview'}
+                    className="w-full max-w-md h-48 object-cover rounded-lg"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -310,16 +354,11 @@ export default function BlogPostForm({ post, categories, onClose }: BlogPostForm
         {/* Content */}
         <div className="bg-white p-6 rounded-lg shadow-sm border space-y-4">
           <h2 className="text-lg font-semibold">Content *</h2>
-          <div className="prose-editor">
-            <ReactQuill
-              value={formData.content}
-              onChange={(content) => setFormData(prev => ({ ...prev, content }))}
-              modules={quillModules}
-              formats={quillFormats}
-              theme="snow"
-              className="bg-white"
-            />
-          </div>
+          <EnhancedRichTextEditor
+            value={formData.content}
+            onChange={(content) => setFormData(prev => ({ ...prev, content }))}
+            className="prose-editor"
+          />
         </div>
 
         {/* Recipe Information */}

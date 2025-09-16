@@ -7,12 +7,16 @@ export async function GET(req: Request) {
 
   try {
     const posts = await getFeaturedBlogPosts(limit);
-    
-    return NextResponse.json({ posts, success: true });
+
+    const response = NextResponse.json({ posts, success: true });
+
+    response.headers.set('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=120');
+
+    return response;
   } catch (error) {
     console.error("Error fetching featured blog posts:", error);
     return NextResponse.json(
-      { error: "Failed to fetch featured blog posts", success: false }, 
+      { error: "Failed to fetch featured blog posts", success: false },
       { status: 500 }
     );
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Tables } from "@/utils/database.types";
 import {
   Table,
   TableHeader,
@@ -46,7 +47,11 @@ import { Database } from "../../../../utils/database.types";
 import { format, parseISO } from "date-fns";
 import { useDebounce } from "src/hooks/use-debounce";
 import { useTransition } from "react";
-import { updateOrderStatusAction, updatePaymentStatusAction } from "./actions";
+import {
+  updateOrderStatusAction,
+  updatePaymentStatusAction,
+  fetchOrderDetailsAction,
+} from "./actions";
 
 interface Order {
   id: string;
@@ -138,12 +143,45 @@ export default function OrdersClient({
     string | null
   >(null);
 
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [isOrderDetailOpen, setIsOrderDetailOpen] = useState(false);
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const page = currentPage;
   const { showToast } = useToast();
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
+
+  const handleOrderClick = async (orderId: string) => {
+    const orderData = data?.data?.find((order: any) => order.id === orderId);
+
+    if (!orderData) {
+      showToast("Order not found", "error");
+      return;
+    }
+
+    setSelectedOrder({
+      ...orderData,
+      loading: false,
+      order_items: [],
+      loadingItems: true,
+    });
+    setIsOrderDetailOpen(true);
+
+    try {
+      const fullOrderData = await fetchOrderDetailsAction(orderId);
+      setSelectedOrder((prev: any) => ({
+        ...prev,
+        ...fullOrderData,
+        order_items: fullOrderData.order_items || [],
+        loadingItems: false,
+      }));
+    } catch (error) {
+      console.error("Failed to fetch order details:", error);
+      setSelectedOrder((prev: any) => ({ ...prev, loadingItems: false }));
+    }
+  };
 
   // Extract unique payment methods from initialOrders for filter options
   const paymentMethodOptions = Array.from(
@@ -190,11 +228,6 @@ export default function OrdersClient({
   const { data, isLoading, error } = useQuery({
     queryKey: ["orders", page, activeFilters, filterVersion],
     queryFn: () => {
-      console.log("[FETCH ORDERS PARAMS]", {
-        page,
-        itemsPerPage,
-        ...activeFilters,
-      });
       return fetchOrders({
         page: page,
         itemsPerPage: itemsPerPage,
@@ -321,8 +354,6 @@ export default function OrdersClient({
     //   }
     // }
   }, [data]);
-
-  console.log("[TABLE DATA]", data?.data);
 
   return (
     <div className="p-4">
@@ -568,7 +599,7 @@ export default function OrdersClient({
                 </TableRow>
               ))
             ) : data?.data && data.data.length > 0 ? (
-              data.data.map((order) => (
+              data.data.map((order: any) => (
                 <TableRow
                   key={order.id}
                   className={
@@ -579,7 +610,14 @@ export default function OrdersClient({
                     ""
                   }
                 >
-                  <TableCell>{order.id?.substring(0, 8) || "N/A"}</TableCell>
+                  <TableCell>
+                    <button
+                      onClick={() => handleOrderClick(order.id)}
+                      className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                    >
+                      {order.id?.substring(0, 8) || "N/A"}
+                    </button>
+                  </TableCell>
                   <TableCell>
                     {order.created_at
                       ? new Date(order.created_at).toLocaleString()
@@ -611,7 +649,7 @@ export default function OrdersClient({
                       : "₦0.00"}
                   </TableCell>
                   {/* Payment Status Dropdown */}
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <Select
                       value={
                         paymentStatusOptions.includes(
@@ -663,7 +701,7 @@ export default function OrdersClient({
                   </TableCell>
 
                   {/* Progress Dropdown */}
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <Select
                       value={
                         progressOptions.includes(order.status as any)
@@ -711,6 +749,204 @@ export default function OrdersClient({
       <div className="flex justify-center mt-6">
         <PaginationBar totalPages={totalPages} page={page} />
       </div>
+
+      {/* Order Detail Drawer */}
+      <Sheet open={isOrderDetailOpen} onOpenChange={setIsOrderDetailOpen}>
+        <SheetContent
+          side="left"
+          className="w-[600px] sm:max-w-[600px] overflow-y-auto"
+        >
+          <SheetHeader>
+            <SheetTitle>
+              {selectedOrder?.loading
+                ? "Loading Order..."
+                : `Order #${selectedOrder?.id?.substring(0, 8) || "N/A"}`}
+            </SheetTitle>
+          </SheetHeader>
+
+          {selectedOrder?.loading ? (
+            <div className="mt-6 space-y-4">
+              <div className="animate-pulse space-y-4">
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex gap-3 p-3 border rounded">
+                      <div className="w-12 h-12 bg-gray-200 rounded"></div>
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : selectedOrder ? (
+            <div className="mt-6 space-y-6">
+              {/* Customer Info */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">
+                  Customer Information
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <p>
+                    <strong>Name:</strong>{" "}
+                    {selectedOrder.profiles?.display_name || "Unknown User"}
+                  </p>
+                  <p>
+                    <strong>User ID:</strong> {selectedOrder.user_id || "N/A"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Order Info */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">
+                  Order Information
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <p>
+                    <strong>Status:</strong> {selectedOrder.status || "N/A"}
+                  </p>
+                  <p>
+                    <strong>Payment Status:</strong>{" "}
+                    {selectedOrder.payment_status || "N/A"}
+                  </p>
+                  <p>
+                    <strong>Payment Method:</strong>{" "}
+                    {selectedOrder.payment_method || "N/A"}
+                  </p>
+                  <p>
+                    <strong>Total Amount:</strong>{" "}
+                    {formatNaira(selectedOrder.total_amount || 0)}
+                  </p>
+                  <p>
+                    <strong>Created:</strong>{" "}
+                    {selectedOrder.created_at
+                      ? new Date(selectedOrder.created_at).toLocaleString()
+                      : "N/A"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Order Items */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">
+                  Order Items ({selectedOrder.order_items?.length || 0})
+                  {selectedOrder.loadingItems && (
+                    <span className="text-sm font-normal text-gray-500 ml-2">
+                      Loading...
+                    </span>
+                  )}
+                </h3>
+                <div className="space-y-3">
+                  {selectedOrder.loadingItems ? (
+                    // Loading skeleton for items
+                    [1, 2].map((i) => (
+                      <div
+                        key={i}
+                        className="flex gap-3 p-3 border rounded animate-pulse"
+                      >
+                        <div className="w-12 h-12 bg-gray-200 rounded"></div>
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                          <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                        </div>
+                        <div className="h-4 bg-gray-200 rounded w-16"></div>
+                      </div>
+                    ))
+                  ) : (selectedOrder.order_items || []).length > 0 ? (
+                    (selectedOrder.order_items || []).map((item: any) => (
+                      <div
+                        key={item.id}
+                        className="flex gap-3 p-3 border rounded"
+                      >
+                        <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                          {item.products?.images?.[0] ? (
+                            <img
+                              src={item.products.images[0]}
+                              alt={item.products.name || "Item"}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : item.bundles?.thumbnail_url ? (
+                            <img
+                              src={item.bundles.thumbnail_url}
+                              alt={item.bundles.name || "Bundle"}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                              Item
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-medium text-sm">
+                            {item.products?.name ||
+                              item.bundles?.name ||
+                              "Order Item"}
+                          </h4>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Quantity: {item.quantity} ×{" "}
+                            {formatNaira(item.price || 0)}
+                          </p>
+                          {item.option && (
+                            <div className="mt-2 text-xs text-gray-600">
+                              {item.option.name && (
+                                <div className="mb-2">
+                                  <span className="font-medium">
+                                    Variation:
+                                  </span>{" "}
+                                  {item.option.name}
+                                </div>
+                              )}
+                              {item.option.customizations && (
+                                <div>
+                                  <div className="font-medium mb-1">
+                                    Customizations:
+                                  </div>
+                                  {Object.entries(
+                                    item.option.customizations
+                                  ).map(([key, value]) => (
+                                    <div key={key} className="ml-2">
+                                      •{" "}
+                                      {key
+                                        .replace(/_/g, " ")
+                                        .replace(/\b\w/g, (l) =>
+                                          l.toUpperCase()
+                                        )}
+                                      :{" "}
+                                      {String(value)
+                                        .replace(/_/g, " ")
+                                        .replace(/\b\w/g, (l) =>
+                                          l.toUpperCase()
+                                        )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <div className="font-medium text-sm">
+                            {formatNaira((item.price || 0) * item.quantity)}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      No items found for this order
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

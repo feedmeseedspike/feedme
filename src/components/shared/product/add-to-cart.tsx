@@ -34,6 +34,7 @@ interface AddToCartProps {
     options?: ProductOption[];
     selectedOption?: string;
     option?: ProductOption | null;
+    customizations?: Record<string, string>;
     onOutOfStock?: () => void;
     iconOnly?: boolean;
     bundleId?: string;
@@ -75,6 +76,20 @@ const AddToCart = React.memo(
       setQuantity(item.countInStock || 1);
     }, [item.countInStock]);
 
+    // Create combined option object that includes customizations
+    const combinedOption = useMemo(() => {
+      if (!item.option && !item.customizations) return null;
+      
+      const baseOption = item.option ? { ...item.option } : {};
+      const customizationsData = item.customizations && Object.keys(item.customizations).length > 0 
+        ? { customizations: item.customizations } 
+        : {};
+      
+      return Object.keys(baseOption).length > 0 || Object.keys(customizationsData).length > 0
+        ? { ...baseOption, ...customizationsData }
+        : null;
+    }, [item.option, item.customizations]);
+
     const handleQuantityChange = useCallback(
       async (newQuantity: number) => {
         if (!user) {
@@ -84,7 +99,7 @@ const AddToCart = React.memo(
               (cartItem) =>
                 cartItem.product_id === item.id &&
                 JSON.stringify(cartItem.option || null) ===
-                  JSON.stringify(item.option || null)
+                  JSON.stringify(combinedOption || null)
             );
             if (existingAnonymousItem) {
               anonymousCart.removeItem(existingAnonymousItem.id);
@@ -98,7 +113,7 @@ const AddToCart = React.memo(
               (cartItem) =>
                 cartItem.product_id === item.id &&
                 JSON.stringify(cartItem.option || null) ===
-                  JSON.stringify(item.option || null)
+                  JSON.stringify(combinedOption || null)
             );
             if (existingAnonymousItem) {
               anonymousCart.updateQuantity(existingAnonymousItem.id, newQuantity);
@@ -107,7 +122,7 @@ const AddToCart = React.memo(
                 item.bundleId ? null : item.id,
                 newQuantity,
                 item.price,
-                item.option,
+                combinedOption,
                 item.bundleId ? item.id : null,
                 null
               );
@@ -125,7 +140,7 @@ const AddToCart = React.memo(
           (cartItem) =>
             cartItem.product_id === item.id &&
             JSON.stringify(cartItem.option || null) ===
-              JSON.stringify(item.option || null)
+              JSON.stringify(combinedOption || null)
         );
         if (newQuantity === 0) {
           if (existingItemInCart?.id) {
@@ -163,7 +178,7 @@ const AddToCart = React.memo(
                   (cartItem.product_id &&
                     cartItem.product_id === item.id &&
                     JSON.stringify(cartItem.option || null) ===
-                      JSON.stringify(item.option || null)) ||
+                      JSON.stringify(combinedOption || null)) ||
                   (cartItem.bundle_id && cartItem.bundle_id === item.id)
                     ? newQuantity
                     : cartItem.quantity,
@@ -180,7 +195,7 @@ const AddToCart = React.memo(
                 (cartItem.product_id &&
                   cartItem.product_id === item.id &&
                   JSON.stringify(cartItem.option || null) ===
-                    JSON.stringify(item.option || null)) ||
+                    JSON.stringify(combinedOption || null)) ||
                 (cartItem.bundle_id && cartItem.bundle_id === item.id)
             );
             if (!targetItemExists) {
@@ -188,8 +203,8 @@ const AddToCart = React.memo(
                 product_id: item.bundleId ? null : item.id,
                 bundle_id: item.bundleId ? item.id : null,
                 option:
-                  item.option && typeof item.option === "object"
-                    ? JSON.parse(JSON.stringify(item.option))
+                  combinedOption && typeof combinedOption === "object"
+                    ? JSON.parse(JSON.stringify(combinedOption))
                     : null,
                 quantity: newQuantity,
                 price: item.price,
@@ -216,7 +231,7 @@ const AddToCart = React.memo(
         anonymousCart,
         onAuthRequired,
         item.id,
-        item.option,
+        combinedOption,
         item.name,
         item.bundleId,
         item.price,
@@ -264,7 +279,7 @@ const AddToCart = React.memo(
             item.bundleId ? null : item.id,
             1,
             item.price,
-            item.option,
+            combinedOption,
             item.bundleId ? item.id : null,
             null
           );
@@ -329,7 +344,7 @@ const AddToCart = React.memo(
             (cartItem.product_id &&
               cartItem.product_id === item.id &&
               JSON.stringify(cartItem.option || null) ===
-                JSON.stringify(item.option || null)) ||
+                JSON.stringify(combinedOption || null)) ||
             (cartItem.bundle_id && cartItem.bundle_id === item.id)
         );
         if (!targetItemExists) {
@@ -338,8 +353,8 @@ const AddToCart = React.memo(
             bundle_id: item.bundleId ? item.id : null,
             offer_id: null,
             option:
-              item.option && typeof item.option === "object"
-                ? JSON.parse(JSON.stringify(item.option))
+              combinedOption && typeof combinedOption === "object"
+                ? JSON.parse(JSON.stringify(combinedOption))
                 : null,
             quantity: 1,
             price: item.price,
@@ -374,7 +389,7 @@ const AddToCart = React.memo(
       item.options,
       item.selectedOption,
       item.name,
-      item.option,
+      combinedOption,
       item.id,
       item.bundleId,
       item.price,
@@ -390,17 +405,17 @@ const AddToCart = React.memo(
           (cartItem) =>
             cartItem.product_id === item.id &&
             JSON.stringify(cartItem.option || null) ===
-              JSON.stringify(item.option || null)
+              JSON.stringify(combinedOption || null)
         );
       } else {
         return anonymousCart.items.some(
           (cartItem) =>
             cartItem.product_id === item.id &&
             JSON.stringify(cartItem.option || null) ===
-              JSON.stringify(item.option || null)
+              JSON.stringify(combinedOption || null)
         );
       }
-    }, [cartItems, anonymousCart.items, item.id, item.option, user]);
+    }, [cartItems, anonymousCart.items, item.id, combinedOption, user]);
 
     useEffect(() => {
       setShowQuantityControls(isInCart);
@@ -415,7 +430,7 @@ const AddToCart = React.memo(
           (cartItem) =>
             cartItem.product_id === item.id &&
             JSON.stringify(cartItem.option || null) ===
-              JSON.stringify(item.option || null)
+              JSON.stringify(combinedOption || null)
         );
         if (currentItemInCart) {
           setQuantity(currentItemInCart.quantity);
@@ -427,7 +442,7 @@ const AddToCart = React.memo(
           (cartItem) =>
             cartItem.product_id === item.id &&
             JSON.stringify(cartItem.option || null) ===
-              JSON.stringify(item.option || null)
+              JSON.stringify(combinedOption || null)
         );
         if (currentAnonymousItem) {
           setQuantity(currentAnonymousItem.quantity);
@@ -435,7 +450,7 @@ const AddToCart = React.memo(
           setQuantity(1);
         }
       }
-    }, [cartItems, anonymousCart.items, item.id, item.option, isInCart, user]);
+    }, [cartItems, anonymousCart.items, item.id, combinedOption, isInCart, user]);
 
     const isOutOfSeason = item.in_season === false;
 

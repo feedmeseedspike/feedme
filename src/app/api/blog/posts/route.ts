@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import { getAllBlogPosts, createBlogPost } from "@/lib/actions/blog.actions";
 
@@ -10,19 +11,25 @@ export async function GET(req: Request) {
   const status = searchParams.get("status") || "published";
 
   try {
-    const posts = await getAllBlogPosts({ 
-      limit, 
-      offset, 
-      category, 
-      featured, 
+    const posts = await getAllBlogPosts({
+      limit,
+      offset,
+      category,
+      featured,
       status: status === "all" ? undefined : status  // Don't filter by status if "all"
     });
-    
-    return NextResponse.json({ posts, success: true });
+
+    const response = NextResponse.json({ posts, success: true });
+
+    // Cache for 5 minutes for published posts, 0 for admin views
+    const cacheTime = status === "published" ? 300 : 0;
+    response.headers.set('Cache-Control', `public, s-maxage=${cacheTime}, stale-while-revalidate=60`);
+
+    return response;
   } catch (error) {
     console.error("Error fetching blog posts:", error);
     return NextResponse.json(
-      { error: "Failed to fetch blog posts", success: false }, 
+      { error: "Failed to fetch blog posts", success: false },
       { status: 500 }
     );
   }

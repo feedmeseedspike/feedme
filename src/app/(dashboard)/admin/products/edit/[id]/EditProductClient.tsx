@@ -114,6 +114,24 @@ const formSchema = z
       )
       .optional(),
     options: z.array(OptionSchema).optional(),
+    customizations: z
+      .array(
+        z.object({
+          id: z.string(),
+          label: z.string().min(1, "Label is required"),
+          type: z.enum(["select", "toggle"]),
+          options: z
+            .array(
+              z.object({
+                value: z.string().min(1, "Value is required"),
+                label: z.string().min(1, "Label is required"),
+                default: z.boolean().default(false),
+              })
+            )
+            .min(1, "At least one option is required"),
+        })
+      )
+      .optional(),
     is_published: z.boolean().default(false),
     in_season: z.boolean().nullable().default(null),
   })
@@ -245,12 +263,42 @@ export default function EditProductClient({
           ? product.stock_status
           : "In Stock",
       selectedCategories: initialCategories,
-      variation:
-        Array.isArray(product.options) && product.options.length > 0
-          ? "Yes"
-          : "No",
+      variation: (() => {
+        if (Array.isArray(product.options) && product.options.length > 0) {
+          // Old format: options is array of variations
+          return "Yes";
+        } else if (
+          product.options &&
+          typeof product.options === "object" &&
+          product.options.variations?.length > 0
+        ) {
+          // New format: check if variations exist in object
+          return "Yes";
+        }
+        return "No";
+      })(),
       images: [],
-      options: Array.isArray(product.options) ? product.options : [],
+      options: (() => {
+        if (Array.isArray(product.options)) {
+          // Old format: options is array of variations
+          return product.options;
+        } else if (product.options && typeof product.options === "object") {
+          // New format: options is object with variations and customizations
+          return product.options.variations || [];
+        }
+        return [];
+      })(),
+      customizations: (() => {
+        if (
+          product.options &&
+          typeof product.options === "object" &&
+          !Array.isArray(product.options)
+        ) {
+          // New format: extract customizations from object
+          return product.options.customizations || [];
+        }
+        return [];
+      })(),
       is_published: product.is_published || false,
       in_season:
         typeof product.in_season === "boolean" ? product.in_season : null,
@@ -360,18 +408,31 @@ export default function EditProductClient({
 
   // Edit Option
   const handleOptionEditSubmit = async (optionData: any) => {
-    console.log("EditProductClient handleOptionEditSubmit called with:", optionData);
+    console.log(
+      "EditProductClient handleOptionEditSubmit called with:",
+      optionData
+    );
     setOptionModalLoading(true);
     try {
       let imageUrl = optionData.image;
-      console.log("Initial imageUrl:", imageUrl, "Type:", typeof imageUrl, "instanceof File:", imageUrl instanceof File);
+      console.log(
+        "Initial imageUrl:",
+        imageUrl,
+        "Type:",
+        typeof imageUrl,
+        "instanceof File:",
+        imageUrl instanceof File
+      );
       const currentOptions = form.getValues("options") || [];
       if (
         !imageUrl &&
         editOptionIndex !== null &&
         currentOptions[editOptionIndex]
       ) {
-        console.log("No new image, using existing image from option:", currentOptions[editOptionIndex].image);
+        console.log(
+          "No new image, using existing image from option:",
+          currentOptions[editOptionIndex].image
+        );
         imageUrl = currentOptions[editOptionIndex].image;
       }
       if (imageUrl instanceof File) {
@@ -456,6 +517,52 @@ export default function EditProductClient({
           };
         })
       );
+      // Prepare customizations for storage in options field
+      const filteredCustomizations = data.customizations
+        ? data.customizations.filter(
+            (c) => c.label && c.options?.some((o: any) => o.label && o.value)
+          )
+        : [];
+
+      // Handle existing options structure
+      // If product.options is an array, it contains variations
+      // If it's an object, it might already have customizations and/or variations
+      let optionsData: any = null;
+
+      if (Array.isArray(product.options)) {
+        // Original structure: options is array of variations
+        if (filteredCustomizations.length > 0) {
+          // If we have customizations, convert to object structure
+          optionsData = {
+            variations: safeOptions.length > 0 ? safeOptions : product.options,
+            customizations: filteredCustomizations,
+          };
+        } else {
+          // No customizations, preserve existing variations or use updated ones
+          optionsData = safeOptions.length > 0 ? safeOptions : product.options;
+        }
+      } else if (product.options && typeof product.options === "object") {
+        // Modern structure: options is object with variations and/or customizations
+        optionsData = {
+          ...(safeOptions.length > 0 ? { variations: safeOptions } : {}),
+          ...(filteredCustomizations.length > 0
+            ? { customizations: filteredCustomizations }
+            : {}),
+        };
+      } else {
+        // No existing options
+        if (safeOptions.length > 0 && filteredCustomizations.length > 0) {
+          optionsData = {
+            variations: safeOptions,
+            customizations: filteredCustomizations,
+          };
+        } else if (safeOptions.length > 0) {
+          optionsData = safeOptions; // Keep as array for backward compatibility
+        } else if (filteredCustomizations.length > 0) {
+          optionsData = { customizations: filteredCustomizations };
+        }
+      }
+
       const productData: any = {
         id: product.id,
         name: data.productName,
@@ -464,7 +571,7 @@ export default function EditProductClient({
         is_published: data.is_published,
         slug: toSlug(data.productName),
         images: safeImages,
-        options: safeOptions,
+        options: optionsData,
         list_price: data.list_price ?? null,
         in_season: data.in_season,
       };
@@ -964,6 +1071,274 @@ export default function EditProductClient({
             )}
           </motion.div>
 
+          {/* Product Customizations */}
+          <FormField
+            control={form.control}
+            name="customizations"
+            render={({ field }) => {
+              const customizations = field.value || [];
+
+              const updateCustomization = (custIndex: number, updates: any) => {
+                const newCustomizations = [...customizations];
+                newCustomizations[custIndex] = {
+                  ...newCustomizations[custIndex],
+                  ...updates,
+                };
+                field.onChange(newCustomizations);
+              };
+
+              const updateCustomizationOption = (
+                custIndex: number,
+                optIndex: number,
+                updates: any
+              ) => {
+                const newCustomizations = [...customizations];
+                const newOptions = [
+                  ...(newCustomizations[custIndex].options || []),
+                ];
+                newOptions[optIndex] = { ...newOptions[optIndex], ...updates };
+                newCustomizations[custIndex] = {
+                  ...newCustomizations[custIndex],
+                  options: newOptions,
+                };
+                field.onChange(newCustomizations);
+              };
+
+              const addCustomizationOption = (custIndex: number) => {
+                const newCustomizations = [...customizations];
+                const newOptions = [
+                  ...(newCustomizations[custIndex].options || []),
+                ];
+                newOptions.push({ value: "", label: "", default: false });
+                newCustomizations[custIndex] = {
+                  ...newCustomizations[custIndex],
+                  options: newOptions,
+                };
+                field.onChange(newCustomizations);
+              };
+
+              const removeCustomizationOption = (
+                custIndex: number,
+                optIndex: number
+              ) => {
+                const newCustomizations = [...customizations];
+                const newOptions = (
+                  newCustomizations[custIndex].options || []
+                ).filter((_: any, idx: number) => idx !== optIndex);
+                newCustomizations[custIndex] = {
+                  ...newCustomizations[custIndex],
+                  options: newOptions,
+                };
+                field.onChange(newCustomizations);
+              };
+
+              const addCustomization = () => {
+                const newCustomizations = [...customizations];
+                newCustomizations.push({
+                  id: `custom_${Date.now()}`,
+                  label: "",
+                  type: "select",
+                  options: [{ value: "", label: "", default: true }],
+                });
+                field.onChange(newCustomizations);
+              };
+
+              const removeCustomization = (custIndex: number) => {
+                const newCustomizations = customizations.filter(
+                  (_: any, idx: number) => idx !== custIndex
+                );
+                field.onChange(newCustomizations);
+              };
+
+              return (
+                <div className="mb-4 grid grid-cols-1 sm:grid-cols-9 gap-4">
+                  <FormLabel className="text-sm font-medium col-span-2">
+                    Product Customizations
+                  </FormLabel>
+                  <div className="col-span-7 space-y-4">
+                    <FormDescription className="text-sm text-gray-600">
+                      Configure customization options that customers can choose
+                      from (e.g., &quot;Chopped&quot;, &quot;Diced&quot;,
+                      &quot;Whole&quot;)
+                    </FormDescription>
+
+                    {customizations.map(
+                      (customization: any, custIndex: number) => (
+                        <div
+                          key={custIndex}
+                          className="border border-gray-200 rounded-lg p-4 space-y-3"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1 space-y-3">
+                              <div>
+                                <Label className="text-sm font-medium">
+                                  Label
+                                </Label>
+                                <Input
+                                  value={customization.label || ""}
+                                  onChange={(e) =>
+                                    updateCustomization(custIndex, {
+                                      label: e.target.value,
+                                    })
+                                  }
+                                  placeholder="e.g., Protein Preparation"
+                                  className="mt-1"
+                                />
+                              </div>
+
+                              <div>
+                                <Label className="text-sm font-medium">
+                                  Type
+                                </Label>
+                                <ShadSelect
+                                  value={customization.type || "select"}
+                                  onValueChange={(value) =>
+                                    updateCustomization(custIndex, {
+                                      type: value,
+                                    })
+                                  }
+                                >
+                                  <SelectTrigger className="mt-1">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="select">
+                                      Dropdown
+                                    </SelectItem>
+                                    <SelectItem value="toggle">
+                                      Toggle
+                                    </SelectItem>
+                                  </SelectContent>
+                                </ShadSelect>
+                              </div>
+
+                              <div>
+                                <Label className="text-sm font-medium">
+                                  Options
+                                </Label>
+                                <div className="mt-1 space-y-2">
+                                  {(customization.options || []).map(
+                                    (option: any, optIndex: number) => (
+                                      <div
+                                        key={optIndex}
+                                        className="flex items-center gap-2"
+                                      >
+                                        <Input
+                                          value={option.label || ""}
+                                          onChange={(e) =>
+                                            updateCustomizationOption(
+                                              custIndex,
+                                              optIndex,
+                                              { label: e.target.value }
+                                            )
+                                          }
+                                          placeholder="e.g., Chopped"
+                                          className="flex-1"
+                                        />
+                                        <Input
+                                          value={option.value || ""}
+                                          onChange={(e) =>
+                                            updateCustomizationOption(
+                                              custIndex,
+                                              optIndex,
+                                              { value: e.target.value }
+                                            )
+                                          }
+                                          placeholder="chopped"
+                                          className="flex-1"
+                                        />
+                                        <div className="flex items-center">
+                                          <input
+                                            type="checkbox"
+                                            checked={option.default || false}
+                                            onChange={(e) => {
+                                              // Clear other defaults first
+                                              const newCustomizations = [
+                                                ...customizations,
+                                              ];
+                                              newCustomizations[
+                                                custIndex
+                                              ].options.forEach(
+                                                (opt: any, idx: number) => {
+                                                  if (idx !== optIndex)
+                                                    opt.default = false;
+                                                }
+                                              );
+                                              updateCustomizationOption(
+                                                custIndex,
+                                                optIndex,
+                                                { default: e.target.checked }
+                                              );
+                                            }}
+                                            className="mr-1"
+                                          />
+                                          <Label className="text-xs">
+                                            Default
+                                          </Label>
+                                        </div>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() =>
+                                            removeCustomizationOption(
+                                              custIndex,
+                                              optIndex
+                                            )
+                                          }
+                                          className="text-red-500 hover:text-red-700"
+                                        >
+                                          <Trash size={14} />
+                                        </Button>
+                                      </div>
+                                    )
+                                  )}
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      addCustomizationOption(custIndex)
+                                    }
+                                    className="text-green-600 hover:text-green-700"
+                                  >
+                                    <Plus size={14} className="mr-1" />
+                                    Add Option
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeCustomization(custIndex)}
+                              className="text-red-500 hover:text-red-700 ml-2"
+                            >
+                              <Trash size={16} />
+                            </Button>
+                          </div>
+                        </div>
+                      )
+                    )}
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={addCustomization}
+                      className="w-full border-dashed"
+                    >
+                      <Plus size={16} className="mr-2" />
+                      Add Customization Option
+                    </Button>
+                  </div>
+                  <FormMessage className="col-span-7 col-start-3" />
+                </div>
+              );
+            }}
+          />
+
           {/* In Season Select */}
           <FormField
             control={form.control}
@@ -1016,16 +1391,20 @@ export default function EditProductClient({
                         checked={field.value}
                         onChange={(e) => field.onChange(e.target.checked)}
                       />
-                      <div className={`w-11 h-6 rounded-full transition-colors ${
-                        field.value ? 'bg-[#1B6013]' : 'bg-gray-200'
-                      }`}>
-                        <div className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
-                          field.value ? 'translate-x-5' : 'translate-x-0.5'
-                        } mt-0.5`} />
+                      <div
+                        className={`w-11 h-6 rounded-full transition-colors ${
+                          field.value ? "bg-[#1B6013]" : "bg-gray-200"
+                        }`}
+                      >
+                        <div
+                          className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
+                            field.value ? "translate-x-5" : "translate-x-0.5"
+                          } mt-0.5`}
+                        />
                       </div>
                     </label>
                     <span className="text-sm text-gray-700">
-                      {field.value ? 'Published' : 'Draft'}
+                      {field.value ? "Published" : "Draft"}
                     </span>
                   </div>
                 </FormControl>

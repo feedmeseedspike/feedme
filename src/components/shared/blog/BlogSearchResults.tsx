@@ -11,7 +11,10 @@ interface BlogSearchResultsProps {
   page: number;
 }
 
-export default function BlogSearchResults({ query, page }: BlogSearchResultsProps) {
+export default function BlogSearchResults({
+  query,
+  page,
+}: BlogSearchResultsProps) {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -24,9 +27,11 @@ export default function BlogSearchResults({ query, page }: BlogSearchResultsProp
     async function searchPosts() {
       setLoading(true);
       try {
-        const response = await fetch(`/api/blog/search?q=${encodeURIComponent(query)}&limit=10`);
+        const response = await fetch(
+          `/api/blog/search?q=${encodeURIComponent(query)}&limit=10`
+        );
         const data = await response.json();
-        
+
         if (data.success) {
           setPosts(data.posts);
         }
@@ -44,12 +49,14 @@ export default function BlogSearchResults({ query, page }: BlogSearchResultsProp
     return (
       <div className="text-center py-12">
         <Search size={48} className="text-gray-400 mx-auto mb-4" />
-        <h3 className="text-xl font-semibold text-gray-700 mb-2">Start Your Search</h3>
+        <h3 className="text-xl font-semibold text-gray-700 mb-2">
+          Start Your Search
+        </h3>
         <p className="text-gray-500 mb-6">
           Enter a search term to find recipes, cooking tips, and food stories.
         </p>
-        <Link 
-          href="/blog" 
+        <Link
+          href="/blog"
           className="inline-flex items-center gap-2 text-[#F0800F] hover:text-[#1B6013] font-medium"
         >
           <ArrowLeft size={16} />
@@ -81,20 +88,23 @@ export default function BlogSearchResults({ query, page }: BlogSearchResultsProp
     return (
       <div className="text-center py-12">
         <Search size={48} className="text-gray-400 mx-auto mb-4" />
-        <h3 className="text-xl font-semibold text-gray-700 mb-2">No Results Found</h3>
+        <h3 className="text-xl font-semibold text-gray-700 mb-2">
+          No Results Found
+        </h3>
         <p className="text-gray-500 mb-6">
-          We couldn't find any posts matching "{query}". Try different keywords or browse our categories.
+          We couldn&apos;t find any posts matching &quot;{query}&quot;. Try
+          different keywords or browse our categories.
         </p>
         <div className="space-y-3">
-          <Link 
-            href="/blog" 
+          <Link
+            href="/blog"
             className="inline-flex items-center gap-2 text-[#F0800F] hover:text-[#1B6013] font-medium mr-6"
           >
             <ArrowLeft size={16} />
             Back to Blog
           </Link>
-          <Link 
-            href="/blog?category=recipes" 
+          <Link
+            href="/blog?category=recipes"
             className="text-[#F0800F] hover:text-[#1B6013] font-medium"
           >
             Browse Recipes
@@ -108,7 +118,8 @@ export default function BlogSearchResults({ query, page }: BlogSearchResultsProp
     <div>
       <div className="mb-6">
         <p className="text-gray-600">
-          Found {posts.length} result{posts.length !== 1 ? 's' : ''} for "{query}"
+          Found {posts.length} result{posts.length !== 1 ? "s" : ""} for &quot;
+          {query}&quot;
         </p>
       </div>
 
@@ -119,8 +130,8 @@ export default function BlogSearchResults({ query, page }: BlogSearchResultsProp
       </div>
 
       <div className="mt-12 text-center">
-        <Link 
-          href="/blog" 
+        <Link
+          href="/blog"
           className="inline-flex items-center gap-2 text-[#F0800F] hover:text-[#1B6013] font-medium"
         >
           <ArrowLeft size={16} />

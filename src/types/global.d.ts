@@ -17,3 +17,5 @@ type Todo = {
   isComplete: boolean;
   creator: User;
 };
+
+declare module 'react-quill/dist/quill.snow.css';

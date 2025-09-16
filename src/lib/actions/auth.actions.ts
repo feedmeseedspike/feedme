@@ -7,6 +7,7 @@ import { createClient } from "src/utils/supabase/server";
 import { Tables } from "src/utils/database.types";
 import supabaseAdmin from "@/utils/supabase/admin";
 import { SignInWithIdTokenCredentials } from "@supabase/supabase-js";
+import { createWelcomeDiscount } from "@/utils/discountUtils";
 
 export interface AuthSuccess<T> {
   success: true;
@@ -82,7 +83,57 @@ export async function registerUser(userData: {
       .from("wallets")
       .insert({ user_id: data.user.id, balance: 0, currency: "NGN" });
 
-    return { success: true, data };
+    // Generate welcome discount code
+    const welcomeDiscount = createWelcomeDiscount(userData.email, 5, 30);
+    
+    // Store discount code in existing vouchers table
+    const { error: voucherError } = await supabase
+      .from("vouchers")
+      .insert({
+        code: welcomeDiscount.code,
+        discount_type: 'percentage',
+        discount_value: welcomeDiscount.discount_percentage,
+        valid_from: welcomeDiscount.valid_from,
+        valid_to: welcomeDiscount.valid_until,
+        max_uses: welcomeDiscount.usage_limit,
+        used_count: welcomeDiscount.used_count,
+        description: `Welcome discount for new user`,
+        is_active: true
+      });
+
+    // Send welcome email (async, don't block registration)
+    try {
+      console.log('Attempting to send welcome email to:', userData.email);
+      const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/email/send-welcome`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: userData.name,
+          customerEmail: userData.email,
+          discountCode: welcomeDiscount.code,
+          discountPercentage: welcomeDiscount.discount_percentage,
+        }),
+      });
+      
+      const emailResult = await emailResponse.json();
+      console.log('Email API response:', emailResult);
+      
+      if (!emailResponse.ok) {
+        throw new Error(`Email API error: ${emailResult.error || 'Unknown error'}`);
+      }
+    } catch (emailError) {
+      // Log error but don't fail registration
+      console.error('Failed to send welcome email:', emailError);
+    }
+
+    return { 
+      success: true, 
+      data: {
+        ...data,
+        discountCode: welcomeDiscount.code,
+        discountPercentage: welcomeDiscount.discount_percentage
+      }
+    };
   } catch (error: any) {
     return {
       success: false,

@@ -85,7 +85,7 @@ const Promo = () => {
 
   // Filter promotions to show only those featured on the homepage
   const featuredPromotions = promotions.filter(
-    (promo) => promo.is_featured_on_homepage === true
+    (promo: Promotion) => promo.is_featured_on_homepage === true
   );
 
   // If no featured promotions, render nothing
@@ -110,7 +110,7 @@ const Promo = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 px-4 md:px-0">
         {featuredPromotions
-          .filter((promo) => !!promo.id)
+          .filter((promo: Promotion) => !!promo.id)
           .map((promo: Promotion) => (
             <div
               key={promo.id!}

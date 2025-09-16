@@ -215,7 +215,7 @@ export async function POST() {
     }, {}) || {};
 
     // Create post-tag relationships
-    const postTagRelations = [];
+    const postTagRelations: Array<{ post_id: string; tag_id: string | undefined }> = [];
     
     if (insertedPosts) {
       insertedPosts.forEach((post: any) => {

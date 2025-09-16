@@ -5,7 +5,11 @@ import { getToken, onMessage } from "firebase/messaging";
 import { messaging } from "@/utils/firebase/firebase";
 import { createClient } from "@/utils/supabase/client";
 
-export default function RegisterPush({ userId }: { userId: string }) {
+interface RegisterPushProps {
+  userId: string;
+}
+
+export default function RegisterPush({ userId }: RegisterPushProps) {
   const supabase = createClient();
   console.log("userIds => ", userId);
   useEffect(() => {

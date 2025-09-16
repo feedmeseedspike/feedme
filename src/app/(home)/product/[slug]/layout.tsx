@@ -3,6 +3,9 @@ import Container from "@components/shared/Container";
 import { getProductBySlug } from "../../../../lib/actions/product.actions";
 import { getAllCategoriesQuery } from "src/queries/categories";
 import { createClient } from "src/utils/supabase/server";
+import { Tables } from "@/utils/database.types";
+
+type Category = Tables<"categories">;
 
 export default async function HomeLayout({
   children,
@@ -25,7 +28,7 @@ export default async function HomeLayout({
     categoriesData
   ) {
     const found = categoriesData.find(
-      (cat) => String(cat.id) === String(categoryIds[0])
+      (cat: any) => String(cat.id) === String(categoryIds[0])
     );
     categoryName = found?.title || categoryIds[0];
   }

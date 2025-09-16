@@ -2,6 +2,10 @@ import { TypedSupabaseClient } from '../utils/types'
 import { Tables } from "@utils/database.types";
 import { createClient } from "@utils/supabase/client";
 
+type OrderItemResult = { product_id: string | null; };
+type OrderIdResult = { order_id: string | null; };
+type BrowsingHistoryItem = { product_id: string | null; };
+
 const supabase = createClient();
 
 export async function getAllProducts(client: TypedSupabaseClient, {
@@ -363,7 +367,7 @@ export async function getUsersPurchasedProductIds(client: TypedSupabaseClient, u
   }
 
   // Extract unique product_ids
-  const purchasedProductIds = data.map((item) => item.product_id).filter(Boolean) as string[];
+  const purchasedProductIds = data.map((item: OrderItemResult) => item.product_id).filter(Boolean) as string[];
   return [...new Set(purchasedProductIds)];
 }
 
@@ -379,7 +383,7 @@ export async function getAlsoViewedProducts(client: TypedSupabaseClient, current
     // Optionally, handle this error more gracefully, e.g., return empty array or fewer recommendations
   }
 
-  const productIds = historyData?.map(item => item.product_id).filter(Boolean) as string[];
+  const productIds = historyData?.map((item: BrowsingHistoryItem) => item.product_id).filter(Boolean) as string[];
 
   if (!productIds || productIds.length === 0) {
     return [];
@@ -411,7 +415,7 @@ export async function getAlsoBoughtProducts(client: TypedSupabaseClient, current
     // Optionally, handle this error more gracefully
   }
 
-  const orderIds = orderItemsData?.map(item => item.order_id).filter(Boolean) as string[];
+  const orderIds = orderItemsData?.map((item: OrderIdResult) => item.order_id).filter(Boolean) as string[];
 
   if (!orderIds || orderIds.length === 0) {
     return [];
@@ -429,7 +433,7 @@ export async function getAlsoBoughtProducts(client: TypedSupabaseClient, current
     // Optionally, handle this error more gracefully
   }
 
-  const productIds = otherOrderItemsData?.map(item => item.product_id).filter(Boolean) as string[];
+  const productIds = otherOrderItemsData?.map((item: OrderItemResult) => item.product_id).filter(Boolean) as string[];
 
   if (!productIds || productIds.length === 0) {
     return [];

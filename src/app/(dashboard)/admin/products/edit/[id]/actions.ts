@@ -30,10 +30,14 @@ export async function updateProductAction(productId: string, productData: any) {
     if (field in productData) {
       // Special handling for specific fields
       if (field === "options") {
-        // Ensure options is properly serialized JSON
-        cleanData[field] = Array.isArray(productData[field]) 
-          ? productData[field] 
-          : [];
+        // Handle both array (legacy variations) and object (new structure with customizations)
+        if (Array.isArray(productData[field])) {
+          cleanData[field] = productData[field];
+        } else if (productData[field] && typeof productData[field] === "object") {
+          cleanData[field] = productData[field];
+        } else {
+          cleanData[field] = null;
+        }
       } else if (field === "images") {
         // Ensure images is an array of strings
         cleanData[field] = Array.isArray(productData[field]) 

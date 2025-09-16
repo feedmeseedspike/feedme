@@ -18,6 +18,8 @@ import { createClient } from "@utils/supabase/client";
 import { getProductsByTagQuery } from "src/queries/products";
 import ProductSliderSkeleton from "./product-slider-skeleton";
 import { Tables } from "src/utils/database.types";
+
+type ProductType = Tables<"products">;
 import { mapSupabaseProductToIProductInput } from "src/lib/utils";
 
 export default function ProductSlider({
@@ -52,7 +54,7 @@ export default function ProductSlider({
 
     // Map Supabase products to IProductInput
     return (
-      data?.map((product) => mapSupabaseProductToIProductInput(product, [])) ||
+      data?.map((product: ProductType) => mapSupabaseProductToIProductInput(product, [])) ||
       null
     );
   }, [supabase, tag, limit]);

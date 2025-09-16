@@ -41,7 +41,7 @@ export default async function ViewCategory({
     .from("categories")
     .select("*")
     .eq("id", id)
-    .maybeSingle<Database["public"]["Tables"]["categories"]["Row"]>();
+    .maybeSingle();
   if (catError || !categoryRow) {
     return notFound();
   }

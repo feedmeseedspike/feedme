@@ -20,6 +20,9 @@ import { useCartQuery } from "src/queries/cart";
 import { Button } from "@components/ui/button";
 import { useUser } from "src/hooks/useUser";
 import { useRouter } from "next/navigation";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
+import { Label } from "@components/ui/label";
 
 const datas = [
   {
@@ -56,6 +59,16 @@ export default function ProductDetailsClient({
     numReviews: number;
     ratingDistribution: any;
     options?: ProductOption[];
+    customizations?: Array<{
+      id: string;
+      label: string;
+      type: "select" | "toggle";
+      options: Array<{
+        value: string;
+        label: string;
+        default: boolean;
+      }>;
+    }>;
     slug: string;
     category: string;
     price: number;
@@ -72,6 +85,17 @@ export default function ProductDetailsClient({
   cartItemId: string;
 }) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [customizationSelections, setCustomizationSelections] = useState<Record<string, string>>(() => {
+    // Initialize with default values
+    const defaultSelections: Record<string, string> = {};
+    product.customizations?.forEach(customization => {
+      const defaultOption = customization.options.find(opt => opt.default);
+      if (defaultOption) {
+        defaultSelections[customization.id] = defaultOption.value;
+      }
+    });
+    return defaultSelections;
+  });
   const dispatch = useDispatch();
   const { showToast } = useToast();
   const { data: cartItems } = useCartQuery();
@@ -246,6 +270,68 @@ export default function ProductDetailsClient({
             onOptionChange={handleOptionChange}
           />
         )}
+        
+        {/* Product Customizations */}
+        {product.customizations && product.customizations.length > 0 && (
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold mb-3">Customizations</h3>
+            <div className="space-y-4">
+              {product.customizations.map((customization) => (
+                <div key={customization.id} className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    {customization.label}
+                  </label>
+                  
+                  {customization.type === "select" ? (
+                    <Select
+                      value={customizationSelections[customization.id] || ""}
+                      onValueChange={(value) => 
+                        setCustomizationSelections(prev => ({
+                          ...prev,
+                          [customization.id]: value
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select an option" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {customization.options.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <RadioGroup
+                      value={customizationSelections[customization.id] || ""}
+                      onValueChange={(value) => 
+                        setCustomizationSelections(prev => ({
+                          ...prev,
+                          [customization.id]: value
+                        }))
+                      }
+                      className="flex flex-wrap gap-4"
+                    >
+                      {customization.options.map((option) => (
+                        <div key={option.value} className="flex items-center space-x-2">
+                          <RadioGroupItem value={option.value} id={`${customization.id}-${option.value}`} />
+                          <Label 
+                            htmlFor={`${customization.id}-${option.value}`}
+                            className="text-sm text-gray-700 cursor-pointer"
+                          >
+                            {option.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Add to Cart Section */}
@@ -286,6 +372,7 @@ export default function ProductDetailsClient({
             options: optionsArr,
             option: selectedOptionData,
             selectedOption: selectedOptionData?.name,
+            customizations: customizationSelections,
             in_season: product.in_season,
           }}
           onAuthRequired={() => {

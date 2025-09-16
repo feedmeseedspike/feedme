@@ -4,8 +4,9 @@ import Container from "@components/shared/Container";
 import BlogPostContent from "@components/shared/blog/BlogPostContent";
 import BlogPostSkeleton from "@components/shared/blog/BlogPostSkeleton";
 import RelatedPosts from "@components/shared/blog/RelatedPosts";
-import { getBlogPostBySlug } from "@/lib/actions/blog.actions";
 import { Metadata } from "next";
+
+export const revalidate = 600;
 
 interface BlogPostPageProps {
   params: {
@@ -17,7 +18,12 @@ export async function generateMetadata({
   params,
 }: BlogPostPageProps): Promise<Metadata> {
   try {
-    const post = await getBlogPostBySlug(params.slug);
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/blog/posts/${params.slug}`, {
+      next: { revalidate: 600 },
+      cache: 'force-cache'
+    });
+    const data = await response.json();
+    const post = data.success ? data.post : null;
 
     if (!post) {
       return {
@@ -62,14 +68,18 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   let post;
 
   try {
-    post = await getBlogPostBySlug(params.slug);
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/blog/posts/${params.slug}`, {
+      next: { revalidate: 600 },
+      cache: 'force-cache'
+    });
+    const data = await response.json();
+    post = data.success ? data.post : null;
     
     if (!post) {
       notFound();
     }
 
-    // Increment views asynchronously via API
-    fetch(`/api/blog/posts/${post.slug}/views`, { method: 'POST' }).catch(console.error);
+    fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/blog/posts/${post.slug}/views`, { method: 'POST' }).catch(console.error);
 
   } catch (error) {
     console.error("Error fetching blog post:", error);
@@ -84,11 +94,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             <BlogPostContent post={post} />
           </Suspense>
 
-          {/* Related Posts */}
           <div className="mt-16">
             <Suspense fallback={<RelatedPostsSkeleton />}>
-              <RelatedPosts 
-                slug={post.slug} 
+              <RelatedPosts
+                slug={post.slug}
               />
             </Suspense>
           </div>

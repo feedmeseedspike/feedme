@@ -102,9 +102,19 @@ export default function CredentialsSignUpForm() {
         await applyReferral(String(code), String(userId));
         localStorage.removeItem("referral_code");
       }
-      // Optionally, keep handleReferral for other referral logic
+      // Store welcome data in localStorage for home page modal
+      if (result.data?.discountCode && result.data?.discountPercentage) {
+        localStorage.setItem('feedme_new_signup', JSON.stringify({
+          customerName: name,
+          discountCode: result.data.discountCode,
+          discountPercentage: result.data.discountPercentage
+        }));
+      }
+      
       showToast("Registration successful!", "success");
-      window.location.href = "/login?justSignedUp=true";
+      
+      // Redirect to home page where welcome modal will appear
+      window.location.href = "/";
       return;
     } catch (error: any) {
       let errorMsg = "An error occurred during registration";
@@ -148,10 +158,11 @@ export default function CredentialsSignUpForm() {
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <input type="hidden" name="callbackUrl" value={callbackUrl} />
-        <div className="space-y-6">
+    <>
+      <Form {...form}>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <input type="hidden" name="callbackUrl" value={callbackUrl} />
+          <div className="space-y-6">
           <FormField
             control={control}
             name="name"
@@ -296,5 +307,6 @@ export default function CredentialsSignUpForm() {
         </div>
       </form>
     </Form>
+    </>
   );
 }

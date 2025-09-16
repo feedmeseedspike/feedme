@@ -1,4 +1,4 @@
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 import Container from "@components/shared/Container";
 import { Suspense } from "react";
@@ -27,16 +27,13 @@ export default function BlogPage({ searchParams }: BlogPageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Section */}
       <BlogHero />
 
       <Container className="py-8">
-        {/* Categories */}
         <Suspense fallback={<CategoriesSkeleton />}>
           <BlogCategories selectedCategory={category} />
         </Suspense>
 
-        {/* Featured Posts (only show on main blog page, not when filtering by category) */}
         {!category && (
           <section className="mb-12">
             <Suspense fallback={<FeaturedPostsSkeleton />}>
@@ -45,7 +42,6 @@ export default function BlogPage({ searchParams }: BlogPageProps) {
           </section>
         )}
 
-        {/* Blog Grid */}
         <section>
           <Suspense fallback={<BlogGridSkeleton />}>
             <BlogGrid category={category} page={page} />
@@ -56,7 +52,6 @@ export default function BlogPage({ searchParams }: BlogPageProps) {
   );
 }
 
-// Loading skeletons
 function CategoriesSkeleton() {
   return (
     <div className="flex gap-4 mb-8 overflow-x-auto pb-2">

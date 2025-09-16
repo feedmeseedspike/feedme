@@ -13,8 +13,8 @@ interface BlogCardProps {
 
 export default function BlogCard({ post, featured = false }: BlogCardProps) {
   const cardClasses = featured 
-    ? "group cursor-pointer bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden"
-    : "group cursor-pointer bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden";
+    ? "group cursor-pointer bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border border-gray-100"
+    : "group cursor-pointer bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border border-gray-100";
 
   const imageHeight = featured ? "h-64" : "h-48";
 
@@ -48,14 +48,6 @@ export default function BlogCard({ post, featured = false }: BlogCardProps) {
             </div>
           )}
 
-          {/* Featured Badge */}
-          {post.featured && (
-            <div className="absolute top-4 right-4">
-              <span className="bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-bold">
-                ⭐ Featured
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Content */}

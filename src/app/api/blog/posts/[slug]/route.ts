@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { 
   getBlogPostBySlug, 
+  getBlogPostBySlugAdmin,
   updateBlogPost, 
   deleteBlogPost,
   incrementBlogPostViews 
 } from "@/lib/actions/blog.actions";
 
 export async function GET(
-  req: Request, 
+  req: Request,
   { params }: { params: { slug: string } }
 ) {
   const { slug } = params;
@@ -16,18 +17,22 @@ export async function GET(
 
   try {
     const post = await getBlogPostBySlug(slug);
-    
-    // Increment views if requested (typically from post page visits)
+
     if (incrementViews && post) {
       await incrementBlogPostViews(post.id);
       post.views_count += 1;
     }
-    
-    return NextResponse.json({ post, success: true });
+
+    const response = NextResponse.json({ post, success: true });
+
+    const cacheTime = incrementViews ? 60 : 600;
+    response.headers.set('Cache-Control', `public, s-maxage=${cacheTime}, stale-while-revalidate=120`);
+
+    return response;
   } catch (error) {
     console.error("Error fetching blog post:", error);
     return NextResponse.json(
-      { error: "Blog post not found", success: false }, 
+      { error: "Blog post not found", success: false },
       { status: 404 }
     );
   }
@@ -42,8 +47,8 @@ export async function PUT(
   try {
     const body = await req.json();
     
-    // Get the post ID from slug first
-    const existingPost = await getBlogPostBySlug(slug);
+    const existingPost = await getBlogPostBySlugAdmin(slug);
+    
     if (!existingPost) {
       return NextResponse.json(
         { error: "Blog post not found", success: false }, 
@@ -57,7 +62,11 @@ export async function PUT(
   } catch (error) {
     console.error("Error updating blog post:", error);
     return NextResponse.json(
-      { error: "Failed to update blog post", success: false }, 
+      { 
+        error: error instanceof Error ? error.message : "Failed to update blog post", 
+        success: false,
+        details: error
+      }, 
       { status: 500 }
     );
   }
@@ -70,8 +79,7 @@ export async function DELETE(
   const { slug } = params;
 
   try {
-    // Get the post ID from slug first
-    const existingPost = await getBlogPostBySlug(slug);
+    const existingPost = await getBlogPostBySlugAdmin(slug);
     if (!existingPost) {
       return NextResponse.json(
         { error: "Blog post not found", success: false }, 

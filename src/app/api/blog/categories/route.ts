@@ -6,15 +6,19 @@ export async function GET(req: Request) {
   const featured = searchParams.get("featured") === "true";
 
   try {
-    const categories = featured 
+    const categories = featured
       ? await getFeaturedBlogCategories()
       : await getAllBlogCategories();
-    
-    return NextResponse.json({ categories, success: true });
+
+    const response = NextResponse.json({ categories, success: true });
+
+    response.headers.set('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=300');
+
+    return response;
   } catch (error) {
     console.error("Error fetching blog categories:", error);
     return NextResponse.json(
-      { error: "Failed to fetch blog categories", success: false }, 
+      { error: "Failed to fetch blog categories", success: false },
       { status: 500 }
     );
   }

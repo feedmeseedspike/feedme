@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "../../utils/supabase/server";
+import { createClient, createServiceRoleClient } from "../../utils/supabase/server";
 import slugify from "slugify";
 
 // Types
@@ -69,13 +69,13 @@ export interface BlogComment {
 }
 
 // Blog Posts Actions
-export async function getAllBlogPosts({ 
-  limit = 10, 
+export async function getAllBlogPosts({
+  limit = 10,
   offset = 0,
   category,
   featured,
   status
-}: { 
+}: {
   limit?: number;
   offset?: number;
   category?: string;
@@ -83,7 +83,25 @@ export async function getAllBlogPosts({
   status?: string;
 } = {}) {
   const supabase = await createClient();
-  
+
+  let categoryId: string | undefined;
+
+  // If category slug is provided, get the category ID first
+  if (category) {
+    const { data: categoryData, error: categoryError } = await supabase
+      .from("blog_categories")
+      .select("id")
+      .eq("slug", category)
+      .single();
+
+    if (categoryError || !categoryData) {
+      // If category doesn't exist, return empty array
+      return [];
+    }
+
+    categoryId = categoryData.id;
+  }
+
   let query = supabase
     .from("blog_posts")
     .select(`
@@ -98,8 +116,8 @@ export async function getAllBlogPosts({
     query = query.eq("status", status);
   }
 
-  if (category) {
-    query = query.eq("blog_categories.slug", category);
+  if (categoryId) {
+    query = query.eq("category_id", categoryId);
   }
 
   if (featured !== undefined) {
@@ -107,7 +125,7 @@ export async function getAllBlogPosts({
   }
 
   const { data, error } = await query;
-  
+
   if (error) throw error;
   return data as BlogPost[];
 }
@@ -124,6 +142,24 @@ export async function getBlogPostBySlug(slug: string) {
     `)
     .eq("slug", slug)
     .eq("status", "published")
+    .single();
+  
+  if (error) throw error;
+  return data as BlogPost;
+}
+
+// Admin version that doesn't filter by status
+export async function getBlogPostBySlugAdmin(slug: string) {
+  const supabase = createServiceRoleClient();
+  
+  const { data, error } = await supabase
+    .from("blog_posts")
+    .select(`
+      *,
+      blog_categories(*),
+      blog_post_tags(blog_tags(*))
+    `)
+    .eq("slug", slug)
     .single();
   
   if (error) throw error;
@@ -207,7 +243,7 @@ export async function incrementBlogPostViews(postId: string) {
 
 // Create Blog Post (Admin)
 export async function createBlogPost(postData: Partial<BlogPost>) {
-  const supabase = await createClient();
+  const supabase = createServiceRoleClient();
   
   // Generate slug from title
   const slug = postData.title ? slugify(postData.title, { lower: true, strict: true }) : '';
@@ -232,37 +268,84 @@ export async function createBlogPost(postData: Partial<BlogPost>) {
 }
 
 export async function updateBlogPost(postId: string, postData: Partial<BlogPost>) {
-  const supabase = await createClient();
+  // Use service role for admin operations to bypass RLS
+  const supabase = createServiceRoleClient();
   
-  // Update slug if title changed
+  console.log("updateBlogPost called with ID:", postId);
+  console.log("Original postData:", JSON.stringify(postData, null, 2));
+  
+  // Don't auto-generate slug for existing posts to avoid conflicts
+  // Only update slug if explicitly provided and different from auto-generated
   if (postData.title) {
-    postData.slug = slugify(postData.title, { lower: true, strict: true });
+    const autoSlug = slugify(postData.title, { lower: true, strict: true });
+    console.log("Auto-generated slug would be:", autoSlug);
+    // Don't update slug automatically - keep the original slug
+    delete postData.slug;
   }
   
   // Calculate reading time if content changed
   if (postData.content) {
     const wordCount = postData.content.replace(/<[^>]*>/g, '').split(' ').length;
     postData.reading_time = Math.ceil(wordCount / 200);
+    console.log("Calculated reading time:", postData.reading_time);
   }
   
   // Set published_at if status changes to published
   if (postData.status === 'published') {
     postData.published_at = new Date().toISOString();
+    console.log("Set published_at:", postData.published_at);
+  }
+  
+  // Clean up the data - remove empty strings and null values that might cause issues
+  const cleanedData = Object.fromEntries(
+    Object.entries(postData).filter(([key, value]) => {
+      // Keep non-null, non-undefined values, and non-empty strings
+      if (value === null || value === undefined) return false;
+      if (typeof value === 'string' && value.trim() === '') return false;
+      if (Array.isArray(value) && value.length === 0) return false;
+      return true;
+    })
+  );
+  
+  console.log("Final cleaned update data:", JSON.stringify(cleanedData, null, 2));
+  
+  // First verify the post exists with this ID
+  const { data: existingCheck, error: checkError } = await supabase
+    .from("blog_posts")
+    .select("id, title, slug")
+    .eq("id", postId)
+    .single();
+  
+  console.log("Post existence check - data:", existingCheck, "error:", checkError);
+  
+  if (checkError || !existingCheck) {
+    throw new Error(`Post with ID ${postId} does not exist in database`);
   }
   
   const { data, error } = await supabase
     .from("blog_posts")
-    .update(postData)
+    .update(cleanedData)
     .eq("id", postId)
-    .select()
-    .single();
+    .select();
   
-  if (error) throw error;
-  return data as BlogPost;
+  console.log("Supabase update result - data:", data, "error:", error);
+  
+  if (error) {
+    console.error("Supabase update error:", error);
+    throw error;
+  }
+  
+  if (!data || data.length === 0) {
+    console.error("No rows updated for post ID:", postId);
+    throw new Error("Blog post not found or could not be updated");
+  }
+  
+  console.log("Successfully updated blog post:", data[0].id);
+  return data[0] as BlogPost;
 }
 
 export async function deleteBlogPost(postId: string) {
-  const supabase = await createClient();
+  const supabase = createServiceRoleClient();
   
   const { error } = await supabase
     .from("blog_posts")
