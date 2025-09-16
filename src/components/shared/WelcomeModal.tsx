@@ -170,7 +170,7 @@ export function WelcomeModal({
               variant="ghost"
               className="w-full text-gray-600 hover:text-gray-800"
             >
-              I'll shop later
+              I&apos;ll shop later
             </Button>
           </motion.div>
         </div>
