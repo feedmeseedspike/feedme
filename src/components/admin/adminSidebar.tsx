@@ -162,6 +162,7 @@ export function AdminSidebar({ user }: AppSidebarProps) {
                               size={20}
                               color={isActive ? "white" : "#667085"}
                             />
+<<<<<<< Updated upstream
                           ) : item.title === "Email Campaigns" ? (
                             <Mail
                               size={20}
