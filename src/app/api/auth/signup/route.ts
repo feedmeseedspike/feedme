@@ -9,6 +9,7 @@ export async function POST(request: Request) {
       password: string;
       avatar_url?: string;
     } = await request.json();
+    console.log(data)
     const products = await registerUser(data);
     // Only return id, slug, name, image
     return NextResponse.json(products);

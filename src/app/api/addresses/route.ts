@@ -24,7 +24,8 @@ export const GET = authMiddleware(async () => {
 
 export const POST = authMiddleware(
   async (request: Request, user_id: string) => {
-    const { address } = await request.json();
+    const address  = await request.json();
+    console.log({address})
     try {
       const user = await addAddressAction(address);
       return NextResponse.json({

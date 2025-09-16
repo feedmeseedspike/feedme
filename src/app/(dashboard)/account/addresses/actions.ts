@@ -10,6 +10,7 @@ export async function addAddressAction(
     "id" | "user_id" | "created_at" | "updated_at"
   >
 ) {
+  console.log("Adding address:", addressData);
   const user = await getUser();
   if (!user) throw new Error("Not authenticated");
   const supabase = await createClient();
