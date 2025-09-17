@@ -147,7 +147,40 @@ export const POST = authMiddleware(
       const serviceCharge = 0; // Set this as needed
 
       // Send order confirmation emails (admin and customer)
-      // (Optional) Email sending moved to webhook after payment confirmation
+      try {
+        const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/email/send-order-confirmation`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            adminEmail: "orders.feedmeafrica@gmail.com",
+            userEmail: email,
+            adminOrderProps: {
+              orderNumber: orderid,
+              customerName,
+              customerPhone,
+              itemsOrdered,
+              deliveryAddress,
+              localGovernment,
+            },
+            userOrderProps: {
+              orderNumber: orderid,
+              customerName,
+              customerPhone,
+              itemsOrdered,
+              deliveryAddress,
+              deliveryFee,
+              serviceCharge,
+              totalAmount,
+              totalAmountPaid,
+            },
+          }),
+        });
+
+        const emailData = await emailResponse.json();
+        console.log('Order email response:', emailData);
+      } catch (emailError) {
+        console.error('Failed to send order emails:', emailError);
+      }
 
       return NextResponse.json({
         success: true,
