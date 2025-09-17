@@ -13,6 +13,9 @@ import {
   toSlug,
   mapSupabaseProductToIProductInput,
 } from "../../../../lib/utils";
+import { Tables } from "@/utils/database.types";
+
+type Category = Tables<"categories">;
 
 import Container from "@components/shared/Container";
 import ProductdetailsCard from "@components/shared/product/productDetails-card";
@@ -21,7 +24,6 @@ import { ProductSkeletonGrid } from "@components/shared/product/product-skeleton
 import CustomBreadcrumb from "@components/shared/breadcrumb";
 import ErrorBoundary from "@components/shared/ErrorBoundary";
 import { getAllCategories } from "src/lib/api";
-import { Tables } from "../../../../utils/database.types"; // Corrected import path
 import Head from "next/head";
 import { notFound } from "next/navigation";
 
@@ -151,14 +153,14 @@ export default async function CategoryPage({
   const allCategories = await getAllCategories();
   
   // Debug: Log available categories and their slugs
-  console.log("Available categories:", allCategories.map(c => ({ 
+  console.log("Available categories:", allCategories.map((c: Category) => ({ 
     title: c.title, 
     slug: toSlug(c.title).toLowerCase() 
   })));
   console.log("Looking for slug:", categorySlug.toLowerCase());
   
   const categoryObj = allCategories.find(
-    (c) => toSlug(c.title).toLowerCase() === categorySlug.toLowerCase()
+    (c: Category) => toSlug(c.title).toLowerCase() === categorySlug.toLowerCase()
   );
 
   if (!categoryObj) {

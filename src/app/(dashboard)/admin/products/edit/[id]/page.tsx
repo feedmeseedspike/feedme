@@ -8,14 +8,11 @@ import {
 import { notFound } from "next/navigation";
 
 function normalizeProduct(product: any) {
-  // Robustly handle options: array, stringified array, or fallback
-  let options = [];
-  if (Array.isArray(product.options)) {
-    options = product.options;
-  } else if (
-    typeof product.options === "string" &&
-    product.options.trim().startsWith("[")
-  ) {
+  // Handle both old array format and new object format for options
+  let options = product.options;
+  
+  if (typeof product.options === "string" && product.options.trim().startsWith("[")) {
+    // Handle stringified arrays (legacy)
     try {
       options = JSON.parse(product.options);
       if (!Array.isArray(options)) {
@@ -24,9 +21,11 @@ function normalizeProduct(product: any) {
     } catch (e) {
       options = [];
     }
-  } else if (product.options && typeof product.options === "object") {
-    options = Array.isArray(product.options) ? product.options : [];
+  } else if (product.options === null || product.options === undefined) {
+    // Handle null/undefined
+    options = [];
   }
+  // Keep arrays and objects as-is (both old and new formats)
 
   // Ensure images is always an array of strings
   let images = [];

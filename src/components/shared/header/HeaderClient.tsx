@@ -113,6 +113,43 @@ const HeaderClient = ({ categories, categoriesError }: any) => {
                           <p className="text-red-300">{categoriesError}</p>
                         ) : (
                           <div className="space-y-2">
+                            {/* Explore */}
+                            <div className="pt-1 pb-3">
+                              <p className="uppercase text-xs text-white/70 px-2 mb-1">Explore</p>
+                              <div className="space-y-1">
+                                <Link
+                                  href="/bundles"
+                                  className="block py-2 hover:bg-white/10 rounded text-lg px-2 transition-colors"
+                                  onClick={() => setOpenMobileSheet(false)}
+                                >
+                                  Bundles
+                                </Link>
+                                <Link
+                                  href="/offers"
+                                  className="block py-2 hover:bg-white/10 rounded text-lg px-2 transition-colors"
+                                  onClick={() => setOpenMobileSheet(false)}
+                                >
+                                  Offers
+                                </Link>
+                                <Link
+                                  href="/blog"
+                                  className="block py-2 hover:bg-white/10 rounded text-lg px-2 transition-colors"
+                                  onClick={() => setOpenMobileSheet(false)}
+                                >
+                                  Blog
+                                </Link>
+                                <Link
+                                  href="/customer-support"
+                                  className="block py-2 hover:bg-white/10 rounded text-lg px-2 transition-colors"
+                                  onClick={() => setOpenMobileSheet(false)}
+                                >
+                                  Customer Support
+                                </Link>
+                              </div>
+                            </div>
+
+                            {/* Categories */}
+                            <p className="uppercase text-xs text-white/70 px-2 mt-2 mb-1">Categories</p>
                             {categories?.map((category: any) => (
                               <Link
                                 key={category.id}

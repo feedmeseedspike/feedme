@@ -19,7 +19,9 @@ import { PathnameProvider } from "@components/shared/pathname-provider";
 import { getReferralStatus } from "@/queries/referrals";
 import Script from "next/script";
 import RegisterSW from "../components/register-sw";
-import RegisterPush from "@/app/registerToken/page";
+import RegisterPush from "@components/shared/RegisterPush";
+import { NewVisitorProvider } from "@components/shared/ExitIntentProvider";
+import SignupWelcomeProvider from "@components/shared/SignupWelcomeProvider";
 
 const DynamicReferralBanner = dynamic(
   () => import("@components/shared/ReferralBanner"),
@@ -291,7 +293,11 @@ export default async function RootLayout({
                     initialUser={user}>
                     <CustomScrollbar>
                       <PathnameProvider hasReferralStatus={hasReferralStatus}>
-                        {children}
+                        <SignupWelcomeProvider>
+                          <NewVisitorProvider>
+                            {children}
+                          </NewVisitorProvider>
+                        </SignupWelcomeProvider>
                       </PathnameProvider>
                     </CustomScrollbar>
                   </SupabaseAuthProvider>

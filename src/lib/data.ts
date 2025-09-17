@@ -14,6 +14,10 @@ export const headerMenus =  [
     href: '/offers',
   },
   {
+    name: 'Blog',
+    href: '/blog',
+  },
+  {
     name: 'Completed Orders',
     href: '/account/order',
   },

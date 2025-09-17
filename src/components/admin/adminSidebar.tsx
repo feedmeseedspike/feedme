@@ -23,7 +23,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
 import LogoutButton from "@components/shared/header/LogoutButton";
 import { useEffect, useState } from "react";
-import { Menu, X, Brain, Tag } from "lucide-react";
+import { Menu, X, Brain, Tag, FileText, Mail } from "lucide-react";
 import { Button } from "@components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@components/ui/sheet";
 import { getUnviewedOrdersCount } from "src/queries/orders";
@@ -74,7 +74,7 @@ export function AdminSidebar({ user }: AppSidebarProps) {
           schema: "public",
           table: "orders",
         },
-        (payload) => {
+        (payload: any) => {
           // Temporarily disabled due to missing admin_viewed column
           // Only refetch if a new order is inserted or admin_viewed changes to false
           // if (
@@ -104,6 +104,9 @@ export function AdminSidebar({ user }: AppSidebarProps) {
     { title: "Categories", url: "/admin/categories", icon: Product },
     { title: "Bundles", url: "/admin/bundles", icon: Bundle },
     { title: "Offers", url: "/admin/offers", icon: Tag },
+    { title: "Blog", url: "/admin/blog", icon: FileText },
+    { title: "Email Campaigns", url: "/admin/email-campaigns", icon: Mail },
+    { title: "Email Templates", url: "/admin/email-templates", icon: FileText },
     { title: "Agents", url: "/admin/agents", icon: User },
     { title: "Customers", url: "/admin/customers", icon: Profile },
     { title: "Promotions", url: "/admin/promotions", icon: Product },
@@ -151,6 +154,26 @@ export function AdminSidebar({ user }: AppSidebarProps) {
                         >
                           {item.title === "Delivery Locations" ? (
                             <TiLocation
+                              size={20}
+                              color={isActive ? "white" : "#667085"}
+                            />
+                          ) : item.title === "Blog" ? (
+                            <FileText
+                              size={20}
+                              color={isActive ? "white" : "#667085"}
+                            />
+                          ) : item.title === "Email Campaigns" ? (
+                            <Mail
+                              size={20}
+                              color={isActive ? "white" : "#667085"}
+                            />
+                          ) : item.title === "Email Templates" ? (
+                            <FileText
+                              size={20}
+                              color={isActive ? "white" : "#667085"}
+                            />
+                          ) : item.title === "AI Analytics" ? (
+                            <Brain
                               size={20}
                               color={isActive ? "white" : "#667085"}
                             />

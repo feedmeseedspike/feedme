@@ -2,6 +2,8 @@ import { createClient } from "@utils/supabase/client";
 import { Tables } from "@utils/database.types";
 import { v4 as uuidv4 } from 'uuid';
 
+type Bundle = Tables<'bundles'>;
+
 interface FetchBundlesParams {
   page?: number;
   itemsPerPage?: number;
@@ -232,7 +234,7 @@ export const fetchBundleBySlugWithProducts = async (bundleSlug: string) => {
   }
 
   // Find the bundle whose name, when converted to slug, matches the provided slug
-  const matchingBundle = allBundles?.find(bundle => {
+  const matchingBundle = allBundles?.find((bundle: Bundle) => {
     if (!bundle.name) return false;
     const bundleSlug_generated = bundle.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     return bundleSlug_generated === bundleSlug;

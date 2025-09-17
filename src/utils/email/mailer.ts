@@ -26,5 +26,23 @@ export async function sendMail({
     subject,
     html,
   };
-  return transporter.sendMail(mailOptions);
+  
+  console.log('🚀 Attempting to send email:', {
+    from: mailOptions.from,
+    to: mailOptions.to,
+    subject: mailOptions.subject
+  });
+  
+  try {
+    const result = await transporter.sendMail(mailOptions);
+    console.log('✅ Email sent successfully:', {
+      messageId: result.messageId,
+      response: result.response,
+      envelope: result.envelope
+    });
+    return result;
+  } catch (error) {
+    console.error('❌ Email send failed:', error);
+    throw error;
+  }
 } 

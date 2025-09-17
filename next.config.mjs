@@ -5,6 +5,8 @@ const nextConfig = {
       allowedOrigins: ["c7jc2vm8-3000.uks1.devtunnels.ms", "localhost:3000","shopfeedme.com","www.shopfeedme.com"],
     },
   },
+  // Use a custom dist directory to avoid OneDrive locking `.next` on Windows
+  distDir: "build",
   images: {
     unoptimized: process.env.NODE_ENV === 'production',
     remotePatterns: [
@@ -142,15 +144,16 @@ const nextConfig = {
       test: /\.svg$/,
       use: ["@svgr/webpack"],
     });
+    // Move ignoreWarnings into webpack config (root-level ignoreWarnings is invalid in Next 14)
+    config.ignoreWarnings = [
+      (warning) =>
+        typeof warning.message === "string" &&
+        warning.message.includes(
+          "Critical dependency: the request of a dependency is an expression"
+        ),
+    ];
     return config;
   },
-  ignoreWarnings: [
-    (warning) =>
-      typeof warning.message === "string" &&
-      warning.message.includes(
-        "Critical dependency: the request of a dependency is an expression"
-      ),
-  ],
 };
 
 export default nextConfig;

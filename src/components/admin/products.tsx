@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import type { IProductInput } from "@/types/index";
 import {
   Table,
   TableHeader,
@@ -447,8 +448,8 @@ export default function Product() {
               ))
             ) : products && products.length > 0 ? (
               products
-                .filter((product) => !!product.id)
-                .map((product) => (
+                .filter((product: any) => !!product.id)
+                .map((product: any) => (
                   <TableRow key={product.id!}>
                     <TableCell className="">
                       {product.images?.[0] && (

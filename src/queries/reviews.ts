@@ -96,7 +96,7 @@ export const getReviews = async ({
 
     // Check if current user has voted on each review
     const reviewsWithVotes = await Promise.all(
-      (reviews || []).map(async (review) => {
+      (reviews || []).map(async (review: any) => {
         let userProfile: UserProfileRow | null = null;
         if (review.user) {
           if (Array.isArray(review.user)) {

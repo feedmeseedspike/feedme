@@ -514,20 +514,20 @@ export async function clearCart(): Promise<
   ClearCartSuccess | ClearCartFailure
 > {
   const supabase = await createClient();
-  // const {
-  //   data: { user },
-  //   error: authError,
-  // } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
-  // if (authError || !user) {
-  //   return {
-  //     success: false,
-  //     error: "ANONYMOUS_USER",
-  //   };
-  // }
+  if (authError || !user) {
+    return {
+      success: false,
+      error: "ANONYMOUS_USER",
+    };
+  }
 
   try {
-    const cartId = await getUserCartId("4be3c6f5-ede4-41f1-b5be-4ea373a967d7");
+    const cartId = await getUserCartId(user.id);
 
     const { error } = await supabase
       .from("cart_items")

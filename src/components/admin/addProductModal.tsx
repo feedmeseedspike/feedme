@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { IProductInput } from "@/types/index";
 import { useQuery } from "@tanstack/react-query";
 import { Search, X } from "lucide-react";
 import { Checkbox } from "@components/ui/checkbox";
@@ -187,7 +188,7 @@ export default function AddProductModal({
 
   // Filter out products already added to the bundle from the main list display
   const availableProducts =
-    products?.filter((product) => !existingProductIds.includes(product.id)) ||
+    products?.filter((product: IProductInput) => !existingProductIds.includes(product.id)) ||
     [];
 
   // Combine selected products (which might include existing ones if modal is reopened) with available products for display
@@ -196,7 +197,7 @@ export default function AddProductModal({
       (product) => !existingProductIds.includes(product.id)
     ), // Newly selected products
     ...availableProducts.filter(
-      (product) => !selectedProducts.some((p) => p.id === product.id)
+      (product: IProductInput) => !selectedProducts.some((p) => p.id === product.id)
     ), // Available products not yet selected
   ];
 

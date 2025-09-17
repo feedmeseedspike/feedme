@@ -461,8 +461,7 @@ const OrderDetailsModal = ({
     return amount ? formatNaira(amount) : "₦0.00";
   };
   const subtotal = (order.order_items || []).reduce(
-    (sum: number, item: Tables<"order_items">) =>
-      sum + (item.price || 0) * item.quantity,
+    (sum, item) => sum + (item.price || 0) * item.quantity,
     0
   );
   const totalAmount = order.total_amount || subtotal;
@@ -540,7 +539,8 @@ const OrderDetailsModal = ({
               <Button
                 variant="link"
                 onClick={() => setShowAllProducts(!showAllProducts)}
-                className="mt-2 p-0">
+                className="mt-2 p-0"
+              >
                 {showAllProducts
                   ? "Show Less Products"
                   : `View All ${order.order_items.length} Products`}
@@ -574,7 +574,8 @@ const OrderDetailsModal = ({
           <div className="flex justify-end gap-2 mt-4">
             <Button
               variant="outline"
-              onClick={() => downloadOrderInvoice(order)}>
+              onClick={() => downloadOrderInvoice(order)}
+            >
               <Download size={16} className="mr-2" /> Download Invoice
             </Button>
           </div>
@@ -672,13 +673,15 @@ export default function OrderClient({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleViewDetails(order)}>
+                    onClick={() => handleViewDetails(order)}
+                  >
                     <Eye className="mr-2 h-4 w-4" /> View Details
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleDownloadInvoice(order)}>
+                    onClick={() => handleDownloadInvoice(order)}
+                  >
                     <Download className="mr-2 h-4 w-4" /> Invoice
                   </Button>
                 </div>

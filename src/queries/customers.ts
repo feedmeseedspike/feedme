@@ -4,6 +4,8 @@ import { Customer, Order } from '../types/customer';
 import { createClient } from '@utils/supabase/client';
 import { Tables } from '../utils/database.types';
 
+type Address = Tables<'addresses'>;
+
 // Query key factory
 export const customerKeys = {
   all: ['customers'] as const,
@@ -77,7 +79,7 @@ export async function fetchCustomers({
     throw addressesError;
   }
   const addressesByUserId: Record<string, Array<{ phone: string | null; city: string | null }>> = {};
-  (addresses || []).forEach(addr => {
+  (addresses || []).forEach((addr: any) => {
     if (addr.user_id) {
       if (!addressesByUserId[addr.user_id]) addressesByUserId[addr.user_id] = [];
       addressesByUserId[addr.user_id].push({ phone: addr.phone, city: addr.city });

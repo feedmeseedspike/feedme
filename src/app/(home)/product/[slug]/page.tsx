@@ -4,6 +4,10 @@ import {
   getRelatedProductsByCategory,
 } from "src/lib/actions/product.actions";
 import ProductGalleryWrapper from "@components/shared/product/gallery-wrapper";
+import { Tables } from "@/utils/database.types";
+
+type Category = Tables<"categories">;
+type ProductType = Tables<"products">;
 import Container from "@components/shared/Container";
 import RatingSummary from "@components/shared/product/rating-summary";
 import { Separator } from "@components/ui/separator";
@@ -29,7 +33,6 @@ import ProductDetailsClient from "@components/shared/product/product-details-cli
 import Link from "next/link";
 import { getAllCategoriesQuery } from "src/queries/categories";
 import { createServerComponentClient } from "src/utils/supabase/server";
-import { Tables } from "src/utils/database.types";
 import {
   getAlsoViewedProducts,
   getAlsoBoughtProducts,
@@ -38,8 +41,6 @@ import { IProductInput } from "src/types";
 import { mapSupabaseProductToIProductInput, CategoryData } from "src/lib/utils";
 import Head from "next/head";
 import { notFound } from "next/navigation";
-
-type ProductType = Tables<"products">;
 
 export async function generateMetadata({
   params,
@@ -113,7 +114,7 @@ const ProductDetails = async (props: {
     await getAllCategoriesQuery(supabase).select("id, title");
 
   const productCategory = categoriesData?.find(
-    (cat) => cat.id === product.category_ids?.[0]
+    (cat: any) => cat.id === product.category_ids?.[0]
   );
 
   const cartItemId = generateId();
@@ -140,7 +141,7 @@ const ProductDetails = async (props: {
       product.id
     );
     if (rawAlsoViewedProducts) {
-      alsoViewedProducts = rawAlsoViewedProducts.map((p) =>
+      alsoViewedProducts = rawAlsoViewedProducts.map((p: ProductType) =>
         mapSupabaseProductToIProductInput(p, categoriesData as CategoryData[])
       );
     }
@@ -155,7 +156,7 @@ const ProductDetails = async (props: {
       product.id
     );
     if (rawAlsoBoughtProducts) {
-      alsoBoughtProducts = rawAlsoBoughtProducts.map((p) =>
+      alsoBoughtProducts = rawAlsoBoughtProducts.map((p: ProductType) =>
         mapSupabaseProductToIProductInput(p, categoriesData as CategoryData[])
       );
     }
@@ -237,10 +238,25 @@ const ProductDetails = async (props: {
     );
   };
 
-  // Ensure options is ProductOption[] and filter out nulls
-  const productOptions = Array.isArray(product.options)
-    ? (product.options as any[]).filter(Boolean)
-    : [];
+  // Handle both old array format and new object format for options
+  const productOptions = (() => {
+    if (Array.isArray(product.options)) {
+      // Old format: options is array of variations
+      return (product.options as any[]).filter(Boolean);
+    } else if (product.options && typeof product.options === 'object') {
+      // New format: options is object with variations and customizations
+      return (product.options as any).variations || [];
+    }
+    return [];
+  })();
+  
+  // Extract customizations from new format
+  const productCustomizations = (() => {
+    if (product.options && typeof product.options === 'object' && !Array.isArray(product.options)) {
+      return (product.options as any).customizations || [];
+    }
+    return [];
+  })();
 
   return (
     <>
@@ -290,6 +306,7 @@ const ProductDetails = async (props: {
               numReviews: product.num_reviews || 0,
               ratingDistribution: ratingDistArr,
               options: productOptions,
+              customizations: productCustomizations,
               slug: product.slug,
               category: product.category_ids?.[0] || "",
               price: product.price || 0,

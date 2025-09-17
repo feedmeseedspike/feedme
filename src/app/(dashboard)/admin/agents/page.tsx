@@ -43,7 +43,7 @@ import {
 } from "@components/ui/select";
 import EditAgentModal from "@components/admin/editAgentModal";
 import { useQuery } from "@tanstack/react-query";
-import { getAgentsQuery } from "../../../../queries/agents";
+import { getAgentsQuery, Agent } from "../../../../queries/agents";
 
 export default function Agents() {
   const [search, setSearch] = useState("");
@@ -51,7 +51,7 @@ export default function Agents() {
   const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedAgent, setSelectedAgent] = useState<any>();
+  const [selectedAgent, setSelectedAgent] = useState<Agent>();
 
   const {
     data: agents,
@@ -75,14 +75,14 @@ export default function Agents() {
   };
 
   const filteredAgents = agents?.filter(
-    (agent) =>
+    (agent: Agent) =>
       (agent.display_name || "").toLowerCase().includes(search.toLowerCase()) &&
       (selectedStatus.length === 0 ||
         (agent.status && selectedStatus.includes(agent.status)))
   );
 
-  const handleUpdateAgent = (updatedAgent: any) => {
-    const updatedAgents = agents?.map((agent) =>
+  const handleUpdateAgent = (updatedAgent: Partial<Agent>) => {
+    const updatedAgents = agents?.map((agent: Agent) =>
       agent.id === selectedAgent?.id ? { ...agent, ...updatedAgent } : agent
     );
     // // console.log("Updated Agents:", updatedAgents);
@@ -260,7 +260,7 @@ export default function Agents() {
           </TableHeader>
 
           <TableBody>
-            {paginatedAgents?.map((agent) => (
+            {paginatedAgents?.map((agent: Agent) => (
               <TableRow key={agent.id}>
                 <TableCell className="text-left px-6 py-4 flex gap-2 items-center">
                   <Image
@@ -331,7 +331,14 @@ export default function Agents() {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         onSubmit={handleUpdateAgent}
-        agent={selectedAgent}
+        agent={selectedAgent ? {
+          id: selectedAgent.id as any,
+          name: selectedAgent.display_name || '',
+          email: selectedAgent.email || '',
+          phoneNumber: selectedAgent.phone || '',
+          location: selectedAgent.location || '',
+          image: selectedAgent.image_url || ''
+        } : undefined}
       />
     </div>
   );

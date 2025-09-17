@@ -16,6 +16,8 @@ export interface Item {
   title: string;
   price: number;
   quantity: number;
+  customizations?: Record<string, string>;
+  optionName?: string;
 }
 
 export interface CustomerOrderProps {
@@ -116,7 +118,25 @@ export default function CustomerOrder(props: CustomerOrderProps) {
                   const subtotal = item.price * item.quantity;
                   return (
                     <tr key={index}>
-                      <td style={tableCellStyle}>{item.title}</td>
+                      <td style={tableCellStyle}>
+                        <div>
+                          <strong>{item.title}</strong>
+                          {item.optionName && (
+                            <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
+                              Variation: {item.optionName}
+                            </div>
+                          )}
+                          {item.customizations && Object.keys(item.customizations).length > 0 && (
+                            <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
+                              {Object.entries(item.customizations).map(([key, value]) => (
+                                <div key={key} style={{ marginTop: '1px' }}>
+                                  • {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: {value.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </td>
                       <td style={tableCellStyle}>
                         ₦{item.price.toLocaleString()}
                       </td>

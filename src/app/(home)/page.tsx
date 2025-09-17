@@ -28,6 +28,9 @@ import {
 import { fetchBundles } from "src/queries/bundles";
 import { mapSupabaseProductToIProductInput, CategoryData } from "src/lib/utils";
 import { IProductInput } from "src/types";
+import { Tables } from "src/utils/database.types";
+
+type Category = Tables<"categories">;
 
 export default async function Home() {
   const queryClient = new QueryClient();
@@ -40,7 +43,7 @@ export default async function Home() {
         const { data, error } =
           await getAllCategoriesQuery(supabase).select("*");
         if (error) throw error;
-        return data.map((category) => {
+        return data.map((category: Category) => {
           let thumbnailData: { url: string; public_id?: string } | null = null;
           if (category.thumbnail) {
             if (
@@ -211,7 +214,7 @@ export default async function Home() {
 
   let allCategories: CategoryData[] | null = null;
   if (rawCategories) {
-    allCategories = rawCategories.map((category) => {
+    allCategories = rawCategories.map((category: Category) => {
       let thumbnailData: { url: string; public_id?: string } | null = null;
       if (category.thumbnail) {
         if (
@@ -264,8 +267,8 @@ export default async function Home() {
   let recommendedProducts: IProductInput[] = [];
   if (bestSellerProducts && allCategories) {
     const filteredAndMappedProducts = bestSellerProducts
-      .filter((product) => !purchasedProductIds.includes(product.id || ""))
-      .map((product) =>
+      .filter((product: any) => !purchasedProductIds.includes(product.id || ""))
+      .map((product: any) =>
         mapSupabaseProductToIProductInput(product, allCategories)
       );
     recommendedProducts = filteredAndMappedProducts.slice(0, 10);
