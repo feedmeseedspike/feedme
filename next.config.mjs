@@ -5,8 +5,6 @@ const nextConfig = {
       allowedOrigins: ["c7jc2vm8-3000.uks1.devtunnels.ms", "localhost:3000","shopfeedme.com","www.shopfeedme.com"],
     },
   },
-  // Use a custom dist directory to avoid OneDrive locking `.next` on Windows
-  distDir: "build",
   images: {
     unoptimized: process.env.NODE_ENV === 'production',
     remotePatterns: [
