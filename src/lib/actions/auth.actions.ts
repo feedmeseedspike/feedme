@@ -86,8 +86,8 @@ export async function registerUser(userData: {
     // Generate welcome discount code
     const welcomeDiscount = createWelcomeDiscount(userData.email, 5, 30);
     
-    // Store discount code in existing vouchers table
-    const { error: voucherError } = await supabase
+    // Store discount code in existing vouchers table with user-specific restriction
+    const { data: voucherData, error: voucherError } = await supabase
       .from("vouchers")
       .insert({
         code: welcomeDiscount.code,
@@ -95,11 +95,20 @@ export async function registerUser(userData: {
         discount_value: welcomeDiscount.discount_percentage,
         valid_from: welcomeDiscount.valid_from,
         valid_to: welcomeDiscount.valid_until,
-        max_uses: welcomeDiscount.usage_limit,
+        max_uses: 1, // One use total
         used_count: welcomeDiscount.used_count,
-        description: `Welcome discount for new user`,
-        is_active: true
-      });
+        description: `Welcome discount for ${userData.name} (${userData.email})`,
+        is_active: true,
+        user_id: data.user.id // Link voucher to specific user
+      })
+      .select();
+
+    if (voucherError) {
+      console.error('Failed to create welcome voucher:', voucherError);
+      // Don't fail registration for voucher errors, but log it
+    } else {
+      console.log('Welcome voucher created successfully:', voucherData);
+    }
 
     // Send welcome email (async, don't block registration)
     try {

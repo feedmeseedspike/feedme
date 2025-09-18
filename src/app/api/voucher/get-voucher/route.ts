@@ -32,12 +32,18 @@ export async function GET(request: Request) {
   try {
     const { data: voucher, error } = await supabase
       .from('vouchers')
-      .select('id, code, discount_type, discount_value, is_active, max_uses, used_count, valid_from, valid_to, min_order_amount')
+      .select('id, code, discount_type, discount_value, is_active, max_uses, used_count, valid_from, valid_to, min_order_amount, user_id')
       .eq('code', code)
+      .eq('is_active', true) // Only get active vouchers
       .single();
 
     if (error || !voucher) {
       return NextResponse.json({ success: false, error: 'Invalid or expired voucher.' }, { status: 404 });
+    }
+
+    // Check if voucher is user-specific and belongs to current user
+    if (voucher.user_id && voucher.user_id !== user.id) {
+      return NextResponse.json({ success: false, error: 'This voucher is not valid for your account.' }, { status: 403 });
     }
 
     // Per-user usage check
@@ -109,12 +115,18 @@ export async function POST(request: Request) {
 
     const { data: voucher, error } = await supabase
       .from('vouchers')
-      .select('id, code, discount_type, discount_value, is_active, max_uses, used_count, valid_from, valid_to, min_order_amount')
+      .select('id, code, discount_type, discount_value, is_active, max_uses, used_count, valid_from, valid_to, min_order_amount, user_id')
       .eq('code', code)
+      .eq('is_active', true) // Only get active vouchers
       .single();
 
     if (error || !voucher) {
       return NextResponse.json({ success: false, error: 'Invalid or expired voucher.' }, { status: 404 });
+    }
+
+    // Check if voucher is user-specific and belongs to current user
+    if (voucher.user_id && voucher.user_id !== user.id) {
+      return NextResponse.json({ success: false, error: 'This voucher is not valid for your account.' }, { status: 403 });
     }
 
     // Per-user usage check
