@@ -18,10 +18,20 @@ export async function generateMetadata({
   params,
 }: BlogPostPageProps): Promise<Metadata> {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/blog/posts/${params.slug}`, {
+    let baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    // Ensure baseUrl has proper protocol
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+      baseUrl = `http://${baseUrl}`;
+    }
+    const response = await fetch(`${baseUrl}/api/blog/posts/${params.slug}`, {
       next: { revalidate: 600 },
       cache: 'force-cache'
     });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
     const data = await response.json();
     const post = data.success ? data.post : null;
 
@@ -65,46 +75,59 @@ export async function generateMetadata({
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
-  let post;
-
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/blog/posts/${params.slug}`, {
+    let baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    // Ensure baseUrl has proper protocol
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+      baseUrl = `http://${baseUrl}`;
+    }
+    const response = await fetch(`${baseUrl}/api/blog/posts/${params.slug}`, {
       next: { revalidate: 600 },
       cache: 'force-cache'
     });
+
+    // If the API returns 404, we should trigger notFound()
+    if (!response.ok) {
+      if (response.status === 404) {
+        notFound();
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
     const data = await response.json();
-    post = data.success ? data.post : null;
-    
+    const post = data.success ? data.post : null;
+
     if (!post) {
       notFound();
     }
 
-    fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/blog/posts/${post.slug}/views`, { method: 'POST' }).catch(console.error);
+    // Increment view count asynchronously
+    fetch(`${baseUrl}/api/blog/posts/${post.slug}/views`, {
+      method: 'POST'
+    }).catch(console.error);
+
+    return (
+      <div className="min-h-screen bg-white">
+        <Container className="py-8">
+          <div className="max-w-4xl mx-auto">
+            <Suspense fallback={<BlogPostSkeleton />}>
+              <BlogPostContent post={post} />
+            </Suspense>
+
+            <div className="mt-16">
+              <Suspense fallback={<RelatedPostsSkeleton />}>
+                <RelatedPosts slug={post.slug} />
+              </Suspense>
+            </div>
+          </div>
+        </Container>
+      </div>
+    );
 
   } catch (error) {
     console.error("Error fetching blog post:", error);
     notFound();
   }
-
-  return (
-    <div className="min-h-screen bg-white">
-      <Container className="py-8">
-        <div className="max-w-4xl mx-auto">
-          <Suspense fallback={<BlogPostSkeleton />}>
-            <BlogPostContent post={post} />
-          </Suspense>
-
-          <div className="mt-16">
-            <Suspense fallback={<RelatedPostsSkeleton />}>
-              <RelatedPosts
-                slug={post.slug}
-              />
-            </Suspense>
-          </div>
-        </div>
-      </Container>
-    </div>
-  );
 }
 
 function RelatedPostsSkeleton() {
