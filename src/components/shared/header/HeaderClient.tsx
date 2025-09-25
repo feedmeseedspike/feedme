@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   User,
@@ -9,7 +9,9 @@ import {
   ChevronDown,
   ChevronLeft,
   Wallet,
+  Briefcase,
 } from "lucide-react";
+import WaveReveal from "@/components/ui/wave-reveal";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
 import Container from "@components/shared/Container";
 import Cart from "@components/shared/header/Cart";
@@ -30,14 +32,14 @@ import FlyoutLink from "./FlyoutLink";
 import UserDropdownContent from "./UserDropdownContent";
 import { useUser } from "src/hooks/useUser";
 
-const HeaderClient = ({ categories, categoriesError }: any) => {
+const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
   const { user, isLoading: isUserLoading } = useUser();
   const [openAccountSheet, setOpenAccountSheet] = useState(false);
-  const [openMobileSheet, setOpenMobileSheet] = useState(false); 
-  const [isCategoriesLoading] = useState(false); 
+  const [openMobileSheet, setOpenMobileSheet] = useState(false);
+  const [isCategoriesLoading] = useState(false);
 
   if (isUserLoading) {
-    return null; 
+    return null;
   }
   const isLoggedIn = !!user;
 
@@ -96,7 +98,7 @@ const HeaderClient = ({ categories, categoriesError }: any) => {
                     </SheetHeader>
 
                     {/* Scrollable Categories Section */}
-                    <div className="flex- overflow-y-aut py-4">
+                    <div className="flex-1 overflow-y-auto py-4">
                       <div className="pb-4">
                         {isCategoriesLoading ? (
                           <div className="space-y-2">
@@ -115,7 +117,9 @@ const HeaderClient = ({ categories, categoriesError }: any) => {
                           <div className="space-y-2">
                             {/* Explore */}
                             <div className="pt-1 pb-3">
-                              <p className="uppercase text-xs text-white/70 px-2 mb-1">Explore</p>
+                              <p className="uppercase text-xs text-white/70 px-2 mb-1">
+                                Explore
+                              </p>
                               <div className="space-y-1">
                                 <Link
                                   href="/bundles"
@@ -149,7 +153,9 @@ const HeaderClient = ({ categories, categoriesError }: any) => {
                             </div>
 
                             {/* Categories */}
-                            <p className="uppercase text-xs text-white/70 px-2 mt-2 mb-1">Categories</p>
+                            <p className="uppercase text-xs text-white/70 px-2 mt-2 mb-1">
+                              Categories
+                            </p>
                             {categories?.map((category: any) => (
                               <Link
                                 key={category.id}
@@ -188,15 +194,38 @@ const HeaderClient = ({ categories, categoriesError }: any) => {
                 </Sheet>
 
                 {/* Desktop Logo */}
-                <Link href="/">
-                  <Image
-                    src="/logo.png"
-                    alt="logo"
-                    width={148}
-                    height={32}
-                    className="w-[6rem] md:w-[9rem] cursor-pointer"
-                  />
-                </Link>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <Link href="/">
+                      <Image
+                        src="/logo.png"
+                        alt="logo"
+                        width={148}
+                        height={32}
+                        className="w-[6rem] md:w-[9rem] cursor-pointer"
+                      />
+                    </Link>
+
+                    {/* Hiring Badge with Wavy Animation */}
+                    {hasActiveJobs && (
+                      <Link href="/careers" className="block">
+                        <div className="absolute -top-2 md:-top-1 -right-4 md:-right-6 z-10">
+                          {/* Animated Badge */}
+                          <div className="bg-[#F0800F] text-white px-3 py-1 rounded-full text-[10px] font-bold transition-all duration-300 hover:scale-110">
+                            <WaveReveal
+                              text="HIRING"
+                              direction="up"
+                              duration="400ms"
+                              delay={100}
+                              loop={true}
+                              className="tracking-wide"
+                            />
+                          </div>
+                        </div>
+                      </Link>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Desktop Search */}

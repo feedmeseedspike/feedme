@@ -32,7 +32,7 @@ const footerData = [
       { name: "Community", href: "/" },
       { name: "Press Releases", href: "/" },
       { name: "Contact", isModal: true },
-      { name: "Careers (Join Us)", href: "/" },
+      { name: "Careers (Join Us)", href: "/careers" },
     ],
   },
   {

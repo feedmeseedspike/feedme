@@ -62,7 +62,7 @@ export default function OptionModal({
     defaultValues: {
       stockStatus: safeInitialData.stockStatus || "In Stock",
       name: safeInitialData.name || "",
-      price: toNumberOrUndefined(safeInitialData.price),
+      price: toNumberOrUndefined(safeInitialData.price) || 50,
       list_price: toNumberOrUndefined(safeInitialData.list_price),
       image: safeInitialData.image || undefined,
     },
@@ -84,7 +84,7 @@ export default function OptionModal({
         reset({
           stockStatus: safeInitialData.stockStatus || "In Stock",
           name: safeInitialData.name || "",
-          price: toNumberOrUndefined(safeInitialData.price),
+          price: toNumberOrUndefined(safeInitialData.price) || 50,
           list_price: toNumberOrUndefined(safeInitialData.list_price),
           image: safeInitialData.image || undefined,
         });
@@ -109,21 +109,24 @@ export default function OptionModal({
   };
 
   const submitForm = async (data: OptionFormValues) => {
-    console.log("OptionModal submitForm called with:", { data, imageState: image });
-    const formData = {
-      ...data,
-      price: parseFloat(String(data.price)),
-      list_price:
-        data.list_price !== undefined
-          ? parseFloat(String(data.list_price))
-          : undefined,
-      image: image,
-    };
-    console.log("OptionModal formData being submitted:", formData);
-    if (onSubmit) onSubmit(formData);
-    // Reset image state after successful submit
-    setImage(null);
-    onClose();
+    try {
+      const formData = {
+        ...data,
+        price: parseFloat(String(data.price)),
+        list_price:
+          data.list_price !== undefined
+            ? parseFloat(String(data.list_price))
+            : undefined,
+        image: image || data.image || null,
+      };
+      if (onSubmit) await onSubmit(formData);
+      // Reset image state after successful submit
+      setImage(null);
+      onClose();
+    } catch (error) {
+      console.error("Error submitting option:", error);
+      // Don't close modal on error so user can fix issues
+    }
   };
 
   return (
@@ -135,7 +138,20 @@ export default function OptionModal({
             {mode === "edit" ? "Edit Option" : "Add New Option"}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(submitForm as any)} className="space-y-3">
+        <form onSubmit={handleSubmit(submitForm, (errors) => {
+          console.error("Form validation errors:", errors);
+        })} className="space-y-3">
+          {/* Show form errors */}
+          {Object.keys(errors).length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-3">
+              <p className="text-red-800 text-sm font-medium">Please fix the following errors:</p>
+              <ul className="text-red-700 text-sm mt-1 list-disc list-inside">
+                {Object.entries(errors).map(([field, error]) => (
+                  <li key={field}>{error?.message || `${field} is invalid`}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           {/* Option Name */}
           <div>
             <label htmlFor="name" className="block text-sm font-medium mb-2">
@@ -217,9 +233,13 @@ export default function OptionModal({
             </label>
             <div className="flex flex-col items-center border p-4 rounded-md cursor-pointer">
               <input
+                {...register("image")}
                 type="file"
                 accept="image/png, image/jpeg"
-                onChange={handleImageUpload}
+                onChange={(e) => {
+                  register("image").onChange(e);
+                  handleImageUpload(e);
+                }}
                 className="hidden"
                 id="file-upload"
               />

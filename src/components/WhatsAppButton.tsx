@@ -22,10 +22,16 @@ const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({
       href={whatsappLink}
       target="_blank"
       rel="noopener noreferrer"
-      className="fixed bottom-[80px] md:bottom-4 right-4 z-50 bg-[#1B6013]/90 text-white p-4 rounded-full shadow-lg hover:bg-[#1B6013]transition-colors flex items-center justify-center"
+      className="fixed bottom-[80px] md:bottom-4 right-4 z-50 bg-[#1B6013]/90 text-white p-2 md:p-4 rounded-full shadow-lg hover:bg-[#1B6013] transition-colors flex items-center justify-center"
       aria-label="Chat on WhatsApp"
     >
-      <Image src={"/whatsapp.svg"} width={35} height={35} alt="whatsapp" />
+      <Image
+        src={"/whatsapp.svg"}
+        width={35}
+        height={35}
+        alt="whatsapp"
+        className="w-6 h-6 md:w-[35px] md:h-[35px]"
+      />
     </a>
   );
 };
