@@ -13,11 +13,56 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Metadata } from "next";
 
 interface PageProps {
   params: {
     jobId: string;
   };
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  try {
+    const job = await getJobById(params.jobId);
+
+    if (!job) {
+      return {
+        title: "Job Not Found | FeedMe Careers",
+        description: "The job you're looking for could not be found.",
+      };
+    }
+
+    const title = `Apply for ${job.title} | FeedMe Careers`;
+    const description = job.description
+      ? `${job.description.slice(0, 150)}...`
+      : `Apply for the ${job.title} position at FeedMe. Join our team in ${job.location} and help build the future of food delivery.`;
+
+    return {
+      title,
+      description,
+      keywords: `${job.title}, ${job.department}, ${job.location}, careers, jobs, FeedMe, ${job.type.replace('-', ' ')}`,
+      openGraph: {
+        title,
+        description,
+        url: `https://shopfeedme.com/careers/apply/${params.jobId}`,
+        siteName: "FeedMe",
+        type: "website",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description,
+      },
+      alternates: {
+        canonical: `https://shopfeedme.com/careers/apply/${params.jobId}`,
+      },
+    };
+  } catch (error) {
+    return {
+      title: "Job Application | FeedMe Careers",
+      description: "Apply for exciting career opportunities at FeedMe and join our growing team.",
+    };
+  }
 }
 
 export default async function JobApplicationPage({ params }: PageProps) {

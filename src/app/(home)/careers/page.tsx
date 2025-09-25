@@ -6,6 +6,28 @@ import {
   Job,
 } from "@/lib/actions/careers.actions";
 import { createServerComponentClient } from "@utils/supabase/server";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Careers - Join Our Team | FeedMe",
+  description: "Join our team and help build the future of food delivery. Explore exciting career opportunities at FeedMe and be part of our growing company.",
+  keywords: "careers, jobs, food delivery, FeedMe, employment, hiring, team",
+  openGraph: {
+    title: "Careers - Join Our Team | FeedMe",
+    description: "Join our team and help build the future of food delivery. Explore exciting career opportunities at FeedMe.",
+    url: "https://shopfeedme.com/careers",
+    siteName: "FeedMe",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Careers - Join Our Team | FeedMe",
+    description: "Join our team and help build the future of food delivery. Explore exciting career opportunities at FeedMe.",
+  },
+  alternates: {
+    canonical: "https://shopfeedme.com/careers",
+  },
+};
 
 export default async function CareersPage() {
   // Fetch jobs on the server
