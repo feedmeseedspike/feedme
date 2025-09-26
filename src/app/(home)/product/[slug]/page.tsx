@@ -243,16 +243,20 @@ const ProductDetails = async (props: {
     if (Array.isArray(product.options)) {
       // Old format: options is array of variations
       return (product.options as any[]).filter(Boolean);
-    } else if (product.options && typeof product.options === 'object') {
+    } else if (product.options && typeof product.options === "object") {
       // New format: options is object with variations and customizations
       return (product.options as any).variations || [];
     }
     return [];
   })();
-  
+
   // Extract customizations from new format
   const productCustomizations = (() => {
-    if (product.options && typeof product.options === 'object' && !Array.isArray(product.options)) {
+    if (
+      product.options &&
+      typeof product.options === "object" &&
+      !Array.isArray(product.options)
+    ) {
       return (product.options as any).customizations || [];
     }
     return [];
@@ -316,7 +320,7 @@ const ProductDetails = async (props: {
                 displayName: (product as any).vendor_displayName || "",
                 logo: (product as any).vendor_logo || "",
               },
-              in_season: product.in_season ?? true,
+              in_season: product.in_season,
             }}
             cartItemId={cartItemId}
           />

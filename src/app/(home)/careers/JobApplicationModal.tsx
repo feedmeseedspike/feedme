@@ -60,11 +60,8 @@ export default function JobApplicationModal({
         return;
       }
 
-      console.log("Starting file upload process...");
-
       // For now, skip Supabase Storage and go directly to base64 fallback
       // This will work immediately while storage is being set up
-      console.log("Using base64 storage (Supabase Storage not configured)...");
 
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -72,7 +69,6 @@ export default function JobApplicationModal({
         if (typeof result === "string") {
           setFormData({ ...formData, resume_url: result });
           showToast("Resume uploaded successfully", "success");
-          console.log("Upload successful via base64");
           setUploadingFile(false);
         }
       };
@@ -95,16 +91,13 @@ export default function JobApplicationModal({
       if (result.success && result.url) {
         setFormData({ ...formData, resume_url: result.url });
         showToast("Resume uploaded successfully", "success");
-        console.log('Upload successful via Supabase Storage');
         return;
       }
 
       // If Supabase Storage fails, fall back to base64
-      console.log('Supabase Storage failed, falling back to base64...', result.error);
 
       if (result.error?.includes('Storage bucket not configured') || result.error?.includes('Bucket not found')) {
         // Fallback to base64 storage
-        console.log('Using base64 fallback...');
 
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -308,8 +301,8 @@ export default function JobApplicationModal({
       <div>
         <h3 className="text-lg font-semibold mb-4">Apply for {job.title}</h3>
         <p className="text-gray-600 mb-6">
-          Fill out the form below to submit your application. We&apos;ll get back to
-          you within 5 business days.
+          Fill out the form below to submit your application. We&apos;ll get
+          back to you within 5 business days.
         </p>
       </div>
 

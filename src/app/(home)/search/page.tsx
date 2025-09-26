@@ -170,10 +170,14 @@ const SearchPage = async (props: {
               )
               .map((p: ProductType) => p.category_ids![0])
           )
-        ).map(categoryId => {
-          const foundCategory = categories.find((cat: Category) => cat.id === categoryId);
-          return foundCategory || { id: categoryId, title: categoryId };
-        }).filter(cat => cat.title !== cat.id) // Filter out categories where title is the same as ID (UUID)
+        )
+          .map((categoryId) => {
+            const foundCategory = categories.find(
+              (cat: Category) => cat.id === categoryId
+            );
+            return foundCategory || { id: categoryId, title: categoryId };
+          })
+          .filter((cat) => cat.title !== cat.id) // Filter out categories where title is the same as ID (UUID)
       : categories;
 
   // Add a mapping function for Supabase product row to IProductInput
@@ -200,7 +204,7 @@ const SearchPage = async (props: {
       colors: product.colors ?? [],
       options: product.options ?? [],
       reviews: product.reviews ?? [],
-      in_season: product.in_season ?? true,
+      in_season: product.in_season,
     };
   }
 
@@ -268,7 +272,8 @@ const SearchPage = async (props: {
                                 >
                                   <Link
                                     className={`${
-                                      (typeof c === "string" ? c : c.id) === category && "text-green-600"
+                                      (typeof c === "string" ? c : c.id) ===
+                                        category && "text-green-600"
                                     }`}
                                     href={getFilterUrl({
                                       category:
@@ -294,11 +299,16 @@ const SearchPage = async (props: {
                               params={params}
                               maxPrice={Math.max(
                                 ...data.products.flatMap((p: ProductType) => {
-                                  const prices = [typeof p.price === "number" ? p.price : 0];
+                                  const prices = [
+                                    typeof p.price === "number" ? p.price : 0,
+                                  ];
                                   // Include option prices if they exist
                                   if (p.options && Array.isArray(p.options)) {
                                     p.options.forEach((option: any) => {
-                                      if (option.price && typeof option.price === "number") {
+                                      if (
+                                        option.price &&
+                                        typeof option.price === "number"
+                                      ) {
                                         prices.push(option.price);
                                       }
                                     });
@@ -332,7 +342,10 @@ const SearchPage = async (props: {
                               </li>
                               <li className="border px-2 py-1 rounded-md border-gray-400">
                                 <Link
-                                  href={getFilterUrl({ season: "true", params })}
+                                  href={getFilterUrl({
+                                    season: "true",
+                                    params,
+                                  })}
                                   className={`${
                                     season === "true" ? "text-primary" : ""
                                   }`}
@@ -342,20 +355,21 @@ const SearchPage = async (props: {
                               </li>
                               <li className="border px-2 py-1 rounded-md border-gray-400">
                                 <Link
-                                  href={getFilterUrl({ season: "false", params })}
+                                  href={getFilterUrl({
+                                    season: "false",
+                                    params,
+                                  })}
                                   className={`${
                                     season === "false" ? "text-primary" : ""
                                   }`}
                                 >
                                   Out of Season
                                 </Link>
-                                
                               </li>
                             </ul>
                           </AccordionContent>
                         </AccordionItem>
                       </Accordion>
-
                     </div>
                   </CollapsibleOnMobile>
                 )}
@@ -389,7 +403,8 @@ const SearchPage = async (props: {
                   <li key={typeof c === "string" ? c : c.id}>
                     <Link
                       className={`${
-                        (typeof c === "string" ? c : c.id) === category && "text-[#1B6013]"
+                        (typeof c === "string" ? c : c.id) === category &&
+                        "text-[#1B6013]"
                       } grid gap-2`}
                       href={`/category/${typeof c === "string" ? toSlug(c) : toSlug(c.title)}`}
                     >
@@ -451,9 +466,7 @@ const SearchPage = async (props: {
               <li>
                 <Link
                   href={getFilterUrl({ season: "true", params })}
-                  className={`${
-                    season === "true" ? "text-[#1B6013]" : ""
-                  }`}
+                  className={`${season === "true" ? "text-[#1B6013]" : ""}`}
                 >
                   In Season
                 </Link>
@@ -461,9 +474,7 @@ const SearchPage = async (props: {
               <li>
                 <Link
                   href={getFilterUrl({ season: "false", params })}
-                  className={`${
-                    season === "false" ? "text-[#1B6013]" : ""
-                  }`}
+                  className={`${season === "false" ? "text-[#1B6013]" : ""}`}
                 >
                   Out of Season
                 </Link>
@@ -475,7 +486,9 @@ const SearchPage = async (props: {
         <div className="md:col-span-6 space-y-4">
           {q !== "all" && q !== "" ? (
             <div className="bg-white rounded-md p-4 w-full">
-              <h1 className="font-bold text-xl mb-2">Search results for &quot;{q}&quot;</h1>
+              <h1 className="font-bold text-xl mb-2">
+                Search results for &quot;{q}&quot;
+              </h1>
               <div className="text-gray-600">{`Showing ${data.from}-${data.to} of ${data.totalProducts} results`}</div>
             </div>
           ) : category !== "all" ? (

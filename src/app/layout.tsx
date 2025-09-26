@@ -1,7 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable jsx-a11y/alt-text */
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import localFont from "next/font/local";
 import "../app/global.css";
 import { ReduxProvider } from "@providers/redux-providers";
@@ -47,12 +46,10 @@ const proxima = localFont({
   variable: "--font-proxima",
 });
 
-const inter = Inter({ subsets: ["latin"] });
-
 export const metadata: Metadata = {
   metadataBase: new URL("https://shopfeedme.com/"),
-  manifest: "/manifest.json", 
-  themeColor: "#ff6600", 
+  manifest: "/manifest.json",
+  themeColor: "#ff6600",
   appleWebApp: {
     capable: true,
     title: "FeedMe",
@@ -271,7 +268,8 @@ export default async function RootLayout({
             src="https://www.googletagmanager.com/ns.html?id=GTM-W8L93RRF"
             height="0"
             width="0"
-            style={{ display: "none", visibility: "hidden" }}></iframe>
+            style={{ display: "none", visibility: "hidden" }}
+          ></iframe>
         </noscript>
         <noscript>
           <img
@@ -290,13 +288,12 @@ export default async function RootLayout({
                 <CartMergeProvider>
                   <SupabaseAuthProvider
                     initialSession={session}
-                    initialUser={user}>
+                    initialUser={user}
+                  >
                     <CustomScrollbar>
                       <PathnameProvider hasReferralStatus={hasReferralStatus}>
                         <SignupWelcomeProvider>
-                          <NewVisitorProvider>
-                            {children}
-                          </NewVisitorProvider>
+                          <NewVisitorProvider>{children}</NewVisitorProvider>
                         </SignupWelcomeProvider>
                       </PathnameProvider>
                     </CustomScrollbar>

@@ -20,7 +20,13 @@ import { useCartQuery } from "src/queries/cart";
 import { Button } from "@components/ui/button";
 import { useUser } from "src/hooks/useUser";
 import { useRouter } from "next/navigation";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
 import { Label } from "@components/ui/label";
 
@@ -85,11 +91,13 @@ export default function ProductDetailsClient({
   cartItemId: string;
 }) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [customizationSelections, setCustomizationSelections] = useState<Record<string, string>>(() => {
+  const [customizationSelections, setCustomizationSelections] = useState<
+    Record<string, string>
+  >(() => {
     // Initialize with default values
     const defaultSelections: Record<string, string> = {};
-    product.customizations?.forEach(customization => {
-      const defaultOption = customization.options.find(opt => opt.default);
+    product.customizations?.forEach((customization) => {
+      const defaultOption = customization.options.find((opt) => opt.default);
       if (defaultOption) {
         defaultSelections[customization.id] = defaultOption.value;
       }
@@ -106,17 +114,24 @@ export default function ProductDetailsClient({
     product._id ? state.options.selectedOptions[product._id] : undefined
   );
 
-  const optionsArr = useMemo(
-    () => (Array.isArray(product.options) ? product.options : []),
-    [product.options]
-  );
+  const optionsArr = useMemo(() => {
+    // Handle both old array format and new object format for options
+    if (Array.isArray(product.options)) {
+      // Old format: options is array of variations
+      return product.options.filter(Boolean);
+    } else if (product.options && typeof product.options === "object") {
+      // New format: options is object with variations and customizations
+      return (product.options as any).variations || [];
+    }
+    return [];
+  }, [product.options]);
 
   const selectedOptionData = useMemo(() => {
     if (optionsArr.length === 0) return null;
     if (!selectedOption) {
       return optionsArr[0];
     }
-    const option = optionsArr.find((opt) => opt.name === selectedOption);
+    const option = optionsArr.find((opt: any) => opt.name === selectedOption);
     return option || optionsArr[0];
   }, [selectedOption, optionsArr]);
 
@@ -180,19 +195,27 @@ export default function ProductDetailsClient({
           <div className="mt-2 mb-1">
             <p className="text-2xl font-bold text-[#1B6013] inline-block">
               ₦
-              {Math.min(...optionsArr.map((opt) => opt.price)).toLocaleString()}{" "}
+              {Math.min(
+                ...optionsArr.map((opt: any) => opt.price)
+              ).toLocaleString()}{" "}
               - ₦
-              {Math.max(...optionsArr.map((opt) => opt.price)).toLocaleString()}
+              {Math.max(
+                ...optionsArr.map((opt: any) => opt.price)
+              ).toLocaleString()}
             </p>
             {(() => {
               const minList = Math.min(
-                ...optionsArr.map((opt) => opt.list_price ?? opt.price)
+                ...optionsArr.map((opt: any) => opt.list_price ?? opt.price)
               );
               const maxList = Math.max(
-                ...optionsArr.map((opt) => opt.list_price ?? opt.price)
+                ...optionsArr.map((opt: any) => opt.list_price ?? opt.price)
               );
-              const minPrice = Math.min(...optionsArr.map((opt) => opt.price));
-              const maxPrice = Math.max(...optionsArr.map((opt) => opt.price));
+              const minPrice = Math.min(
+                ...optionsArr.map((opt: any) => opt.price)
+              );
+              const maxPrice = Math.max(
+                ...optionsArr.map((opt: any) => opt.price)
+              );
               if (minList > minPrice || maxList > maxPrice) {
                 return (
                   <span className="ml-2 text-lg text-gray-400 line-through align-middle">
@@ -270,30 +293,32 @@ export default function ProductDetailsClient({
             onOptionChange={handleOptionChange}
           />
         )}
-        
+
         {/* Product Customizations */}
         {product.customizations && product.customizations.length > 0 && (
           <div className="mt-4">
-            <h3 className="text-lg font-semibold mb-3">Customizations</h3>
-            <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-gray-800 mb-3">
+              Customize Your Order
+            </h3>
+            <div className="space-y-3">
               {product.customizations.map((customization) => (
-                <div key={customization.id} className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
+                <div key={customization.id}>
+                  <label className="text-xs font-medium text-gray-700 mb-2 block">
                     {customization.label}
                   </label>
-                  
+
                   {customization.type === "select" ? (
                     <Select
                       value={customizationSelections[customization.id] || ""}
-                      onValueChange={(value) => 
-                        setCustomizationSelections(prev => ({
+                      onValueChange={(value) =>
+                        setCustomizationSelections((prev) => ({
                           ...prev,
-                          [customization.id]: value
+                          [customization.id]: value,
                         }))
                       }
                     >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select an option" />
+                      <SelectTrigger className="w-full h-9 text-sm">
+                        <SelectValue placeholder="Select option" />
                       </SelectTrigger>
                       <SelectContent>
                         {customization.options.map((option) => (
@@ -306,24 +331,32 @@ export default function ProductDetailsClient({
                   ) : (
                     <RadioGroup
                       value={customizationSelections[customization.id] || ""}
-                      onValueChange={(value) => 
-                        setCustomizationSelections(prev => ({
+                      onValueChange={(value) =>
+                        setCustomizationSelections((prev) => ({
                           ...prev,
-                          [customization.id]: value
+                          [customization.id]: value,
                         }))
                       }
-                      className="flex flex-wrap gap-4"
+                      className="flex flex-wrap gap-2"
                     >
                       {customization.options.map((option) => (
-                        <div key={option.value} className="flex items-center space-x-2">
-                          <RadioGroupItem value={option.value} id={`${customization.id}-${option.value}`} />
-                          <Label 
-                            htmlFor={`${customization.id}-${option.value}`}
-                            className="text-sm text-gray-700 cursor-pointer"
-                          >
-                            {option.label}
-                          </Label>
-                        </div>
+                        <Label
+                          key={option.value}
+                          htmlFor={`${customization.id}-${option.value}`}
+                          className={`flex items-center px-3 py-1.5 rounded-md border text-xs cursor-pointer transition-colors ${
+                            customizationSelections[customization.id] ===
+                            option.value
+                              ? "border-[#F0800F] bg-orange-50 text-[#F0800F]"
+                              : "border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300"
+                          }`}
+                        >
+                          <RadioGroupItem
+                            value={option.value}
+                            id={`${customization.id}-${option.value}`}
+                            className="mr-2 w-3 h-3"
+                          />
+                          {option.label}
+                        </Label>
                       ))}
                     </RadioGroup>
                   )}
