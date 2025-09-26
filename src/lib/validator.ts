@@ -84,7 +84,7 @@ export const OptionSchema = z.object({
     .optional(),
   stockStatus: z.enum(["In Stock", "Out of Stock"], {
     required_error: "Stock status is required",
-  }).optional(),
+  }),
   image: z.union([
     z.instanceof(File, { message: "Image must be a File" })
       .refine((file) => file.size <= 5 * 1024 * 1024, {
