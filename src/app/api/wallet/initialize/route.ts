@@ -149,12 +149,12 @@ export const POST = authMiddleware(
       // Save transaction with type-specific data
       const transactionRecord: any = {
         user_id,
-        transaction_id: orderId,
+        transaction_id: transactionData.data.reference,
         amount,
         currency: "NGN",
         payment_status: "pending",
-        reference: orderId,
-        order_id: orderId,
+        reference: transactionData.data.reference,
+        order_id: orderId || null,
       };
 
      
