@@ -106,13 +106,10 @@ export async function registerUser(userData: {
     if (voucherError) {
       console.error('Failed to create welcome voucher:', voucherError);
       // Don't fail registration for voucher errors, but log it
-    } else {
-      console.log('Welcome voucher created successfully:', voucherData);
     }
 
     // Send welcome email (async, don't block registration)
     try {
-      console.log('Attempting to send welcome email to:', userData.email);
       const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/email/send-welcome`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -125,7 +122,6 @@ export async function registerUser(userData: {
       });
       
       const emailResult = await emailResponse.json();
-      console.log('Email API response:', emailResult);
       
       if (!emailResponse.ok) {
         throw new Error(`Email API error: ${emailResult.error || 'Unknown error'}`);

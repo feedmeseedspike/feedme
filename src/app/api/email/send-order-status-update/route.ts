@@ -10,6 +10,8 @@ interface OrderStatusUpdateEmailRequest {
     title: string;
     price: number;
     quantity: number;
+    optionName?: string;
+    customizations?: Record<string, any>;
   }>;
   deliveryAddress?: string;
   estimatedDelivery?: string;
@@ -18,7 +20,6 @@ interface OrderStatusUpdateEmailRequest {
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as OrderStatusUpdateEmailRequest;
-    console.log('📧 Order status update email request:', body);
     
     const { userEmail, orderNumber, customerName, newStatus, itemsOrdered, deliveryAddress, estimatedDelivery } = body;
 
@@ -86,9 +87,17 @@ export async function POST(req: Request) {
           <div style="background: #f9f9f9; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
             <h3 style="color: #333; margin: 0 0 12px 0; font-size: 16px;">Your Items:</h3>
             ${itemsOrdered.map(item => `
-              <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #eee; margin-bottom: 8px;">
-                <span style="color: #333;">${item.title} (${item.quantity}x)</span>
-                <span style="color: #666;">₦${item.price.toLocaleString()}</span>
+              <div style="padding: 4px 0; border-bottom: 1px solid #eee; margin-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: #333;">${item.title} (${item.quantity}x)</span>
+                  <span style="color: #666;">₦${item.price.toLocaleString()}</span>
+                </div>
+                ${item.optionName ? `<div style="font-size: 12px; color: #888; margin-top: 2px;">Variation: ${item.optionName}</div>` : ''}
+                ${item.customizations && Object.keys(item.customizations).length > 0 ? 
+                  Object.entries(item.customizations).map(([key, value]: [string, any]) => 
+                    `<div style="font-size: 12px; color: #888; margin-top: 1px;">• ${key.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}: ${value.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}</div>`
+                  ).join('') : ''
+                }
               </div>
             `).join('')}
           </div>
@@ -120,7 +129,6 @@ export async function POST(req: Request) {
       </div>
     `;
 
-    console.log('📤 Sending order status update email...');
 
     await sendMail({
       to: userEmail,
@@ -128,7 +136,7 @@ export async function POST(req: Request) {
       html: userHtml,
     });
     
-    console.log('✅ Order status update email sent successfully');
+    
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

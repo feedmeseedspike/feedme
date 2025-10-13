@@ -13,7 +13,6 @@ export const POST = authMiddleware(
       const { email, amount, orderDetails } = await request.json();
 
       if (!email || !amount || !orderDetails) {
-        console.log({ email, amount, orderDetails });
         return NextResponse.json(
           { message: "Missing required fields" },
           { status: 400 }
@@ -52,7 +51,6 @@ export const POST = authMiddleware(
         .eq("user_id", user_id)
         .single();
       if (profileError || !profile) {
-        console.log({ profileError });
         return NextResponse.json(
           { message: "User profile not found for order creation." },
           { status: 400 }
@@ -126,6 +124,8 @@ export const POST = authMiddleware(
           title,
           price: item.price || 0,
           quantity: item.quantity,
+          optionName: item.option?.name || undefined,
+          customizations: item.option?.customizations || undefined,
         };
       });
 
@@ -144,43 +144,8 @@ export const POST = authMiddleware(
       const deliveryFee = order.delivery_fee || 0;
       const totalAmount = order.total_amount || 0;
       const totalAmountPaid = order.total_amount_paid || 0;
-      const serviceCharge = 0; // Set this as needed
+      const serviceCharge = 0;
 
-      // Send order confirmation emails (admin and customer)
-      try {
-        const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/email/send-order-confirmation`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            adminEmail: "orders.feedmeafrica@gmail.com",
-            userEmail: email,
-            adminOrderProps: {
-              orderNumber: orderid,
-              customerName,
-              customerPhone,
-              itemsOrdered,
-              deliveryAddress,
-              localGovernment,
-            },
-            userOrderProps: {
-              orderNumber: orderid,
-              customerName,
-              customerPhone,
-              itemsOrdered,
-              deliveryAddress,
-              deliveryFee,
-              serviceCharge,
-              totalAmount,
-              totalAmountPaid,
-            },
-          }),
-        });
-
-        const emailData = await emailResponse.json();
-        console.log('Order email response:', emailData);
-      } catch (emailError) {
-        console.error('Failed to send order emails:', emailError);
-      }
 
       return NextResponse.json({
         success: true,

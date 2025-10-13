@@ -105,7 +105,7 @@ const ProductDetails = async (props: {
   const user = await getUser();
   const product: ProductType = await getProductBySlug(slug);
 
-  if (!product) {
+  if (!product || (product.slug && product.slug !== slug)) {
     return notFound();
   }
 
