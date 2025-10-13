@@ -45,6 +45,8 @@ export async function updateOrderStatusAction(orderId: string, newStatus: Databa
         title: item.products?.name || item.bundles?.name || "Product",
         price: item.price || 0,
         quantity: item.quantity || 1,
+        optionName: item.option?.name || undefined,
+        customizations: item.option?.customizations || undefined,
       })) || [];
 
       // Parse shipping address
@@ -73,8 +75,6 @@ export async function updateOrderStatusAction(orderId: string, newStatus: Databa
         const emailResult = await response.json();
         if (!emailResult.success) {
           console.error("Email notification failed:", emailResult.error);
-        } else {
-          console.log(`✅ Status update email sent for order ${order.order_id}`);
         }
       }
     } catch (emailError) {

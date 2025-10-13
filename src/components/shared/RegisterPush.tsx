@@ -11,18 +11,14 @@ interface RegisterPushProps {
 
 export default function RegisterPush({ userId }: RegisterPushProps) {
   const supabase = createClient();
-  console.log("userIds => ", userId);
   useEffect(() => {
-    console.log("effect started");
     const registerPush = async () => {
       try {
         const permission = await Notification.requestPermission();
-        console.log("permission ", permission);
         const { data: tokens, error: tokenError } = await supabase
           .from("fcm_tokens" as any)
           .select("fcm_token, device_type, user_id")
           .eq("user_id", userId);
-        console.log({ tokens }, { tokenError });
         const first = !tokens
           ? []
           : tokens
@@ -32,7 +28,6 @@ export default function RegisterPush({ userId }: RegisterPushProps) {
           const token = await getToken(messaging as any, {
             vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY!,
           });
-          console.log({ token, first });
           if (token && first.length === 0) {
             const { error } = await supabase.from("fcm_tokens" as any).upsert({
               user_id: userId,
@@ -42,7 +37,6 @@ export default function RegisterPush({ userId }: RegisterPushProps) {
             if (error) {
               console.error("Error saving FCM token:", error);
             } else {
-              console.log("FCM token saved:", token);
             }
           }
         } else {
@@ -56,7 +50,6 @@ export default function RegisterPush({ userId }: RegisterPushProps) {
     registerPush();
 
     const unsubscribe = onMessage(messaging as any, (payload: any) => {
-      console.log("Received foreground message:", payload);
       const { title, body } = payload.notification;
 
       // Option 1: Show system notification

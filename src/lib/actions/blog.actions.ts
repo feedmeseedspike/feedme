@@ -271,14 +271,13 @@ export async function updateBlogPost(postId: string, postData: Partial<BlogPost>
   // Use service role for admin operations to bypass RLS
   const supabase = createServiceRoleClient();
   
-  console.log("updateBlogPost called with ID:", postId);
-  console.log("Original postData:", JSON.stringify(postData, null, 2));
+  
   
   // Don't auto-generate slug for existing posts to avoid conflicts
   // Only update slug if explicitly provided and different from auto-generated
   if (postData.title) {
     const autoSlug = slugify(postData.title, { lower: true, strict: true });
-    console.log("Auto-generated slug would be:", autoSlug);
+    
     // Don't update slug automatically - keep the original slug
     delete postData.slug;
   }
@@ -287,13 +286,13 @@ export async function updateBlogPost(postId: string, postData: Partial<BlogPost>
   if (postData.content) {
     const wordCount = postData.content.replace(/<[^>]*>/g, '').split(' ').length;
     postData.reading_time = Math.ceil(wordCount / 200);
-    console.log("Calculated reading time:", postData.reading_time);
+    
   }
   
   // Set published_at if status changes to published
   if (postData.status === 'published') {
     postData.published_at = new Date().toISOString();
-    console.log("Set published_at:", postData.published_at);
+    
   }
   
   // Clean up the data - remove empty strings and null values that might cause issues
@@ -307,7 +306,7 @@ export async function updateBlogPost(postId: string, postData: Partial<BlogPost>
     })
   );
   
-  console.log("Final cleaned update data:", JSON.stringify(cleanedData, null, 2));
+  
   
   // First verify the post exists with this ID
   const { data: existingCheck, error: checkError } = await supabase
@@ -316,7 +315,7 @@ export async function updateBlogPost(postId: string, postData: Partial<BlogPost>
     .eq("id", postId)
     .single();
   
-  console.log("Post existence check - data:", existingCheck, "error:", checkError);
+  
   
   if (checkError || !existingCheck) {
     throw new Error(`Post with ID ${postId} does not exist in database`);
@@ -328,7 +327,7 @@ export async function updateBlogPost(postId: string, postData: Partial<BlogPost>
     .eq("id", postId)
     .select();
   
-  console.log("Supabase update result - data:", data, "error:", error);
+  
   
   if (error) {
     console.error("Supabase update error:", error);
@@ -340,7 +339,7 @@ export async function updateBlogPost(postId: string, postData: Partial<BlogPost>
     throw new Error("Blog post not found or could not be updated");
   }
   
-  console.log("Successfully updated blog post:", data[0].id);
+  
   return data[0] as BlogPost;
 }
 

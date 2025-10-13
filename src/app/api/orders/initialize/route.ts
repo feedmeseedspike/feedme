@@ -13,7 +13,6 @@ export const POST = authMiddleware(
       const { email, amount, orderDetails } = await request.json();
 
       if (!email || !amount || !orderDetails) {
-        console.log({ email, amount, orderDetails });
         return NextResponse.json(
           { message: "Missing required fields" },
           { status: 400 }
@@ -52,7 +51,6 @@ export const POST = authMiddleware(
         .eq("user_id", user_id)
         .single();
       if (profileError || !profile) {
-        console.log({ profileError });
         return NextResponse.json(
           { message: "User profile not found for order creation." },
           { status: 400 }
@@ -126,6 +124,8 @@ export const POST = authMiddleware(
           title,
           price: item.price || 0,
           quantity: item.quantity,
+          optionName: item.option?.name || undefined,
+          customizations: item.option?.customizations || undefined,
         };
       });
 

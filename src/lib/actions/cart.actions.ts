@@ -67,7 +67,7 @@ export async function sendOffers(data: {
       .insert([{ name: data.name, email: data.email, phone: data.phone }])
       .select();
 
-    console.log("Form data inserted:", formData);
+    
 
     if (error) throw error;
 

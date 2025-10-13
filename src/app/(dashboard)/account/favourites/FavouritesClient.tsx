@@ -1,31 +1,14 @@
 "use client";
-import React, { useState, useMemo } from "react";
-import { Card, CardContent } from "@components/ui/card";
+import React, { useState, useEffect } from "react";
 import { Button } from "@components/ui/button";
-import { Input } from "@components/ui/input";
-import { Badge } from "@components/ui/badge";
-import { Separator } from "@components/ui/separator";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { Trash2Icon, Heart } from "lucide-react";
+import { formatNaira } from "src/lib/utils";
 import Link from "next/link";
-import { formatDate, formatNaira } from "src/lib/utils";
 import { useToast } from "src/hooks/useToast";
-import {
-  Heart,
-  Search,
-  Filter,
-  Grid3X3,
-  List,
-  ShoppingCart,
-  Trash2,
-  Package,
-  Star,
-  Calendar,
-  Tag,
-  Eye,
-  X,
-  Menu,
-} from "lucide-react";
-import { toast } from "sonner";
+import Container from "@components/shared/Container";
+import CustomBreadcrumb from "@components/shared/breadcrumb";
 
 interface FavouritesClientProps {
   user: any;
@@ -39,566 +22,232 @@ const FavouritesClient: React.FC<FavouritesClientProps> = ({
   favoriteProducts,
 }) => {
   const { showToast } = useToast();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [sortBy, setSortBy] = useState("date-newest");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [showFilters, setShowFilters] = useState(false);
+  const router = useRouter();
   const [products, setProducts] = useState<any[]>(favoriteProducts);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
-  // Filter and sort products
-  const filteredAndSortedProducts = useMemo(() => {
-    if (!products) return [];
-    let filtered = products.filter((product) => {
-      const matchesSearch =
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.brand?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory =
-        selectedCategory === "all" || product.category === selectedCategory;
-      return matchesSearch && matchesCategory;
-    });
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "date-newest":
-          return (
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          );
-        case "date-oldest":
-          return (
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          );
-        case "price-low-high":
-          return a.price - b.price;
-        case "price-high-low":
-          return b.price - a.price;
-        case "name-a-z":
-          return a.name.localeCompare(b.name);
-        case "name-z-a":
-          return b.name.localeCompare(a.name);
-        default:
-          return 0;
-      }
-    });
-    return filtered;
-  }, [products, searchTerm, selectedCategory, sortBy]);
-
-  // Get unique categories
-  const categories = useMemo(() => {
-    if (!products) return [];
-    const uniqueCategories = [
-      ...new Set(products.map((product) => product.category)),
-    ];
-    return uniqueCategories.filter(Boolean);
-  }, [products]);
+  useEffect(() => {
+    setProducts(favoriteProducts);
+  }, [favoriteProducts]);
 
   const handleRemoveFavorite = async (productId: string) => {
     try {
       setRemovingId(productId);
-      // Simulate API call delay
-      setTimeout(() => {
-        setProducts((prev) => prev.filter((p) => p.id !== productId));
-        setRemovingId(null);
-        toast.success("Product removed from favorites");
-      }, 800);
+
+      const { removeFromFavorite } = await import(
+        "src/lib/actions/favourite.actions"
+      );
+      const result = await removeFromFavorite(productId);
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      setProducts((prev) => prev.filter((p) => p.id !== productId));
+      setRemovingId(null);
+      showToast("Product removed from favorites", "success");
     } catch (error: any) {
       setRemovingId(null);
-      toast.error(error.message || "Failed to remove from favorites");
+      showToast(error.message || "Failed to remove from favorites", "error");
     }
   };
 
+  const getProductPrice = (product: any) => {
+    if (
+      product.options &&
+      Array.isArray(product.options) &&
+      product.options.length > 0
+    ) {
+      const prices = product.options
+        .filter((option: any) => option.price && option.price > 0)
+        .map((option: any) => option.price);
+
+      if (prices.length > 0) {
+        const minPrice = Math.min(...prices);
+        const maxPrice = Math.max(...prices);
+        return minPrice === maxPrice
+          ? minPrice
+          : `${formatNaira(minPrice)} - ${formatNaira(maxPrice)}`;
+      }
+    }
+
+    return product.price || product.list_price || 0;
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-2 sm:p-4 md:p-6">
-      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
-        {/* Header Section */}
-        <Card className="border-0 shadow-lg bg-[#1B6013]">
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-white">
-              <div className="flex items-center gap-3">
-                <Heart className="w-6 h-6 sm:w-8 sm:h-8" />
+    <>
+      {/* <div className="bg-white py-4 shadow-sm border-b border-gray-100">
+        <Container>
+          <CustomBreadcrumb />
+        </Container>
+      </div> */}
+
+      <div className="min-h-screen bg-gray-50">
+        <Container className="py-6">
+          {products.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24">
+              <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                <Heart className="w-12 h-12 text-primary" />
+              </div>
+              <h2 className="text-2xl font-semibold text-primary mb-2">
+                No favorites yet
+              </h2>
+              <p className="text-muted-foreground mb-8">
+                Start adding products you love to your favorites!
+              </p>
+              <Link href="/">
+                <Button className="bg-[#1B6013] text-primary-foreground px-8 py-3 rounded-xl shadow-lg hover:bg-[#1B6013]/90 font-semibold">
+                  Start Shopping
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">
+                  <h1 className="text-3xl font-bold text-gray-900">
                     My Favorites
                   </h1>
-                  <p className="text-sm sm:text-base text-white/90">
-                    Products you love
+                  <p className="text-gray-600 mt-1">
+                    {products.length} {products.length === 1 ? "item" : "items"}{" "}
+                    saved
                   </p>
                 </div>
               </div>
-              <div className="text-left sm:text-right">
-                <div className="text-2xl sm:text-3xl font-bold">
-                  {filteredAndSortedProducts.length}
-                </div>
-                <div className="text-sm text-white/90">
-                  {filteredAndSortedProducts.length === 1
-                    ? "Product"
-                    : "Products"}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Search Bar - Always Visible */}
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-4 sm:p-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Search favorites..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 h-10 sm:h-12 border-gray-200 focus:border-[#1B6013] focus:ring-[#1B6013]/20"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Filters and Controls */}
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-4 sm:p-6">
-            {/* Mobile Filter Toggle */}
-            <div className="flex items-center justify-between mb-4 sm:hidden">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2"
-              >
-                <Menu className="w-4 h-4" />
-                Filters
-              </Button>
-
-              {/* View Mode Toggle - Mobile */}
-              <div className="flex border border-gray-200 rounded-lg overflow-hidden">
-                <Button
-                  variant={viewMode === "grid" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("grid")}
-                  className={`px-2 ${
-                    viewMode === "grid" ? "bg-[#1B6013] hover:bg-green-700" : ""
-                  }`}
-                >
-                  <Grid3X3 className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant={viewMode === "list" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("list")}
-                  className={`px-2 ${
-                    viewMode === "list" ? "bg-[#1B6013] hover:bg-green-700" : ""
-                  }`}
-                >
-                  <List className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Desktop Controls */}
-            <div className="hidden sm:flex flex-wrap gap-3 items-center justify-between">
-              <div className="flex flex-wrap gap-3 items-center">
-                {/* Category Filter */}
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-gray-600" />
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="px-3 py-2 border border-gray-200 rounded-lg focus:border-[#1B6013] focus:ring-[#1B6013]/20 text-sm"
-                  >
-                    <option value="all">All Categories</option>
-                    {categories.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
+              {/* Desktop Table (hidden on mobile) */}
+              <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-200 bg-white">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Product
+                      </th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Price
+                      </th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {products.map((product) => (
+                      <tr key={product.id}>
+                        <td className="px-6 py-4 whitespace-nowrap flex items-center gap-4">
+                          <button
+                            className="text-gray-400 hover:text-red-500 focus:outline-none mr-2"
+                            onClick={() => handleRemoveFavorite(product.id)}
+                            disabled={removingId === product.id}
+                            aria-label="Remove from favorites"
+                          >
+                            {removingId === product.id ? (
+                              <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <Trash2Icon className="w-4 h-4" />
+                            )}
+                          </button>
+                          <Link href={`/product/${product.slug}`}>
+                            <Image
+                              width={60}
+                              height={60}
+                              src={product.images?.[0] || "/placeholder.png"}
+                              alt={product.name}
+                              className="h-14 w-14 rounded border border-gray-200"
+                            />
+                          </Link>
+                          <div>
+                            <div className="font-semibold text-gray-900 text-sm">
+                              {product.name}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-900">
+                          {typeof getProductPrice(product) === "string"
+                            ? getProductPrice(product)
+                            : formatNaira(getProductPrice(product))}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <Link href={`/product/${product.slug}`}>
+                            <Button
+                              size="sm"
+                              className="bg-[#1B6013] hover:bg-[#1B6013]/90 text-white"
+                            >
+                              View Product
+                            </Button>
+                          </Link>
+                        </td>
+                      </tr>
                     ))}
-                  </select>
-                </div>
-
-                {/* Sort */}
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="px-3 py-2 border border-gray-200 rounded-lg focus:border-[#1B6013] focus:ring-[#1B6013]/20 text-sm"
-                >
-                  <option value="date-newest">Date: Newest first</option>
-                  <option value="date-oldest">Date: Oldest first</option>
-                  <option value="price-low-high">Price: Low to High</option>
-                  <option value="price-high-low">Price: High to Low</option>
-                  <option value="name-a-z">Name: A to Z</option>
-                  <option value="name-z-a">Name: Z to A</option>
-                </select>
+                  </tbody>
+                </table>
               </div>
 
-              {/* View Mode Toggle - Desktop */}
-              <div className="flex border border-gray-200 rounded-lg overflow-hidden">
-                <Button
-                  variant={viewMode === "grid" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("grid")}
-                  className={
-                    viewMode === "grid" ? "bg-[#1B6013] hover:bg-green-700" : ""
-                  }
-                >
-                  <Grid3X3 className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant={viewMode === "list" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("list")}
-                  className={
-                    viewMode === "list" ? "bg-[#1B6013] hover:bg-green-700" : ""
-                  }
-                >
-                  <List className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Mobile Filters - Collapsible */}
-            {showFilters && (
-              <div className="sm:hidden space-y-3 mt-4 pt-4 border-t border-gray-200">
-                {/* Category Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Category
-                  </label>
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-[#1B6013] focus:ring-[#1B6013]/20 text-sm"
+              {/* Mobile Favorites Items (shown only on mobile) */}
+              <div className="md:hidden space-y-4">
+                {products.map((product) => (
+                  <div
+                    key={product.id}
+                    className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm"
                   >
-                    <option value="all">All Categories</option>
-                    {categories.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-start gap-3">
+                        <Link
+                          href={`/product/${product.slug}`}
+                          className="shrink-0"
+                        >
+                          <Image
+                            width={80}
+                            height={80}
+                            src={product.images?.[0] || "/placeholder.png"}
+                            alt={product.name}
+                            className="h-16 w-16 rounded border border-gray-200"
+                          />
+                        </Link>
+                        <div>
+                          <div className="font-semibold text-gray-900 text-sm">
+                            {product.name}
+                          </div>
+                          <div className="text-sm text-gray-600 mt-1">
+                            {typeof getProductPrice(product) === "string"
+                              ? getProductPrice(product)
+                              : formatNaira(getProductPrice(product))}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveFavorite(product.id)}
+                        disabled={removingId === product.id}
+                        className="text-gray-400 hover:text-red-500"
+                        aria-label="Remove from favorites"
+                      >
+                        {removingId === product.id ? (
+                          <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Trash2Icon className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
 
-                {/* Sort */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Sort By
-                  </label>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-[#1B6013] focus:ring-[#1B6013]/20 text-sm"
-                  >
-                    <option value="date-newest">Date: Newest first</option>
-                    <option value="date-oldest">Date: Oldest first</option>
-                    <option value="price-low-high">Price: Low to High</option>
-                    <option value="price-high-low">Price: High to Low</option>
-                    <option value="name-a-z">Name: A to Z</option>
-                    <option value="name-z-a">Name: Z to A</option>
-                  </select>
-                </div>
+                    <div className="flex justify-between items-center mt-3">
+                      <Link href={`/product/${product.slug}`}>
+                        <Button
+                          size="sm"
+                          className="bg-[#1B6013] hover:bg-[#1B6013]/90 text-white"
+                        >
+                          View Product
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                ))}
               </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Content */}
-        {filteredAndSortedProducts.length > 0 ? (
-          <div
-            className={
-              viewMode === "grid"
-                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 md:gap-4"
-                : "space-y-3 sm:space-y-4"
-            }
-          >
-            {filteredAndSortedProducts.map((product) =>
-              viewMode === "grid" ? (
-                <ProductGridCard
-                  key={product.id}
-                  product={product}
-                  onRemove={handleRemoveFavorite}
-                  isRemoving={removingId === product.id}
-                />
-              ) : (
-                <ProductListCard
-                  key={product.id}
-                  product={product}
-                  onRemove={handleRemoveFavorite}
-                  isRemoving={removingId === product.id}
-                />
-              )
-            )}
-          </div>
-        ) : (
-          <EmptyFavoritesState />
-        )}
-      </div>
-    </div>
-  );
-};
-
-// Product Grid Card Component
-const ProductGridCard = ({
-  product,
-  onRemove,
-  isRemoving,
-}: {
-  product: any;
-  onRemove: (id: string) => void;
-  isRemoving: boolean;
-}) => (
-  <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-    <div className="relative">
-      <div className="aspect-square relative overflow-hidden rounded-t-lg">
-        <Image
-          src={product.images?.[0] || "/placeholder-product.jpg"}
-          alt={product.name}
-          className="object-cover group-hover:scale-105 transition-transform duration-300 w-full h-full"
-          width={400}
-          height={400}
-          priority={true}
-        />
-        <div className="absolute top-2 right-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onRemove(product.id)}
-            disabled={isRemoving}
-            className="bg-white/90 hover:bg-white text-red-500 hover:text-red-600 rounded-full p-1.5 h-auto w-auto"
-          >
-            {isRemoving ? (
-              <div className="w-3 h-3 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <X className="w-3 h-3" />
-            )}
-          </Button>
-        </div>
-        {product.stockStatus === "Out of Stock" && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <Badge variant="destructive" className="text-xs">
-              Out of Stock
-            </Badge>
-          </div>
-        )}
-      </div>
-    </div>
-
-    <CardContent className="p-3 sm:p-4 space-y-2 sm:space-y-3">
-      <div>
-        <h3 className="font-semibold text-sm sm:text-base text-gray-800 line-clamp-2 group-hover:text-[#1B6013] transition-colors">
-          {product.name}
-        </h3>
-        {product.brand && (
-          <p className="text-xs sm:text-sm text-gray-500 truncate">
-            {product.brand}
-          </p>
-        )}
-      </div>
-
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1">
-          <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-yellow-400 text-yellow-400" />
-          <span className="text-xs sm:text-sm font-medium">
-            {product.avgRating || 0}
-          </span>
-        </div>
-        <span className="text-xs text-gray-500">
-          ({product.numReviews || 0})
-        </span>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <div className="text-sm sm:text-lg font-bold text-[#1B6013]">
-          {formatNaira(product.price)}
-        </div>
-        <Badge
-          variant={
-            product.stockStatus === "In Stock" ? "default" : "destructive"
-          }
-          className="text-xs"
-        >
-          {product.stockStatus}
-        </Badge>
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-2 pt-2">
-        <Link href={`/product/${product.slug}`} className="flex-1">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full text-xs sm:text-sm h-8 sm:h-9"
-          >
-            <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-            View
-          </Button>
-        </Link>
-        <Button
-          size="sm"
-          className="flex-1 bg-[#1B6013] hover:bg-green-700 text-xs sm:text-sm h-8 sm:h-9"
-          disabled={product.stockStatus === "Out of Stock"}
-        >
-          <ShoppingCart className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-          <span className="hidden sm:inline">Add to Cart</span>
-          <span className="sm:hidden">Add</span>
-        </Button>
-      </div>
-
-      <div className="text-xs text-gray-500 flex items-center gap-1">
-        <Calendar className="w-3 h-3" />
-        <span className="truncate">Added {formatDate(product.created_at)}</span>
-      </div>
-    </CardContent>
-  </Card>
-);
-
-// Product List Card Component
-const ProductListCard = ({
-  product,
-  onRemove,
-  isRemoving,
-}: {
-  product: any;
-  onRemove: (id: string) => void;
-  isRemoving: boolean;
-}) => (
-  <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-    <CardContent className="p-3 sm:p-4 md:p-6">
-      <div className="flex gap-3 sm:gap-4 md:gap-6">
-        <div className="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-lg overflow-hidden flex-shrink-0">
-          <Image
-            src={product.images?.[0] || "/placeholder-product.jpg"}
-            alt={product.name}
-            className="object-cover w-full h-full"
-            width={100}
-            height={100}
-            priority={true}
-          />
-          {product.stockStatus === "Out of Stock" && (
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-              <Badge variant="destructive" className="text-xs">
-                Out of Stock
-              </Badge>
             </div>
           )}
-        </div>
-
-        <div className="flex-1 space-y-1 sm:space-y-2 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <h3 className="font-semibold text-sm sm:text-base text-gray-800 hover:text-[#1B6013] transition-colors line-clamp-2">
-                {product.name}
-              </h3>
-              {product.brand && (
-                <p className="text-xs sm:text-sm text-gray-500 truncate">
-                  {product.brand}
-                </p>
-              )}
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onRemove(product.id)}
-              disabled={isRemoving}
-              className="text-red-500 hover:text-red-600 hover:bg-red-50 p-1 h-auto w-auto flex-shrink-0"
-            >
-              {isRemoving ? (
-                <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
-              )}
-            </Button>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-            <div className="flex items-center gap-1">
-              <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-yellow-400 text-yellow-400" />
-              <span className="text-xs sm:text-sm font-medium">
-                {product.avgRating || 0}
-              </span>
-              <span className="text-xs text-gray-500">
-                ({product.numReviews || 0})
-              </span>
-            </div>
-            <Badge
-              variant={
-                product.stockStatus === "In Stock" ? "default" : "destructive"
-              }
-              className="text-xs"
-            >
-              {product.stockStatus}
-            </Badge>
-            {product.category && (
-              <Badge
-                variant="outline"
-                className="flex items-center gap-1 text-xs"
-              >
-                <Tag className="w-2 h-2 sm:w-3 sm:h-3" />
-                <span className="truncate max-w-20 sm:max-w-none">
-                  {product.category}
-                </span>
-              </Badge>
-            )}
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-            <div className="text-lg sm:text-xl font-bold text-[#1B6013]">
-              {formatNaira(product.price)}
-            </div>
-            <div className="flex gap-2 w-full sm:w-auto">
-              <Link
-                href={`/product/${product.slug}`}
-                className="flex-1 sm:flex-none"
-              >
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full sm:w-auto text-xs sm:text-sm"
-                >
-                  <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                  <span className="hidden sm:inline">View Product</span>
-                  <span className="sm:hidden">View</span>
-                </Button>
-              </Link>
-              <Button
-                size="sm"
-                className="flex-1 sm:flex-none bg-[#1B6013] hover:bg-green-700 text-xs sm:text-sm"
-                disabled={product.stockStatus === "Out of Stock"}
-              >
-                <ShoppingCart className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                <span className="hidden sm:inline">Add to Cart</span>
-                <span className="sm:hidden">Add</span>
-              </Button>
-            </div>
-          </div>
-
-          <div className="text-xs text-gray-500 flex items-center gap-1">
-            <Calendar className="w-3 h-3" />
-            <span className="truncate">
-              Added on {formatDate(product.created_at)}
-            </span>
-          </div>
-        </div>
+        </Container>
       </div>
-    </CardContent>
-  </Card>
-);
-
-// Empty State Component
-const EmptyFavoritesState = () => (
-  <Card className="border-0 shadow-lg">
-    <CardContent className="p-6 sm:p-12 text-center">
-      <Heart className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
-      <h3 className="text-lg sm:text-xl font-semibold text-gray-600 mb-2">
-        No Favorites Yet
-      </h3>
-      <p className="text-sm sm:text-base text-gray-500 mb-6">
-        Start adding products to your favorites to see them here
-      </p>
-      <Link href="/">
-        <Button className="bg-[#1B6013] hover:bg-green-700">
-          <Package className="w-4 h-4 mr-2" />
-          Browse Products
-        </Button>
-      </Link>
-    </CardContent>
-  </Card>
-);
+    </>
+  );
+};
 
 export default FavouritesClient;

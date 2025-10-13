@@ -836,6 +836,12 @@ const CheckoutForm = ({
                 title: item.products?.name || item.bundles?.name || "",
                 price: item.price,
                 quantity: item.quantity,
+                optionName: isProductOption(item.option)
+                  ? item.option.name
+                  : undefined,
+                customizations: isProductOption(item.option)
+                  ? (item.option as any).customizations
+                  : undefined,
               })),
               deliveryAddress: shippingAddressForm.getValues().street,
               localGovernment: shippingAddressForm.getValues().location,
