@@ -20,7 +20,13 @@ import { useCartQuery } from "src/queries/cart";
 import { Button } from "@components/ui/button";
 import { useUser } from "src/hooks/useUser";
 import { useRouter } from "next/navigation";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
 import { Label } from "@components/ui/label";
 
@@ -85,11 +91,13 @@ export default function ProductDetailsClient({
   cartItemId: string;
 }) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [customizationSelections, setCustomizationSelections] = useState<Record<string, string>>(() => {
+  const [customizationSelections, setCustomizationSelections] = useState<
+    Record<string, string>
+  >(() => {
     // Initialize with default values
     const defaultSelections: Record<string, string> = {};
-    product.customizations?.forEach(customization => {
-      const defaultOption = customization.options.find(opt => opt.default);
+    product.customizations?.forEach((customization) => {
+      const defaultOption = customization.options.find((opt) => opt.default);
       if (defaultOption) {
         defaultSelections[customization.id] = defaultOption.value;
       }
@@ -178,49 +186,83 @@ export default function ProductDetailsClient({
         {/* Product Price */}
         {optionsArr.length > 1 ? (
           <div className="mt-2 mb-1">
-            <p className="text-2xl font-bold text-[#1B6013] inline-block">
+            <p className="text-2xl font-bold text-[#1B6013]">
               ₦
               {Math.min(...optionsArr.map((opt) => opt.price)).toLocaleString()}{" "}
               - ₦
               {Math.max(...optionsArr.map((opt) => opt.price)).toLocaleString()}
             </p>
-            {(() => {
-              const minList = Math.min(
-                ...optionsArr.map((opt) => opt.list_price ?? opt.price)
-              );
-              const maxList = Math.max(
-                ...optionsArr.map((opt) => opt.list_price ?? opt.price)
-              );
-              const minPrice = Math.min(...optionsArr.map((opt) => opt.price));
-              const maxPrice = Math.max(...optionsArr.map((opt) => opt.price));
-              if (minList > minPrice || maxList > maxPrice) {
-                return (
-                  <span className="ml-2 text-lg text-gray-400 line-through align-middle">
-                    ₦{minList.toLocaleString()} - ₦{maxList.toLocaleString()}
-                  </span>
+            <div className="mt-1">
+              {(() => {
+                const minList = Math.min(
+                  ...optionsArr.map((opt) => opt.list_price ?? opt.price)
                 );
-              }
-              return null;
-            })()}
+                const maxList = Math.max(
+                  ...optionsArr.map((opt) => opt.list_price ?? opt.price)
+                );
+                const minPrice = Math.min(
+                  ...optionsArr.map((opt) => opt.price)
+                );
+                const maxPrice = Math.max(
+                  ...optionsArr.map((opt) => opt.price)
+                );
+                const showList = minList > minPrice || maxList > maxPrice;
+                const discounts = optionsArr
+                  .map((opt) => {
+                    const lp =
+                      typeof opt.list_price === "number" ? opt.list_price : 0;
+                    const p = opt.price;
+                    if (lp > p && p > 0) {
+                      return Math.round(100 - (p / lp) * 100);
+                    }
+                    return 0;
+                  })
+                  .filter((d) => d > 0);
+                const maxDiscount =
+                  discounts.length > 0 ? Math.max(...discounts) : 0;
+                if (!showList && maxDiscount === 0) return null;
+                return (
+                  <div className="flex items-center gap-2">
+                    {showList && (
+                      <span className="text-sm text-gray-500 line-through">
+                        ₦{minList.toLocaleString()} - ₦
+                        {maxList.toLocaleString()}
+                      </span>
+                    )}
+                    {maxDiscount > 0 && (
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded bg-red-50 text-red-600">
+                        Up to -{maxDiscount}%
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
           </div>
         ) : (
           <div className="mt-2 mb-1">
-            <p className="text-2xl font-bold text-[#1B6013] inline-block">
+            <p className="text-2xl font-bold text-[#1B6013]">
               ₦{(selectedOptionData?.price ?? product.price).toLocaleString()}
             </p>
-            {(() => {
-              const listPrice =
-                selectedOptionData?.list_price ?? product.list_price;
-              const price = selectedOptionData?.price ?? product.price;
-              if (listPrice && listPrice > price) {
+            <div className="mt-1">
+              {(() => {
+                const listPrice =
+                  selectedOptionData?.list_price ?? product.list_price;
+                const price = selectedOptionData?.price ?? product.price;
+                if (!listPrice || listPrice <= price) return null;
+                const discount = Math.round(100 - (price / listPrice) * 100);
                 return (
-                  <span className="ml-2 text-lg text-gray-400 line-through align-middle">
-                    ₦{listPrice.toLocaleString()}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-500 line-through">
+                      ₦{listPrice.toLocaleString()}
+                    </span>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded bg-red-50 text-red-600">
+                      -{discount}%
+                    </span>
+                  </div>
                 );
-              }
-              return null;
-            })()}
+              })()}
+            </div>
           </div>
         )}
         <RatingSummary
@@ -270,7 +312,7 @@ export default function ProductDetailsClient({
             onOptionChange={handleOptionChange}
           />
         )}
-        
+
         {/* Product Customizations */}
         {product.customizations && product.customizations.length > 0 && (
           <div className="mt-4">
@@ -281,14 +323,14 @@ export default function ProductDetailsClient({
                   <label className="text-sm font-medium text-gray-700">
                     {customization.label}
                   </label>
-                  
+
                   {customization.type === "select" ? (
                     <Select
                       value={customizationSelections[customization.id] || ""}
-                      onValueChange={(value) => 
-                        setCustomizationSelections(prev => ({
+                      onValueChange={(value) =>
+                        setCustomizationSelections((prev) => ({
                           ...prev,
-                          [customization.id]: value
+                          [customization.id]: value,
                         }))
                       }
                     >
@@ -306,18 +348,24 @@ export default function ProductDetailsClient({
                   ) : (
                     <RadioGroup
                       value={customizationSelections[customization.id] || ""}
-                      onValueChange={(value) => 
-                        setCustomizationSelections(prev => ({
+                      onValueChange={(value) =>
+                        setCustomizationSelections((prev) => ({
                           ...prev,
-                          [customization.id]: value
+                          [customization.id]: value,
                         }))
                       }
                       className="flex flex-wrap gap-4"
                     >
                       {customization.options.map((option) => (
-                        <div key={option.value} className="flex items-center space-x-2">
-                          <RadioGroupItem value={option.value} id={`${customization.id}-${option.value}`} />
-                          <Label 
+                        <div
+                          key={option.value}
+                          className="flex items-center space-x-2"
+                        >
+                          <RadioGroupItem
+                            value={option.value}
+                            id={`${customization.id}-${option.value}`}
+                          />
+                          <Label
                             htmlFor={`${customization.id}-${option.value}`}
                             className="text-sm text-gray-700 cursor-pointer"
                           >

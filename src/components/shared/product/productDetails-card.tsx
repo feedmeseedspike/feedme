@@ -83,7 +83,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
     // Combined loading state
     const isLoading =
       isLoadingFavorites ||
-      (user && isLoadingCart) ||  // Only check cart loading for authenticated users
+      (user && isLoadingCart) || // Only check cart loading for authenticated users
       addFavoriteMutation.isPending ||
       removeFavoriteMutation.isPending;
 
@@ -172,7 +172,10 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
             }
           } else {
             if (existingAnonymousItem) {
-              anonymousCart.updateQuantity(existingAnonymousItem.id, newQuantity);
+              anonymousCart.updateQuantity(
+                existingAnonymousItem.id,
+                newQuantity
+              );
             } else {
               anonymousCart.addItem(
                 product.bundleId ? null : product.id,
@@ -184,7 +187,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
               );
             }
             showToast(
-              `${product.name}${selectedOptionData?.name ? ` (${selectedOptionData.name})` : ""} ${newQuantity === 1 ? 'added to' : 'updated in'} cart`,
+              `${product.name}${selectedOptionData?.name ? ` (${selectedOptionData.name})` : ""} ${newQuantity === 1 ? "added to" : "updated in"} cart`,
               "success"
             );
           }
@@ -283,7 +286,16 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
         console.error("Failed to remove cart item:", error);
         showToast("Failed to remove item from cart.", "error");
       }
-    }, [currentCartItem, user, anonymousCart, product.name, selectedOptionData, showToast, router, removeCartItemMutation]);
+    }, [
+      currentCartItem,
+      user,
+      anonymousCart,
+      product.name,
+      selectedOptionData,
+      showToast,
+      router,
+      removeCartItemMutation,
+    ]);
 
     const handleOptionChange = useCallback(
       (value: string) => {
@@ -303,17 +315,19 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       e.preventDefault();
       e.stopPropagation();
 
-
       // Check if product is out of season
       if (product.in_season === false) {
-        showToast("This product is currently out of season and cannot be added to cart", "error");
+        showToast(
+          "This product is currently out of season and cannot be added to cart",
+          "error"
+        );
         return;
       }
 
       // Immediately show quantity controls for instant UI feedback
       setShowQuantityControls(true);
       setQuantity(1);
-      
+
       // Update cart (works for both authenticated and anonymous users)
       handleUpdateCartQuantity(1);
     };
@@ -321,8 +335,14 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
     const handleQuantityChange = useCallback(
       (newQuantity: number) => {
         // Check if product is out of season and user is trying to increase quantity
-        if (product.in_season === false && newQuantity > (currentCartItem?.quantity ?? 0)) {
-          showToast("Cannot increase quantity for out of season products", "error");
+        if (
+          product.in_season === false &&
+          newQuantity > (currentCartItem?.quantity ?? 0)
+        ) {
+          showToast(
+            "Cannot increase quantity for out of season products",
+            "error"
+          );
           return;
         }
 
@@ -332,7 +352,13 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           handleUpdateCartQuantity(newQuantity);
         }
       },
-      [showToast, handleRemoveFromCart, handleUpdateCartQuantity, product.in_season, currentCartItem?.quantity]
+      [
+        showToast,
+        handleRemoveFromCart,
+        handleUpdateCartQuantity,
+        product.in_season,
+        currentCartItem?.quantity,
+      ]
     );
 
     // Handle favorite toggle
@@ -435,29 +461,29 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
               {showQuantityControls ? (
                 <motion.div
                   key="quantity-controls"
-                  initial={{ 
+                  initial={{
                     width: 40,
                     opacity: 0,
                     scale: 0.8,
-                    x: 20
+                    x: 20,
                   }}
-                  animate={{ 
+                  animate={{
                     width: "auto",
                     opacity: 1,
                     scale: 1,
-                    x: 0
+                    x: 0,
                   }}
-                  exit={{ 
+                  exit={{
                     width: 40,
                     opacity: 0,
                     scale: 0.8,
-                    x: 20
+                    x: 20,
                   }}
-                  transition={{ 
+                  transition={{
                     type: "spring",
                     stiffness: 400,
                     damping: 30,
-                    duration: 0.3
+                    duration: 0.3,
                   }}
                   className="flex items-center gap-2 bg-white rounded-full shadow-md p-1 border border-gray-100 overflow-hidden"
                 >
@@ -494,8 +520,8 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                       )}
                     </motion.div>
                   </motion.button>
-                  
-                  <motion.span 
+
+                  <motion.span
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1, type: "spring", stiffness: 400 }}
@@ -505,12 +531,16 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                     <motion.span
                       initial={{ scale: 1.3, opacity: 0.7 }}
                       animate={{ scale: 1, opacity: 1 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 400,
+                        damping: 20,
+                      }}
                     >
                       {quantity}
                     </motion.span>
                   </motion.span>
-                  
+
                   <motion.button
                     initial={{ opacity: 0, scale: 0.5 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -518,13 +548,16 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      
+
                       // Check if product is out of season
                       if (product.in_season === false) {
-                        showToast("Cannot increase quantity for out of season products", "error");
+                        showToast(
+                          "Cannot increase quantity for out of season products",
+                          "error"
+                        );
                         return;
                       }
-                      
+
                       const newQuantity = quantity + 1;
                       handleQuantityChange(newQuantity);
                     }}
@@ -536,12 +569,14 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                         : "bg-[#1B6013]/70 hover:bg-[#1B6013]/90"
                     )}
                     aria-label="Increase quantity"
-                    whileHover={{ scale: product.in_season !== false ? 1.1 : 1 }}
+                    whileHover={{
+                      scale: product.in_season !== false ? 1.1 : 1,
+                    }}
                     whileTap={{ scale: product.in_season !== false ? 0.9 : 1 }}
                   >
                     <motion.div
-                      animate={{ 
-                        rotate: product.in_season !== false ? [0, 90, 0] : 0 
+                      animate={{
+                        rotate: product.in_season !== false ? [0, 90, 0] : 0,
                       }}
                       transition={{ duration: 0.3 }}
                     >
@@ -554,17 +589,17 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                   key="add-to-cart"
                   initial={{ opacity: 0, scale: 0.8, rotate: -90 }}
                   animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                  exit={{ 
-                    opacity: 0, 
-                    scale: 0.3, 
+                  exit={{
+                    opacity: 0,
+                    scale: 0.3,
                     rotate: 180,
-                    x: -60
+                    x: -60,
                   }}
-                  transition={{ 
+                  transition={{
                     type: "spring",
                     stiffness: 300,
                     damping: 20,
-                    duration: 0.4
+                    duration: 0.4,
                   }}
                   onClick={handleAddToCartClick}
                   disabled={product.in_season === false}
@@ -574,13 +609,20 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                       ? "bg-gray-300 cursor-not-allowed opacity-50"
                       : "bg-[#1B6013]/90 hover:bg-[#1B6013] hover:shadow-lg"
                   )}
-                  aria-label={product.in_season === false ? "Product out of season" : "Add to cart"}
-                  whileHover={{ 
+                  aria-label={
+                    product.in_season === false
+                      ? "Product out of season"
+                      : "Add to cart"
+                  }
+                  whileHover={{
                     scale: product.in_season !== false ? 1.1 : 1,
-                    boxShadow: product.in_season !== false ? "0 8px 25px rgba(27, 96, 19, 0.3)" : undefined
+                    boxShadow:
+                      product.in_season !== false
+                        ? "0 8px 25px rgba(27, 96, 19, 0.3)"
+                        : undefined,
                   }}
-                  whileTap={{ 
-                    scale: product.in_season !== false ? 0.95 : 1
+                  whileTap={{
+                    scale: product.in_season !== false ? 0.95 : 1,
                   }}
                 >
                   <motion.div
@@ -590,14 +632,14 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                     transition={{
                       duration: 2,
                       repeat: Infinity,
-                      ease: "linear"
+                      ease: "linear",
                     }}
                     className="absolute inset-0 rounded-full bg-gradient-to-r from-transparent via-white/20 to-transparent"
                   />
-                  
+
                   <motion.div
                     whileHover={{
-                      rotate: product.in_season !== false ? [0, 90, 0] : 0
+                      rotate: product.in_season !== false ? [0, 90, 0] : 0,
                     }}
                     transition={{ duration: 0.3 }}
                   >
@@ -610,9 +652,11 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
 
           {/* Product image */}
           <Link href={`/product/${product.slug}`} passHref>
-            <div className={cn(
-              "relative h-[10rem] lg:h-[12rem] w-full overflow-hidden rounded-lg",
-            )}>
+            <div
+              className={cn(
+                "relative h-[10rem] lg:h-[12rem] w-full overflow-hidden rounded-lg"
+              )}
+            >
               {product.images && product.images.length > 1 ? (
                 <ImageHover
                   src={
@@ -669,7 +713,25 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           </Link>
         </div>
       );
-    }, [product.price, product.list_price, product.in_season, product.slug, product.images, product.name, selectedOptionData, sortedOptions, handleToggleLike, isLoading, isFavorited, showQuantityControls, quantity, handleRemoveFromCart, handleQuantityChange, showToast, handleUpdateCartQuantity]);
+    }, [
+      product.price,
+      product.list_price,
+      product.in_season,
+      product.slug,
+      product.images,
+      product.name,
+      selectedOptionData,
+      sortedOptions,
+      handleToggleLike,
+      isLoading,
+      isFavorited,
+      showQuantityControls,
+      quantity,
+      handleRemoveFromCart,
+      handleQuantityChange,
+      showToast,
+      handleUpdateCartQuantity,
+    ]);
 
     const ProductDetails = useMemo(() => {
       // Safely determine the price display
@@ -736,9 +798,18 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
 
           <div className="flex flex-col">
             {sortedOptions.length > 0 ? (
-              <span className="font-bold text-md whitespace-nowrap">
-                {priceDisplay}
-              </span>
+              // For options, show price and list price of the selected option (or first)
+              <ProductPrice
+                price={
+                  selectedOptionData?.price || sortedOptions[0]?.price || 0
+                }
+                listPrice={
+                  (selectedOptionData?.list_price ?? undefined) !== undefined
+                    ? selectedOptionData?.list_price || 0
+                    : sortedOptions[0]?.list_price || 0
+                }
+                forListing
+              />
             ) : (
               <ProductPrice
                 isDeal={product.tags?.includes("todays-deal") || false}
