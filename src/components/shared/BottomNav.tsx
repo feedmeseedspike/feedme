@@ -5,27 +5,26 @@ import React from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
-import { Wallet } from "lucide-react";
 
 export default function BottomNav() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: "/", icon: "/bottom-icon/home.svg", label: "Home" },
-    { href: "/cart", icon: "/bottom-icon/cart.svg", label: "Cart" },
+    { href: "/", icon: "/bottom-icons/home.svg", label: "Home" },
+    { href: "/cart", icon: "/bottom-icons/cart.png", label: "Cart" },
     {
       href: "/account/order",
-      icon: "/bottom-icon/orders.svg",
+      icon: "/bottom-icons/order.png",
       label: "Orders",
     },
     {
-      href: "/account/wallet",
-      iconComponent: Wallet,
-      label: "Wallet",
+      href: "/account/favourites",
+      icon: "/bottom-icons/favorite.png",
+      label: "Favorites",
     },
     {
       href: "/account/profile",
-      icon: "/bottom-icon/account.svg",
+      icon: "/bottom-icons/account.png",
       label: "Account",
     },
   ];
@@ -89,18 +88,11 @@ export default function BottomNav() {
                       />
                     </AnimatePresence>
                   )}
-                  {"icon" in item && item.icon ? (
-                    <img
-                      src={item.icon}
-                      alt={item.label}
-                      className={`w-6 h-6 relative z-10 ${isActive ? "grayscale-0" : "grayscale"}`}
-                    />
-                  ) : item.iconComponent ? (
-                    <item.iconComponent
-                      className={`w-6 h-6 relative z-10 transition-colors ${isActive ? "text-black" : "text-black/40 opacity-80"}`}
-                      strokeWidth={1.75}
-                    />
-                  ) : null}
+                  <img
+                    src={item.icon}
+                    alt={item.label}
+                    className={`w-6 h-6 relative z-10 ${isActive ? "grayscale-0" : "grayscale"}`}
+                  />
                   <span className="relative z-10">{item.label}</span>
                 </Link>
               </motion.li>

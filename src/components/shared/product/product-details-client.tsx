@@ -193,7 +193,7 @@ export default function ProductDetailsClient({
         {/* Product Price */}
         {optionsArr.length > 1 ? (
           <div className="mt-2 mb-1">
-            <p className="text-2xl font-bold text-[#1B6013]">
+            <p className="text-2xl font-bold text-[#1B6013] inline-block">
               ₦
               {Math.min(
                 ...optionsArr.map((opt: any) => opt.price)
@@ -218,47 +218,32 @@ export default function ProductDetailsClient({
               );
               if (minList > minPrice || maxList > maxPrice) {
                 return (
-                  <div className="flex items-center gap-2">
-                    {showList && (
-                      <span className="text-sm text-gray-500 line-through">
-                        ₦{minList.toLocaleString()} - ₦
-                        {maxList.toLocaleString()}
-                      </span>
-                    )}
-                    {maxDiscount > 0 && (
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded bg-red-50 text-red-600">
-                        Up to -{maxDiscount}%
-                      </span>
-                    )}
-                  </div>
+                  <span className="ml-2 text-lg text-gray-400 line-through align-middle">
+                    ₦{minList.toLocaleString()} - ₦{maxList.toLocaleString()}
+                  </span>
                 );
-              })()}
-            </div>
+              }
+              return null;
+            })()}
           </div>
         ) : (
           <div className="mt-2 mb-1">
-            <p className="text-2xl font-bold text-[#1B6013]">
+            <p className="text-2xl font-bold text-[#1B6013] inline-block">
               ₦{(selectedOptionData?.price ?? product.price).toLocaleString()}
             </p>
-            <div className="mt-1">
-              {(() => {
-                const listPrice =
-                  selectedOptionData?.list_price ?? product.list_price;
-                const price = selectedOptionData?.price ?? product.price;
-                if (!listPrice || listPrice <= price) return null;
-                const discount = Math.round(100 - (price / listPrice) * 100);
+            {(() => {
+              const listPrice =
+                selectedOptionData?.list_price ?? product.list_price;
+              const price = selectedOptionData?.price ?? product.price;
+              if (listPrice && listPrice > price) {
                 return (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500 line-through">
-                      ₦{listPrice.toLocaleString()}
-                    </span>
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded bg-red-50 text-red-600">
-                      -{discount}%
-                    </span>
-                  </div>
+                  <span className="ml-2 text-lg text-gray-400 line-through align-middle">
+                    ₦{listPrice.toLocaleString()}
+                  </span>
                 );
-              })()}
-            </div>
+              }
+              return null;
+            })()}
           </div>
         )}
         <RatingSummary
