@@ -807,9 +807,18 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
 
           <div className="flex flex-col">
             {sortedOptions.length > 0 ? (
-              <span className="font-bold text-md whitespace-nowrap">
-                {priceDisplay}
-              </span>
+              // For options, show price and list price of the selected option (or first)
+              <ProductPrice
+                price={
+                  selectedOptionData?.price || sortedOptions[0]?.price || 0
+                }
+                listPrice={
+                  (selectedOptionData?.list_price ?? undefined) !== undefined
+                    ? selectedOptionData?.list_price || 0
+                    : sortedOptions[0]?.list_price || 0
+                }
+                forListing
+              />
             ) : (
               <ProductPrice
                 isDeal={product.tags?.includes("todays-deal") || false}

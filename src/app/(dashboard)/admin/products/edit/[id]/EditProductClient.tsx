@@ -194,19 +194,21 @@ type EditProductClientProps = {
   allCategories: any[];
 };
 
-// Client-side image upload utility
+// Upload via Next API route to bypass RLS on client
 async function uploadProductImageClient(
   file: File,
   bucketName = "product-images"
 ) {
-  const fileExt = file.name.split(".").pop();
-  const filePath = `${Date.now()}.${fileExt}`;
-  const { error } = await supabase.storage
-    .from(bucketName)
-    .upload(filePath, file);
-  if (error) throw new Error(error.message);
-  const { data } = supabase.storage.from(bucketName).getPublicUrl(filePath);
-  return data.publicUrl;
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("bucketName", bucketName);
+  const resp = await fetch("/api/upload", { method: "POST", body: formData });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err?.error || `Upload failed (${resp.status})`);
+  }
+  const data = await resp.json();
+  return data.url as string;
 }
 
 export default function EditProductClient({
@@ -362,12 +364,19 @@ export default function EditProductClient({
   ) => {
     const files = event.target.files;
     if (files && files.length > 0) {
-      const uploadPromises = Array.from(files).map(async (file) => {
-        const url = await uploadProductImageClient(file);
-        return url;
-      });
-      const uploadedUrls = await Promise.all(uploadPromises);
-      setImages((prev) => [...prev, ...uploadedUrls]);
+      setIsSubmitting(true);
+      try {
+        const uploadPromises = Array.from(files).map(async (file) => {
+          const url = await uploadProductImageClient(file, "product-images");
+          return url;
+        });
+        const uploadedUrls = await Promise.all(uploadPromises);
+        setImages((prev) => [...prev, ...uploadedUrls]);
+      } catch (e: any) {
+        showToast(e?.message || "Failed to upload image(s)", "error");
+      } finally {
+        setIsSubmitting(false);
+      }
     }
     event.target.value = "";
   };
@@ -391,7 +400,14 @@ export default function EditProductClient({
         image: typeof imageUrl === "string" ? imageUrl : null,
       };
       const currentOptions = form.getValues("options") || [];
-      form.setValue("options", [...currentOptions, newOption]);
+      const updatedOptions = [...currentOptions, newOption];
+      form.setValue("options", updatedOptions);
+      // Persist immediately so the new option is saved without requiring full form submit
+      try {
+        await updateProductAction(product.id, { options: updatedOptions });
+      } catch (e: any) {
+        showToast(e?.message || "Failed to save new option", "error");
+      }
       setIsDialogOpen(false);
       setEditOptionIndex(null);
       setEditOptionData(null);
@@ -424,16 +440,21 @@ export default function EditProductClient({
         imageUrl instanceof File
       );
       const currentOptions = form.getValues("options") || [];
-      if (
-        !imageUrl &&
-        editOptionIndex !== null &&
-        currentOptions[editOptionIndex]
-      ) {
-        console.log(
-          "No new image, using existing image from option:",
-          currentOptions[editOptionIndex].image
-        );
-        imageUrl = currentOptions[editOptionIndex].image;
+      const userWantsToClear = imageUrl === null || imageUrl === "";
+      if (!userWantsToClear) {
+        if (
+          !imageUrl &&
+          editOptionIndex !== null &&
+          currentOptions[editOptionIndex]
+        ) {
+          console.log(
+            "No new image, using existing image from option:",
+            currentOptions[editOptionIndex].image
+          );
+          imageUrl = currentOptions[editOptionIndex].image;
+        }
+      } else {
+        imageUrl = null;
       }
       if (imageUrl instanceof File) {
         console.log("Uploading File object to storage...");
@@ -448,6 +469,12 @@ export default function EditProductClient({
         const updatedOptions = [...currentOptions];
         updatedOptions[editOptionIndex] = updatedOption;
         form.setValue("options", updatedOptions);
+        // Persist option change immediately to DB so the image reflects without requiring full form save
+        try {
+          await updateProductAction(product.id, { options: updatedOptions });
+        } catch (e: any) {
+          showToast(e?.message || "Failed to save option changes", "error");
+        }
         setEditOptionIndex(null);
         setEditOptionData(null);
         setTimeout(() => {
@@ -470,6 +497,14 @@ export default function EditProductClient({
         (_, index) => index !== optionIndexToDelete
       );
       form.setValue("options", updatedOptions);
+      // Persist immediately so deletion reflects in DB
+      (async () => {
+        try {
+          await updateProductAction(product.id, { options: updatedOptions });
+        } catch (e: any) {
+          showToast(e?.message || "Failed to delete option", "error");
+        }
+      })();
       setDeleteOptionDialogOpen(false);
       setOptionIndexToDelete(null);
       setTimeout(() => {
@@ -503,7 +538,7 @@ export default function EditProductClient({
             typeof imageUrl === "object" &&
             Object.keys(imageUrl).length === 0
           ) {
-            imageUrl = undefined;
+            imageUrl = null;
           }
           // Make list_price undefined if empty string or NaN
           let list_price =
@@ -583,8 +618,15 @@ export default function EditProductClient({
         productData.price = null;
         productData.stock_status = null;
       }
-      await updateProductAction(product.id, productData);
+      const updated = await updateProductAction(product.id, productData);
       showToast("Product updated successfully!", "success");
+      // Update local UI state immediately so changes reflect without waiting for refresh
+      if (Array.isArray(productData.images)) {
+        setImages(productData.images);
+      }
+      if (productData.options) {
+        form.setValue("options", productData.options as any);
+      }
       // Force refresh to get latest data from DB
       router.refresh();
     } catch (error: any) {
@@ -763,12 +805,32 @@ export default function EditProductClient({
                 <div className="col-span-7">
                   <label
                     htmlFor="product-image-upload"
-                    className="flex flex-col items-center justify-center size-[156px] border border-dashed rounded-lg cursor-pointer hover:bg-gray-50 bg-[#EBFFF3]"
+                    className={`flex flex-col items-center justify-center size-[156px] border border-dashed rounded-lg cursor-pointer hover:bg-gray-50 bg-[#EBFFF3] ${isSubmitting ? "opacity-60 pointer-events-none" : ""}`}
                   >
                     <div className="text-[#61BB84] flex items-center gap-1 justify-center w-full h-full bg-[#ebfff8] px-3 py-[3px] rounded-[3.66px] font-semibold text-[10px]">
                       <Plus size={10} /> Upload
                     </div>
                   </label>
+                  {isSubmitting && (
+                    <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
+                      <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v8z"
+                        ></path>
+                      </svg>
+                      Uploading image(s), please wait…
+                    </div>
+                  )}
                   {/* Display existing and new images */}
                   {imagePreviews.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-2">
@@ -1049,6 +1111,7 @@ export default function EditProductClient({
                           onSubmit={handleOptionSubmit}
                           mode="add"
                           initialData={undefined}
+                          loading={optionModalLoading}
                         />
 
                         {/* Edit Option Modal */}
@@ -1061,6 +1124,7 @@ export default function EditProductClient({
                           onSubmit={handleOptionEditSubmit}
                           mode="edit"
                           initialData={editOptionData || undefined}
+                          loading={optionModalLoading}
                         />
                         <FormMessage />
                       </div>
