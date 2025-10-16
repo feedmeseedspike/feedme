@@ -12,6 +12,21 @@ export const metadata = {
   title: "Blog | FeedMe - Recipes, Food Stories & Cooking Tips",
   description: "Discover delicious recipes, food stories, nutrition tips, and cooking guides from FeedMe's blog. Learn about local food culture and cooking techniques.",
   keywords: "recipes, food blog, cooking tips, nutrition, food stories, Nigerian cuisine, cooking guides",
+  openGraph: {
+    title: "Blog | FeedMe - Recipes, Food Stories & Cooking Tips",
+    description: "Discover delicious recipes, food stories, nutrition tips, and cooking guides from FeedMe's blog.",
+    url: "https://shopfeedme.com/blog",
+    siteName: "FeedMe",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Blog | FeedMe - Recipes, Food Stories & Cooking Tips",
+    description: "Discover delicious recipes, food stories, nutrition tips, and cooking guides from FeedMe's blog.",
+  },
+  alternates: {
+    canonical: "https://shopfeedme.com/blog",
+  },
 };
 
 interface BlogPageProps {

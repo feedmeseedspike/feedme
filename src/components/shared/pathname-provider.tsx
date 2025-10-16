@@ -41,7 +41,13 @@ export function PathnameProvider({
 }: PathnameProviderProps) {
   const pathname = usePathname();
 
-  const hideOnPaths = ["/login", "/register", "forgot-password", "/auth", "/admin"];
+  const hideOnPaths = [
+    "/login",
+    "/register",
+    "forgot-password",
+    "/auth",
+    "/admin",
+  ];
   const shouldHideNavAndBanner = hideOnPaths.some((path) =>
     pathname?.startsWith(path)
   );

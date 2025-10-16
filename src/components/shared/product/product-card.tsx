@@ -21,7 +21,17 @@ const ProductCard = ({
   hideAddToCart?: boolean;
 }) => {
   // console.log(product);
-  const optionsArr = Array.isArray(product.options) ? product.options : [];
+  // Handle both old array format and new object format for options
+  const optionsArr = (() => {
+    if (Array.isArray(product.options)) {
+      // Old format: options is array of variations
+      return product.options.filter(Boolean);
+    } else if (product.options && typeof product.options === "object") {
+      // New format: options is object with variations and customizations
+      return (product.options as any).variations || [];
+    }
+    return [];
+  })();
 
   const getImageUrl = (imageData: string | ImageJSON): string => {
     if (typeof imageData === "string") {
@@ -75,7 +85,7 @@ const ProductCard = ({
       )}
       <span className="text-[14px] text-[#1B6013]">
         {optionsArr.length > 0
-          ? `From ${formatNaira(Math.min(...optionsArr.map((opt) => opt.price ?? Infinity)))}`
+          ? `From ${formatNaira(Math.min(...optionsArr.map((opt: any) => opt.price ?? Infinity)))}`
           : product.price !== null && product.price !== undefined
             ? formatNaira(product.price)
             : "Price N/A"}

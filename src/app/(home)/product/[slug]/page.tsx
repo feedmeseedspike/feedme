@@ -320,7 +320,7 @@ const ProductDetails = async (props: {
                 displayName: (product as any).vendor_displayName || "",
                 logo: (product as any).vendor_logo || "",
               },
-              in_season: product.in_season ?? true,
+              in_season: product.in_season,
             }}
             cartItemId={cartItemId}
           />

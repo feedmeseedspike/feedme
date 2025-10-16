@@ -94,7 +94,16 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
 
     // Extract and sort product options
     const sortedOptions = useMemo(() => {
-      const opts = Array.isArray(product.options) ? product.options : [];
+      // Handle both old array format and new object format for options
+      let opts = [];
+      if (Array.isArray(product.options)) {
+        // Old format: options is array of variations
+        opts = product.options.filter(Boolean);
+      } else if (product.options && typeof product.options === "object") {
+        // New format: options is object with variations and customizations
+        opts = (product.options as any).variations || [];
+      }
+
       if (opts.length === 0) return [];
       return [...opts].sort((a, b) => a.price - b.price);
     }, [product.options]);

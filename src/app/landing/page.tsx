@@ -29,20 +29,15 @@ export default function Home() {
   };
 
   // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post("/api/landing", formData); // Replace with your Formspree ID
-      setFormStatus({
-        message: "Successfully joined the list!",
-        success: true,
-      });
-      setFormData({ name: "", phone: "", email: "" });
+      window.open(
+        "https://chat.whatsapp.com/LNo93gHwVBuKtRJrunCnfb?mode=ems_copy_t",
+        "_blank"
+      );
     } catch (error: any) {
-      setFormStatus({
-        message: "Error submitting form. Try again: " + error.message,
-        success: false,
-      });
+      console.error("error joining list");
     }
   };
 
@@ -98,7 +93,8 @@ export default function Home() {
             market to your doorstep.
           </p>
           <a
-            href="#join"
+            href="#joins"
+            onClick={handleSubmit}
             className="inline-block bg-white text-green-600 font-semibold py-3 px-6 rounded-lg shadow-lg hover:bg-gray-100 transition">
             Join Our List
           </a>
@@ -210,7 +206,7 @@ export default function Home() {
             that only happens if you fill in your contact info below.
           </p>
           <form onSubmit={handleSubmit} className="max-w-md mx-auto">
-            <div className="mb-4">
+            {/* <div className="mb-4">
               <label
                 htmlFor="name"
                 className="block text-black font-semibold mb-2">
@@ -243,37 +239,20 @@ export default function Home() {
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
                 placeholder="Enter your phone number"
               />
-            </div>
-            <div className="mb-4">
-              <label
-                htmlFor="email"
-                className="block text-black font-semibold mb-2">
-                Email
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
-                placeholder="Enter your email"
-              />
-            </div>
+            </div> */}
             <button
               type="submit"
               className="w-full bg-green-600 text-white font-semibold py-3 rounded-lg hover:bg-green-700 transition">
               Join the List
             </button>
-            {formStatus.message && (
+            {/* {formStatus.message && (
               <p
                 className={`mt-4 text-center ${
                   formStatus.success ? "text-green-600" : "text-red-600"
                 }`}>
                 {formStatus.message}
               </p>
-            )}
+            )} */}
           </form>
         </div>
       </motion.section>

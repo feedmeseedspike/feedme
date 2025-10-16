@@ -8,15 +8,18 @@ export const metadata = {
   title: {
     absolute: "Not Found",
   },
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
-
 
 const NotFound = () => {
   return (
     <>
     {/* <Header />
     <Headertags /> */}
-      {/* <section className="flex justify-center items-center bg-white">
+      <section className="flex justify-center items-center bg-white">
         <Image
           src="/404.gif"
           alt="not found"
@@ -24,8 +27,8 @@ const NotFound = () => {
           width={800}
           className="max-w-full"
         />
-      </section> */}
-      {/* <Footer /> */}
+      </section>
+      <Footer />
     </>
   );
 };

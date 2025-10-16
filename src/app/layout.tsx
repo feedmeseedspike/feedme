@@ -1,7 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable jsx-a11y/alt-text */
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import localFont from "next/font/local";
 import "../app/global.css";
 import { ReduxProvider } from "@providers/redux-providers";
@@ -46,8 +45,6 @@ const proxima = localFont({
   ],
   variable: "--font-proxima",
 });
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://shopfeedme.com/"),

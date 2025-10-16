@@ -114,17 +114,24 @@ export default function ProductDetailsClient({
     product._id ? state.options.selectedOptions[product._id] : undefined
   );
 
-  const optionsArr = useMemo(
-    () => (Array.isArray(product.options) ? product.options : []),
-    [product.options]
-  );
+  const optionsArr = useMemo(() => {
+    // Handle both old array format and new object format for options
+    if (Array.isArray(product.options)) {
+      // Old format: options is array of variations
+      return product.options.filter(Boolean);
+    } else if (product.options && typeof product.options === "object") {
+      // New format: options is object with variations and customizations
+      return (product.options as any).variations || [];
+    }
+    return [];
+  }, [product.options]);
 
   const selectedOptionData = useMemo(() => {
     if (optionsArr.length === 0) return null;
     if (!selectedOption) {
       return optionsArr[0];
     }
-    const option = optionsArr.find((opt) => opt.name === selectedOption);
+    const option = optionsArr.find((opt: any) => opt.name === selectedOption);
     return option || optionsArr[0];
   }, [selectedOption, optionsArr]);
 
@@ -188,39 +195,28 @@ export default function ProductDetailsClient({
           <div className="mt-2 mb-1">
             <p className="text-2xl font-bold text-[#1B6013]">
               ₦
-              {Math.min(...optionsArr.map((opt) => opt.price)).toLocaleString()}{" "}
+              {Math.min(
+                ...optionsArr.map((opt: any) => opt.price)
+              ).toLocaleString()}{" "}
               - ₦
-              {Math.max(...optionsArr.map((opt) => opt.price)).toLocaleString()}
+              {Math.max(
+                ...optionsArr.map((opt: any) => opt.price)
+              ).toLocaleString()}
             </p>
-            <div className="mt-1">
-              {(() => {
-                const minList = Math.min(
-                  ...optionsArr.map((opt) => opt.list_price ?? opt.price)
-                );
-                const maxList = Math.max(
-                  ...optionsArr.map((opt) => opt.list_price ?? opt.price)
-                );
-                const minPrice = Math.min(
-                  ...optionsArr.map((opt) => opt.price)
-                );
-                const maxPrice = Math.max(
-                  ...optionsArr.map((opt) => opt.price)
-                );
-                const showList = minList > minPrice || maxList > maxPrice;
-                const discounts = optionsArr
-                  .map((opt) => {
-                    const lp =
-                      typeof opt.list_price === "number" ? opt.list_price : 0;
-                    const p = opt.price;
-                    if (lp > p && p > 0) {
-                      return Math.round(100 - (p / lp) * 100);
-                    }
-                    return 0;
-                  })
-                  .filter((d) => d > 0);
-                const maxDiscount =
-                  discounts.length > 0 ? Math.max(...discounts) : 0;
-                if (!showList && maxDiscount === 0) return null;
+            {(() => {
+              const minList = Math.min(
+                ...optionsArr.map((opt: any) => opt.list_price ?? opt.price)
+              );
+              const maxList = Math.max(
+                ...optionsArr.map((opt: any) => opt.list_price ?? opt.price)
+              );
+              const minPrice = Math.min(
+                ...optionsArr.map((opt: any) => opt.price)
+              );
+              const maxPrice = Math.max(
+                ...optionsArr.map((opt: any) => opt.price)
+              );
+              if (minList > minPrice || maxList > maxPrice) {
                 return (
                   <div className="flex items-center gap-2">
                     {showList && (
@@ -316,11 +312,13 @@ export default function ProductDetailsClient({
         {/* Product Customizations */}
         {product.customizations && product.customizations.length > 0 && (
           <div className="mt-4">
-            <h3 className="text-lg font-semibold mb-3">Customizations</h3>
-            <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-gray-800 mb-3">
+              Customize Your Order
+            </h3>
+            <div className="space-y-3">
               {product.customizations.map((customization) => (
-                <div key={customization.id} className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
+                <div key={customization.id}>
+                  <label className="text-xs font-medium text-gray-700 mb-2 block">
                     {customization.label}
                   </label>
 
@@ -334,8 +332,8 @@ export default function ProductDetailsClient({
                         }))
                       }
                     >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select an option" />
+                      <SelectTrigger className="w-full h-9 text-sm">
+                        <SelectValue placeholder="Select option" />
                       </SelectTrigger>
                       <SelectContent>
                         {customization.options.map((option) => (
@@ -354,24 +352,26 @@ export default function ProductDetailsClient({
                           [customization.id]: value,
                         }))
                       }
-                      className="flex flex-wrap gap-4"
+                      className="flex flex-wrap gap-2"
                     >
                       {customization.options.map((option) => (
-                        <div
+                        <Label
                           key={option.value}
-                          className="flex items-center space-x-2"
+                          htmlFor={`${customization.id}-${option.value}`}
+                          className={`flex items-center px-3 py-1.5 rounded-md border text-xs cursor-pointer transition-colors ${
+                            customizationSelections[customization.id] ===
+                            option.value
+                              ? "border-[#F0800F] bg-orange-50 text-[#F0800F]"
+                              : "border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300"
+                          }`}
                         >
                           <RadioGroupItem
                             value={option.value}
                             id={`${customization.id}-${option.value}`}
+                            className="mr-2 w-3 h-3"
                           />
-                          <Label
-                            htmlFor={`${customization.id}-${option.value}`}
-                            className="text-sm text-gray-700 cursor-pointer"
-                          >
-                            {option.label}
-                          </Label>
-                        </div>
+                          {option.label}
+                        </Label>
                       ))}
                     </RadioGroup>
                   )}

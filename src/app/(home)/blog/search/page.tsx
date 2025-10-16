@@ -16,17 +16,50 @@ export async function generateMetadata({
   searchParams,
 }: BlogSearchPageProps): Promise<Metadata> {
   const query = searchParams.q;
-  
+
   if (query) {
+    const title = `Search results for "${query}" | FeedMe Blog`;
+    const description = `Search results for "${query}" in FeedMe's blog. Find recipes, cooking tips, and food stories.`;
+
     return {
-      title: `Search results for "${query}" | FeedMe Blog`,
-      description: `Search results for "${query}" in FeedMe's blog. Find recipes, cooking tips, and food stories.`,
+      title,
+      description,
+      openGraph: {
+        title,
+        description,
+        url: `https://shopfeedme.com/blog/search?q=${encodeURIComponent(query)}`,
+        siteName: "FeedMe",
+        type: "website",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description,
+      },
     };
   }
-  
+
+  const title = "Search | FeedMe Blog";
+  const description = "Search for recipes, cooking tips, food stories, and more in FeedMe's blog.";
+
   return {
-    title: "Search | FeedMe Blog",
-    description: "Search for recipes, cooking tips, food stories, and more in FeedMe's blog.",
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: "https://shopfeedme.com/blog/search",
+      siteName: "FeedMe",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+    alternates: {
+      canonical: "https://shopfeedme.com/blog/search",
+    },
   };
 }
 

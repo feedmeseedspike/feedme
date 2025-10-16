@@ -7,14 +7,24 @@ Disallow: /api/
 Disallow: /dashboard/
 Disallow: /account/
 
-# Block duplicate parameter pages
-Disallow: /*?*
-Allow: /*?page=*
+# Block specific problematic parameters but allow important ones
+Disallow: /*?utm_*
+Disallow: /*?ref=*
+Disallow: /*?source=*
+Disallow: /*?campaign=*
+Disallow: /*?gclid=*
+Disallow: /*?fbclid=*
 
-# Allow important pages
+# Allow important pages and parameters
 Allow: /product/
 Allow: /bundles/
 Allow: /category/
 Allow: /search
+Allow: /blog/
+Allow: /careers/
+Allow: /*?page=*
+Allow: /*?q=*
+Allow: /*?category=*
+Allow: /*?sort=*
 
 Sitemap: https://shopfeedme.com/sitemap.xml
