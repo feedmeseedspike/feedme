@@ -94,24 +94,24 @@ const ProductCard = ({
       {(() => {
         if (optionsArr.length > 0) {
           const minList = Math.min(
-            ...optionsArr.map((opt) =>
+            ...optionsArr.map((opt: any) =>
               typeof opt.list_price === "number"
                 ? opt.list_price
                 : (opt.price ?? Infinity)
             )
           );
           const minPrice = Math.min(
-            ...optionsArr.map((opt) => opt.price ?? Infinity)
+            ...optionsArr.map((opt: any) => opt.price ?? Infinity)
           );
           const discounts = optionsArr
-            .map((opt) => {
+            .map((opt: any) => {
               const lp =
                 typeof opt.list_price === "number" ? opt.list_price : 0;
               const p = opt.price ?? 0;
               if (lp > p && p > 0) return Math.round(100 - (p / lp) * 100);
               return 0;
             })
-            .filter((d) => d > 0);
+            .filter((d: number) => d > 0);
           const maxDiscount = discounts.length > 0 ? Math.max(...discounts) : 0;
           if (minList > minPrice || maxDiscount > 0) {
             return (

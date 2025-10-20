@@ -219,21 +219,14 @@ export default function ProductDetailsClient({
               if (minList > minPrice || maxList > maxPrice) {
                 return (
                   <div className="flex items-center gap-2">
-                    {showList && (
-                      <span className="text-sm text-gray-500 line-through">
-                        ₦{minList.toLocaleString()} - ₦
-                        {maxList.toLocaleString()}
-                      </span>
-                    )}
-                    {maxDiscount > 0 && (
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded bg-red-50 text-red-600">
-                        Up to -{maxDiscount}%
-                      </span>
-                    )}
+                    <span className="text-sm text-gray-500 line-through">
+                      ₦{minList.toLocaleString()} - ₦{maxList.toLocaleString()}
+                    </span>
                   </div>
                 );
-              })()}
-            </div>
+              }
+              return null;
+            })()}
           </div>
         ) : (
           <div className="mt-2 mb-1">

@@ -29,10 +29,10 @@ export async function POST(request: Request) {
       const { data: transaction, error: txError } = await supabase
         .from("transactions")
         .update({ payment_status: "successful" })
-        .eq("reference", metadata.orderId)
+        .eq("reference", reference)
         .eq("user_id", metadata.user_id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (txError) throw txError;
       console.log({ transaction });
