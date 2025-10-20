@@ -90,69 +90,6 @@ const ProductCard = ({
             ? formatNaira(product.price)
             : "Price N/A"}
       </span>
-      {/* Discount / list price under main price */}
-      {(() => {
-        if (optionsArr.length > 0) {
-          const minList = Math.min(
-            ...optionsArr.map((opt: any) =>
-              typeof opt.list_price === "number"
-                ? opt.list_price
-                : (opt.price ?? Infinity)
-            )
-          );
-          const minPrice = Math.min(
-            ...optionsArr.map((opt: any) => opt.price ?? Infinity)
-          );
-          const discounts = optionsArr
-            .map((opt: any) => {
-              const lp =
-                typeof opt.list_price === "number" ? opt.list_price : 0;
-              const p = opt.price ?? 0;
-              if (lp > p && p > 0) return Math.round(100 - (p / lp) * 100);
-              return 0;
-            })
-            .filter((d: number) => d > 0);
-          const maxDiscount = discounts.length > 0 ? Math.max(...discounts) : 0;
-          if (minList > minPrice || maxDiscount > 0) {
-            return (
-              <div className="mt-0.5 flex items-center gap-1">
-                {minList > minPrice && (
-                  <span className="text-[12px] text-gray-500 line-through">
-                    From {formatNaira(minList)}
-                  </span>
-                )}
-                {maxDiscount > 0 && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-red-50 text-red-600">
-                    Up to -{maxDiscount}%
-                  </span>
-                )}
-              </div>
-            );
-          }
-          return null;
-        }
-        // No variations: use base product list_price if available
-        const basePrice = product.price ?? 0;
-        const baseList = (product as any).list_price as number | undefined;
-        if (
-          typeof baseList === "number" &&
-          baseList > basePrice &&
-          basePrice > 0
-        ) {
-          const discount = Math.round(100 - (basePrice / baseList) * 100);
-          return (
-            <div className="mt-0.5 flex items-center gap-1">
-              <span className="text-[12px] text-gray-500 line-through">
-                {formatNaira(baseList)}
-              </span>
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-red-50 text-red-600">
-                -{discount}%
-              </span>
-            </div>
-          );
-        }
-        return null;
-      })()}
     </div>
   );
 

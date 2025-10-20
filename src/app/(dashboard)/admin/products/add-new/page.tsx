@@ -394,8 +394,10 @@ export default function AddProduct() {
           let imageUrl = opt.image;
           if (opt.image instanceof File) {
             try {
-              // Use the existing product-images bucket for option images as well
-              imageUrl = await uploadProductImage(opt.image, "product-images");
+              imageUrl = await uploadProductImage(
+                opt.image,
+                "option-images"
+              );
             } catch (err: any) {
               showToast(
                 err.message || "Failed to upload option image",

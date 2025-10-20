@@ -32,7 +32,6 @@ interface OptionModalProps {
   onSubmit?: (data: OptionFormValues) => void;
   mode?: "add" | "edit";
   initialData?: Partial<OptionFormValues>;
-  loading?: boolean;
 }
 
 // Helper to coerce price to number or undefined
@@ -48,7 +47,6 @@ export default function OptionModal({
   onSubmit,
   mode = "add",
   initialData,
-  loading = false,
 }: OptionModalProps) {
   // Ensure initialData is always an object, memoized for useEffect deps
   const safeInitialData = useMemo(() => initialData || {}, [initialData]);
@@ -108,11 +106,6 @@ export default function OptionModal({
       setImage(file);
       setValue("image", file); // Set the image value in the form
     }
-  };
-
-  const handleClearImage = () => {
-    setImage(null);
-    setValue("image", null as any);
   };
 
   const submitForm = async (data: OptionFormValues) => {
@@ -238,7 +231,7 @@ export default function OptionModal({
             <label htmlFor="image" className="block text-sm font-medium mb-2">
               Image
             </label>
-            <div className="flex flex-col items-center border p-4 rounded-md">
+            <div className="flex flex-col items-center border p-4 rounded-md cursor-pointer">
               <input
                 {...register("image")}
                 type="file"
@@ -250,48 +243,32 @@ export default function OptionModal({
                 className="hidden"
                 id="file-upload"
               />
-              <div className="flex items-center gap-3">
-                <label
-                  htmlFor="file-upload"
-                  className="cursor-pointer text-center"
-                >
-                  {image ? (
-                    <Image
-                      src={
-                        image instanceof File
-                          ? URL.createObjectURL(image)
-                          : image
-                      }
-                      alt="Preview"
-                      width={80}
-                      height={80}
-                      className="w-20 h-20 object-cover rounded-md"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center gap-2 py-2">
-                      <CloudUpload />
-                      <p className="text-sm text-center">
-                        Click to upload or drag & drop
-                      </p>
-                      <p className="text-sm">PNG or JPG</p>
-                    </div>
-                  )}
-                </label>
-                {image && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleClearImage}
-                  >
-                    Remove
-                  </Button>
+              <label
+                htmlFor="file-upload"
+                className="cursor-pointer text-center"
+              >
+                {image ? (
+                  <Image
+                    src={
+                      image instanceof File 
+                        ? URL.createObjectURL(image)
+                        : image
+                    }
+                    alt="Preview"
+                    width={80}
+                    height={80}
+                    className="w-20 h-20 object-cover rounded-md"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-2 py-2">
+                    <CloudUpload />
+                    <p className="text-sm text-center">
+                      Click to upload or drag & drop
+                    </p>
+                    <p className="text-sm">PNG or JPG</p>
+                  </div>
                 )}
-              </div>
-              {loading && (
-                <p className="text-xs text-gray-500 mt-2">
-                  Uploading image, please wait…
-                </p>
-              )}
+              </label>
             </div>
             {errors.image && (
               <p className="text-red-500 text-sm mt-1">
@@ -309,18 +286,8 @@ export default function OptionModal({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#1B6013]"
-            >
-              {loading
-                ? mode === "edit"
-                  ? "Saving…"
-                  : "Adding…"
-                : mode === "edit"
-                  ? "Save Changes"
-                  : "Add Option"}
+            <Button type="submit" className="w-full bg-[#1B6013]">
+              {mode === "edit" ? "Save Changes" : "Add Option"}
             </Button>
           </div>
         </form>
