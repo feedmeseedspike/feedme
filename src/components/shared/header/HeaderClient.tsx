@@ -206,7 +206,7 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                       />
                     </Link>
 
-                    {/* Hiring Badge with Wavy Animation */}
+                    {/* Hiring Badge */}
                     {hasActiveJobs && (
                       <Link href="/careers" className="block">
                         <div className="absolute -top-2 md:-top-1 -right-4 md:-right-6 z-10">
