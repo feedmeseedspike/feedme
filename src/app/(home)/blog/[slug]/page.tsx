@@ -6,7 +6,7 @@ import BlogPostSkeleton from "@components/shared/blog/BlogPostSkeleton";
 import RelatedPosts from "@components/shared/blog/RelatedPosts";
 import { Metadata } from "next";
 
-export const revalidate = 600;
+export const revalidate = 0;
 
 interface BlogPostPageProps {
   params: {
@@ -18,14 +18,17 @@ export async function generateMetadata({
   params,
 }: BlogPostPageProps): Promise<Metadata> {
   try {
-    let baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    let baseUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      "http://localhost:3000";
     // Ensure baseUrl has proper protocol
-    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+    if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
       baseUrl = `http://${baseUrl}`;
     }
     const response = await fetch(`${baseUrl}/api/blog/posts/${params.slug}`, {
-      next: { revalidate: 600 },
-      cache: 'force-cache'
+      next: { revalidate: 0 },
+      cache: "no-store",
     });
 
     if (!response.ok) {
@@ -52,12 +55,14 @@ export async function generateMetadata({
         type: "article",
         publishedTime: post.published_at || undefined,
         authors: post.author_id ? [post.author_id] : undefined,
-        images: post.featured_image ? [
-          {
-            url: post.featured_image,
-            alt: post.featured_image_alt || post.title,
-          },
-        ] : undefined,
+        images: post.featured_image
+          ? [
+              {
+                url: post.featured_image,
+                alt: post.featured_image_alt || post.title,
+              },
+            ]
+          : undefined,
       },
       twitter: {
         card: "summary_large_image",
@@ -76,14 +81,17 @@ export async function generateMetadata({
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
   try {
-    let baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    let baseUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      "http://localhost:3000";
     // Ensure baseUrl has proper protocol
-    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+    if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
       baseUrl = `http://${baseUrl}`;
     }
     const response = await fetch(`${baseUrl}/api/blog/posts/${params.slug}`, {
-      next: { revalidate: 600 },
-      cache: 'force-cache'
+      next: { revalidate: 0 },
+      cache: "no-store",
     });
 
     // If the API returns 404, we should trigger notFound()
@@ -103,7 +111,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
     // Increment view count asynchronously
     fetch(`${baseUrl}/api/blog/posts/${post.slug}/views`, {
-      method: 'POST'
+      method: "POST",
     }).catch(console.error);
 
     return (
@@ -123,7 +131,6 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         </Container>
       </div>
     );
-
   } catch (error) {
     console.error("Error fetching blog post:", error);
     notFound();

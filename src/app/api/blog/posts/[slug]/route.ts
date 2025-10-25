@@ -25,8 +25,8 @@ export async function GET(
 
     const response = NextResponse.json({ post, success: true });
 
-    const cacheTime = incrementViews ? 60 : 600;
-    response.headers.set('Cache-Control', `public, s-maxage=${cacheTime}, stale-while-revalidate=120`);
+    // Disable caching for development to see changes immediately
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
     return response;
   } catch (error) {
