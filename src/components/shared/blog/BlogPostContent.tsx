@@ -40,7 +40,7 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
   const handleLike = async () => {
     // TODO: Implement like functionality when user authentication is ready
     setIsLiked(!isLiked);
-    setLikesCount(prev => isLiked ? prev - 1 : prev + 1);
+    setLikesCount((prev) => (isLiked ? prev - 1 : prev + 1));
   };
 
   return (
@@ -50,7 +50,7 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
         {/* Category Badge */}
         {post.blog_categories && (
           <div className="mb-4">
-            <span 
+            <span
               className="inline-block px-3 py-1 rounded-full text-sm font-medium text-white"
               style={{ backgroundColor: post.blog_categories.color }}
             >
@@ -99,15 +99,15 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
           <button
             onClick={handleLike}
             className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors ${
-              isLiked 
-                ? "bg-red-50 text-red-600 border border-red-200" 
+              isLiked
+                ? "bg-red-50 text-red-600 border border-red-200"
                 : "bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100"
             }`}
           >
             <Heart size={16} fill={isLiked ? "currentColor" : "none"} />
             <span>{likesCount}</span>
           </button>
-          
+
           <button
             onClick={handleShare}
             className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100 transition-colors"
@@ -122,10 +122,11 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
       {post.featured_image && (
         <div className="relative h-96 md:h-[500px] mb-8 rounded-xl overflow-hidden">
           <Image
-            src={post.featured_image}
+            src={`${post.featured_image}?v=${Date.now()}`}
             alt={post.featured_image_alt || post.title}
             fill
             className="object-cover"
+            unoptimized={true} // Disable Next.js image optimization caching
           />
         </div>
       )}
@@ -137,34 +138,45 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
             <ChefHat className="text-[#1B6013]" size={20} />
             <h3 className="text-lg font-semibold text-gray-900">Recipe Info</h3>
           </div>
-          
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {post.prep_time && (
               <div className="text-center">
-                <div className="text-2xl font-bold text-[#F0800F]">{post.prep_time}min</div>
+                <div className="text-2xl font-bold text-[#F0800F]">
+                  {post.prep_time}min
+                </div>
                 <div className="text-sm text-gray-600">Prep Time</div>
               </div>
             )}
             {post.cook_time && (
               <div className="text-center">
-                <div className="text-2xl font-bold text-[#F0800F]">{post.cook_time}min</div>
+                <div className="text-2xl font-bold text-[#F0800F]">
+                  {post.cook_time}min
+                </div>
                 <div className="text-sm text-gray-600">Cook Time</div>
               </div>
             )}
             {post.servings && (
               <div className="text-center">
-                <div className="text-2xl font-bold text-[#F0800F]">{post.servings}</div>
+                <div className="text-2xl font-bold text-[#F0800F]">
+                  {post.servings}
+                </div>
                 <div className="text-sm text-gray-600">Servings</div>
               </div>
             )}
             {post.difficulty && (
               <div className="text-center">
-                <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                  post.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
-                  post.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-red-100 text-red-800'
-                }`}>
-                  {post.difficulty.charAt(0).toUpperCase() + post.difficulty.slice(1)}
+                <div
+                  className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                    post.difficulty === "easy"
+                      ? "bg-green-100 text-green-800"
+                      : post.difficulty === "medium"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {post.difficulty.charAt(0).toUpperCase() +
+                    post.difficulty.slice(1)}
                 </div>
                 <div className="text-sm text-gray-600 mt-1">Difficulty</div>
               </div>
@@ -174,46 +186,57 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
       )}
 
       {/* Ingredients (if it's a recipe) */}
-      {post.ingredients && Array.isArray(post.ingredients) && post.ingredients.length > 0 && (
-        <div className="bg-gray-50 rounded-xl p-6 mb-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">Ingredients</h3>
-          <ul className="space-y-2">
-            {post.ingredients.map((ingredient: any, index: number) => (
-              <li key={index} className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-[#1B6013] rounded-full flex-shrink-0" />
-                <span className="text-gray-700">
-                  {typeof ingredient === 'string' ? ingredient : 
-                   `${ingredient.quantity || ''} ${ingredient.name || ingredient}`.trim()}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {post.ingredients &&
+        Array.isArray(post.ingredients) &&
+        post.ingredients.length > 0 && (
+          <div className="bg-gray-50 rounded-xl p-6 mb-8">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              Ingredients
+            </h3>
+            <ul className="space-y-2">
+              {post.ingredients.map((ingredient: any, index: number) => (
+                <li key={index} className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-[#1B6013] rounded-full flex-shrink-0" />
+                  <span className="text-gray-700">
+                    {typeof ingredient === "string"
+                      ? ingredient
+                      : `${ingredient.quantity || ""} ${ingredient.name || ingredient}`.trim()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
       {/* Main Content */}
       <ProductLinkParser content={post.content} />
 
       {/* Instructions (if it's a recipe) */}
-      {post.instructions && Array.isArray(post.instructions) && post.instructions.length > 0 && (
-        <div className="mt-8 bg-white border border-gray-200 rounded-xl p-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-6">Instructions</h3>
-          <ol className="space-y-4">
-            {post.instructions.map((instruction: any, index: number) => (
-              <li key={index} className="flex gap-4">
-                <div className="flex-shrink-0 w-8 h-8 bg-[#1B6013] text-white rounded-full flex items-center justify-center font-bold text-sm">
-                  {index + 1}
-                </div>
-                <div className="flex-1">
-                  <p className="text-gray-700 leading-relaxed">
-                    {typeof instruction === 'string' ? instruction : instruction.text || instruction}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
+      {post.instructions &&
+        Array.isArray(post.instructions) &&
+        post.instructions.length > 0 && (
+          <div className="mt-8 bg-white border border-gray-200 rounded-xl p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-6">
+              Instructions
+            </h3>
+            <ol className="space-y-4">
+              {post.instructions.map((instruction: any, index: number) => (
+                <li key={index} className="flex gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 bg-[#1B6013] text-white rounded-full flex items-center justify-center font-bold text-sm">
+                    {index + 1}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-gray-700 leading-relaxed">
+                      {typeof instruction === "string"
+                        ? instruction
+                        : instruction.text || instruction}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
 
       {/* Tags */}
       {post.blog_post_tags && post.blog_post_tags.length > 0 && (
