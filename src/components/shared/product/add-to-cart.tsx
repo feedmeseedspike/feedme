@@ -62,7 +62,7 @@ const AddToCart = React.memo(
     const [showQuantityControls, setShowQuantityControls] = useState(false);
 
     const { data: cartItems } = useCartQuery();
-    const user = useUser();
+    const { user } = useUser();
     const anonymousCart = useAnonymousCart();
 
     const updateCartMutation = useUpdateCartMutation();
@@ -79,13 +79,15 @@ const AddToCart = React.memo(
     // Create combined option object that includes customizations
     const combinedOption = useMemo(() => {
       if (!item.option && !item.customizations) return null;
-      
+
       const baseOption = item.option ? { ...item.option } : {};
-      const customizationsData = item.customizations && Object.keys(item.customizations).length > 0 
-        ? { customizations: item.customizations } 
-        : {};
-      
-      return Object.keys(baseOption).length > 0 || Object.keys(customizationsData).length > 0
+      const customizationsData =
+        item.customizations && Object.keys(item.customizations).length > 0
+          ? { customizations: item.customizations }
+          : {};
+
+      return Object.keys(baseOption).length > 0 ||
+        Object.keys(customizationsData).length > 0
         ? { ...baseOption, ...customizationsData }
         : null;
     }, [item.option, item.customizations]);
@@ -116,7 +118,10 @@ const AddToCart = React.memo(
                   JSON.stringify(combinedOption || null)
             );
             if (existingAnonymousItem) {
-              anonymousCart.updateQuantity(existingAnonymousItem.id, newQuantity);
+              anonymousCart.updateQuantity(
+                existingAnonymousItem.id,
+                newQuantity
+              );
             } else {
               anonymousCart.addItem(
                 item.bundleId ? null : item.id,
@@ -124,13 +129,22 @@ const AddToCart = React.memo(
                 item.price,
                 combinedOption,
                 item.bundleId ? item.id : null,
-                null
+                null,
+                {
+                  name: item.name,
+                  slug: item.slug,
+                  image: Array.isArray(item.images)
+                    ? typeof item.images[0] === "string"
+                      ? item.images[0]
+                      : undefined
+                    : undefined,
+                }
               );
             }
             setQuantity(newQuantity);
             setShowQuantityControls(true);
             // Trigger cart update event
-            window.dispatchEvent(new Event('anonymousCartUpdated'));
+            window.dispatchEvent(new Event("anonymousCartUpdated"));
           }
           return;
         }
@@ -260,6 +274,7 @@ const AddToCart = React.memo(
             item.countInStock !== undefined &&
             item.countInStock <= 0
           ) {
+            showToast("This item is out of stock", "error");
             return;
           }
           if (
@@ -271,27 +286,41 @@ const AddToCart = React.memo(
           ) {
             setMissingOption(true);
             setTimeout(() => setMissingOption(false), 500);
+            showToast("Please select an option first", "error");
             onError?.();
             return;
           }
 
-          anonymousCart.addItem(
+          await anonymousCart.addItem(
             item.bundleId ? null : item.id,
             1,
             item.price,
             combinedOption,
             item.bundleId ? item.id : null,
-            null
+            null,
+            {
+              name: item.name,
+              slug: item.slug,
+              image: Array.isArray(item.images) ? item.images[0] : undefined,
+            }
           );
-          
+
           setShowQuantityControls(true);
           setQuantity(1);
           showToast(
             `${item.name}${item.option?.name ? ` (${item.option.name})` : ""} added to cart!`,
-            "success"
+            "success",
+            {
+              imageUrl: Array.isArray(item.images)
+                ? typeof item.images[0] === "string"
+                  ? item.images[0]
+                  : undefined
+                : undefined,
+              title: "Added to Cart",
+            }
           );
           // Trigger cart update event
-          window.dispatchEvent(new Event('anonymousCartUpdated'));
+          window.dispatchEvent(new Event("anonymousCartUpdated"));
           onAddToCart?.();
         } catch (error: any) {
           console.error("Failed to add to anonymous cart:", error);
@@ -360,7 +389,7 @@ const AddToCart = React.memo(
             price: item.price,
           });
         }
-        
+
         await updateCartMutation.mutateAsync(itemsForMutation);
         setShowQuantityControls(true);
         setQuantity(1);
@@ -368,7 +397,7 @@ const AddToCart = React.memo(
           `${item.name}${item.option?.name ? ` (${item.option.name})` : ""} added to cart!`,
           "success"
         );
-        // Invalidate and refetch cart query for authenticated users  
+        // Invalidate and refetch cart query for authenticated users
         await queryClient.invalidateQueries({ queryKey: cartQueryKey });
         await queryClient.refetchQueries({ queryKey: cartQueryKey });
         onAddToCart?.();
@@ -450,7 +479,14 @@ const AddToCart = React.memo(
           setQuantity(1);
         }
       }
-    }, [cartItems, anonymousCart.items, item.id, combinedOption, isInCart, user]);
+    }, [
+      cartItems,
+      anonymousCart.items,
+      item.id,
+      combinedOption,
+      isInCart,
+      user,
+    ]);
 
     const isOutOfSeason = item.in_season === false;
 

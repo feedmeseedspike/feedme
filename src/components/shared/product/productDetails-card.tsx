@@ -192,12 +192,30 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                 selectedOptionData?.price ?? product.price ?? 0,
                 selectedOptionData as any,
                 product.bundleId ? product.id : null,
-                null
+                null,
+                {
+                  name: product.name,
+                  slug: product.slug,
+                  image: Array.isArray(product.images)
+                    ? typeof product.images[0] === "string"
+                      ? product.images[0]
+                      : undefined
+                    : undefined,
+                }
               );
             }
             showToast(
               `${product.name}${selectedOptionData?.name ? ` (${selectedOptionData.name})` : ""} ${newQuantity === 1 ? "added to" : "updated in"} cart`,
-              "success"
+              "success",
+              undefined,
+              {
+                imageUrl: Array.isArray(product.images)
+                  ? typeof product.images[0] === "string"
+                    ? product.images[0]
+                    : undefined
+                  : undefined,
+                title: newQuantity === 1 ? "Added to Cart" : "Cart Updated",
+              }
             );
           }
           return;

@@ -34,7 +34,7 @@ export async function POST(req: Request) {
           name: product.name,
           slug: product.slug,
           type: 'product',
-          url: `/products/${product.slug}`
+          url: `/product/${product.slug}`
         });
         continue;
       }

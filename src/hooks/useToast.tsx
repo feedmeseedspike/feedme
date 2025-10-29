@@ -17,6 +17,8 @@ interface ToastMessage {
   message: string;
   type?: ToastVariant;
   duration?: number;
+  imageUrl?: string;
+  title?: string;
 }
 
 interface ToastProps {
@@ -25,11 +27,18 @@ interface ToastProps {
   type?: ToastVariant;
   duration?: number;
   onClose: (id: string) => void;
+  imageUrl?: string;
+  title?: string;
 }
 
 interface ToastContextValue {
   toasts: ToastMessage[];
-  showToast: (message: string, type?: ToastVariant, duration?: number) => void;
+  showToast: (
+    message: string,
+    type?: ToastVariant,
+    duration?: number,
+    options?: { imageUrl?: string; title?: string }
+  ) => void;
   dismissToast: (id: string) => void;
 }
 
@@ -45,20 +54,49 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const showToast = (
     message: string,
     type: ToastVariant = "info",
-    duration = 5000
+    duration = 5000,
+    options?: { imageUrl?: string; title?: string }
   ) => {
     const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, message, type, duration }]);
+    setToasts((prev) => [
+      ...prev,
+      {
+        id,
+        message,
+        type,
+        duration,
+        imageUrl: options?.imageUrl,
+        title: options?.title,
+      },
+    ]);
   };
 
   const dismissToast = (id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
 
+  // Bridge for utils.showToast -> context via window event
+  useEffect(() => {
+    const handler = (e: any) => {
+      const { message, type, imageUrl, title, duration } = e.detail || {};
+      if (!message) return;
+      const id = Math.random().toString(36).substring(2, 9);
+      setToasts((prev) => [
+        ...prev,
+        { id, message, type, duration, imageUrl, title },
+      ]);
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("app-toast", handler as EventListener);
+      return () =>
+        window.removeEventListener("app-toast", handler as EventListener);
+    }
+  }, []);
+
   return (
     <ToastContext.Provider value={{ toasts, showToast, dismissToast }}>
       {children}
-      <div className="fixed top-4 right-4 z-[9999] space-y-2 pointer-events-none">
+      <div className="fixed bottom-4 right-4 z-[9999] space-y-2 pointer-events-none">
         <AnimatePresence>
           {toasts.map((toast) => (
             <motion.div
@@ -76,6 +114,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 type={toast.type}
                 duration={toast.duration}
                 onClose={dismissToast}
+                imageUrl={toast.imageUrl}
+                title={toast.title}
               />
             </motion.div>
           ))}
@@ -91,6 +131,8 @@ const Toast = ({
   type = "info",
   onClose,
   duration = 5000,
+  imageUrl,
+  title,
 }: ToastProps) => {
   const iconMap = {
     success: <CheckCircle2 className="w-5 h-5" />,
@@ -124,12 +166,25 @@ const Toast = ({
 
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${colorMap[type]} shadow-lg max-w-xs`}
+      className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${colorMap[type]} shadow-lg max-w-sm`}
     >
-      <div className={`flex-shrink-0 ${iconColorMap[type]}`}>
-        {iconMap[type]}
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt=""
+          className="w-10 h-10 rounded object-cover border"
+        />
+      ) : (
+        <div className={`flex-shrink-0 ${iconColorMap[type]}`}>
+          {iconMap[type]}
+        </div>
+      )}
+      <div className="text-sm flex-1">
+        {title && (
+          <div className="font-semibold leading-tight mb-0.5">{title}</div>
+        )}
+        <div className="font-medium">{message}</div>
       </div>
-      <div className="text-sm font-medium flex-1">{message}</div>
       <button
         onClick={() => onClose(id)}
         className="ml-2 text-gray-400 hover:text-gray-500 transition-colors"

@@ -12,6 +12,7 @@ import { Suspense } from "react";
 import ProductSliderSkeleton from "@components/shared/product/product-slider-skeleton";
 import BundleSlider from "@components/shared/bundles/bundle-slider";
 import FeaturedOffers from "@components/shared/home/FeaturedOffers";
+import Riverbitee from "@components/shared/home/Riverbitee";
 import {
   QueryClient,
   dehydrate,
@@ -298,7 +299,6 @@ export default async function Home() {
               <TopCategories />
             </Suspense>
 
-
             <div className="flex flex-col gap-6">
               <Suspense fallback={<ProductSliderSkeleton />}>
                 <ProductSlider
@@ -309,34 +309,40 @@ export default async function Home() {
                 />
               </Suspense>
 
-              <Suspense 
-              fallback={<ProductSliderSkeleton />}>
-              <BundleSlider
-                title="Bundles "
-                href="/bundles"
-                limit={10}
-              />
-            </Suspense>
+              <Suspense fallback={<ProductSliderSkeleton />}>
+                <BundleSlider title="Bundles " href="/bundles" limit={10} />
+              </Suspense>
 
               <FeaturedOffers />
 
-              <Suspense fallback={<ProductSliderSkeleton />}>
-                <ProductSlider
-                  title={"Today's Deals"}
-                  href="/todays-deal"
-                  tag="todays-deal"
-                  limit={10}
-                />
-              </Suspense>
+              {/* Riverbitee with Product Sliders Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Riverbitee - Left Column */}
+                <div className="lg:col-span-1 order-2 lg:order-1">
+                  <Riverbitee />
+                </div>
 
-              <Suspense fallback={<ProductSliderSkeleton />}>
-                <ProductSlider
-                  title={"Best Selling Products 🔥"}
-                  href="/best-seller"
-                  tag="best-seller"
-                  limit={10}
-                />
-              </Suspense>
+                {/* Product Sliders - Right Columns */}
+                <div className="lg:col-span-2 space-y-6 order-1 lg:order-2">
+                  <Suspense fallback={<ProductSliderSkeleton />}>
+                    <ProductSlider
+                      title={"Today's Deals"}
+                      href="/todays-deal"
+                      tag="todays-deal"
+                      limit={10}
+                    />
+                  </Suspense>
+
+                  <Suspense fallback={<ProductSliderSkeleton />}>
+                    <ProductSlider
+                      title={"Best Selling Products 🔥"}
+                      href="/best-seller"
+                      tag="best-seller"
+                      limit={10}
+                    />
+                  </Suspense>
+                </div>
+              </div>
 
               <Promo />
 

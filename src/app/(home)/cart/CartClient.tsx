@@ -25,6 +25,7 @@ import {
 } from "src/queries/cart";
 import { IProductInput } from "src/types";
 import { Tables } from "src/utils/database.types";
+import { createClient as createSupabaseClient } from "src/utils/supabase/client";
 
 interface GroupedCartItem {
   product?: CartItem["products"];
@@ -89,13 +90,16 @@ const CartClient: React.FC<CartClientProps> = ({
     }
   });
 
-  // Enrich anonymous cart items with offer data (similar to header Cart component)
+  // Enrich anonymous cart items with offer/product/bundle data (similar to header Cart component)
   useEffect(() => {
     if (!user && anonymousCart.items && anonymousCart.items.length > 0) {
       const enrichItems = async () => {
+        const supabase = createSupabaseClient();
         const enriched = await Promise.all(
           anonymousCart.items.map(async (anonItem) => {
-            let offerData = null;
+            let offerData: any = null;
+            let productData: any = null;
+            let bundleData: any = null;
 
             // Fetch offer data if this is an offer item
             if (anonItem.offer_id) {
@@ -115,6 +119,42 @@ const CartClient: React.FC<CartClientProps> = ({
               }
             }
 
+            // Fetch product data if product_id exists
+            if (anonItem.product_id) {
+              try {
+                const { data } = await supabase
+                  .from("products")
+                  .select(
+                    "id, name, slug, images, price, list_price, is_published"
+                  )
+                  .eq("id", anonItem.product_id)
+                  .single();
+                if (data) productData = data;
+              } catch (error) {
+                console.error(
+                  `Failed to fetch product data for ${anonItem.product_id}:`,
+                  error
+                );
+              }
+            }
+
+            // Fetch bundle data if bundle_id exists
+            if (anonItem.bundle_id) {
+              try {
+                const { data } = await supabase
+                  .from("bundles")
+                  .select("id, name, thumbnail_url, price")
+                  .eq("id", anonItem.bundle_id)
+                  .single();
+                if (data) bundleData = data;
+              } catch (error) {
+                console.error(
+                  `Failed to fetch bundle data for ${anonItem.bundle_id}:`,
+                  error
+                );
+              }
+            }
+
             return {
               id: anonItem.id,
               product_id: anonItem.product_id,
@@ -126,8 +166,8 @@ const CartClient: React.FC<CartClientProps> = ({
               created_at: anonItem.created_at,
               user_id: null,
               cart_id: null,
-              products: null,
-              bundles: null,
+              products: productData,
+              bundles: bundleData,
               offers: offerData,
             } as CartItem;
           })
@@ -158,33 +198,67 @@ const CartClient: React.FC<CartClientProps> = ({
     });
 
     if (!user && !anonymousCart.isLoading) {
-      // Initial load or update of anonymous cart items
-      const updatedItems = (anonymousCart.items || []).map(
-        (anonItem) =>
-          ({
-            id: anonItem.id,
-            product_id: anonItem.product_id,
-            bundle_id: anonItem.bundle_id,
-            offer_id: (anonItem as any).offer_id || null,
-            quantity: anonItem.quantity,
-            price: anonItem.price,
-            option: anonItem.option,
-            created_at: anonItem.created_at,
-            user_id: null,
-            cart_id: null, // Add missing cart_id property
-            products: null,
-            bundles: null,
-            offers: null, // Add missing offers property
-          }) as CartItem
-      );
+      // Initial load or update of anonymous cart items with enrichment
+      const supabase = createSupabaseClient();
+      const enrichAndSet = async () => {
+        const enriched = await Promise.all(
+          (anonymousCart.items || []).map(async (anonItem) => {
+            let offerData: any = null;
+            let productData: any = null;
+            let bundleData: any = null;
 
-      console.log("Setting items from anonymous cart:", updatedItems);
-      setItems(updatedItems);
+            if ((anonItem as any).offer_id) {
+              try {
+                const response = await fetch(
+                  `/api/offers/${(anonItem as any).offer_id}`
+                );
+                if (response.ok) {
+                  const { offer } = await response.json();
+                  offerData = offer;
+                }
+              } catch (error) {
+                console.error(
+                  `Failed to fetch offer data for ${(anonItem as any).offer_id}:`,
+                  error
+                );
+              }
+            }
 
-      const handleAnonymousCartUpdate = () => {
-        const updatedItems = (anonymousCart.items || []).map(
-          (anonItem) =>
-            ({
+            if (anonItem.product_id) {
+              try {
+                const { data } = await supabase
+                  .from("products")
+                  .select(
+                    "id, name, slug, images, price, list_price, is_published"
+                  )
+                  .eq("id", anonItem.product_id)
+                  .single();
+                if (data) productData = data;
+              } catch (error) {
+                console.error(
+                  `Failed to fetch product data for ${anonItem.product_id}:`,
+                  error
+                );
+              }
+            }
+
+            if (anonItem.bundle_id) {
+              try {
+                const { data } = await supabase
+                  .from("bundles")
+                  .select("id, name, thumbnail_url, price")
+                  .eq("id", anonItem.bundle_id)
+                  .single();
+                if (data) bundleData = data;
+              } catch (error) {
+                console.error(
+                  `Failed to fetch bundle data for ${anonItem.bundle_id}:`,
+                  error
+                );
+              }
+            }
+
+            return {
               id: anonItem.id,
               product_id: anonItem.product_id,
               bundle_id: anonItem.bundle_id,
@@ -194,14 +268,21 @@ const CartClient: React.FC<CartClientProps> = ({
               option: anonItem.option,
               created_at: anonItem.created_at,
               user_id: null,
-              cart_id: null, // Add missing cart_id property
-              products: null,
-              bundles: null,
-              offers: null, // Add missing offers property
-            }) as CartItem
+              cart_id: null,
+              products: productData,
+              bundles: bundleData,
+              offers: offerData,
+            } as CartItem;
+          })
         );
-        console.log("Anonymous cart updated:", updatedItems);
-        setItems(updatedItems);
+        console.log("Setting enriched anonymous items:", enriched);
+        setItems(enriched);
+      };
+
+      enrichAndSet();
+
+      const handleAnonymousCartUpdate = () => {
+        enrichAndSet();
       };
 
       // Listen for anonymous cart updates
@@ -688,6 +769,7 @@ const CartClient: React.FC<CartClientProps> = ({
                                         src={
                                           productOption?.image ||
                                           item.products?.images?.[0] ||
+                                          (item as any)?.meta?.image ||
                                           item.bundles?.thumbnail_url ||
                                           item.offers?.image_url ||
                                           "/placeholder.png"
@@ -703,11 +785,14 @@ const CartClient: React.FC<CartClientProps> = ({
                                     </Link>
                                     <div>
                                       <div className="font-semibold text-gray-900 text-sm">
-                                        {productOption?.name ||
-                                          item.products?.name ||
+                                        {(item.products?.name ||
                                           item.bundles?.name ||
                                           item.offers?.title ||
-                                          "Product"}
+                                          (item as any)?.meta?.name ||
+                                          "Product") +
+                                          (productOption?.name
+                                            ? ` - ${productOption.name}`
+                                            : "")}
                                       </div>
                                     </div>
                                   </td>
@@ -793,6 +878,7 @@ const CartClient: React.FC<CartClientProps> = ({
                                       src={
                                         productOption?.image ||
                                         item.products?.images?.[0] ||
+                                        (item as any)?.meta?.image ||
                                         item.bundles?.thumbnail_url ||
                                         item.offers?.image_url ||
                                         "/placeholder.png"
@@ -808,10 +894,14 @@ const CartClient: React.FC<CartClientProps> = ({
                                   </Link>
                                   <div>
                                     <div className="font-semibold text-gray-900 text-sm">
-                                      {productOption?.name ||
-                                        item.products?.name ||
+                                      {(item.products?.name ||
                                         item.bundles?.name ||
-                                        "Product"}
+                                        item.offers?.title ||
+                                        (item as any)?.meta?.name ||
+                                        "Product") +
+                                        (productOption?.name
+                                          ? ` - ${productOption.name}`
+                                          : "")}
                                     </div>
                                     <div className="text-sm text-gray-600 mt-1">
                                       {formatNaira(

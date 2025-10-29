@@ -48,7 +48,8 @@ export class AnonymousCart {
     price: number,
     option?: any | null,
     bundleId?: string | null,
-    offerId?: string | null
+    offerId?: string | null,
+    meta?: { name?: string; slug?: string; image?: string } | null
   ): Promise<void> {
     const items = this.getCartItems();
     
@@ -100,6 +101,7 @@ export class AnonymousCart {
         price,
         option: option || null,
         created_at: new Date().toISOString(),
+        meta: meta || null,
       };
       items.push(newItem);
     }
