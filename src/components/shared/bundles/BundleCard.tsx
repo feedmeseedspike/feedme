@@ -21,19 +21,19 @@ import {
 } from "src/queries/cart";
 
 interface BundleCardProps {
-  bundle: Tables<'bundles'>;
+  bundle: Tables<"bundles">;
   hideDetails?: boolean;
   hideBorder?: boolean;
   hideAddToCart?: boolean;
 }
 
-const BundleCard: React.FC<BundleCardProps> = ({ 
-  bundle, 
-  hideDetails = false, 
-  hideBorder = false, 
-  hideAddToCart = false 
+const BundleCard: React.FC<BundleCardProps> = ({
+  bundle,
+  hideDetails = false,
+  hideBorder = false,
+  hideAddToCart = false,
 }) => {
-  const bundleSlug = toSlug(bundle.name || '');
+  const bundleSlug = toSlug(bundle.name || "");
   const { showToast } = useToast();
   const { user } = useUser();
   const router = useRouter();
@@ -52,12 +52,12 @@ const BundleCard: React.FC<BundleCardProps> = ({
   // Load favorites from localStorage on mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('bundle_favorites');
+      const saved = localStorage.getItem("bundle_favorites");
       if (saved) {
         setLocalFavorites(JSON.parse(saved));
       }
     } catch (error) {
-      console.error('Error loading bundle favorites:', error);
+      console.error("Error loading bundle favorites:", error);
     }
   }, []);
 
@@ -66,10 +66,10 @@ const BundleCard: React.FC<BundleCardProps> = ({
   // Save to localStorage
   const saveFavorites = (favorites: string[]) => {
     try {
-      localStorage.setItem('bundle_favorites', JSON.stringify(favorites));
+      localStorage.setItem("bundle_favorites", JSON.stringify(favorites));
       setLocalFavorites(favorites);
     } catch (error) {
-      console.error('Error saving bundle favorites:', error);
+      console.error("Error saving bundle favorites:", error);
     }
   };
 
@@ -84,7 +84,9 @@ const BundleCard: React.FC<BundleCardProps> = ({
   }, [user, cartItems, anonymousCart.items, bundle.id]);
 
   const [quantity, setQuantity] = useState(currentCartItem?.quantity ?? 1);
-  const [showQuantityControls, setShowQuantityControls] = useState(Boolean(currentCartItem));
+  const [showQuantityControls, setShowQuantityControls] = useState(
+    Boolean(currentCartItem)
+  );
 
   useEffect(() => {
     setQuantity(currentCartItem?.quantity ?? 1);
@@ -102,13 +104,13 @@ const BundleCard: React.FC<BundleCardProps> = ({
       if (!bundle.id) return;
 
       setIsLoadingFavorites(true);
-      
+
       try {
         let newFavorites: string[];
-        
+
         if (isFavorited) {
           // Remove from favorites
-          newFavorites = localFavorites.filter(id => id !== bundle.id);
+          newFavorites = localFavorites.filter((id) => id !== bundle.id);
           saveFavorites(newFavorites);
           showToast(`${bundle.name} removed from wishlist`, "info");
         } else {
@@ -124,7 +126,14 @@ const BundleCard: React.FC<BundleCardProps> = ({
         setIsLoadingFavorites(false);
       }
     },
-    [bundle.id, bundle.name, isFavorited, localFavorites, saveFavorites, showToast]
+    [
+      bundle.id,
+      bundle.name,
+      isFavorited,
+      localFavorites,
+      saveFavorites,
+      showToast,
+    ]
   );
 
   // Handle cart operations
@@ -147,10 +156,22 @@ const BundleCard: React.FC<BundleCardProps> = ({
           if (existingAnonymousItem) {
             anonymousCart.updateQuantity(existingAnonymousItem.id, newQuantity);
           } else {
-            anonymousCart.addItem(null, newQuantity, bundle.price ?? 0, null, bundle.id, null);
+            anonymousCart.addItem(
+              null,
+              newQuantity,
+              bundle.price ?? 0,
+              null,
+              bundle.id,
+              null,
+              {
+                name: bundle.name,
+                slug: bundle.id || undefined,
+                image: bundle.thumbnail_url || undefined,
+              }
+            );
           }
           showToast(
-            `${bundle.name} ${newQuantity === 1 ? 'added to' : 'updated in'} cart`,
+            `${bundle.name} ${newQuantity === 1 ? "added to" : "updated in"} cart`,
             "success"
           );
         }
@@ -194,7 +215,16 @@ const BundleCard: React.FC<BundleCardProps> = ({
         showToast("Failed to update cart.", "error");
       }
     },
-    [bundle.id, bundle.name, bundle.price, user, cartItems, anonymousCart, showToast, updateCartMutation]
+    [
+      bundle.id,
+      bundle.name,
+      bundle.price,
+      user,
+      cartItems,
+      anonymousCart,
+      showToast,
+      updateCartMutation,
+    ]
   );
 
   const handleRemoveFromCart = useCallback(async () => {
@@ -216,7 +246,14 @@ const BundleCard: React.FC<BundleCardProps> = ({
       console.error("Failed to remove cart item:", error);
       showToast("Failed to remove item from cart.", "error");
     }
-  }, [currentCartItem, user, anonymousCart, bundle.name, showToast, removeCartItemMutation]);
+  }, [
+    currentCartItem,
+    user,
+    anonymousCart,
+    bundle.name,
+    showToast,
+    removeCartItemMutation,
+  ]);
 
   const handleAddToCartClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -249,7 +286,9 @@ const BundleCard: React.FC<BundleCardProps> = ({
             "absolute top-2 right-2 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-gray-100 transition-colors shadow-md",
             isLoading && "opacity-50 cursor-not-allowed"
           )}
-          aria-label={isFavorited ? "Remove from favorites" : "Add to favorites"}
+          aria-label={
+            isFavorited ? "Remove from favorites" : "Add to favorites"
+          }
           whileTap={{ scale: 0.9 }}
           whileHover={{ scale: 1.1 }}
         >
@@ -291,7 +330,9 @@ const BundleCard: React.FC<BundleCardProps> = ({
                   }
                 }}
                 className="p-1 rounded-full hover:bg-gray-100 transition-colors text-[#1B6013]"
-                aria-label={quantity === 1 ? "Remove item" : "Decrease quantity"}
+                aria-label={
+                  quantity === 1 ? "Remove item" : "Decrease quantity"
+                }
               >
                 {quantity === 1 ? (
                   <Trash2 className="size-[14px]" />
@@ -299,11 +340,11 @@ const BundleCard: React.FC<BundleCardProps> = ({
                   <Minus className="size-[14px]" />
                 )}
               </button>
-              
+
               <span className="text-sm font-medium w-4 text-center">
                 {quantity}
               </span>
-              
+
               <button
                 onClick={(e) => {
                   e.preventDefault();
@@ -331,11 +372,13 @@ const BundleCard: React.FC<BundleCardProps> = ({
 
       {/* Bundle image */}
       <Link href={`/bundles/${bundleSlug}`} passHref>
-        <div className={cn(
-          hideAddToCart 
-            ? "relative h-[100px] w-[120px] md:h-[135px] md:w-[160px] bg-[#F2F4F7] overflow-hidden rounded-[8px]"
-            : "relative h-[10rem] lg:h-[12rem] w-full overflow-hidden rounded-lg"
-        )}>
+        <div
+          className={cn(
+            hideAddToCart
+              ? "relative h-[100px] w-[120px] md:h-[135px] md:w-[160px] bg-[#F2F4F7] overflow-hidden rounded-[8px]"
+              : "relative h-[10rem] lg:h-[12rem] w-full overflow-hidden rounded-lg"
+          )}
+        >
           <Image
             src={bundle.thumbnail_url || "/placeholder-product.png"}
             alt={bundle.name || "Bundle"}
@@ -343,8 +386,8 @@ const BundleCard: React.FC<BundleCardProps> = ({
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             className={cn(
               "object-cover",
-              hideAddToCart 
-                ? "w-full h-full" 
+              hideAddToCart
+                ? "w-full h-full"
                 : "transition-transform duration-300 ease-in-out hover:scale-105 h-full w-full"
             )}
             onError={(e) => {
@@ -357,27 +400,33 @@ const BundleCard: React.FC<BundleCardProps> = ({
   );
 
   const BundleDetails = () => (
-    <div className={cn(
-      hideAddToCart 
-        ? "flex flex-col space-y-1 w-[120px] md:w-[160px]" 
-        : "flex-1"
-    )}>
+    <div
+      className={cn(
+        hideAddToCart
+          ? "flex flex-col space-y-1 w-[120px] md:w-[160px]"
+          : "flex-1"
+      )}
+    >
       <Link
         href={`/bundles/${bundleSlug}`}
         className={cn(
-          hideAddToCart 
+          hideAddToCart
             ? "overflow-hidden h4-bold text-ellipsis leading-5 max-w-[10rem]"
-            : "overflow-hidden text-ellipsis h4-bold",
+            : "overflow-hidden text-ellipsis h4-bold"
         )}
-        style={!hideAddToCart ? {
-          display: "-webkit-box",
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical",
-        } : undefined}
+        style={
+          !hideAddToCart
+            ? {
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+              }
+            : undefined
+        }
       >
         {bundle.name}
       </Link>
-      
+
       {/* Rating - only show in full mode */}
       {!hideAddToCart && (
         <div className="flex gap-2">
@@ -390,13 +439,15 @@ const BundleCard: React.FC<BundleCardProps> = ({
             )}
         </div>
       )}
-      
+
       <div className="flex flex-col">
-        <span className={cn(
-          hideAddToCart 
-            ? "text-[14px] text-[#1B6013]"
-            : "font-bold text-md whitespace-nowrap"
-        )}>
+        <span
+          className={cn(
+            hideAddToCart
+              ? "text-[14px] text-[#1B6013]"
+              : "font-bold text-md whitespace-nowrap"
+          )}
+        >
           {formatNaira(bundle.price || 0)}
         </span>
       </div>
@@ -404,11 +455,13 @@ const BundleCard: React.FC<BundleCardProps> = ({
   );
 
   return (
-    <div className={cn(
-      hideAddToCart 
-        ? "flex flex-col mb-4 md:pb-8 gap-2"
-        : "relative rounded-[8px]"
-    )}>
+    <div
+      className={cn(
+        hideAddToCart
+          ? "flex flex-col mb-4 md:pb-8 gap-2"
+          : "relative rounded-[8px]"
+      )}
+    >
       {hideAddToCart ? (
         // Slider mode - match ProductCard layout
         <>

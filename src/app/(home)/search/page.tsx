@@ -113,16 +113,40 @@ const SearchPage = async (props: {
   const categories = await getAllCategories();
   const tags = await getAllTags();
   const client = createClient();
-  const data = await getAllProducts(client, {
-    category,
-    tag,
-    query: q,
-    price,
-    rating,
-    page: Number(page),
-    sort,
-    season,
-  });
+
+  let data: {
+    products: any[];
+    totalPages: number;
+    totalProducts: number;
+    from: number;
+    to: number;
+  };
+
+  try {
+    data = await getAllProducts(client, {
+      category,
+      tag,
+      query: q,
+      price,
+      rating,
+      page: Number(page),
+      sort,
+      season,
+    });
+  } catch (error: any) {
+    console.error(
+      "Search page - getAllProducts failed",
+      error?.message || error
+    );
+    // Graceful fallback: keep page structure, show empty state
+    data = {
+      products: [],
+      totalPages: 0,
+      totalProducts: 0,
+      from: 0,
+      to: 0,
+    };
+  }
 
   // Safely get a category for related products
   let relatedCategory: string | null = category !== "all" ? category : null;
@@ -140,19 +164,25 @@ const SearchPage = async (props: {
     }
   }
 
-  // Fallback to first available category if still no category
+  // Fallback to first available category ID (must be an ID, not title)
   if (!relatedCategory && categories.length > 0) {
-    relatedCategory = categories[0]?.title || "";
+    relatedCategory = (categories[0] as any)?.id || "";
   }
 
-  // Only fetch related products if we have a valid category
+  // Only fetch related products if we have a valid UUID category
   let relatedProducts: { data: any[]; totalPages?: number } = { data: [] };
-  if (relatedCategory) {
-    relatedProducts = await getRelatedProductsByCategory({
-      category: relatedCategory!,
-      productId: productIdForExclusion || "",
-      page: 1,
-    });
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (relatedCategory && uuidRegex.test(relatedCategory)) {
+    try {
+      relatedProducts = await getRelatedProductsByCategory({
+        category: relatedCategory,
+        productId: productIdForExclusion || "",
+        page: 1,
+      });
+    } catch (e) {
+      relatedProducts = { data: [] };
+    }
   }
 
   const noResults = data.totalProducts === 0;
@@ -290,37 +320,39 @@ const SearchPage = async (props: {
                         </AccordionItem>
                       </Accordion>
 
-                      {/* Price */}
-                      <Accordion type="single" collapsible>
-                        <AccordionItem value="price">
-                          <AccordionTrigger>Price</AccordionTrigger>
-                          <AccordionContent>
-                            <PriceRangeSlider
-                              params={params}
-                              maxPrice={Math.max(
-                                ...data.products.flatMap((p: ProductType) => {
-                                  const prices = [
-                                    typeof p.price === "number" ? p.price : 0,
-                                  ];
-                                  // Include option prices if they exist
-                                  if (p.options && Array.isArray(p.options)) {
-                                    p.options.forEach((option: any) => {
-                                      if (
-                                        option.price &&
-                                        typeof option.price === "number"
-                                      ) {
-                                        prices.push(option.price);
-                                      }
-                                    });
-                                  }
-                                  return prices;
-                                }),
-                                1000 // Minimum fallback value
-                              )}
-                            />
-                          </AccordionContent>
-                        </AccordionItem>
-                      </Accordion>
+                      {/* Price (only if we have products) */}
+                      {data.products.length > 0 && (
+                        <Accordion type="single" collapsible>
+                          <AccordionItem value="price">
+                            <AccordionTrigger>Price</AccordionTrigger>
+                            <AccordionContent>
+                              <PriceRangeSlider
+                                params={params}
+                                maxPrice={Math.max(
+                                  ...data.products.flatMap((p: ProductType) => {
+                                    const prices = [
+                                      typeof p.price === "number" ? p.price : 0,
+                                    ];
+                                    // Include option prices if they exist
+                                    if (p.options && Array.isArray(p.options)) {
+                                      p.options.forEach((option: any) => {
+                                        if (
+                                          option.price &&
+                                          typeof option.price === "number"
+                                        ) {
+                                          prices.push(option.price);
+                                        }
+                                      });
+                                    }
+                                    return prices;
+                                  }),
+                                  1000 // Minimum fallback value
+                                )}
+                              />
+                            </AccordionContent>
+                          </AccordionItem>
+                        </Accordion>
+                      )}
 
                       {/* Season */}
                       <Accordion type="single" collapsible>
@@ -415,35 +447,42 @@ const SearchPage = async (props: {
               </ul>
             </div>
           )}
-          <div>
-            <div className="font-bold flex gap-1 items-center w-full">
-              Price{" "}
-              <div className="flex items-center w-full">
-                <span className="bg-[#1B6013] flex items-center h-1 w-10 rounded-md"></span>
-                <span className="w-full border-b" />
+          {data.products.length > 0 && (
+            <div>
+              <div className="font-bold flex gap-1 items-center w-full">
+                Price{" "}
+                <div className="flex items-center w-full">
+                  <span className="bg-[#1B6013] flex items-center h-1 w-10 rounded-md"></span>
+                  <span className="w-full border-b" />
+                </div>
+              </div>
+              <div className="pl-2 pt-2">
+                <PriceRangeSlider
+                  params={params}
+                  maxPrice={Math.max(
+                    ...data.products.flatMap((p) => {
+                      const prices = [
+                        typeof p.price === "number" ? p.price : 0,
+                      ];
+                      // Include option prices if they exist
+                      if (p.options && Array.isArray(p.options)) {
+                        p.options.forEach((option: any) => {
+                          if (
+                            option.price &&
+                            typeof option.price === "number"
+                          ) {
+                            prices.push(option.price);
+                          }
+                        });
+                      }
+                      return prices;
+                    }),
+                    1000 // Minimum fallback value
+                  )}
+                />
               </div>
             </div>
-            <div className="pl-2 pt-2">
-              <PriceRangeSlider
-                params={params}
-                maxPrice={Math.max(
-                  ...data.products.flatMap((p) => {
-                    const prices = [typeof p.price === "number" ? p.price : 0];
-                    // Include option prices if they exist
-                    if (p.options && Array.isArray(p.options)) {
-                      p.options.forEach((option: any) => {
-                        if (option.price && typeof option.price === "number") {
-                          prices.push(option.price);
-                        }
-                      });
-                    }
-                    return prices;
-                  }),
-                  1000 // Minimum fallback value
-                )}
-              />
-            </div>
-          </div>
+          )}
           <div>
             <div className="font-bold flex gap-1 items-center w-full">
               Season{" "}

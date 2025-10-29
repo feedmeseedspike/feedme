@@ -115,7 +115,8 @@ export function useAnonymousCart() {
       price: number,
       option?: ProductOption | null,
       bundleId?: string | null,
-      offerId?: string | null
+      offerId?: string | null,
+      meta?: { name?: string; slug?: string; image?: string } | null
     ) => {
       if (user) {
         // User is authenticated, this shouldn't be called
@@ -123,7 +124,7 @@ export function useAnonymousCart() {
       }
 
       try {
-        await anonymousCart.addItem(productId, quantity, price, option, bundleId, offerId);
+        await anonymousCart.addItem(productId, quantity, price, option, bundleId, offerId, meta);
         const updatedItems = anonymousCart.getItems();
         setItems(updatedItems);
         // Dispatch a custom event to notify other components

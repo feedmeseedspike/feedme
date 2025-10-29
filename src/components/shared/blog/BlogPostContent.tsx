@@ -4,7 +4,9 @@ import Image from "next/image";
 import { Clock, Eye, Heart, Share2, User, ChefHat, Users } from "lucide-react";
 import { BlogPost } from "@/lib/actions/blog.actions";
 import { formatDistanceToNow, format } from "date-fns";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useUser } from "src/hooks/useUser";
+import { useToast } from "src/hooks/useToast";
 import ProductLinkParser from "./ProductLinkParser";
 
 interface BlogPostContentProps {
@@ -14,6 +16,46 @@ interface BlogPostContentProps {
 export default function BlogPostContent({ post }: BlogPostContentProps) {
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(post.likes_count);
+  const [viewsCount, setViewsCount] = useState(post.views_count);
+  const { user } = useUser();
+  const { showToast } = useToast();
+
+  // Increment views (once per device per day) and update UI count optimistically
+  useEffect(() => {
+    const key = `blog_viewed_${post.slug}`;
+    const today = new Date().toISOString().slice(0, 10);
+    const last =
+      typeof window !== "undefined" ? localStorage.getItem(key) : null;
+    if (last !== today) {
+      fetch(`/api/blog/posts/${post.slug}/views`, { method: "POST" })
+        .then(() => {
+          try {
+            localStorage.setItem(key, today);
+          } catch {}
+          setViewsCount((v) => v + 1);
+        })
+        .catch(() => {});
+    }
+  }, [post.slug]);
+
+  // Initialize like state for logged-in user
+  useEffect(() => {
+    if (!user?.user_id) return;
+    const controller = new AbortController();
+    fetch(
+      `/api/blog/posts/${post.slug}/like?userId=${encodeURIComponent(user.user_id)}`,
+      {
+        method: "GET",
+        signal: controller.signal,
+      }
+    )
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data && data.success) setIsLiked(!!data.liked);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [post.slug, user?.user_id]);
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -38,9 +80,27 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
   };
 
   const handleLike = async () => {
-    // TODO: Implement like functionality when user authentication is ready
-    setIsLiked(!isLiked);
-    setLikesCount((prev) => (isLiked ? prev - 1 : prev + 1));
+    if (!user?.user_id) {
+      showToast("Please log in to like this post", "info");
+      return;
+    }
+    // Optimistic toggle
+    const nextLiked = !isLiked;
+    setIsLiked(nextLiked);
+    setLikesCount((prev) => prev + (nextLiked ? 1 : -1));
+    try {
+      const res = await fetch(`/api/blog/posts/${post.slug}/like`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.user_id }),
+      });
+      if (!res.ok) throw new Error("Failed");
+    } catch (e) {
+      // Revert on failure
+      setIsLiked((was) => !was);
+      setLikesCount((prev) => prev + (nextLiked ? -1 : 1));
+      showToast("Failed to update like. Please try again.", "error");
+    }
   };
 
   return (
@@ -90,7 +150,7 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
           )}
           <div className="flex items-center gap-1">
             <Eye size={16} />
-            <span>{post.views_count.toLocaleString()} views</span>
+            <span>{viewsCount.toLocaleString()} views</span>
           </div>
         </div>
 

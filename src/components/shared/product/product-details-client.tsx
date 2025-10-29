@@ -395,7 +395,7 @@ export default function ProductDetailsClient({
         <Separator className="mt-4 mb-2" />
         <AddToCart
           item={{
-            id: product._id || "",
+            id: (product as any).id || (product as any)._id || "",
             name: product.name,
             slug: product.slug,
             category: product.category,

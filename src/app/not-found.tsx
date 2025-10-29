@@ -17,8 +17,10 @@ export const metadata = {
 const NotFound = () => {
   return (
     <>
-    {/* <Header />
-    <Headertags /> */}
+      <Header />
+      <div className="hidden md:block border-b py-2">
+        <Headertags />
+      </div>
       <section className="flex justify-center items-center bg-white">
         <Image
           src="/404.gif"

@@ -10,21 +10,21 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: "/", icon: "/bottom-icons/home.svg", label: "Home" },
-    { href: "/cart", icon: "/bottom-icons/cart.png", label: "Cart" },
+    { href: "/", icon: "/bottom-iconss/home.svg", label: "Home" },
+    { href: "/cart", icon: "/bottom-iconss/cart.svg", label: "Cart" },
     {
       href: "/account/order",
-      icon: "/bottom-icons/order.png",
+      icon: "/bottom-iconss/orders.svg",
       label: "Orders",
     },
     {
-      href: "/account/favourites",
-      icon: "/bottom-icons/favorite.png",
-      label: "Favorites",
+      href: "/account/wallet",
+      icon: "/bottom-iconss/wallet.svg",
+      label: "Wallet",
     },
     {
       href: "/account/profile",
-      icon: "/bottom-icons/account.png",
+      icon: "/bottom-iconss/account.svg",
       label: "Account",
     },
   ];
@@ -38,7 +38,7 @@ export default function BottomNav() {
         exit="exit"
         variants={BottomNavAnimations}
         className="md:hidden fixed bottom-2 left-1/2 -translate-x-1/2 z-50 flex justify-center px-4 
-          py-2 rounded-full backdrop-blur-md shadow-lg shadow-[#2A0E61]/50"
+          py-1 rounded-2xl backdrop-blur-md shadow-lg shadow-[#2A0E61]/50"
       >
         <ul className="flex items-center text-xs sm:text-sm sm:gap-2">
           {navItems.map((item) => {

@@ -196,25 +196,18 @@ export function generateClientId(item: {
   return `${item.product}::${optionKey}::${priceKey}`;
 }
 
-export function showToast(message: string, type: 'success' | 'error' | 'info' | 'warning') {
+export function showToast(
+  message: string,
+  type: 'success' | 'error' | 'info' | 'warning',
+  options?: { imageUrl?: string; title?: string; duration?: number }
+) {
   // Assuming toast from 'sonner' or similar library is available globally or handled by context
   // For now, we can just console log or use a basic alert if no toast library is set up
-  switch (type) {
-    case 'success':
-      // toast.success(message); // Uncomment if using a toast library
-      break;
-    case 'error':
-      // toast.error(message); // Uncomment if using a toast library
-      break;
-    case 'info':
-      // toast.info(message); // Uncomment if using a toast library
-      break;
-    case 'warning':
-      // toast.warning(message); // Uncomment if using a toast library
-      break;
-    default:
-      // toast(message); // Uncomment if using a toast library
-  }
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('app-toast', { detail: { message, type, ...options } }));
+    }
+  } catch {}
 }
 
 export interface CategoryData {

@@ -35,6 +35,7 @@ export interface BlogPost {
   // Relations
   blog_categories?: BlogCategory;
   blog_post_tags?: { blog_tags: BlogTag }[];
+  blog_recipe_products?: BlogRecipeProduct[];
 }
 
 export interface BlogCategory {
@@ -48,6 +49,16 @@ export interface BlogCategory {
   sort_order: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface BlogRecipeProduct {
+  id: string;
+  post_id: string;
+  product_id: string;
+  ingredient_name: string;
+  quantity?: string;
+  optional?: boolean;
+  created_at: string;
 }
 
 export interface BlogTag {
@@ -131,14 +142,15 @@ export async function getAllBlogPosts({
 }
 
 export async function getBlogPostBySlug(slug: string) {
-  const supabase = await createClient();
+  const supabase = createServiceRoleClient();
   
   const { data, error } = await supabase
     .from("blog_posts")
     .select(`
       *,
       blog_categories(*),
-      blog_post_tags(blog_tags(*))
+      blog_post_tags(blog_tags(*)),
+      blog_recipe_products(*)
     `)
     .eq("slug", slug)
     .eq("status", "published")

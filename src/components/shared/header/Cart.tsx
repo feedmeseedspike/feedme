@@ -37,6 +37,7 @@ import { Input } from "@components/ui/input";
 import Link from "next/link";
 import { useToast } from "src/hooks/useToast";
 import { useVoucherValidationMutation } from "src/queries/vouchers";
+import { createClient as createSupabaseClient } from "src/utils/supabase/client";
 
 // Explicitly define ProductOption here to resolve 'Cannot find name' errors
 interface ProductOption {
@@ -72,8 +73,12 @@ const CartProductGroupDisplay = React.memo(
     handleRemoveItem,
     handleQuantityChange,
   }: CartProductGroupDisplayProps) => {
-    const groupName = productGroup.product?.name || productGroup.bundle?.name || productGroup.offer?.title || "Product";
-    
+    const groupName =
+      productGroup.product?.name ||
+      productGroup.bundle?.name ||
+      productGroup.offer?.title ||
+      "Product";
+
     return (
       <div key={productId} className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
@@ -109,8 +114,18 @@ interface CartItemDisplayProps {
 const CartItemDisplay = React.memo(
   ({ item, handleRemoveItem, handleQuantityChange }: CartItemDisplayProps) => {
     const productOption = isProductOption(item.option) ? item.option : null;
-    const productName = productOption?.name || item.products?.name || item.bundles?.name || item.offers?.title || "Product";
-    const productSlug = item.products?.slug || item.product_id || item.bundle_id || item.offer_id || "";
+    const baseName =
+      item.products?.name ||
+      item.bundles?.name ||
+      item.offers?.title ||
+      "Product";
+    const productName = baseName;
+    const productSlug =
+      item.products?.slug ||
+      item.product_id ||
+      item.bundle_id ||
+      item.offer_id ||
+      "";
 
     return (
       <React.Fragment>
@@ -122,6 +137,7 @@ const CartItemDisplay = React.memo(
               src={
                 productOption?.image ||
                 item.products?.images?.[0] ||
+                (item as any)?.meta?.image ||
                 item.bundles?.thumbnail_url ||
                 item.offers?.image_url ||
                 "/placeholder.png"
@@ -132,7 +148,9 @@ const CartItemDisplay = React.memo(
           </div>
           <div className="flex flex-col gap-[6px] w-full">
             <div className="flex justify-between">
-              <p className="h6-light !text-[14px]">{productName}</p>
+              <p className="h6-light !text-[14px]">
+                {productName || (item as any)?.meta?.name}
+              </p>
               <Trash2Icon
                 className="size-4 cursor-pointer"
                 onClick={() => handleRemoveItem(item as CartItem)}
@@ -145,9 +163,11 @@ const CartItemDisplay = React.memo(
                   (() => {
                     if (item.offer_id && item.offers) {
                       return item.offers.price_per_slot || item.price || 0;
-                    } else if (isProductOption(item.option) &&
+                    } else if (
+                      isProductOption(item.option) &&
                       item.option.price !== undefined &&
-                      item.option.price !== null) {
+                      item.option.price !== null
+                    ) {
                       return item.option.price;
                     } else {
                       return item.price || 0;
@@ -210,44 +230,92 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
   useEffect(() => {
     if (!user) {
       const handleAnonymousCartUpdate = () => {
-        setForceUpdate(prev => prev + 1);
+        setForceUpdate((prev) => prev + 1);
       };
-      
+
       const handleStorageChange = (e: StorageEvent) => {
-        if (e.key === 'feedme_anonymous_cart') {
-          setForceUpdate(prev => prev + 1);
+        if (e.key === "feedme_anonymous_cart") {
+          setForceUpdate((prev) => prev + 1);
         }
       };
-      
-      window.addEventListener('anonymousCartUpdated', handleAnonymousCartUpdate);
-      window.addEventListener('storage', handleStorageChange);
+
+      window.addEventListener(
+        "anonymousCartUpdated",
+        handleAnonymousCartUpdate
+      );
+      window.addEventListener("storage", handleStorageChange);
       return () => {
-        window.removeEventListener('anonymousCartUpdated', handleAnonymousCartUpdate);
-        window.removeEventListener('storage', handleStorageChange);
+        window.removeEventListener(
+          "anonymousCartUpdated",
+          handleAnonymousCartUpdate
+        );
+        window.removeEventListener("storage", handleStorageChange);
       };
     }
   }, [user]);
 
   const [enrichedAnonItems, setEnrichedAnonItems] = useState<CartItem[]>([]);
 
-  // Enrich anonymous cart items with offer data
+  // Enrich anonymous cart items with offer/product/bundle data
   useEffect(() => {
     if (!user && anonymousCart.items && anonymousCart.items.length > 0) {
       const enrichItems = async () => {
+        const supabase = createSupabaseClient();
         const enriched = await Promise.all(
           anonymousCart.items.map(async (anonItem) => {
-            let offerData = null;
-            
+            let offerData: any = null;
+            let productData: any = null;
+            let bundleData: any = null;
+
             // Fetch offer data if this is an offer item
             if (anonItem.offer_id) {
               try {
-                const response = await fetch(`/api/offers/${anonItem.offer_id}`);
+                const response = await fetch(
+                  `/api/offers/${anonItem.offer_id}`
+                );
                 if (response.ok) {
                   const { offer } = await response.json();
                   offerData = offer;
                 }
               } catch (error) {
-                console.error(`Failed to fetch offer data for ${anonItem.offer_id}:`, error);
+                console.error(
+                  `Failed to fetch offer data for ${anonItem.offer_id}:`,
+                  error
+                );
+              }
+            }
+
+            // Fetch product data if product_id exists
+            if (anonItem.product_id) {
+              try {
+                const { data } = await supabase
+                  .from("products")
+                  .select("id, name, slug, images")
+                  .eq("id", anonItem.product_id)
+                  .single();
+                if (data) productData = data;
+              } catch (error) {
+                console.error(
+                  `Failed to fetch product data for ${anonItem.product_id}:`,
+                  error
+                );
+              }
+            }
+
+            // Fetch bundle data if bundle_id exists
+            if (anonItem.bundle_id) {
+              try {
+                const { data } = await supabase
+                  .from("bundles")
+                  .select("id, name, thumbnail_url")
+                  .eq("id", anonItem.bundle_id)
+                  .single();
+                if (data) bundleData = data;
+              } catch (error) {
+                console.error(
+                  `Failed to fetch bundle data for ${anonItem.bundle_id}:`,
+                  error
+                );
               }
             }
 
@@ -262,13 +330,13 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
               created_at: anonItem.created_at,
               user_id: null,
               cart_id: null,
-              products: null,
-              bundles: null,
-              offers: offerData
+              products: productData,
+              bundles: bundleData,
+              offers: offerData,
             } as CartItem;
           })
         );
-        
+
         setEnrichedAnonItems(enriched);
       };
 
@@ -288,27 +356,26 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
 
   const subtotal = useMemo(
     () =>
-      items.reduce(
-        (acc, item) => {
-          let itemPrice = 0;
-          
-          if (item.offer_id && item.offers) {
-            // For offers, use price_per_slot
-            itemPrice = item.offers.price_per_slot || item.price || 0;
-          } else if (isProductOption(item.option) &&
-            item.option.price !== undefined &&
-            item.option.price !== null) {
-            // For products with options, use option price
-            itemPrice = item.option.price;
-          } else {
-            // For regular products and bundles, use item price
-            itemPrice = item.price || 0;
-          }
-          
-          return acc + (itemPrice * item.quantity);
-        },
-        0
-      ),
+      items.reduce((acc, item) => {
+        let itemPrice = 0;
+
+        if (item.offer_id && item.offers) {
+          // For offers, use price_per_slot
+          itemPrice = item.offers.price_per_slot || item.price || 0;
+        } else if (
+          isProductOption(item.option) &&
+          item.option.price !== undefined &&
+          item.option.price !== null
+        ) {
+          // For products with options, use option price
+          itemPrice = item.option.price;
+        } else {
+          // For regular products and bundles, use item price
+          itemPrice = item.price || 0;
+        }
+
+        return acc + itemPrice * item.quantity;
+      }, 0),
     [items]
   );
 
@@ -455,7 +522,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
           // Anonymous user - use local storage
           if (itemToRemove.id) {
             anonymousCart.removeItem(itemToRemove.id);
-            setForceUpdate(prev => prev + 1);
+            setForceUpdate((prev) => prev + 1);
           }
         }
       } catch (error: any) {
@@ -508,12 +575,14 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
 
                 // Determine if it's a bundle, offer, or product
                 const isBundle =
-                  cartItem.bundle_id !== null && cartItem.bundle_id !== undefined;
+                  cartItem.bundle_id !== null &&
+                  cartItem.bundle_id !== undefined;
                 const isOffer =
                   cartItem.offer_id !== null && cartItem.offer_id !== undefined;
 
                 return {
-                  product_id: isBundle || isOffer ? null : cartItem.product_id || "", // Set to null for bundles and offers
+                  product_id:
+                    isBundle || isOffer ? null : cartItem.product_id || "", // Set to null for bundles and offers
                   bundle_id: isBundle ? cartItem.bundle_id : null, // Set to bundle_id for bundles, null for others
                   offer_id: isOffer ? cartItem.offer_id : null, // Set to offer_id for offers, null for others
                   option: isBundle || isOffer ? null : cartItem.option, // Set option to null for bundles and offers
@@ -542,7 +611,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
             } else {
               await anonymousCart.updateQuantity(itemToUpdate.id, newQuantity);
             }
-            setForceUpdate(prev => prev + 1);
+            setForceUpdate((prev) => prev + 1);
           } catch (error: any) {
             console.error("Failed to update anonymous cart quantity:", error);
             showToast(error.message || "Failed to update quantity", "error");
@@ -550,7 +619,15 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
         }
       }
     },
-    [items, removeCartItemMutation, updateCartMutation, queryClient, user, anonymousCart, showToast]
+    [
+      items,
+      removeCartItemMutation,
+      updateCartMutation,
+      queryClient,
+      user,
+      anonymousCart,
+      showToast,
+    ]
   );
 
   // Remove voucher from localStorage when clearing cart
@@ -569,8 +646,12 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
   }, [clearCartMutation, user, anonymousCart]);
 
   const totalQuantity = useMemo(() => {
-    return items.reduce((acc, item) => acc + item.quantity, 0);
-  }, [items]);
+    if (user) {
+      return items.reduce((acc, item) => acc + item.quantity, 0);
+    }
+    // For anonymous users, use the hook's counter to reflect updates instantly
+    return anonymousCart.getItemCount();
+  }, [items, user, anonymousCart]);
 
   // Check if cart is loading (for authenticated users) or anonymous cart is loading
   const isCartLoading = useMemo(() => {
@@ -684,7 +765,9 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
           <SheetTitle className="h2-bold flex-1 text-center">
             {isCartLoading ? (
               <>
-                Cart (<div className="inline-block w-4 h-4 bg-gray-200 rounded animate-pulse"></div>)
+                Cart (
+                <div className="inline-block w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                )
               </>
             ) : (
               `Cart (${totalQuantity})`
@@ -751,7 +834,10 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
           {isLoading && <p>Loading cart...</p>}
           {isError && <p>Error loading cart: {error?.error}</p>}
 
-          {!isLoading && !isError && items.length === 0 && totalQuantity === 0 ? (
+          {!isLoading &&
+          !isError &&
+          items.length === 0 &&
+          totalQuantity === 0 ? (
             <div className="text-center text-gray-500 mt-10">
               <p className="text-lg font-semibold">Your cart is empty.</p>
               <p className="text-sm text-gray-400">

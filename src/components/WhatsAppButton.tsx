@@ -27,10 +27,10 @@ const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({
     >
       <Image
         src={"/whatsapp.svg"}
-        width={35}
-        height={35}
+        width={60}
+        height={60}
         alt="whatsapp"
-        className="w-6 h-6 md:w-[35px] md:h-[35px]"
+        className="w-6 h-6 md:w-[60px] md:h-[60px]"
       />
     </a>
   );
