@@ -32,6 +32,7 @@ const SearchFilter = () => {
     "What are you looking for?",
     "Discover amazing products...",
   ];
+  const SList:any = List
 
   // Placeholder animation logic
   useEffect(() => {
@@ -174,14 +175,14 @@ const SearchFilter = () => {
           {isLoading ? (
             <div className="p-4 text-center">Loading...</div>
           ) : products.length > 0 ? (
-            <List
+            <SList
               height={Math.min(products.length * 48, 400)}
               itemCount={products.length}
               itemSize={48}
               width="100%"
             >
               {SearchResultItem}
-            </List>
+            </SList>
           ) : (
             <div className="p-4 text-center text-gray-500">
               No products found
