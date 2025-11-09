@@ -415,13 +415,20 @@ export default function ProductsClient({
           <h2 className="text-3xl font-semibold">Products</h2>
           <p className="text-[#475467]">Manage Products here.</p>
         </div>
-        <Link
-          href={`/admin/products/add-new${searchParams.toString() ? `?${searchParams.toString()}` : ""}`}
-        >
-          <Button className="bg-[#1B6013] text-white">
-            <Plus size={16} /> Add New Product
-          </Button>
-        </Link>
+        <div className="justify-between items-center space-x-8">
+          <Link
+            href={`/admin/upload`}>
+            <Button className="bg-green-100 text-[#1B6013] font-extrabold hover:text-white">
+              <Plus size={16} /> Update Price List
+            </Button>
+          </Link>
+          <Link
+            href={`/admin/products/add-new${searchParams.toString() ? `?${searchParams.toString()}` : ""}`}>
+            <Button className="bg-[#1B6013] text-white">
+              <Plus size={16} /> Add New Product
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="flex items-center justify-between w-full py-4">
@@ -441,8 +448,7 @@ export default function ProductsClient({
         <div className="flex items-center gap-3">
           <Select
             value={`${sortBy}:${sortOrder}`}
-            onValueChange={handleSortChange}
-          >
+            onValueChange={handleSortChange}>
             <SelectTrigger className="w-[180px]">
               <div className="flex items-center gap-2">
                 <ArrowUpDown size={16} />
@@ -490,8 +496,7 @@ export default function ProductsClient({
                         new KeyboardEvent("keydown", { key: "Escape" })
                       )
                     }
-                    className="p-2 hover:bg-gray-100 rounded-md"
-                  >
+                    className="p-2 hover:bg-gray-100 rounded-md">
                     <X size={16} />
                   </button>
                 </div>
@@ -507,8 +512,7 @@ export default function ProductsClient({
                   {allCategories.map((cat) => (
                     <div
                       key={cat.id}
-                      className="flex items-center gap-2 mb-2 pl-2"
-                    >
+                      className="flex items-center gap-2 mb-2 pl-2">
                       <Checkbox
                         id={`category-${cat.id}`}
                         className="size-4 !rounded-md border-[#D0D5DD]"
@@ -517,8 +521,7 @@ export default function ProductsClient({
                       />
                       <label
                         className="font-medium text-sm"
-                        htmlFor={`category-${cat.id}`}
-                      >
+                        htmlFor={`category-${cat.id}`}>
                         {cat.title}
                       </label>
                     </div>
@@ -534,8 +537,7 @@ export default function ProductsClient({
                   {stockStatuses.map((status) => (
                     <div
                       key={status}
-                      className="flex items-center gap-2 mb-2 pl-2"
-                    >
+                      className="flex items-center gap-2 mb-2 pl-2">
                       <Checkbox
                         id={`stock-${status}`}
                         className="size-4 !rounded-md border-[#D0D5DD]"
@@ -544,8 +546,7 @@ export default function ProductsClient({
                       />
                       <label
                         className="font-medium text-sm"
-                        htmlFor={`stock-${status}`}
-                      >
+                        htmlFor={`stock-${status}`}>
                         {status}
                       </label>
                     </div>
@@ -561,8 +562,7 @@ export default function ProductsClient({
                   {publishedStatuses.map((status) => (
                     <div
                       key={status}
-                      className="flex items-center gap-2 mb-2 pl-2"
-                    >
+                      className="flex items-center gap-2 mb-2 pl-2">
                       <Checkbox
                         id={`published-${status}`}
                         className="size-4 !rounded-md border-[#D0D5DD]"
@@ -573,8 +573,7 @@ export default function ProductsClient({
                       />
                       <label
                         className="font-medium text-sm"
-                        htmlFor={`published-${status}`}
-                      >
+                        htmlFor={`published-${status}`}>
                         {status}
                       </label>
                     </div>
@@ -585,8 +584,7 @@ export default function ProductsClient({
                 <div className="font-semibold text-sm flex justify-between items-end px-4">
                   <div
                     className="text-[#B42318] cursor-pointer"
-                    onClick={clearAllFilters}
-                  >
+                    onClick={clearAllFilters}>
                     Clear all filters
                   </div>
                   <div className="flex gap-2">
@@ -596,8 +594,7 @@ export default function ProductsClient({
                         document.dispatchEvent(
                           new KeyboardEvent("keydown", { key: "Escape" })
                         )
-                      }
-                    >
+                      }>
                       Cancel
                     </Button>
                     <Button
@@ -606,8 +603,7 @@ export default function ProductsClient({
                         document.dispatchEvent(
                           new KeyboardEvent("keydown", { key: "Escape" })
                         )
-                      }
-                    >
+                      }>
                       Apply
                     </Button>
                   </div>
@@ -636,8 +632,7 @@ export default function ProductsClient({
                     setInputValue("");
                     updateURL({ search: "", page: 1 });
                   }}
-                  className="ml-1 hover:text-red-500"
-                >
+                  className="ml-1 hover:text-red-500">
                   <X size={12} />
                 </button>
               </Badge>
@@ -648,13 +643,11 @@ export default function ProductsClient({
                 <Badge
                   key={catId}
                   variant="secondary"
-                  className="flex items-center gap-1"
-                >
+                  className="flex items-center gap-1">
                   Category: {cat?.title || catId}
                   <button
                     onClick={() => toggleFilter(catId, "category")}
-                    className="ml-1 hover:text-red-500"
-                  >
+                    className="ml-1 hover:text-red-500">
                     <X size={12} />
                   </button>
                 </Badge>
@@ -664,13 +657,11 @@ export default function ProductsClient({
               <Badge
                 key={status}
                 variant="secondary"
-                className="flex items-center gap-1"
-              >
+                className="flex items-center gap-1">
                 Stock: {status}
                 <button
                   onClick={() => toggleFilter(status, "stock")}
-                  className="ml-1 hover:text-red-500"
-                >
+                  className="ml-1 hover:text-red-500">
                   <X size={12} />
                 </button>
               </Badge>
@@ -679,13 +670,11 @@ export default function ProductsClient({
               <Badge
                 key={status}
                 variant="secondary"
-                className="flex items-center gap-1"
-              >
+                className="flex items-center gap-1">
                 Status: {status}
                 <button
                   onClick={() => toggleFilter(status, "published")}
-                  className="ml-1 hover:text-red-500"
-                >
+                  className="ml-1 hover:text-red-500">
                   <X size={12} />
                 </button>
               </Badge>
@@ -694,8 +683,7 @@ export default function ProductsClient({
               variant="ghost"
               size="sm"
               onClick={clearAllFilters}
-              className="text-red-600 hover:text-red-700"
-            >
+              className="text-red-600 hover:text-red-700">
               Clear all
             </Button>
           </div>
@@ -787,19 +775,26 @@ export default function ProductsClient({
                         Array.isArray(product.category_ids) &&
                         product.category_ids.length > 0
                       ) {
-                        return product.category_ids
-                          .map((catId: string) => {
-                            // Try multiple lookup strategies
-                            const categoryName = 
-                              allCategoryMap[String(catId)] ||
-                              categoryNames[String(catId)] ||
-                              allCategories.find(cat => cat.id === catId)?.title ||
-                              allCategories.find(cat => String(cat.id) === String(catId))?.title ||
-                              `Category ${catId}`;
-                            return categoryName;
-                          })
-                          .filter((name: string) => !name.startsWith(`Category `)) // Filter out failed lookups
-                          .join(", ") || "Unknown Categories";
+                        return (
+                          product.category_ids
+                            .map((catId: string) => {
+                              // Try multiple lookup strategies
+                              const categoryName =
+                                allCategoryMap[String(catId)] ||
+                                categoryNames[String(catId)] ||
+                                allCategories.find((cat) => cat.id === catId)
+                                  ?.title ||
+                                allCategories.find(
+                                  (cat) => String(cat.id) === String(catId)
+                                )?.title ||
+                                `Category ${catId}`;
+                              return categoryName;
+                            })
+                            .filter(
+                              (name: string) => !name.startsWith(`Category `)
+                            ) // Filter out failed lookups
+                            .join(", ") || "Unknown Categories"
+                        );
                       } else {
                         return "Uncategorized";
                       }
@@ -808,14 +803,25 @@ export default function ProductsClient({
                   <TableCell>
                     {(() => {
                       // Check if product has options with pricing
-                      if (product.options && Array.isArray(product.options) && product.options.length > 0) {
+                      if (
+                        product.options &&
+                        Array.isArray(product.options) &&
+                        product.options.length > 0
+                      ) {
                         const firstOption = product.options[0];
-                        if (firstOption && typeof firstOption === 'object' && firstOption.price) {
+                        if (
+                          firstOption &&
+                          typeof firstOption === "object" &&
+                          firstOption.price
+                        ) {
                           return formatNaira(firstOption.price);
                         }
                       }
                       // Fall back to product price
-                      if (product.price !== null && product.price !== undefined) {
+                      if (
+                        product.price !== null &&
+                        product.price !== undefined
+                      ) {
                         return formatNaira(product.price);
                       }
                       return "N/A";
@@ -830,11 +836,18 @@ export default function ProductsClient({
                   <TableCell>
                     {(() => {
                       // Check if product has options with stock status
-                      if (product.options && Array.isArray(product.options) && product.options.length > 0) {
+                      if (
+                        product.options &&
+                        Array.isArray(product.options) &&
+                        product.options.length > 0
+                      ) {
                         // Check if any option is in stock
-                        const hasInStock = product.options.some((option: any) => 
-                          option && typeof option === 'object' && 
-                          (option.stockStatus === "In Stock" || option.stock_status === "in_stock")
+                        const hasInStock = product.options.some(
+                          (option: any) =>
+                            option &&
+                            typeof option === "object" &&
+                            (option.stockStatus === "In Stock" ||
+                              option.stock_status === "in_stock")
                         );
                         const isInStock = hasInStock;
                         return (
@@ -843,25 +856,24 @@ export default function ProductsClient({
                               isInStock
                                 ? "bg-green-100 text-green-800"
                                 : "bg-orange-100 text-orange-800"
-                            }
-                          >
+                            }>
                             {isInStock ? "In stock" : "Out of stock"}
                           </Badge>
                         );
                       }
-                      
+
                       // Fall back to product stock status
-                      const isInStock = product.stock_status === "in_stock" || 
-                                       product.stock_status === "In Stock" ||
-                                       product.stockStatus === "In Stock";
+                      const isInStock =
+                        product.stock_status === "in_stock" ||
+                        product.stock_status === "In Stock" ||
+                        product.stockStatus === "In Stock";
                       return (
                         <Badge
                           className={
                             isInStock
                               ? "bg-green-100 text-green-800"
                               : "bg-orange-100 text-orange-800"
-                          }
-                        >
+                          }>
                           {isInStock ? "In stock" : "Out of stock"}
                         </Badge>
                       );
@@ -873,8 +885,7 @@ export default function ProductsClient({
                         product.is_published
                           ? "bg-green-100 text-green-800"
                           : "bg-gray-100 text-gray-700"
-                      }
-                    >
+                      }>
                       {product.is_published ? "Published" : "Archived"}
                     </Badge>
                   </TableCell>
@@ -887,8 +898,7 @@ export default function ProductsClient({
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => handleDeleteClick(product)}
-                    >
+                      onClick={() => handleDeleteClick(product)}>
                       <Trash2 size={16} />
                     </Button>
                   </TableCell>
@@ -925,8 +935,7 @@ export default function ProductsClient({
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
-            >
+              onClick={() => setDeleteDialogOpen(false)}>
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleDeleteConfirm}>
