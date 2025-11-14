@@ -9,7 +9,7 @@ const supabase = createClient(
 export async function GET() {
   const { data } = await supabase
     .from("products_duplicate")
-    .select("name, price, options")
+    .select("name, price, description, images")
     .order("name");
 
   return Response.json({ products: data || [] });

@@ -4,17 +4,25 @@ import { slugify } from "@/lib/utils/index";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
+import {
+  findImageEntry,
+  getProductImage,
+  getOptionImage,
+  DEFAULT_IMAGE,
+  getFreshCategoryTag,
+} from "@/lib/image-macher";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY! // ← FIXED: NO NEXT_PUBLIC HERE
+  process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
 );
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 const BATCH_SIZE = 10;
-const DEFAULT_IMAGE =
-  "https://fyldgskqxrfmrhyluxmw.supabase.co/storage/v1/object/public/product-images/default-food.jpg";
 
+// ──────────────────────────────────────────────────────────────────
+// INTERFACES
+// ──────────────────────────────────────────────────────────────────
 interface Option {
   name: string;
   image: string;
@@ -45,6 +53,40 @@ interface ProductInsert {
   in_season: boolean | null;
 }
 
+// ──────────────────────────────────────────────────────────────────
+// DYNAMIC DESCRIPTION GENERATOR
+// ──────────────────────────────────────────────────────────────────
+function generateDescription(
+  p: any,
+  lowestPrice: number,
+  highestPrice: number,
+  categoryTitle: string
+): string {
+  const sizes = p.options.map((o: any) => o.name).join(", ");
+  const priceRange =
+    lowestPrice === highestPrice
+      ? `₦${lowestPrice.toLocaleString()}`
+      : `₦${lowestPrice.toLocaleString()} – ₦${highestPrice.toLocaleString()}`;
+
+  const isGeneral = categoryTitle.toLowerCase() === "general";
+  const categoryHint = isGeneral ? "" : ` in our ${categoryTitle} collection`;
+
+  let tagline = "High-quality, affordable, and ready to enjoy.";
+  const nameLower = p.name.toLowerCase();
+  if (nameLower.includes("fresh"))
+    tagline = "Freshly sourced and packed with flavor.";
+  else if (nameLower.includes("premium"))
+    tagline = "Premium quality, hand-selected for you.";
+  else if (nameLower.includes("organic"))
+    tagline = "100% organic and naturally grown.";
+
+  return (
+    `${p.name} available in ${p.options.length} size${p.options.length > 1 ? "s" : ""}: ${sizes}. ` +
+    `Choose your perfect portion at ${priceRange}.${categoryHint} ` +
+    `${tagline} Order now for fast delivery!`
+  );
+}
+
 console.log("API route /api/upload-excel is LOADED");
 
 export async function POST(req: NextRequest) {
@@ -72,7 +114,7 @@ export async function POST(req: NextRequest) {
     if (parsedProducts.length === 0)
       return NextResponse.json({ error: "No data" }, { status: 400 });
 
-    // DEBUG: SHOW FIRST PRODUCT AFTER PARSING
+    // DEBUG
     if (parsedProducts.length > 0) {
       console.log("SAMPLE PARSED PRODUCT:", {
         categoryTitle: parsedProducts[0].categoryTitle,
@@ -81,7 +123,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // FETCH GENERAL + ALL CATEGORIES
+    // FETCH GENERAL CATEGORY
     let GENERAL_CATEGORY_ID: string;
     const { data: generalCat } = await supabase
       .from("categories")
@@ -106,7 +148,6 @@ export async function POST(req: NextRequest) {
 
     let totalInserted = 0;
 
-    // PROCESS ONE BY ONE (SAFER & SMARTER)
     for (let i = 0; i < parsedProducts.length; i += BATCH_SIZE) {
       const batch = parsedProducts.slice(i, i + BATCH_SIZE);
       console.log(
@@ -115,20 +156,33 @@ export async function POST(req: NextRequest) {
 
       for (const p of batch) {
         const lowestPrice = Math.min(...p.options.map((o: any) => o.price));
+        const highestPrice = Math.max(...p.options.map((o: any) => o.price));
         const sheetCatLower = (p.categoryTitle || "").toLowerCase();
+        const categoryTitle =
+          sheetCatLower && catMap.has(sheetCatLower)
+            ? p.categoryTitle
+            : "General";
         let categoryId = GENERAL_CATEGORY_ID;
 
         if (sheetCatLower && catMap.has(sheetCatLower)) {
           categoryId = catMap.get(sheetCatLower)!;
-          console.log(`→ Matched: "${p.categoryTitle}" → ${categoryId}`);
+          console.log(`Matched: "${p.categoryTitle}" → ${categoryId}`);
         } else {
-          console.log(`→ No match: "${p.categoryTitle}" → using General`);
+          console.log(`No match: "${p.categoryTitle}" → using General`);
         }
 
+        // ─────────────────────────────────────────────────────────────
+        // IMAGE & TAGS LOOKUP
+        // ─────────────────────────────────────────────────────────────
+        const imgEntry = findImageEntry(p.name);
+        const productMainImg = getProductImage(imgEntry);
+        const optionImg = getOptionImage(imgEntry);
+        const tags = getFreshCategoryTag(p.categoryTitle); // null if empty
+
         // FETCH EXISTING PRODUCT
-        const { data: existing, error: fetchErr } = await supabase
+        const { data: existing } = await supabase
           .from("products_duplicate")
-          .select("id, options, price, list_price")
+          .select("id, options, price, list_price, images")
           .eq("name", p.name)
           .single();
 
@@ -136,12 +190,21 @@ export async function POST(req: NextRequest) {
           price: lowestPrice,
           list_price: lowestPrice,
           category_ids: [categoryId, GENERAL_CATEGORY_ID],
+          description: generateDescription(
+            p,
+            lowestPrice,
+            highestPrice,
+            categoryTitle
+          ),
+          tags, // ← NEW: apply tags from imageSaver
         };
 
+        // ─────────────────────────────────────────────────────────────
+        // UPDATE EXISTING PRODUCT
+        // ─────────────────────────────────────────────────────────────
         if (existing) {
-          console.log(`→ UPDATING: "${p.name}"`);
+          console.log(`UPDATING: "${p.name}"`);
 
-          // UPDATE EXISTING OPTIONS + ADD NEW ONES
           const updatedOptions = (existing.options || []).map((opt: any) => {
             const newOpt = p.options.find((o: any) => o.name === opt.name);
             if (newOpt) {
@@ -149,17 +212,17 @@ export async function POST(req: NextRequest) {
                 ...opt,
                 price: newOpt.price,
                 list_price: newOpt.price,
+                image: optionImg,
               };
             }
-            return opt; // keep old option if not in sheet
+            return opt;
           });
 
-          // ADD NEW OPTIONS FROM SHEET
           p.options.forEach((newOpt: any) => {
             if (!updatedOptions.some((o: any) => o.name === newOpt.name)) {
               updatedOptions.push({
                 name: newOpt.name,
-                image: DEFAULT_IMAGE,
+                image: optionImg,
                 price: newOpt.price,
                 list_price: newOpt.price,
                 stockStatus: "In Stock",
@@ -169,7 +232,11 @@ export async function POST(req: NextRequest) {
 
           updateData.options = updatedOptions;
 
-          // UPDATE ONLY WHAT CHANGED
+          const currentImgs = existing.images ?? [];
+          if (currentImgs.length === 1 && currentImgs[0] === DEFAULT_IMAGE) {
+            updateData.images = [productMainImg];
+          }
+
           const { error } = await supabase
             .from("products_duplicate")
             .update(updateData)
@@ -182,13 +249,22 @@ export async function POST(req: NextRequest) {
               `Updated ${p.name}: ${p.options.length} options synced`
             );
           }
-        } else {
-          console.log(`→ CREATING: "${p.name}"`);
-          // FULL INSERT FOR NEW PRODUCT
+        }
+        // ─────────────────────────────────────────────────────────────
+        // INSERT NEW PRODUCT
+        // ─────────────────────────────────────────────────────────────
+        else {
+          console.log(`CREATING: "${p.name}"`);
+
           const newProduct: ProductInsert = {
             name: p.name,
             slug: slugify(p.name),
-            description: `Fresh ${p.name} in ${p.options.length} sizes.`,
+            description: generateDescription(
+              p,
+              lowestPrice,
+              highestPrice,
+              categoryTitle
+            ),
             price: lowestPrice,
             list_price: lowestPrice,
             brand: null,
@@ -200,11 +276,11 @@ export async function POST(req: NextRequest) {
             is_published: true,
             vendor_id: null,
             category_ids: [categoryId, GENERAL_CATEGORY_ID],
-            tags: null,
-            images: [DEFAULT_IMAGE],
+            tags, // ← NEW: apply tags
+            images: [productMainImg],
             options: p.options.map((o: any) => ({
               name: o.name,
-              image: DEFAULT_IMAGE,
+              image: optionImg,
               price: o.price,
               list_price: o.price,
               stockStatus: "In Stock",

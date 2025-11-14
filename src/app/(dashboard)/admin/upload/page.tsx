@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import { RefreshCw } from "lucide-react";
 import UploadExcel from "@/app/(dashboard)/admin/upload/upload";
+import Image from "next/image";
 
 interface Option {
   name: string;
@@ -13,7 +14,8 @@ interface Option {
 interface Product {
   name: string;
   price: number;
-  options: Option[];
+  description: string;
+  images: string[];
 }
 
 export default function Page() {
@@ -53,7 +55,7 @@ export default function Page() {
         <UploadExcel
           onSuccess={(total) => {
             setUploadSuccess(true);
-            setTimeout(() => setUploadSuccess(false), 3000);
+            setTimeout(() => setUploadSuccess(false), 60000);
             fetchProducts();
           }}
         />
@@ -73,12 +75,30 @@ export default function Page() {
             <h2 className="text-lg font-bold text-green-800">
               Live Products ({products.length})
             </h2>
-            <button
-              onClick={fetchProducts}
-              className="text-green-700 hover:text-green-900 flex items-center gap-1 text-sm font-medium">
-              <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-              Refresh
-            </button>
+            <div className="items-center gap-4 flex">
+              <button
+                onClick={fetchProducts}
+                className="text-green-700 hover:text-green-900 flex items-center gap-1 text-sm font-medium">
+                <RefreshCw
+                  size={16}
+                  className={loading ? "animate-spin" : ""}
+                />
+                Refresh
+              </button>
+              <button
+                onClick={() => {
+                  const thas = products.filter(
+                    (it) =>
+                      it.images[0] ===
+                      "https://fyldgskqxrfmrhyluxmw.supabase.co/storage/v1/object/public/product-images/default-food.jpg"
+                  );
+                  console.log(thas);
+                  setProducts(thas);
+                }}
+                className="text-green-700 hover:text-green-900 flex items-center gap-1 text-sm font-medium">
+                Fecth empty images
+              </button>
+            </div>
           </div>
 
           {loading ? (
@@ -93,13 +113,16 @@ export default function Page() {
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="px-6 py-3 text-left text-sm font-bold text-green-800">
+                      Image
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-bold text-green-800">
                       Name
                     </th>
                     <th className="px-6 py-3 text-left text-sm font-bold text-green-800">
                       Price
                     </th>
                     <th className="px-6 py-3 text-left text-sm font-bold text-green-800">
-                      Options
+                      Description
                     </th>
                   </tr>
                 </thead>
@@ -107,21 +130,23 @@ export default function Page() {
                   {products.map((p, i) => (
                     <tr key={i} className="hover:bg-green-50">
                       <td className="px-6 py-3 font-medium text-gray-800">
+                        <div className="w-[60px] h-[60px] relative rounded-md overflow-hidden">
+                          <Image
+                            src={p.images[0]}
+                            alt={p.name}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      </td>
+                      <td className="px-6 py-3 font-medium text-gray-800">
                         {p.name}
                       </td>
                       <td className="px-6 py-3 text-gray-700">
                         ₦{p.price.toLocaleString()}
                       </td>
-                      <td className="px-6 py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {p.options.map((opt, j) => (
-                            <span
-                              key={j}
-                              className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                              {opt.name}: ₦{opt.price.toLocaleString()}
-                            </span>
-                          ))}
-                        </div>
+                      <td className="px-6 py-3 font-medium text-gray-700">
+                        {p.description}
                       </td>
                     </tr>
                   ))}
