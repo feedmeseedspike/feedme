@@ -64,6 +64,13 @@ function isIProductInput(product: any): product is IProductInput {
   );
 }
 
+const getCartItemLabel = (item: CartItem) =>
+  item.products?.name ||
+  item.bundles?.name ||
+  item.offers?.title ||
+  (item as any)?.meta?.name ||
+  "Item";
+
 const CartClient: React.FC<CartClientProps> = ({
   user,
   cartItems,
@@ -160,6 +167,7 @@ const CartClient: React.FC<CartClientProps> = ({
               product_id: anonItem.product_id,
               bundle_id: anonItem.bundle_id,
               offer_id: anonItem.offer_id || null,
+              black_friday_item_id: (anonItem as any).black_friday_item_id || null,
               quantity: anonItem.quantity,
               price: anonItem.price,
               option: anonItem.option,
@@ -169,6 +177,7 @@ const CartClient: React.FC<CartClientProps> = ({
               products: productData,
               bundles: bundleData,
               offers: offerData,
+              black_friday_items: null,
             } as CartItem;
           })
         );
@@ -263,6 +272,7 @@ const CartClient: React.FC<CartClientProps> = ({
               product_id: anonItem.product_id,
               bundle_id: anonItem.bundle_id,
               offer_id: (anonItem as any).offer_id || null,
+              black_friday_item_id: (anonItem as any).black_friday_item_id || null,
               quantity: anonItem.quantity,
               price: anonItem.price,
               option: anonItem.option,
@@ -272,6 +282,7 @@ const CartClient: React.FC<CartClientProps> = ({
               products: productData,
               bundles: bundleData,
               offers: offerData,
+              black_friday_items: null,
             } as CartItem;
           })
         );
@@ -356,19 +367,20 @@ const CartClient: React.FC<CartClientProps> = ({
   const handleRemoveItem = useCallback(
     async (itemToRemove: CartItem) => {
       try {
+        const itemLabel = getCartItemLabel(itemToRemove);
         if (user) {
           // Authenticated user
           if (itemToRemove.id) {
             await removeCartItemMutation.mutateAsync(itemToRemove.id);
             setItems((prev) => prev.filter((i) => i.id !== itemToRemove.id));
-            showToast("Item removed!", "info");
+            showToast(`${itemLabel} removed from cart`, "info");
           }
         } else {
           // Anonymous user
           if (itemToRemove.id) {
             anonymousCart.removeItem(itemToRemove.id);
             setItems((prev) => prev.filter((i) => i.id !== itemToRemove.id));
-            showToast("Item removed!", "info");
+            showToast(`${itemLabel} removed from cart`, "info");
           }
         }
       } catch (error: any) {
@@ -401,6 +413,7 @@ const CartClient: React.FC<CartClientProps> = ({
         if (newQuantity === 0) {
           if (existingItemInCart.id) {
             try {
+              const removedLabel = getCartItemLabel(existingItemInCart);
               if (user) {
                 // Authenticated user
                 await removeCartItemMutation.mutateAsync(existingItemInCart.id);
@@ -411,13 +424,14 @@ const CartClient: React.FC<CartClientProps> = ({
               setItems((prev) =>
                 prev.filter((i) => i.id !== existingItemInCart.id)
               );
-              showToast("Item removed!", "info");
+              showToast(`${removedLabel} removed from cart`, "info");
             } catch (error: any) {
               console.error("Failed to remove item via quantity 0:", error);
               showToast("Failed to remove item.", "error");
             }
           }
         } else {
+          const itemLabel = getCartItemLabel(itemToUpdate);
           if (user) {
             // Authenticated user - use API
             const itemsForMutation: ItemToUpdateMutation[] = items
@@ -439,6 +453,9 @@ const CartClient: React.FC<CartClientProps> = ({
                 return {
                   product_id: cartItem.product_id,
                   bundle_id: cartItem.bundle_id,
+              offer_id: cartItem.offer_id || null,
+              black_friday_item_id:
+                (cartItem as any).black_friday_item_id || null,
                   option: cartItem.option,
                   quantity:
                     cartItem.id === itemToUpdate.id
@@ -451,23 +468,16 @@ const CartClient: React.FC<CartClientProps> = ({
 
             try {
               await updateCartMutation.mutateAsync(itemsForMutation);
-              setItems(
-                itemsForMutation
-                  .map((item) => {
-                    const found = items.find(
-                      (i) =>
-                        i.product_id === item.product_id &&
-                        i.bundle_id === item.bundle_id &&
-                        JSON.stringify(i.option) === JSON.stringify(item.option)
-                    );
-                    return found
-                      ? { ...found, quantity: item.quantity }
-                      : found;
-                  })
-                  .filter(Boolean) as CartItem[]
+              // Update local UI state immediately
+              setItems((prev) =>
+                prev.map((item) =>
+                  item.id === itemToUpdate.id
+                    ? { ...item, quantity: newQuantity }
+                    : item
+                )
               );
               showToast(
-                `${increment ? "Increased" : "Decreased"} quantity`,
+                `${itemLabel} updated to ${newQuantity} ${newQuantity === 1 ? "unit" : "units"}`,
                 "success"
               );
             } catch (error: any) {
@@ -485,7 +495,7 @@ const CartClient: React.FC<CartClientProps> = ({
               )
             );
             showToast(
-              `${increment ? "Increased" : "Decreased"} quantity`,
+              `${itemLabel} updated to ${newQuantity} ${newQuantity === 1 ? "unit" : "units"}`,
               "success"
             );
           }
@@ -665,7 +675,7 @@ const CartClient: React.FC<CartClientProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
               {/* Cart Items Table */}
               <div className="md:col-span-2">
-                {/* Free Shipping Progress Bar */}
+                {/* Free Delivery Progress Bar */}
                 {totalQuantity > 0 &&
                   (() => {
                     const FREE_SHIPPING_THRESHOLD = 50000;
@@ -690,7 +700,7 @@ const CartClient: React.FC<CartClientProps> = ({
                           {subtotal >= FREE_SHIPPING_THRESHOLD ? (
                             <span className="font-semibold text-green-700">
                               Congratulations! You have unlocked{" "}
-                              <b>free shipping</b>!
+                              <b>free delivery</b>!
                             </span>
                           ) : (
                             <span className="font-medium text-black">
@@ -698,7 +708,7 @@ const CartClient: React.FC<CartClientProps> = ({
                               <span className="font-bold text-[#F0800F]">
                                 {formatNaira(remaining)}
                               </span>{" "}
-                              to cart and get <b>free shipping</b>!
+                              to cart and get <b>free delivery</b>!
                             </span>
                           )}
                         </div>

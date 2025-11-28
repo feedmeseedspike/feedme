@@ -45,6 +45,9 @@ interface ProductOption {
   price: number;
   image?: string;
   stockStatus?: string;
+  measurement?: string;
+  size?: string;
+  label?: string;
 }
 
 // Define a more specific type for grouped items
@@ -127,6 +130,23 @@ const CartItemDisplay = React.memo(
       item.offer_id ||
       "";
 
+    const optionDescriptor = (() => {
+      if (!productOption) return null;
+      const enrichedOption = productOption as ProductOption & {
+        measurement?: string;
+        size?: string;
+        label?: string;
+        variant?: string;
+      };
+      return (
+        enrichedOption.measurement ||
+        enrichedOption.size ||
+        enrichedOption.label ||
+        enrichedOption.variant ||
+        (enrichedOption.name !== baseName ? enrichedOption.name : null)
+      );
+    })();
+
     return (
       <React.Fragment>
         <div className="flex items-center gap-3 sm:gap-4 overflow-y-visible">
@@ -147,12 +167,19 @@ const CartItemDisplay = React.memo(
             />
           </div>
           <div className="flex flex-col gap-[6px] w-full">
-            <div className="flex justify-between">
-              <p className="h6-light !text-[14px]">
-                {productName || (item as any)?.meta?.name}
-              </p>
+            <div className="flex justify-between items-start">
+              <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                {/* <p className="h6-light !text-[14px] truncate">
+                  {productName || (item as any)?.meta?.name}
+                </p> */}
+                {optionDescriptor && (
+                  <p className="text-xs text-[#475467] truncate">
+                    {optionDescriptor}
+                  </p>
+                )}
+              </div>
               <Trash2Icon
-                className="size-4 cursor-pointer"
+                className="size-4 cursor-pointer flex-shrink-0 ml-2"
                 onClick={() => handleRemoveItem(item as CartItem)}
                 aria-label="Remove item"
               />
@@ -324,6 +351,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
               product_id: anonItem.product_id,
               bundle_id: anonItem.bundle_id,
               offer_id: anonItem.offer_id || null,
+              black_friday_item_id: anonItem.black_friday_item_id || null,
               quantity: anonItem.quantity,
               price: anonItem.price,
               option: anonItem.option,
@@ -333,6 +361,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
               products: productData,
               bundles: bundleData,
               offers: offerData,
+              black_friday_items: null,
             } as CartItem;
           })
         );
@@ -517,19 +546,29 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
           // Authenticated user - use API
           if (itemToRemove.id) {
             await removeCartItemMutation.mutateAsync(itemToRemove.id);
+            await queryClient.invalidateQueries({ queryKey: cartQueryKey });
+            showToast(
+              `${itemToRemove.products?.name || itemToRemove.bundles?.name || "Item"} removed from cart`,
+              "info"
+            );
           }
         } else {
           // Anonymous user - use local storage
           if (itemToRemove.id) {
             anonymousCart.removeItem(itemToRemove.id);
             setForceUpdate((prev) => prev + 1);
+            showToast("Item removed from cart", "info");
           }
         }
       } catch (error: any) {
         console.error("Failed to remove item:", error);
+        showToast(
+          error.message || "We couldn’t remove that item. Please try again.",
+          "error"
+        );
       }
     },
-    [removeCartItemMutation, user, anonymousCart]
+    [removeCartItemMutation, user, anonymousCart, queryClient, showToast]
   );
 
   const handleQuantityChange = useCallback(
@@ -585,6 +624,10 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
                     isBundle || isOffer ? null : cartItem.product_id || "", // Set to null for bundles and offers
                   bundle_id: isBundle ? cartItem.bundle_id : null, // Set to bundle_id for bundles, null for others
                   offer_id: isOffer ? cartItem.offer_id : null, // Set to offer_id for offers, null for others
+                  black_friday_item_id:
+                    isBundle || isOffer
+                      ? null
+                      : (cartItem as any).black_friday_item_id || null,
                   option: isBundle || isOffer ? null : cartItem.option, // Set option to null for bundles and offers
                   quantity:
                     cartItem.id === itemToUpdate.id
@@ -783,7 +826,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
           )}
         </SheetHeader>
 
-        {/* Free Shipping Progress Bar */}
+        {/* Free Delivery Progress Bar */}
         {items.length > 0 &&
           (() => {
             const FREE_SHIPPING_THRESHOLD = 50000;
@@ -804,7 +847,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
                   <span className="text-lg">📦</span>
                   {subtotal >= FREE_SHIPPING_THRESHOLD ? (
                     <span className="font-semibold text-[14px] text-green-700">
-                      Congratulations! You have unlocked <b>free shipping</b>!
+                      Congratulations! You have unlocked <b>free delivery</b>!
                     </span>
                   ) : (
                     <span className="font-medium text-black">
@@ -812,7 +855,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
                       <span className="font-bold text-red-600">
                         {formatNaira(remaining)}
                       </span>{" "}
-                      to cart and get <b>free shipping</b>!
+                      to cart and get <b>free delivery</b>!
                     </span>
                   )}
                 </div>

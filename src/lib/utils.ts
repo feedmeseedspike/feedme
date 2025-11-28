@@ -234,7 +234,7 @@ export const mapSupabaseProductToIProductInput = (
     avg_rating: supabaseProduct.avg_rating || 0,
     num_reviews: supabaseProduct.num_reviews || 0,
     numSales: supabaseProduct.num_sales || 0,
-    countInStock: supabaseProduct.count_in_stock || 0,
+    countInStock: supabaseProduct.count_in_stock ?? undefined,
     is_published: supabaseProduct.is_published || false,
     category: categories, // Now contains IDs
     tags: supabaseProduct.tags || [],

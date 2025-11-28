@@ -17,6 +17,7 @@ export type CartItem = Tables<"cart_items"> & {
   products: Tables<"products"> | null;
   bundles: Tables<"bundles"> | null;
   offers: Tables<"offers"> | null; // Add offers relationship
+  black_friday_items: Tables<"black_friday_items"> | null;
 };
 
 export type GetCartSuccess = { success: true; data: CartItem[]; error: null };
@@ -94,7 +95,7 @@ export async function getCart(): Promise<GetCartSuccess | GetCartFailure> {
 
     const { data, error } = await supabase
       .from("cart_items")
-      .select("*, products(*), bundles(*), offers(*)") // Select cart item fields and join with products, bundles, and offers
+      .select("*, products(*), bundles(*), offers(*), black_friday_items(*)") // Select cart item fields and join with related entities
       .eq("cart_id", cartId) // Use cart_id instead of user_id
       .order("created_at", { ascending: true });
 
@@ -108,6 +109,7 @@ export async function getCart(): Promise<GetCartSuccess | GetCartFailure> {
       products: item.products,
       bundles: item.bundles, // Map bundles data
       offers: item.offers, // Map offers data
+      black_friday_items: item.black_friday_items,
     }));
 
     // Debug logging removed
@@ -130,6 +132,7 @@ export interface ItemToUpdate {
   product_id?: string | null;
   bundle_id?: string | null;
   offer_id?: string | null;
+  black_friday_item_id?: string | null;
   option?: Json | null;
   quantity: number;
   price?: number | null;
@@ -181,7 +184,8 @@ export async function addToCart(
   quantity: number,
   selectedOption?: Tables<"products">["options"] | null,
   bundleId?: string | null,
-  offerId?: string | null
+  offerId?: string | null,
+  blackFridayItemId?: string | null
 ): Promise<AddToCartSuccess | AddToCartFailure> {
   const supabase = await createClient();
   const {
@@ -318,57 +322,105 @@ export async function addToCart(
       // Fetch product details to get its base price and available options
       const { data: productData, error: productFetchError } = await supabase
         .from("products")
-        .select("id, price, options") // Select price and options
+        .select("id, price, options")
         .eq("id", productId)
         .single();
 
       if (productFetchError) throw productFetchError;
       if (!productData) throw new Error("Product not found.");
 
+      let blackFridayItem: Tables<"black_friday_items"> | null = null;
+      if (blackFridayItemId) {
+        const { data: bfData, error: bfError } = await supabase
+          .from("black_friday_items")
+          .select("*")
+          .eq("id", blackFridayItemId)
+          .eq("product_id", productId)
+          .single();
+
+        if (bfError) throw bfError;
+        if (!bfData) {
+          throw new Error("Black Friday offer not found.");
+        }
+        const now = new Date();
+        if (bfData.status !== "active") {
+          throw new Error("This Black Friday offer is no longer active.");
+        }
+        if (bfData.start_at && new Date(bfData.start_at) > now) {
+          throw new Error("This Black Friday offer is not yet available.");
+        }
+        if (bfData.end_at && new Date(bfData.end_at) < now) {
+          throw new Error("This Black Friday offer has ended.");
+        }
+        blackFridayItem = bfData;
+      }
+
       const { data: existingItems, error: fetchError } = await supabase
         .from("cart_items")
-        .select("id, quantity, option") // Select option to compare
+        .select("id, quantity, option, black_friday_item_id")
         .eq("cart_id", cartId)
         .eq("product_id", productId)
-        .is("bundle_id", null); // Ensure it's not a bundle item
+        .is("bundle_id", null);
 
       if (fetchError) throw fetchError;
 
-      // Find the existing item with the exact same option JSON structure
       const existingItem = existingItems?.find(
         (cartItem) =>
           JSON.stringify(cartItem.option || null) ===
-          JSON.stringify(selectedOption || null)
+            JSON.stringify(selectedOption || null) &&
+          (cartItem.black_friday_item_id ?? null) ===
+            (blackFridayItemId ?? null)
       );
 
-      // Determine the price to use: option price if available, otherwise product base price
+      const nextQuantity = (existingItem?.quantity ?? 0) + quantity;
+      if (blackFridayItem) {
+        const perUserLimit =
+          blackFridayItem.max_quantity_per_user ??
+          blackFridayItem.quantity_limit ??
+          null;
+        if (perUserLimit && nextQuantity > perUserLimit) {
+          throw new Error(
+            `You can only purchase ${perUserLimit} of this Black Friday item.`
+          );
+        }
+        if (
+          blackFridayItem.available_slots &&
+          nextQuantity > blackFridayItem.available_slots
+        ) {
+          throw new Error(
+            `Only ${blackFridayItem.available_slots} of this Black Friday item remain.`
+          );
+        }
+      }
+
       const itemPrice =
+        blackFridayItem?.new_price ??
         (selectedOption as unknown as ProductOption | null)?.price ??
         productData.price;
 
       if (existingItem) {
-        // If product item exists, update the quantity and potentially the option/price if they changed (though option comparison should prevent this for now)
         const { error: updateError } = await supabase
           .from("cart_items")
           .update({
-            quantity: existingItem.quantity + quantity,
+            quantity: nextQuantity,
             price: itemPrice,
             option: (selectedOption as Json) || null,
+            black_friday_item_id: blackFridayItemId ?? null,
           })
           .eq("id", existingItem.id);
 
         if (updateError) throw updateError;
       } else {
-        // If product item does not exist, insert a new item
         const { error: insertError } = await supabase
           .from("cart_items")
           .insert({
             cart_id: cartId,
             product_id: productId,
             quantity: quantity,
-            bundle_id: null, // Explicitly null for product items
-            option: (selectedOption as Json) || null, // Store the selected option, or null if none
-            price: itemPrice, // Store the calculated price
+            bundle_id: null,
+            option: (selectedOption as Json) || null,
+            price: itemPrice,
+            black_friday_item_id: blackFridayItemId ?? null,
           });
 
         if (insertError) throw insertError;

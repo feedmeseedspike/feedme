@@ -24,6 +24,8 @@ export function useCartMerge() {
       const authenticatedItemsForMutation: ItemToUpdateMutation[] = authenticatedCartItems.map(item => ({
         product_id: item.product_id || null,
         bundle_id: item.bundle_id || null,
+        offer_id: item.offer_id || null,
+        black_friday_item_id: item.black_friday_item_id || null,
         option: item.option,
         quantity: item.quantity,
         price: item.price || 0
@@ -36,6 +38,7 @@ export function useCartMerge() {
         const existingItemIndex = mergedItems.findIndex(authItem => 
           authItem.product_id === anonymousItem.product_id &&
           authItem.bundle_id === anonymousItem.bundle_id &&
+          authItem.black_friday_item_id === anonymousItem.black_friday_item_id &&
           JSON.stringify(authItem.option || null) === JSON.stringify(anonymousItem.option || null)
         );
         
@@ -47,6 +50,8 @@ export function useCartMerge() {
           mergedItems.push({
             product_id: anonymousItem.product_id || null,
             bundle_id: anonymousItem.bundle_id || null,
+            offer_id: anonymousItem.offer_id || null,
+            black_friday_item_id: anonymousItem.black_friday_item_id || null,
             option: anonymousItem.option,
             quantity: anonymousItem.quantity,
             price: anonymousItem.price

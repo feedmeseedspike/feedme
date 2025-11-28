@@ -12,9 +12,7 @@ export default async function HomeLayout({
       {/* <div className="mb-[5rem]">
       </div> */}
       <Header />
-      <div className="hidden md:block border-b py-2">
-        <Headertags />
-      </div>
+      <Headertags />
       <main className="bg-[#F9FAFB] min-h-screen pb-20">{children}</main>
       <Footer />
     </div>

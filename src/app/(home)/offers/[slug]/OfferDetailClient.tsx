@@ -103,7 +103,7 @@ export default function OfferDetailClient({ offerId }: Props) {
     mutationFn: async () => {
       if (user) {
         // Authenticated user
-        return addToCart(null, selectedSlots, null, null, offerId);
+        return addToCart(null, selectedSlots, null, null, offerId, null);
       } else {
         // Anonymous user
         if (offer) {
@@ -113,7 +113,9 @@ export default function OfferDetailClient({ offerId }: Props) {
             offer.price_per_slot,
             null, // option
             null, // bundleId
-            offerId // offerId
+            offerId, // offerId
+            undefined,
+            null
           );
         }
         return { success: true };

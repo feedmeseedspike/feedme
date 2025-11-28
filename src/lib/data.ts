@@ -2,6 +2,10 @@ import { toSlug } from "src/lib/utils"
 
 export const headerMenus =  [
   {
+    name: "Black Friday",
+    href: '/black-friday',
+  },
+  {
     name: "Today's Deal",
     href: '/todays-deal',
   },
@@ -1152,7 +1156,7 @@ export const vendor =   {
   fulfillmentRate: 99,
   positiveReviews: 96,
   returnPolicy: "7-day return policy for damaged goods with proof",
-  shippingPolicy: "Free shipping on orders above ₦15,000. Delivery within 2-3 business days in Lagos, 3-5 days nationwide.",
+  shippingPolicy: "Free delivery on orders above ₦15,000. Delivery within 2-3 business days in Lagos, 3-5 days nationwide.",
   contact: {
     email: "farmfresh@example.com",
     phone: "+2348012345678",
@@ -1196,7 +1200,7 @@ export const vendors = [
     fulfillmentRate: 99,
     positiveReviews: 96,
     returnPolicy: "7-day return policy for damaged goods with proof",
-    shippingPolicy: "Free shipping on orders above ₦15,000. Delivery within 2-3 business days in Lagos, 3-5 days nationwide.",
+    shippingPolicy: "Free delivery on orders above ₦15,000. Delivery within 2-3 business days in Lagos, 3-5 days nationwide.",
     contact: {
       email: "farmfresh@example.com",
       phone: "+2348012345678",
@@ -1319,7 +1323,7 @@ export const vendors = [
     fulfillmentRate: 99,
     positiveReviews: 98,
     returnPolicy: "14-day return policy for quality issues. Full refund or replacement.",
-    shippingPolicy: "Free shipping on orders above ₦20,000. Temperature-controlled shipping available.",
+    shippingPolicy: "Free delivery on orders above ₦20,000. Temperature-controlled delivery available.",
     contact: {
       email: "tropical@example.com",
       phone: "+2348045678901",
@@ -1398,7 +1402,7 @@ export const vendors = [
     fulfillmentRate: 98,
     positiveReviews: 97,
     returnPolicy: "Quality guarantee. Full refund if not satisfied with product quality.",
-    shippingPolicy: "Free shipping in Abuja for orders above ₦10,000. Nationwide delivery available.",
+    shippingPolicy: "Free delivery in Abuja for orders above ₦10,000. Nationwide delivery available.",
     contact: {
       email: "summerharvest@example.com",
       phone: "+2348067890123",
@@ -1517,7 +1521,7 @@ export const vendors = [
     fulfillmentRate: 96,
     positiveReviews: 95,
     returnPolicy: "7-day return policy. Refund or replacement at customer's choice.",
-    shippingPolicy: "Free shipping on orders above ₦8,000. Standard shipping available.",
+    shippingPolicy: "Free delivery on orders above ₦8,000. Standard delivery available.",
     contact: {
       email: "gingerroots@example.com",
       phone: "+2348090123456",
@@ -1598,7 +1602,7 @@ export const vendors = [
     fulfillmentRate: 98,
     positiveReviews: 97,
     returnPolicy: "14-day return policy for unopened products. Herbal consultations available.",
-    shippingPolicy: "Discreet packaging. Free shipping on wellness packages above ₦25,000.",
+    shippingPolicy: "Discreet packaging. Free delivery on wellness packages above ₦25,000.",
     contact: {
       email: "herbalhaven@example.com",
       phone: "+2348112345678",
@@ -1638,7 +1642,7 @@ export const vendors = [
     fulfillmentRate: 98,
     positiveReviews: 97,
     returnPolicy: "14-day return policy for unopened products. Herbal consultations available.",
-    shippingPolicy: "Discreet packaging. Free shipping on wellness packages above ₦25,000.",
+    shippingPolicy: "Discreet packaging. Free delivery on wellness packages above ₦25,000.",
     contact: {
       email: "herbalhaven@example.com",
       phone: "+2348112345678",
@@ -1681,7 +1685,7 @@ export const vendors = [
       "fulfillmentRate": 96,
       "positiveReviews": 95,
       "returnPolicy": "7-day return policy for damaged products",
-      "shippingPolicy": "Free shipping on orders above ₦15,000 within Lagos",
+      "shippingPolicy": "Free delivery on orders above ₦15,000 within Lagos",
       "contact": {
         "email": "pepperparadise@example.com",
         "phone": "+2348023456789",

@@ -1,9 +1,12 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import React from "react";
+import React, { useMemo } from "react";
 
 import { IProductInput } from "src/types";
 import { formatNaira } from "src/lib/utils";
+import AddToCart from "@components/shared/product/add-to-cart";
 
 interface ImageJSON {
   url: string;
@@ -22,7 +25,7 @@ const ProductCard = ({
 }) => {
   // console.log(product);
   // Handle both old array format and new object format for options
-  const optionsArr = (() => {
+  const optionsArr = useMemo(() => {
     if (Array.isArray(product.options)) {
       // Old format: options is array of variations
       return product.options.filter(Boolean);
@@ -31,7 +34,15 @@ const ProductCard = ({
       return (product.options as any).variations || [];
     }
     return [];
-  })();
+  }, [product.options]);
+
+  // Use product.id consistently to match cart items across the application
+  const productId = (product as any).id || "";
+  const defaultOption = optionsArr[0] || null;
+  const quickAddOption = optionsArr.length <= 1 ? defaultOption : null;
+  const defaultPrice =
+    defaultOption?.price ??
+    (typeof product.price === "number" ? product.price : 0);
 
   const getImageUrl = (imageData: string | ImageJSON): string => {
     if (typeof imageData === "string") {
@@ -47,9 +58,15 @@ const ProductCard = ({
     return imageData.url || "/images/placeholder-banner.jpg";
   };
 
+  // Only consider out of stock if countInStock is explicitly set to a number <= 0
+  const isOutOfStock =
+    typeof (product as any).countInStock === "number" &&
+    (product as any).countInStock <= 0;
+  const isOutOfSeason = (product as any).in_season === false;
+
   const ProductImage = () => (
-    <Link href={`/product/${product.slug}`}>
-      <div className="relative h-[100px] w-[120px] md:h-[135px] md:w-[160px]">
+    <div className="relative h-[100px] w-[120px] md:h-[135px] md:w-[160px]">
+      <Link href={`/product/${product.slug}`} className="block h-full w-full">
         <div className="relative w-full h-full bg-[#F2F4F7] overflow-hidden rounded-[8px]">
           <Image
             src={
@@ -59,11 +76,43 @@ const ProductCard = ({
             }
             alt={product.name}
             fill
+            sizes="(max-width: 768px) 120px, 160px"
+            loading="lazy"
             className="w-full h-full object-cover"
           />
         </div>
-      </div>
-    </Link>
+      </Link>
+
+      {!hideAddToCart && !!productId && (
+        <div className="absolute bottom-1 right-1.5 md:bottom-[4px] md:right-[4px] z-10">
+          <AddToCart
+            minimal
+            item={{
+              id: productId,
+              name: product.name,
+              slug: product.slug,
+              category:
+                Array.isArray(product.category) && product.category.length > 0
+                  ? product.category[0]
+                  : (product as any).category_ids?.[0] || "",
+              price: defaultPrice,
+              images: Array.isArray(product.images)
+                ? product.images.map((img: string | { url: string }) =>
+                    typeof img === "string" ? img : img.url
+                  )
+                : [],
+              countInStock: (product as any).countInStock ?? null,
+              options: optionsArr as any,
+              option: quickAddOption as any,
+              selectedOption: quickAddOption?.name,
+              in_season: (product as any).in_season ?? null,
+              iconOnly: true,
+              bundleId: (product as any).bundleId,
+            }}
+          />
+        </div>
+      )}
+    </div>
   );
   const ProductDetails = () => (
     <div className="flex flex-col space-y-1 w-[120px] md:w-[160px]">
@@ -101,7 +150,7 @@ const ProductCard = ({
           <div>
             <ProductDetails />
           </div>
-          {!hideAddToCart}
+          {/* Quick add button over image is enough per new design */}
         </>
       )}
     </div>

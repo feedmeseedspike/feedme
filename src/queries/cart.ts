@@ -56,6 +56,7 @@ export interface ItemToUpdateMutation {
   product_id?: string | null; // Make optional and allow null
   bundle_id?: string | null; // Add optional bundle_id
   offer_id?: string | null; // Add optional offer_id
+  black_friday_item_id?: string | null;
   option?: Json | null; // Changed to Json | null (removed undefined possibility)
   quantity: number;
   price?: number | null; // Make optional
@@ -73,17 +74,84 @@ export const useUpdateCartMutation = () => {
     mutationFn: (items) => {
       return updateCartItems(items);
     },
-    // Disable optimistic updates for now to fix multiplication bug
-    // onMutate: async (newItems) => {
-    //   await queryClient.cancelQueries({ queryKey: cartQueryKey });
-    //   const previousCart = queryClient.getQueryData<CartItem[]>(cartQueryKey);
-    //   return { previousCart };
-    // },
+    onMutate: async (newItems) => {
+      // Cancel outgoing refetches to avoid overwriting optimistic update
+      await queryClient.cancelQueries({ queryKey: cartQueryKey });
+      
+      // Snapshot the previous value
+      const previousCart = queryClient.getQueryData<CartItem[]>(cartQueryKey);
+      const currentCart = previousCart || [];
+      
+      // Replace the cart with newItems, matching existing items to preserve IDs
+      // Use a Set to track processed items and prevent duplicates
+      const updatedCart: CartItem[] = [];
+      const processedKeys = new Set<string>();
+      
+      for (const newItem of newItems) {
+        // Create a unique key for this item
+        const itemKey = `${newItem.product_id || ''}-${newItem.bundle_id || ''}-${newItem.offer_id || ''}-${newItem.black_friday_item_id || ''}-${JSON.stringify(newItem.option || null)}`;
+        
+        // Skip if we've already processed this item (prevent duplicates)
+        if (processedKeys.has(itemKey)) {
+          console.warn('Duplicate item in mutation array, skipping:', itemKey);
+          continue;
+        }
+        processedKeys.add(itemKey);
+        
+        // Find existing item by matching product/bundle/offer + option + black_friday_item_id
+        const existingItem = currentCart.find((item) => {
+          const sameProduct = item.product_id === newItem.product_id && newItem.product_id !== null;
+          const sameBundle = item.bundle_id === newItem.bundle_id && newItem.bundle_id !== null;
+          const sameOffer = item.offer_id === newItem.offer_id && newItem.offer_id !== null;
+          const itemBlackFridayId = (item as any).black_friday_item_id ?? null;
+          const newItemBlackFridayId = newItem.black_friday_item_id ?? null;
+          const sameBlackFriday = itemBlackFridayId === newItemBlackFridayId;
+          const sameOption = JSON.stringify(item.option || null) === JSON.stringify(newItem.option || null);
+          return (sameProduct || sameBundle || sameOffer) && sameBlackFriday && sameOption;
+        });
+        
+        if (existingItem) {
+          // Update existing item
+          updatedCart.push({ 
+            ...existingItem, 
+            quantity: newItem.quantity,
+            price: newItem.price ?? existingItem.price ?? 0
+          });
+        } else {
+          // New item
+          const firstExistingItem = currentCart.length > 0 ? currentCart[0] : null;
+          updatedCart.push({
+            id: `temp-${Date.now()}-${Math.random()}`,
+            product_id: newItem.product_id,
+            bundle_id: newItem.bundle_id,
+            offer_id: newItem.offer_id,
+            black_friday_item_id: newItem.black_friday_item_id ?? null,
+            option: newItem.option,
+            quantity: newItem.quantity,
+            price: newItem.price || 0,
+            cart_id: firstExistingItem?.cart_id || '',
+            created_at: new Date().toISOString(),
+            products: null,
+            bundles: null,
+            offers: null,
+          } as CartItem);
+        }
+      }
+      
+      // Replace entire cart
+      queryClient.setQueryData<CartItem[]>(cartQueryKey, updatedCart);
+      
+      return { previousCart };
+    },
     onSuccess: (data) => {
       // Invalidate the cart query to refetch and get the correct state from the server
-      queryClient.invalidateQueries({ queryKey: cartQueryKey });
+      // Use a small delay to ensure server has processed the update
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: cartQueryKey });
+      }, 100);
     },
     onError: (error, variables, context) => {
+      // Revert to previous cart on error
       if (context?.previousCart) {
         queryClient.setQueryData<CartItem[]>(cartQueryKey, context.previousCart);
       }

@@ -54,7 +54,7 @@ const HeaderTagsClient = ({ categories, productsByCategory, error }: HeaderTagsC
     <FlyoutLink
       FlyoutContent={() => (
         <motion.div 
-          className="p-3 w-full max-w-7xl mx-auto overflow-x-auto"
+          className="p-3 w-full mx-auto overflow-x-auto"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}

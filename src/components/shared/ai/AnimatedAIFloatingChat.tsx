@@ -833,7 +833,10 @@ export default function AnimatedAIFloatingChat() {
           1,
           selectedOption && selectedOption.price !== undefined
             ? selectedOption
-            : null
+            : null,
+          null,
+          null,
+          null
         );
 
         const optionText = selectedOption

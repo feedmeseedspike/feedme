@@ -7,7 +7,6 @@ import { Card, CardContent, CardFooter, CardHeader } from "@components/ui/card";
 import Rating from "./rating";
 import { generateId, formatNaira } from "../../../lib/utils";
 import ImageHover from "./image-hover";
-import AddToCart from "./add-to-cart";
 import { IProductInput } from "src/types";
 import ProductPrice from "@components/shared/product/product-price";
 import { useDispatch, useSelector } from "react-redux";
@@ -29,6 +28,16 @@ import { cn } from "src/lib/utils";
 import { useUser } from "src/hooks/useUser";
 import { useRouter } from "next/navigation";
 import { useAnonymousCart } from "src/hooks/useAnonymousCart";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetClose,
+} from "@components/ui/sheet";
+import { createPortal } from "react-dom";
+import { useMediaQuery } from "usehooks-ts";
 
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
@@ -120,11 +129,26 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       return option || sortedOptions[0];
     }, [selectedOption, sortedOptions]);
 
+    // Define selectedOptionLabel early so it can be used in callbacks
+    const selectedOptionLabel = useMemo(
+      () =>
+        `${product.name}${
+          selectedOptionData?.name ? ` (${selectedOptionData.name})` : ""
+        }`,
+      [product.name, selectedOptionData?.name]
+    );
+
+    // Find the item in the cart (authenticated or anonymous)
     // Find the item in the cart (authenticated or anonymous)
     const currentCartItem = useMemo(() => {
       if (user) {
         if (!cartItems) return undefined;
         return cartItems.find((item) => {
+          // Check for bundle match first if product is a bundle
+          if (product.bundleId) {
+            return item.bundle_id === product.bundleId;
+          }
+          // Otherwise check for product match
           return (
             item.product_id === product.id &&
             JSON.stringify(item.option || null) ===
@@ -134,6 +158,10 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       } else {
         // For anonymous users, find item in anonymous cart
         return anonymousCart.items.find((item) => {
+          // Check for bundle match first if product is a bundle
+          if (product.bundleId) {
+            return item.bundle_id === product.bundleId;
+          }
           return (
             item.product_id === product.id &&
             JSON.stringify(item.option || null) ===
@@ -141,22 +169,39 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           );
         });
       }
-    }, [user, cartItems, anonymousCart.items, product.id, selectedOptionData]);
+    }, [user, cartItems, anonymousCart.items, product.id, product.bundleId, selectedOptionData]);
 
     const [quantity, setQuantity] = useState(currentCartItem?.quantity ?? 1);
     const [showQuantityControls, setShowQuantityControls] = useState(
       Boolean(currentCartItem)
     );
 
-    // Update local state when the item in the cart changes
-    useEffect(() => {
-      setQuantity(currentCartItem?.quantity ?? 1);
-      setShowQuantityControls(Boolean(currentCartItem));
-    }, [currentCartItem]);
-
     // Use cart mutations
     const updateCartMutation = useUpdateCartMutation();
     const removeCartItemMutation = useRemoveFromCartMutation();
+
+    // Update local state when the item in the cart changes
+    // Only sync from cart if mutation is not pending to avoid race conditions
+    useEffect(() => {
+      if (updateCartMutation.isPending) return;
+      
+      // If we have a currentCartItem, it means we found a match in the cart
+      // (which now correctly respects bundleId from the useMemo above).
+      // So we can safely use its quantity.
+      if (currentCartItem) {
+        setQuantity(currentCartItem.quantity);
+        setShowQuantityControls(true);
+      } else {
+        // If no match in cart, reset controls
+        // But be careful not to reset if we are in the middle of an optimistic update 
+        // (though the isPending check helps there).
+        // More importantly, we shouldn't reset just because *another* item updated.
+        // The useMemo for currentCartItem depends on cartItems, so this effect runs when cart changes.
+        // If currentCartItem becomes undefined, it means this specific product/bundle is not in the cart.
+        setQuantity(1);
+        setShowQuantityControls(false);
+      }
+    }, [currentCartItem, updateCartMutation.isPending]);
 
     // Handler to update quantity via mutation
     const handleUpdateCartQuantity = useCallback(
@@ -174,10 +219,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           if (newQuantity === 0) {
             if (existingAnonymousItem) {
               anonymousCart.removeItem(existingAnonymousItem.id);
-              showToast(
-                `${product.name}${selectedOptionData?.name ? ` (${selectedOptionData.name})` : ""} removed from cart`,
-                "info"
-              );
+              showToast(`${selectedOptionLabel} removed from cart`, "info");
             }
           } else {
             if (existingAnonymousItem) {
@@ -201,11 +243,14 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                       ? product.images[0]
                       : undefined
                     : undefined,
-                }
+                },
+                null
               );
             }
             showToast(
-              `${product.name}${selectedOptionData?.name ? ` (${selectedOptionData.name})` : ""} ${newQuantity === 1 ? "added to" : "updated in"} cart`,
+              `${selectedOptionLabel} ${
+                newQuantity === 1 ? "added to" : "updated in"
+              } cart`,
               "success",
               undefined,
               {
@@ -225,15 +270,18 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
 
         const itemsForMutation: ItemToUpdateMutation[] = currentItems
           .map((item: CartItem) => {
-            const isTargetItem =
-              item.product_id === product.id &&
-              JSON.stringify(item.option || null) ===
-                JSON.stringify(selectedOptionData || null);
+            const isTargetItem = product.bundleId
+              ? item.bundle_id === product.bundleId
+              : item.product_id === product.id &&
+                JSON.stringify(item.option || null) ===
+                  JSON.stringify(selectedOptionData || null);
 
             return {
               product_id: item.product_id || null,
               bundle_id: item.bundle_id || null,
               offer_id: item.offer_id || null,
+              black_friday_item_id:
+                (item as any).black_friday_item_id || null,
               option: item.option,
               quantity: isTargetItem ? newQuantity : item.quantity,
               price:
@@ -246,10 +294,16 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           .filter((item) => item.quantity > 0);
 
         const targetItemExistsInMutationArray = itemsForMutation.some(
-          (item) =>
-            item.product_id === product.id &&
-            JSON.stringify(item.option || null) ===
-              JSON.stringify(selectedOptionData || null)
+          (item) => {
+            if (product.bundleId) {
+              return item.bundle_id === product.bundleId;
+            }
+            return (
+              item.product_id === product.id &&
+              JSON.stringify(item.option || null) ===
+                JSON.stringify(selectedOptionData || null)
+            );
+          }
         );
 
         const itemPriceForNew = selectedOptionData?.price ?? product.price ?? 0;
@@ -257,8 +311,9 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
         if (newQuantity > 0 && !targetItemExistsInMutationArray) {
           itemsForMutation.push({
             product_id: product.bundleId ? null : product.id,
-            bundle_id: product.bundleId ? product.id : null,
+            bundle_id: product.bundleId ? product.bundleId : null, // Use product.bundleId directly if it exists
             offer_id: null,
+            black_friday_item_id: null,
             option: selectedOptionData
               ? JSON.parse(JSON.stringify(selectedOptionData))
               : null,
@@ -268,10 +323,35 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
         }
 
         try {
-          await updateCartMutation.mutateAsync(itemsForMutation);
+          // Optimistically update UI first for instant feedback
+          // This only affects the local state of THIS component instance
+          setQuantity(newQuantity);
+          setShowQuantityControls(newQuantity > 0);
+
+          const result = await updateCartMutation.mutateAsync(itemsForMutation);
+          // Check if mutation actually succeeded
+          if (!result.success) {
+            throw new Error(result.error || "Failed to update cart");
+          }
         } catch (error: any) {
           console.error("Failed to update cart item quantity:", error);
-          showToast("Failed to update cart.", "error");
+          // Revert optimistic update on error
+          const currentItemInCart = (cartItems || []).find(
+            (item) =>
+              item.product_id === product.id &&
+              JSON.stringify(item.option || null) ===
+                JSON.stringify(selectedOptionData || null)
+          );
+          if (currentItemInCart) {
+            setQuantity(currentItemInCart.quantity);
+          } else {
+            setQuantity(1);
+            setShowQuantityControls(false);
+          }
+          showToast(
+            `Couldn't update ${selectedOptionLabel} in your cart.`,
+            "error"
+          );
         }
       },
       [
@@ -283,6 +363,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
         cartItems,
         anonymousCart,
         selectedOptionData,
+        selectedOptionLabel,
         showToast,
         router,
         updateCartMutation,
@@ -298,10 +379,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
         anonymousCart.removeItem(currentCartItem.id);
         setShowQuantityControls(false);
         setQuantity(1);
-        showToast(
-          `${product.name}${selectedOptionData?.name ? ` (${selectedOptionData.name})` : ""} removed from cart`,
-          "info"
-        );
+        showToast(`${selectedOptionLabel} removed from cart`, "info");
         return;
       }
 
@@ -311,14 +389,16 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
         setQuantity(1);
       } catch (error: any) {
         console.error("Failed to remove cart item:", error);
-        showToast("Failed to remove item from cart.", "error");
+        showToast(
+          `Couldn't remove ${selectedOptionLabel} from your cart.`,
+          "error"
+        );
       }
     }, [
       currentCartItem,
       user,
       anonymousCart,
-      product.name,
-      selectedOptionData,
+      selectedOptionLabel,
       showToast,
       router,
       removeCartItemMutation,
@@ -345,7 +425,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       // Check if product is out of season
       if (product.in_season === false) {
         showToast(
-          "This product is currently out of season and cannot be added to cart",
+          `${selectedOptionLabel} is currently out of season and can't be added to cart.`,
           "error"
         );
         return;
@@ -367,7 +447,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           newQuantity > (currentCartItem?.quantity ?? 0)
         ) {
           showToast(
-            "Cannot increase quantity for out of season products",
+            `${selectedOptionLabel} can't be increased because it's out of season.`,
             "error"
           );
           return;
@@ -385,6 +465,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
         handleUpdateCartQuantity,
         product.in_season,
         currentCartItem?.quantity,
+        selectedOptionLabel,
       ]
     );
 
@@ -579,7 +660,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                       // Check if product is out of season
                       if (product.in_season === false) {
                         showToast(
-                          "Cannot increase quantity for out of season products",
+                          `${selectedOptionLabel} can't be increased because it's out of season.`,
                           "error"
                         );
                         return;
@@ -841,49 +922,307 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       );
     }, [product, sortedOptions]);
 
+    const [optionPickerOpen, setOptionPickerOpen] = useState(false);
+    const isMobile = useMediaQuery("(max-width: 768px)");
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+      setIsClient(true);
+    }, []);
+
+    const productImageSrc = useMemo(() => {
+      if (selectedOptionData?.image) return selectedOptionData.image;
+      if (product.images?.[0]) {
+        if (typeof product.images[0] === "string") return product.images[0];
+        if (
+          typeof product.images[0] === "object" &&
+          product.images[0] !== null &&
+          "url" in product.images[0]
+        ) {
+          return (product.images[0] as { url: string }).url;
+        }
+      }
+      return "/placeholder-product.png";
+    }, [selectedOptionData, product.images]);
+
+    const optionList = (
+      <div className="space-y-3">
+        {sortedOptions.map((option, idx) => {
+          const isSelected = selectedOption === option.name;
+          return (
+            <div key={option.name} className="space-y-3">
+              <motion.button
+                onClick={() => {
+                  handleOptionChange(option.name);
+                }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.04 }}
+                className={cn(
+                  "w-full flex items-center justify-between rounded-2xl border px-4 py-3 text-left transition-all duration-200",
+                  isSelected
+                    ? "border-[#1B6013] bg-[#F5FFF1] shadow-[0_10px_30px_rgba(27,96,19,0.08)]"
+                    : "border-[#E4E7EC] bg-white hover:border-[#1B6013] hover:bg-[#F5FFF1]"
+                )}
+              >
+                <span className="font-medium text-sm text-[#101828]">
+                  {option.name}
+                </span>
+                <span className="text-sm text-[#475467]">
+                  {formatNaira(option.price)}
+                </span>
+              </motion.button>
+              {isSelected && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  className="rounded-2xl border border-[#E4E7EC] bg-[#F9FAFB] p-4 space-y-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-[#0F172A]">
+                        {option.name}
+                      </p>
+                      <p className="text-xs text-[#475467]">
+                        {formatNaira(option.price)}
+                      </p>
+                    </div>
+                    {currentCartItem && currentCartItem.quantity > 0 && (
+                      <button
+                        type="button"
+                        className="text-xs font-semibold text-[#F04438]"
+                        onClick={handleRemoveFromCart}
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs uppercase tracking-[0.3em] text-[#9CA3AF]">
+                      Quantity
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        className="size-9 rounded-full bg-white border border-[#E4E7EC] flex items-center justify-center text-lg text-[#1B6013]"
+                        onClick={() =>
+                          handleQuantityChange(Math.max(quantity - 1, 0))
+                        }
+                      >
+                        -
+                      </button>
+                      <span className="w-10 text-center font-semibold text-[#0F172A]">
+                        {quantity}
+                      </span>
+                      <button
+                        type="button"
+                        className="size-9 rounded-full bg-[#1B6013] text-white flex items-center justify-center text-lg"
+                        onClick={() => handleQuantityChange(quantity + 1)}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="w-full rounded-2xl bg-[#1B6013] text-white py-3 font-semibold shadow-[0px_15px_35px_rgba(27,96,19,0.32)]"
+                    onClick={() => {
+                      handleUpdateCartQuantity(Math.max(quantity, 1));
+                      setOptionPickerOpen(false);
+                    }}
+                  >
+                    {currentCartItem ? "Update Cart" : "Add to Cart"}
+                  </button>
+                </motion.div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+
+    const desktopOptionPicker = !isMobile ? (
+      <Sheet open={optionPickerOpen} onOpenChange={setOptionPickerOpen}>
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-md border-none p-0 bg-transparent"
+        >
+          <motion.div
+            initial={{ x: 60, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 60, opacity: 0 }}
+            transition={{ type: "spring", damping: 24, stiffness: 260 }}
+            className="h-full bg-white flex flex-col rounded-l-[32px] shadow-[0_15px_60px_rgba(15,23,42,0.18)]"
+          >
+            <SheetHeader className="p-6 pb-4 text-left">
+              <p className="text-[10px] uppercase tracking-[0.35em] text-[#9E9EA7] mb-1">
+                Select option
+              </p>
+              <SheetTitle className="text-lg leading-tight text-[#0F172A]">
+                {product.name}
+              </SheetTitle>
+              <SheetDescription className="text-xs text-[#6B7280]">
+                Choose the option you want
+              </SheetDescription>
+            </SheetHeader>
+            <div className="px-6 pb-6 flex-1 overflow-y-auto space-y-5">
+              <div className="flex items-center gap-3">
+                <div className="relative h-16 w-16 rounded-2xl overflow-hidden bg-[#F4F4F5] flex-shrink-0">
+                  <Image
+                    src={productImageSrc}
+                    alt={product.name}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-[#0F172A]">
+                    {selectedOptionData?.name || sortedOptions[0]?.name}
+                  </p>
+                  <p className="text-xs text-[#475467]">
+                    {selectedOptionData
+                      ? formatNaira(selectedOptionData.price)
+                      : ""}
+                  </p>
+                </div>
+                <SheetClose
+                  className="text-[#101828] text-xs font-semibold underline underline-offset-4"
+                  asChild
+                >
+                  <button type="button">Close</button>
+                </SheetClose>
+              </div>
+              {optionList}
+            </div>
+          </motion.div>
+        </SheetContent>
+      </Sheet>
+    ) : null;
+
+    const mobileOptionPicker =
+      isMobile && isClient
+        ? createPortal(
+            <AnimatePresence>
+              {optionPickerOpen && (
+                <>
+                  <motion.div
+                    className="fixed inset-0 bg-black/40 z-[70]"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setOptionPickerOpen(false)}
+                  />
+                  <motion.div
+                    className="fixed inset-x-0 bottom-0 z-[75] rounded-t-[32px] bg-white px-5 pb-8 pt-5"
+                    initial={{ y: "100%" }}
+                    animate={{ y: 0 }}
+                    exit={{ y: "100%" }}
+                    transition={{ type: "spring", damping: 28, stiffness: 240 }}
+                    drag="y"
+                    dragConstraints={{ top: 0, bottom: 0 }}
+                    dragElastic={0.2}
+                    onDragEnd={(event, info) => {
+                      if (info.offset.y > 100) {
+                        setOptionPickerOpen(false);
+                      }
+                    }}
+                  >
+                    <div
+                      className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-gray-300 cursor-grab active:cursor-grabbing"
+                      onClick={() => setOptionPickerOpen(false)}
+                    />
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="relative h-12 w-12 rounded-2xl overflow-hidden bg-[#F4F4F5] flex-shrink-0">
+                        <Image
+                          src={productImageSrc}
+                          alt={product.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-[0.3em] text-[#9E9EA7]">
+                          Select option
+                        </p>
+                        <p className="text-base font-semibold text-[#0F172A]">
+                          {product.name}
+                        </p>
+                      </div>
+                    </div>
+                    {optionList}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>,
+            document.body
+          )
+        : null;
+
     const OptionsDropdown = useMemo(() => {
       if (sortedOptions.length === 0) return null;
 
       const currentValue = selectedOption || sortedOptions[0]?.name || "";
+      const currentOption =
+        sortedOptions.find((opt) => opt.name === currentValue) ||
+        sortedOptions[0];
 
       return (
-        <div className="w-full mt-2 max-w-xs min-w-[10rem]">
-          <Select value={currentValue} onValueChange={handleOptionChange}>
-            <SelectTrigger className="w-full !border-none min-w-[10rem] max-w-[18rem]">
-              <SelectValue placeholder="Select an option" />
-            </SelectTrigger>
-            <SelectContent className="w-full min-w-[10rem] max-w-[18rem] max-h-[250px] overflow-y-auto z-50">
-              {sortedOptions.map((option) => (
-                <SelectItem
-                  key={option.name}
-                  value={option.name}
-                  className="w-full"
-                >
-                  <div className="flex items-center gap-2 w-full">
-                    {typeof option.image === "string" && (
-                      <Image
-                        src={option.image}
-                        alt={option.name}
-                        width={40}
-                        height={40}
-                        className="h-8 w-8 rounded-md object-cover"
-                        loading="lazy"
-                      />
-                    )}
-                    <div>
-                      <p>{option.name}</p>
-                      <p className="text-sm text-gray-500">
-                        {formatNaira(option.price)}
-                      </p>
-                    </div>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <>
+          {desktopOptionPicker}
+          {mobileOptionPicker}
+          <div className="w-full mt-2 max-w-xs min-w-[10rem]">
+            <button
+              onClick={() => setOptionPickerOpen(true)}
+              className="w-full flex items-center justify-between rounded-lg border border-[#E4E7EC] bg-white px-3 py-2 text-left hover:border-[#1B6013] hover:bg-[#F5FFF1] transition-all"
+            >
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                {currentOption?.image && (
+                  <Image
+                    src={currentOption.image}
+                    alt={currentOption.name}
+                    width={32}
+                    height={32}
+                    className="h-8 w-8 rounded-md object-cover flex-shrink-0"
+                    loading="lazy"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {currentOption?.name}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {currentOption
+                      ? formatNaira(currentOption.price)
+                      : "Select"}
+                  </p>
+                </div>
+              </div>
+              <svg
+                className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+          </div>
+        </>
       );
-    }, [sortedOptions, selectedOption, handleOptionChange]);
+    }, [
+      sortedOptions,
+      selectedOption,
+      desktopOptionPicker,
+      mobileOptionPicker,
+      productImageSrc,
+      product.name,
+    ]);
 
     return hideBorder ? (
       <div className="flex flex-col">

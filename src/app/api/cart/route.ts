@@ -42,19 +42,25 @@ export const POST = authMiddleware(
       productId,
       quantity,
       selectedOption,
-      bundleId,offerId
+      bundleId,
+      offerId,
+      blackFridayItemId,
     }: {
       productId: string | null;
       quantity: number;
       selectedOption?: any;
-      bundleId?: string | null;offerId?:string|null
+      bundleId?: string | null;
+      offerId?: string | null;
+      blackFridayItemId?: string | null;
     } = await request.json();
     try {
       const cart = await addToCart(
         productId,
         quantity,
         selectedOption,
-        bundleId,offerId
+        bundleId,
+        offerId,
+        blackFridayItemId
       );
       return NextResponse.json(cart);
     } catch (error: any) {
