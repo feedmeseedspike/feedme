@@ -44,6 +44,8 @@ const proxima = localFont({
     },
   ],
   variable: "--font-proxima",
+  display: "swap",
+  preload: true,
 });
 
 export const metadata: Metadata = {
@@ -212,6 +214,18 @@ export default async function RootLayout({
   return (
     <html lang="en" className={proxima.variable}>
       <head>
+        {/* Resource hints for performance */}
+        <link rel="preconnect" href="https://www.googletagmanager.com" />
+        <link rel="preconnect" href="https://www.google-analytics.com" />
+        <link rel="preconnect" href="https://connect.facebook.net" />
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+        <link rel="dns-prefetch" href="https://www.google-analytics.com" />
+        <link rel="dns-prefetch" href="https://connect.facebook.net" />
+        <link
+          rel="dns-prefetch"
+          href="https://fyldgskqxrfmrhyluxmw.supabase.co"
+        />
+        <link rel="dns-prefetch" href="https://*.supabase.co" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -220,12 +234,12 @@ export default async function RootLayout({
         />
       </head>
       <head>
-        {/* Google Analytics */}
+        {/* Google Analytics - Deferred to reduce blocking */}
         <Script
-          strategy="afterInteractive"
+          strategy="lazyOnload"
           src="https://www.googletagmanager.com/gtag/js?id=G-DT105JV69M"
         />
-        <Script id="google-analytics" strategy="afterInteractive">
+        <Script id="google-analytics" strategy="lazyOnload">
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
@@ -233,8 +247,8 @@ export default async function RootLayout({
             gtag('config', 'G-DT105JV69M');
           `}
         </Script>
-        {/* Google Tag Manager */}
-        <Script id="google-tag-manager" strategy="afterInteractive">
+        {/* Google Tag Manager - Deferred to reduce blocking */}
+        <Script id="google-tag-manager" strategy="lazyOnload">
           {`
             (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
             new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -244,8 +258,8 @@ export default async function RootLayout({
           `}
         </Script>
 
-        {/* Meta Pixel */}
-        <Script id="meta-pixel" strategy="afterInteractive">
+        {/* Meta Pixel - Deferred to reduce blocking */}
+        <Script id="meta-pixel" strategy="lazyOnload">
           {`
             !function(f,b,e,v,n,t,s)
             {if(f.fbq)return;n=f.fbq=function(){n.callMethod?

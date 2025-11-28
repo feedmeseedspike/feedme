@@ -3,6 +3,7 @@ import Link from "next/link";
 import React from "react";
 import { headerMenus } from "src/lib/data";
 import HeaderTagsClient from "./HeaderTagsClient";
+import HeaderTagsWrapper from "./HeaderTagsWrapper";
 import { createClient } from "src/utils/supabase/server";
 
 type CategoryListItem = {
@@ -25,9 +26,9 @@ export default async function Headertags() {
   try {
     // Direct Supabase query, no React Query
     const { data, error: fetchError } = await supabase
-      .from('categories')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .from("categories")
+      .select("*")
+      .order("created_at", { ascending: false });
       
     if (fetchError) throw fetchError;
     categories = (data || []) as CategoryListItem[];
@@ -37,19 +38,25 @@ export default async function Headertags() {
     const productsPromises = categories.map(async (cat) => {
       try {
         const { data: productsData, error: productsError } = await supabase
-          .from('products')
-          .select('id, name')
-          .contains('category_ids', [cat.id])
+          .from("products")
+          .select("id, name")
+          .contains("category_ids", [cat.id])
           .limit(2);
           
         if (productsError) {
-          console.error(`Error fetching products for category ${cat.id}:`, productsError);
+          console.error(
+            `Error fetching products for category ${cat.id}:`,
+            productsError
+          );
           return { categoryId: cat.id, products: [] };
         }
         
         return { 
           categoryId: cat.id, 
-          products: (productsData || []).map((p: any) => ({ id: p.id, name: p.name }))
+          products: (productsData || []).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+          })),
         };
       } catch (error) {
         console.error(`Error fetching products for category ${cat.id}:`, error);
@@ -69,24 +76,28 @@ export default async function Headertags() {
   }
 
   return (
-    <div className="bg-white">
-      <Container>
-        <div className="py-2 flex items-center gap-x-2 whitespace-nowrap scrollbar-hide w-full">
-          <HeaderTagsClient categories={categories} productsByCategory={productsByCategory} error={error} />
-          <div className="border-l h-7 rounded" />
-          <div className="flex items-center text-[14px] gap-3 overflow-x-auto whitespace-nowrap scrollbar-hide w-full overflow-visible">
-            {headerMenus.map((menu) => (
-              <Link
-                href={menu.href}
-                key={menu.href}
-                className="relative inline-block after:content-[''] after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:origin-bottom-right after:scale-x-0 after:bg-[#1B6013] after:transition-transform after:duration-300 after:ease-[cubic-bezier[0.65_0.05_0.36_1]] hover:after:origin-bottom-left hover:after:scale-x-100"
-              >
-                {menu.name}
-              </Link>
-            ))}
+    <HeaderTagsWrapper>
+        <Container>
+          <div className="py-2 flex items-center gap-x-2 whitespace-nowrap scrollbar-hide w-full">
+            <HeaderTagsClient
+              categories={categories}
+              productsByCategory={productsByCategory}
+              error={error}
+            />
+            <div className="border-l h-7 rounded" />
+            <div className="flex items-center text-[14px] gap-3 overflow-x-auto whitespace-nowrap scrollbar-hide w-full overflow-visible">
+              {headerMenus.map((menu) => (
+                <Link
+                  href={menu.href}
+                  key={menu.href}
+                  className="relative inline-block after:content-[''] after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:origin-bottom-right after:scale-x-0 after:bg-[#1B6013] after:transition-transform after:duration-300 after:ease-[cubic-bezier(0.65,0.05,0.36,1)] hover:after:origin-bottom-left hover:after:scale-x-100"
+                >
+                  {menu.name}
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
-      </Container>
-    </div>
+        </Container>
+    </HeaderTagsWrapper>
   );
 }

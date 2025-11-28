@@ -73,9 +73,10 @@ const Banner = () => {
                       key={banner.id!}
                       className="w-1/2 md:w-full md:max-w-[445px] aspect-[35/15] h-1/2 md:h-full"
                     >
-                      {(banner as any).link_url && (banner as any).link_url.trim() !== '' ? (
-                        <Link 
-                          href={(banner as any).link_url} 
+                      {(banner as any).link_url &&
+                      (banner as any).link_url.trim() !== "" ? (
+                        <Link
+                          href={(banner as any).link_url}
                           className="block h-full w-full hover:opacity-90 transition-opacity"
                         >
                           <Image
@@ -84,6 +85,7 @@ const Banner = () => {
                             sizes="(max-width: 768px) 50vw, 445px"
                             width={445}
                             height={700}
+                            loading="lazy"
                             className="h-full w-full object-contain"
                           />
                         </Link>
@@ -94,6 +96,7 @@ const Banner = () => {
                           sizes="(max-width: 768px) 50vw, 445px"
                           width={445}
                           height={700}
+                          loading="lazy"
                           className="h-full w-full object-contain"
                         />
                       )}

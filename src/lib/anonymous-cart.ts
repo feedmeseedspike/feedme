@@ -5,10 +5,12 @@ export interface AnonymousCartItem {
   product_id?: string | null;
   bundle_id?: string | null;
   offer_id?: string | null;
+  black_friday_item_id?: string | null;
   quantity: number;
   price: number;
   option?: any | null;
   created_at: string;
+  meta?: { name?: string; slug?: string; image?: string } | null;
 }
 
 const ANONYMOUS_CART_KEY = "feedme_anonymous_cart";
@@ -49,7 +51,8 @@ export class AnonymousCart {
     option?: any | null,
     bundleId?: string | null,
     offerId?: string | null,
-    meta?: { name?: string; slug?: string; image?: string } | null
+    meta?: { name?: string; slug?: string; image?: string } | null,
+    blackFridayItemId?: string | null
   ): Promise<void> {
     const items = this.getCartItems();
     
@@ -59,6 +62,7 @@ export class AnonymousCart {
         item.product_id === productId &&
         item.bundle_id === bundleId &&
         item.offer_id === offerId &&
+        (item.black_friday_item_id ?? null) === (blackFridayItemId ?? null) &&
         JSON.stringify(item.option || null) === JSON.stringify(option || null)
     );
 
@@ -86,6 +90,49 @@ export class AnonymousCart {
       }
     }
 
+    // If this is a Black Friday item, validate availability and timing
+    if (blackFridayItemId) {
+      try {
+        const response = await fetch(`/api/black-friday/${blackFridayItemId}`);
+        if (!response.ok) throw new Error("Failed to fetch Black Friday item");
+
+        const { item } = await response.json();
+        if (!item) throw new Error("Black Friday item not found");
+
+        if (item.status !== "active") {
+          throw new Error(`"${item.title}" is no longer active.`);
+        }
+
+        const now = new Date();
+        if (item.start_at && new Date(item.start_at) > now) {
+          throw new Error(`"${item.title}" is not yet available.`);
+        }
+        if (item.end_at && new Date(item.end_at) < now) {
+          throw new Error(`"${item.title}" has ended.`);
+        }
+
+        const limit =
+          item.max_quantity_per_user ?? item.quantity_limit ?? null;
+        const currentQuantityInCart =
+          existingItemIndex > -1 ? items[existingItemIndex].quantity : 0;
+        const newTotalQuantity = currentQuantityInCart + quantity;
+
+        if (limit && newTotalQuantity > limit) {
+          throw new Error(
+            `You can only purchase ${limit} of "${item.title}".`
+          );
+        }
+
+        if (item.available_slots && newTotalQuantity > item.available_slots) {
+          throw new Error(
+            `Only ${item.available_slots} units of "${item.title}" remain.`
+          );
+        }
+      } catch (error) {
+        throw error;
+      }
+    }
+
     if (existingItemIndex > -1) {
       // Update existing item quantity
       items[existingItemIndex].quantity += quantity;
@@ -97,6 +144,7 @@ export class AnonymousCart {
         product_id: productId,
         bundle_id: bundleId,
         offer_id: offerId,
+        black_friday_item_id: blackFridayItemId ?? null,
         quantity,
         price,
         option: option || null,
@@ -138,6 +186,50 @@ export class AnonymousCart {
             }
           } catch (error) {
             throw error; // Re-throw validation errors
+          }
+        }
+
+        if (item.black_friday_item_id) {
+          try {
+            const response = await fetch(
+              `/api/black-friday/${item.black_friday_item_id}`
+            );
+            if (!response.ok) throw new Error("Failed to fetch offer data");
+
+            const { item: bfItem } = await response.json();
+            if (!bfItem) throw new Error("Black Friday offer not found");
+
+            if (bfItem.status !== "active") {
+              throw new Error(`"${bfItem.title}" is no longer active`);
+            }
+
+            if (bfItem.start_at && new Date(bfItem.start_at) > new Date()) {
+              throw new Error(`"${bfItem.title}" is not yet available`);
+            }
+
+            if (bfItem.end_at && new Date(bfItem.end_at) < new Date()) {
+              throw new Error(`"${bfItem.title}" has ended`);
+            }
+
+            if (
+              bfItem.max_quantity_per_user &&
+              quantity > bfItem.max_quantity_per_user
+            ) {
+              throw new Error(
+                `You can only purchase ${bfItem.max_quantity_per_user} of "${bfItem.title}".`
+              );
+            }
+
+            if (
+              bfItem.available_slots &&
+              quantity > bfItem.available_slots
+            ) {
+              throw new Error(
+                `Only ${bfItem.available_slots} of "${bfItem.title}" remain.`
+              );
+            }
+          } catch (error) {
+            throw error;
           }
         }
         

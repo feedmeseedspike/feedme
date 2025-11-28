@@ -54,7 +54,8 @@ export function useAnonymousCart() {
                   anonItem.quantity, 
                   anonItem.option, 
                   anonItem.bundle_id || null,
-                  anonItem.offer_id || null
+                  anonItem.offer_id || null,
+                  anonItem.black_friday_item_id || null
                 );
               } catch (error) {
                 // Continue with other items if one fails
@@ -116,7 +117,8 @@ export function useAnonymousCart() {
       option?: ProductOption | null,
       bundleId?: string | null,
       offerId?: string | null,
-      meta?: { name?: string; slug?: string; image?: string } | null
+      meta?: { name?: string; slug?: string; image?: string } | null,
+      blackFridayItemId?: string | null
     ) => {
       if (user) {
         // User is authenticated, this shouldn't be called
@@ -124,7 +126,16 @@ export function useAnonymousCart() {
       }
 
       try {
-        await anonymousCart.addItem(productId, quantity, price, option, bundleId, offerId, meta);
+        await anonymousCart.addItem(
+          productId,
+          quantity,
+          price,
+          option,
+          bundleId,
+          offerId,
+          meta,
+          blackFridayItemId
+        );
         const updatedItems = anonymousCart.getItems();
         setItems(updatedItems);
         // Dispatch a custom event to notify other components
@@ -219,7 +230,8 @@ export function useAnonymousCart() {
         bundle_id: item.bundle_id,
         option: item.option,
         quantity: item.quantity,
-        price: item.price
+        price: item.price,
+        black_friday_item_id: item.black_friday_item_id,
       }));
       
       // Merge with existing authenticated items
@@ -229,6 +241,7 @@ export function useAnonymousCart() {
         const existingItemIndex = mergedItems.findIndex(authItem => 
           authItem.product_id === anonymousItem.product_id &&
           authItem.bundle_id === anonymousItem.bundle_id &&
+          (authItem as any).black_friday_item_id === anonymousItem.black_friday_item_id &&
           JSON.stringify(authItem.option || null) === JSON.stringify(anonymousItem.option || null)
         );
         
@@ -245,7 +258,8 @@ export function useAnonymousCart() {
             bundle_id: anonymousItem.bundle_id,
             option: anonymousItem.option,
             quantity: anonymousItem.quantity,
-            price: anonymousItem.price
+            price: anonymousItem.price,
+            black_friday_item_id: anonymousItem.black_friday_item_id,
           } as any);
         }
       });

@@ -327,7 +327,14 @@ export default function AIFloatingChat() {
         const selectedOption = selectedOptions[index];
 
         // Add to cart with selected option or default
-        await addToCart(suggestion.product.id, 1, selectedOption);
+        await addToCart(
+          suggestion.product.id,
+          1,
+          selectedOption,
+          null,
+          null,
+          null
+        );
 
         const optionText = selectedOption
           ? ` (${selectedOption.name || selectedOption})`

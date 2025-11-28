@@ -111,6 +111,7 @@ export function AdminSidebar({ user }: AppSidebarProps) {
     { title: "Agents", url: "/admin/agents", icon: User },
     { title: "Customers", url: "/admin/customers", icon: Profile },
     { title: "Promotions", url: "/admin/promotions", icon: Product },
+    { title: "Black Friday", url: "/admin/black-friday", icon: Tag },
     { title: "AI Analytics", url: "/admin/ai-analytics", icon: Brain },
     {
       title: "Delivery Locations",
