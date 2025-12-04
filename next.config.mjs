@@ -1,28 +1,22 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Enable compression
-  compress: true,
-  // Optimize production builds
-  swcMinify: true,
-  // Optimize images
-  poweredByHeader: false,
+  async headers() {
+    return [
+      {
+        source: "/api/:path*",
+        headers: [
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+        ],
+      },
+    ];
+  },
   experimental: {
     serverActions: {
       allowedOrigins: ["c7jc2vm8-3000.uks1.devtunnels.ms", "localhost:3000","shopfeedme.com","www.shopfeedme.com"],
     },
-    // Optimize package imports
-    optimizePackageImports: [
-      '@tanstack/react-query',
-      'framer-motion',
-      'lucide-react',
-      '@supabase/supabase-js',
-    ],
   },
   images: {
-    unoptimized: false,
-    formats: ['image/avif', 'image/webp'],
-    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
-    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    unoptimized: process.env.NODE_ENV === 'production',
     remotePatterns: [
       {
         protocol: "https",
@@ -153,56 +147,11 @@ const nextConfig = {
     ],
     domains: ["images.unsplash.com", "images.pexels.com"],
   },
-  webpack(config, { isServer, dev }) {
+  webpack(config) {
     config.module.rules.push({
       test: /\.svg$/,
       use: ["@svgr/webpack"],
     });
-    
-    // Optimize bundle splitting
-    if (!isServer && !dev) {
-      config.optimization = {
-        ...config.optimization,
-        splitChunks: {
-          chunks: 'all',
-          cacheGroups: {
-            default: false,
-            vendors: false,
-            // Vendor chunk for large libraries
-            vendor: {
-              name: 'vendor',
-              chunks: 'all',
-              test: /node_modules/,
-              priority: 20,
-            },
-            // Separate chunk for common modules
-            common: {
-              name: 'common',
-              minChunks: 2,
-              chunks: 'all',
-              priority: 10,
-              reuseExistingChunk: true,
-              enforce: true,
-            },
-            // React and React-DOM
-            react: {
-              name: 'react',
-              test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
-              chunks: 'all',
-              priority: 30,
-            },
-            // Framer Motion
-            framerMotion: {
-              name: 'framer-motion',
-              test: /[\\/]node_modules[\\/]framer-motion[\\/]/,
-              chunks: 'all',
-              priority: 25,
-            },
-          },
-        },
-      };
-    }
-    
     // Move ignoreWarnings into webpack config (root-level ignoreWarnings is invalid in Next 14)
     config.ignoreWarnings = [
       (warning) =>

@@ -1,16 +1,26 @@
-// app/api/products/route.ts
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabaseClient";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
+// app/api/products/update/route.ts
 export async function GET() {
   const { data } = await supabase
-    .from("products_duplicate")
+    .from("products")
     .select("name, price, description, images")
     .order("name");
 
-  return Response.json({ products: data || [] });
+  return new Response(JSON.stringify({ products: data || [] }), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+      Pragma: "no-cache",
+      Expires: "0",
+      // This header forces Vercel to revalidate on every request
+      "CDN-Cache-Control": "no-store",
+      "Vercel-CDN-Cache-Control": "no-store",
+    },
+  });
 }
+
+// ADD THIS — forces dynamic rendering (critical!)
+export const dynamic = "force-dynamic";
+export const revalidate = 0;

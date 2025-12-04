@@ -23,18 +23,29 @@ export default function Page() {
   const [loading, setLoading] = useState(true);
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
-  const fetchProducts = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/products/update");
-      const data = await res.json();
-      setProducts(data.products || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+const fetchProducts = async () => {
+  setLoading(true);
+  try {
+    // THIS IS THE MAGIC LINE — bypasses Next.js cache completely
+    const res = await fetch(`/api/products/update?t=${Date.now()}`, {
+      cache: "no-store",
+      // Add this header to force fresh data
+      headers: {
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+      },
+    });
+
+    const data = await res.json();
+    console.log("Fetched at:", new Date().toLocaleString());
+    console.log("Fresh data:", data.products?.slice(0, 5));
+    setProducts(data.products || []);
+  } catch (err) {
+    console.error("Fetch error:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchProducts();
@@ -90,7 +101,7 @@ export default function Page() {
                   const thas = products.filter(
                     (it) =>
                       it.images[0] ===
-                      "https://fyldgskqxrfmrhyluxmw.supabase.co/storage/v1/object/public/product-images/default-food.jpg"
+                      ""
                   );
                   console.log(thas);
                   setProducts(thas);
@@ -131,10 +142,10 @@ export default function Page() {
                     <tr key={i} className="hover:bg-green-50">
                       <td className="px-6 py-3 font-medium text-gray-800">
                         <div className="w-[60px] h-[60px] relative rounded-md overflow-hidden">
-                          <Image
+                          <img
                             src={p.images[0]}
                             alt={p.name}
-                            fill
+                            // fill
                             className="object-cover"
                           />
                         </div>
