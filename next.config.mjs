@@ -1,5 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async headers() {
+    return [
+      {
+        source: "/api/:path*",
+        headers: [
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+        ],
+      },
+    ];
+  },
   experimental: {
     serverActions: {
       allowedOrigins: ["c7jc2vm8-3000.uks1.devtunnels.ms", "localhost:3000","shopfeedme.com","www.shopfeedme.com"],

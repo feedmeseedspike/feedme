@@ -181,14 +181,14 @@ export async function POST(req: NextRequest) {
 
         // FETCH EXISTING PRODUCT
         const { data: existing } = await supabase
-          .from("products_duplicate")
+          .from("products")
           .select("id, options, price, list_price, images")
           .eq("name", p.name)
           .single();
 
         const updateData: any = {
           price: lowestPrice,
-          list_price: lowestPrice,
+          list_price: highestPrice,
           category_ids: [categoryId, GENERAL_CATEGORY_ID],
           description: generateDescription(
             p,
@@ -238,7 +238,7 @@ export async function POST(req: NextRequest) {
           }
 
           const { error } = await supabase
-            .from("products_duplicate")
+            .from("products")
             .update(updateData)
             .eq("id", existing.id);
 
@@ -266,7 +266,7 @@ export async function POST(req: NextRequest) {
               categoryTitle
             ),
             price: lowestPrice,
-            list_price: lowestPrice,
+            list_price: highestPrice,
             brand: null,
             avg_rating: 0.0,
             num_reviews: null,
@@ -290,7 +290,7 @@ export async function POST(req: NextRequest) {
           };
 
           const { error } = await supabase
-            .from("products_duplicate")
+            .from("products")
             .insert(newProduct);
 
           if (error) {
