@@ -54,8 +54,9 @@ export default function ProductSlider({
 
     // Map Supabase products to IProductInput
     return (
-      data?.map((product: ProductType) => mapSupabaseProductToIProductInput(product, [])) ||
-      null
+      data?.map((product: ProductType) =>
+        mapSupabaseProductToIProductInput(product, [])
+      ) || null
     );
   }, [supabase, tag, limit]);
 
@@ -115,8 +116,8 @@ export default function ProductSlider({
             <CarouselItem key={product.slug || product.id}>
               <ProductCard
                 hideDetails={hideDetails}
-                hideAddToCart
                 hideBorder
+                // Show homepage add-to-cart quick actions
                 product={product}
               />
             </CarouselItem>

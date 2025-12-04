@@ -23,6 +23,7 @@ import {
 import { Button } from "@components/ui/button";
 import { Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
+import { Icon } from "@iconify/react";
 
 const footerData = [
   {
@@ -68,6 +69,33 @@ const Icons = [
   {
     href: "https://www.instagram.com/seedspikeafrica/profilecard/?igsh=MTE4OW5zY2RjYnprYQ==",
     icon: <SlSocialInstagram />,
+  },
+];
+
+const securityBadges = [
+  {
+    id: "paystack",
+    label: "Paystack Secure",
+    description: "PCI-DSS Level 1",
+    icon: "mdi:credit-card-check-outline",
+  },
+  {
+    id: "son",
+    label: "SON Certified",
+    description: "Standards Org. of Nigeria",
+    icon: "mdi:shield-check",
+  },
+  {
+    id: "nafdac",
+    label: "NAFDAC Verified",
+    description: "Safe food partners",
+    icon: "mdi:certificate-outline",
+  },
+  {
+    id: "delivery",
+    label: "Insured Deliveries",
+    description: "Trusted logistics partners",
+    icon: "mdi:truck-fast-outline",
   },
 ];
 
@@ -158,8 +186,8 @@ export default function FooterClient({
                       categories
                         .filter((category) => !!category.id)
                         .map((category, index) => (
-                          <motion.li 
-                            key={category.id} 
+                          <motion.li
+                            key={category.id}
                             className="text-sm"
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
@@ -177,7 +205,7 @@ export default function FooterClient({
                   </ul>
                 </div>
                 {footerData.map((section, index) => (
-                  <motion.div 
+                  <motion.div
                     key={index}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -188,18 +216,21 @@ export default function FooterClient({
                     </h3>
                     <ul className="space-y-2">
                       {section.links.map((link, linkIndex) => (
-                        <motion.li 
-                          key={linkIndex} 
+                        <motion.li
+                          key={linkIndex}
                           className="text-sm"
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: (index * 0.1) + (linkIndex * 0.05), duration: 0.3 }}
+                          transition={{
+                            delay: index * 0.1 + linkIndex * 0.05,
+                            duration: 0.3,
+                          }}
                         >
-                          {'isModal' in link && link.isModal ? (
+                          {"isModal" in link && link.isModal ? (
                             <ContactModal />
-                          ) : 'isEmailModal' in link && link.isEmailModal ? (
+                          ) : "isEmailModal" in link && link.isEmailModal ? (
                             <EmailModal />
-                          ) : 'href' in link && link.href === "/" ? (
+                          ) : "href" in link && link.href === "/" ? (
                             <>
                               <button
                                 type="button"
@@ -215,7 +246,7 @@ export default function FooterClient({
                             </>
                           ) : (
                             <a
-                              href={'href' in link ? link.href : "/"}
+                              href={"href" in link ? link.href : "/"}
                               className="relative inline-block after:content-[''] after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:origin-bottom-right after:scale-x-0 after:bg-[#1B6013] after:transition-transform after:duration-300 after:ease-[cubic-bezier(0.65,0.05,0.36,1)] hover:after:origin-bottom-left hover:after:scale-x-100"
                             >
                               {link.name}
@@ -245,10 +276,14 @@ export default function FooterClient({
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: index * 0.1, duration: 0.3 }}
-                  whileHover={{ 
+                  whileHover={{
                     scale: 1.2,
                     y: -2,
-                    transition: { duration: 0.2, type: "spring", stiffness: 400 }
+                    transition: {
+                      duration: 0.2,
+                      type: "spring",
+                      stiffness: 400,
+                    },
                   }}
                   whileTap={{ scale: 0.9 }}
                 >
@@ -257,11 +292,11 @@ export default function FooterClient({
                     className="absolute inset-0 rounded-full bg-[#1B6013]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-md"
                     initial={false}
                   />
-                  
+
                   <motion.div
-                    whileHover={{ 
+                    whileHover={{
                       rotate: [0, -10, 10, 0],
-                      transition: { duration: 0.4 }
+                      transition: { duration: 0.4 },
                     }}
                     className="relative z-10"
                   >

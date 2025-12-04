@@ -20,22 +20,13 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
   const { user } = useUser();
   const { showToast } = useToast();
 
-  // Increment views (once per device per day) and update UI count optimistically
+  // Increment views for every user view (like GitHub)
   useEffect(() => {
-    const key = `blog_viewed_${post.slug}`;
-    const today = new Date().toISOString().slice(0, 10);
-    const last =
-      typeof window !== "undefined" ? localStorage.getItem(key) : null;
-    if (last !== today) {
       fetch(`/api/blog/posts/${post.slug}/views`, { method: "POST" })
         .then(() => {
-          try {
-            localStorage.setItem(key, today);
-          } catch {}
           setViewsCount((v) => v + 1);
         })
         .catch(() => {});
-    }
   }, [post.slug]);
 
   // Initialize like state for logged-in user
@@ -95,6 +86,15 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
         body: JSON.stringify({ userId: user.user_id }),
       });
       if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      // Fetch updated post to get accurate likes_count from database
+      const postRes = await fetch(`/api/blog/posts/${post.slug}`);
+      if (postRes.ok) {
+        const postData = await postRes.json();
+        if (postData.success && postData.post) {
+          setLikesCount(postData.post.likes_count);
+        }
+      }
     } catch (e) {
       // Revert on failure
       setIsLiked((was) => !was);

@@ -1,4 +1,3 @@
-export const dynamic = "force-dynamic";
 import Banner from "@components/shared/home/Home-banner";
 // import { HomeCarousel } from "@components/shared/home/Home-carousel";
 import TopCategories from "@components/shared/home/TopCategories";
@@ -13,11 +12,11 @@ import ProductSliderSkeleton from "@components/shared/product/product-slider-ske
 import BundleSlider from "@components/shared/bundles/bundle-slider";
 import FeaturedOffers from "@components/shared/home/FeaturedOffers";
 import Riverbitee from "@components/shared/home/Riverbitee";
-import {
-  QueryClient,
-  dehydrate,
-  HydrationBoundary,
-} from "@tanstack/react-query";
+import CustomerReviews from "@components/shared/home/CustomerReviews";
+import Partnerships from "@components/shared/home/Partnerships";
+import TrustFooterHighlight from "@components/shared/home/TrustFooterHighlight";
+import { QueryClient, dehydrate } from "@tanstack/react-query";
+import { ReactQueryHydrate } from "@providers/ReactQueryHydrate";
 
 import { createServerComponentClient } from "src/utils/supabase/server";
 
@@ -33,11 +32,14 @@ import { Tables } from "src/utils/database.types";
 
 type Category = Tables<"categories">;
 
+// Next.js route segment config
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const queryClient = new QueryClient();
   const supabase = await createServerComponentClient();
 
-  await Promise.all([
+  const prefetchJobs = [
     queryClient.prefetchQuery({
       queryKey: ["categories"],
       queryFn: async () => {
@@ -208,7 +210,14 @@ export default async function Home() {
           publishedStatus: ["published"],
         }),
     }),
-  ]);
+  ];
+
+  const prefetchResults = await Promise.allSettled(prefetchJobs);
+  prefetchResults.forEach((result) => {
+    if (result.status === "rejected") {
+      console.error("Prefetch error:", result.reason);
+    }
+  });
 
   let { data: rawCategories, error: allCategoriesError } =
     await getAllCategoriesQuery(supabase).select("*");
@@ -278,7 +287,7 @@ export default async function Home() {
   const dehydratedState = dehydrate(queryClient);
 
   return (
-    <HydrationBoundary state={dehydratedState}>
+    <ReactQueryHydrate state={dehydratedState}>
       <main className="">
         <div className="bg-[#F9FAFB]">
           <Container>
@@ -315,6 +324,10 @@ export default async function Home() {
 
               <FeaturedOffers />
 
+              <Promo />
+
+              <CustomerReviews />
+
               {/* Riverbitee with Product Sliders Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Riverbitee - Left Column */}
@@ -344,8 +357,6 @@ export default async function Home() {
                 </div>
               </div>
 
-              <Promo />
-
               <Suspense fallback={<ProductSliderSkeleton />}>
                 <ProductSlider
                   title={"Trending Near You"}
@@ -354,6 +365,8 @@ export default async function Home() {
                   limit={10}
                 />
               </Suspense>
+
+              <Partnerships />
 
               <Suspense fallback={<ProductSliderSkeleton />}>
                 <ProductSlider
@@ -374,8 +387,9 @@ export default async function Home() {
               </Suspense>
             </div>
           </Container>
+          <TrustFooterHighlight />
         </div>
       </main>
-    </HydrationBoundary>
+    </ReactQueryHydrate>
   );
 }

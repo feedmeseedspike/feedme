@@ -102,7 +102,6 @@ export default function BundleSlider({
             <CarouselItem key={bundle.id}>
               <BundleCard 
                 hideDetails={hideDetails}
-                hideAddToCart
                 hideBorder
                 bundle={bundle} 
               />

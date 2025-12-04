@@ -56,6 +56,12 @@ export default function HomeBannersManagerClient({
     return Array.from(tags);
   }, [promotions]);
 
+  const selectableTags = React.useMemo(() => {
+    const tagSet = new Set(uniqueTags);
+    tagSet.add("black-friday");
+    return Array.from(tagSet);
+  }, [uniqueTags]);
+
   const [banners, setBanners] = useState<Banner[]>(initialBanners);
   const [editingBanner, setEditingBanner] = useState<
     InsertBanner | UpdateBanner | null
@@ -404,7 +410,7 @@ export default function HomeBannersManagerClient({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none-selected">None</SelectItem>
-                  {uniqueTags.map((tag) => (
+                  {selectableTags.map((tag) => (
                     <SelectItem key={tag} value={tag}>
                       {tag}
                     </SelectItem>

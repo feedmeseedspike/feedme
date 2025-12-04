@@ -247,7 +247,7 @@ export async function searchProducts(searchTerm: string) {
   // You might want to add more fields to search on (e.g., description, SKU)
   const { data, error } = await supabase
     .from('products')
-    .select('id, name, images') // Select relevant product fields, corrected image column
+    .select('id, name, images, price') // Select relevant product fields, corrected image column
     .ilike('name', `%${searchTerm}%`); // Case-insensitive search
 
   if (error) {

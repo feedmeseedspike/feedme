@@ -114,9 +114,28 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                         ) : categoriesError ? (
                           <p className="text-red-300">{categoriesError}</p>
                         ) : (
-                          <div className="space-y-2">
+                          <div className="space-y-4">
+                            {/* Categories */}
+                            <div>
+                              <p className="uppercase text-xs text-white/70 px-2 mb-1">
+                                Categories
+                              </p>
+                              <div className="space-y-1">
+                                {categories?.map((category: any) => (
+                                  <Link
+                                    key={category.id}
+                                    href={`/category/${category.tags || category.id}`}
+                                    className="block py-2 hover:bg-white/10 rounded text-lg px-2 transition-colors"
+                                    onClick={() => setOpenMobileSheet(false)}
+                                  >
+                                    {category.title}
+                                  </Link>
+                                ))}
+                              </div>
+                            </div>
+
                             {/* Explore */}
-                            <div className="pt-1 pb-3">
+                            <div>
                               <p className="uppercase text-xs text-white/70 px-2 mb-1">
                                 Explore
                               </p>
@@ -133,7 +152,7 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                                   className="block py-2 hover:bg-white/10 rounded text-lg px-2 transition-colors"
                                   onClick={() => setOpenMobileSheet(false)}
                                 >
-                                  Offers
+                                  Special Offers
                                 </Link>
                                 <Link
                                   href="/blog"
@@ -152,20 +171,19 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                               </div>
                             </div>
 
-                            {/* Categories */}
-                            <p className="uppercase text-xs text-white/70 px-2 mt-2 mb-1">
-                              Categories
-                            </p>
-                            {categories?.map((category: any) => (
+                            {/* Today's Deals */}
+                            <div className="pb-2">
+                              <p className="uppercase text-xs text-white/70 px-2 mb-1">
+                                Today&apos;s Deals
+                              </p>
                               <Link
-                                key={category.id}
-                                href={`/category/${category.tags || category.id}`}
+                                href="/todays-deal"
                                 className="block py-2 hover:bg-white/10 rounded text-lg px-2 transition-colors"
                                 onClick={() => setOpenMobileSheet(false)}
                               >
-                                {category.title}
+                                Shop Today&apos;s Deals
                               </Link>
-                            ))}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -229,7 +247,7 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
               </div>
 
               {/* Desktop Search */}
-              <div className="hidden md:block flex-1 md:max-w-[55rem] pl-8">
+              <div className="hidden md:block flex-1 md:max-w-[55rem pl-8">
                 <Search />
               </div>
             </nav>

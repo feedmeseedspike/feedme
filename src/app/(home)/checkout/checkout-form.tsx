@@ -358,7 +358,7 @@ const CheckoutForm = ({
     [items]
   );
 
-  // Free shipping logic
+  // Free delivery logic
   const FREE_SHIPPING_THRESHOLD = 50000;
   const qualifiesForFreeShipping = subtotal >= FREE_SHIPPING_THRESHOLD;
   const cost = qualifiesForFreeShipping
@@ -1523,7 +1523,7 @@ const CheckoutForm = ({
                     {qualifiesForFreeShipping && (
                       <div className="text-green-600 text-sm mb-2">
                         🎉 Congratulations! You have unlocked{" "}
-                        <b>free shipping</b>!
+                        <b>free delivery</b>!
                       </div>
                     )}
                     {!qualifiesForFreeShipping && subtotal > 0 && (
@@ -1532,7 +1532,7 @@ const CheckoutForm = ({
                         <span className="font-bold">
                           {formatNaira(FREE_SHIPPING_THRESHOLD - subtotal)}
                         </span>{" "}
-                        to your order to get <b>free shipping</b>!
+                        to your order to get <b>free delivery</b>!
                       </div>
                     )}
                     {isVoucherValid && (

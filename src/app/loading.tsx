@@ -18,7 +18,7 @@ const AnimatedLogo = ({ className = '' }: { className?: string }) => {
         viewBox="0 0 113 24" 
         fill="none" 
         xmlns="http://www.w3.org/2000/svg"
-        className={`size-[250px] md:size-[300px] ${className}`}
+        className={`size-[200px] md:size-[300px] ${className}`}
       >
         {/* Path 1 */}
         <path 
