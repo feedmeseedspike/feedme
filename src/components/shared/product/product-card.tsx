@@ -133,11 +133,13 @@ const ProductCard = ({
         </span>
       )}
       <span className="text-[14px] text-[#1B6013]">
-        {optionsArr.length > 0
+        {optionsArr.length > 1
           ? `From ${formatNaira(Math.min(...optionsArr.map((opt: any) => opt.price ?? Infinity)))}`
-          : product.price !== null && product.price !== undefined
-            ? formatNaira(product.price)
-            : "Price N/A"}
+          : optionsArr.length === 1
+            ? formatNaira(optionsArr[0]?.price ?? product.price ?? 0)
+            : product.price !== null && product.price !== undefined
+              ? formatNaira(product.price)
+              : "Price N/A"}
       </span>
     </div>
   );

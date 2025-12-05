@@ -68,6 +68,38 @@ export async function updateProductAction(productId: string, productData: any) {
     console.error('[ERROR] Supabase update error:', error);
     throw new Error(error.message);
   }
+
+  // Handle related products
+  if (productData.related_products && Array.isArray(productData.related_products)) {
+    console.log('[DEBUG] Updating related products:', productData.related_products);
+    
+    // 1. Delete existing relations
+    const { error: deleteError } = await supabase
+      .from('product_relations')
+      .delete()
+      .eq('source_product_id', productId);
+      
+    if (deleteError) {
+      console.error('[ERROR] Failed to delete existing relations:', deleteError);
+    } else {
+      // 2. Insert new relations
+      if (productData.related_products.length > 0) {
+        const relationsToInsert = productData.related_products.map((targetId: string) => ({
+          source_product_id: productId,
+          target_product_id: targetId,
+          relation_type: 'related'
+        }));
+        
+        const { error: insertError } = await supabase
+          .from('product_relations')
+          .insert(relationsToInsert);
+          
+        if (insertError) {
+          console.error('[ERROR] Failed to insert new relations:', insertError);
+        }
+      }
+    }
+  }
   
   // Revalidate relevant paths
   revalidatePath("/admin/products");

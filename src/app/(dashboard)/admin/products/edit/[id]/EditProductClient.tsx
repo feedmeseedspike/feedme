@@ -51,7 +51,6 @@ import { OptionSchema, option as OptionType } from "src/lib/validator";
 import { formatNaira, showToast, toSlug } from "src/lib/utils";
 import Edit from "@components/icons/edit.svg";
 import Trash from "@components/icons/trash.svg";
-import { useToast } from "src/hooks/useToast";
 import { Label } from "@components/ui/label";
 import {
   Breadcrumb,
@@ -99,6 +98,9 @@ const formSchema = z
     selectedCategories: z
       .array(z.object({ label: z.string(), value: z.string() }))
       .min(1, "At least one category is required"),
+    relatedProducts: z
+      .array(z.object({ label: z.string(), value: z.string() }))
+      .optional(),
     variation: z.enum(["Yes", "No"], {
       required_error: "Variation is required",
     }),
@@ -192,6 +194,8 @@ type ProductFormValues = z.infer<typeof formSchema>;
 type EditProductClientProps = {
   product: any;
   allCategories: any[];
+  allProducts: any[];
+  relatedProducts: any[];
 };
 
 // Client-side image upload utility
@@ -212,6 +216,8 @@ async function uploadProductImageClient(
 export default function EditProductClient({
   product,
   allCategories,
+  allProducts,
+  relatedProducts,
 }: EditProductClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -224,12 +230,42 @@ export default function EditProductClient({
   const [optionIndexToDelete, setOptionIndexToDelete] = useState<number | null>(
     null
   );
-  const { showToast } = useToast();
   const [optionModalLoading, setOptionModalLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editOptionIndex, setEditOptionIndex] = useState<number | null>(null);
   const [editOptionData, setEditOptionData] = useState<any>(null);
   const [formErrors, setFormErrors] = useState<any>(null);
+  const [errorDetails, setErrorDetails] = useState<string[]>([]);
+
+  // Flatten react-hook-form errors for easier debugging/visibility
+  const collectErrorMessages = (errors: any, path: string[] = []): string[] => {
+    if (!errors) return [];
+    const messages: string[] = [];
+    Object.entries(errors).forEach(([key, value]) => {
+      const currentPath = [...path, key];
+      if (value && typeof value === "object") {
+        if ("message" in value && (value as any).message) {
+          messages.push(`${currentPath.join(".")}: ${(value as any).message}`);
+        }
+        // Dive deeper into nested structures (e.g., options.0.price)
+        [
+          (value as any).types,
+          (value as any).ref,
+          (value as any)._errors,
+          (value as any).root,
+          (value as any).inner,
+          value,
+        ]
+          .filter(Boolean)
+          .forEach((candidate: any) => {
+            if (candidate && typeof candidate === "object") {
+              messages.push(...collectErrorMessages(candidate, currentPath));
+            }
+          });
+      }
+    });
+    return Array.from(new Set(messages)).filter(Boolean);
+  };
 
   // 1. Add a single source of truth for images
   const [images, setImages] = useState<string[]>(() =>
@@ -249,20 +285,65 @@ export default function EditProductClient({
     .filter((cat) => productCategoryIds.includes(cat.id))
     .map((cat) => ({ label: cat.title, value: cat.id }));
 
+  // Prepare initial related products for react-select
+  const initialRelatedProducts = relatedProducts.map((p) => ({
+    label: p.name,
+    value: p.id,
+  }));
+
+  // Normalize option.image so Zod doesn't fail on non-URL strings
+  const normalizeOptionForForm = (opt: any) => {
+    if (!opt || typeof opt !== "object") return opt;
+    let image: any = opt.image;
+    if (typeof image === "string") {
+      try {
+        // Only accept absolute URLs; otherwise null
+        new URL(image);
+      } catch {
+        image = null;
+      }
+    } else if (image && typeof image === "object" && "url" in image) {
+      image = (image as any).url;
+    } else if (!(image instanceof File)) {
+      image = null;
+    }
+    return {
+      ...opt,
+      image,
+      list_price:
+        opt.list_price === "" || Number.isNaN(opt.list_price)
+          ? undefined
+          : opt.list_price,
+    };
+  };
+
   // Setup form
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       productName: product.name || "",
       description: product.description || "",
-      price: product.price || 0,
-      list_price: product.list_price ?? undefined,
+      // Coerce numeric fields coming from Supabase (which may be strings)
+      price:
+        product.price !== null && product.price !== undefined
+          ? Number(product.price)
+          : undefined,
+      list_price:
+        product.list_price !== null && product.list_price !== undefined
+          ? Number(product.list_price)
+          : undefined,
+      // Normalize stock status (DB may store snake_case)
       stockStatus:
         product.stock_status === "In Stock" ||
         product.stock_status === "Out of Stock"
           ? product.stock_status
-          : "In Stock",
+          : product.stock_status === "in_stock"
+            ? "In Stock"
+            : product.stock_status === "out_of_stock"
+              ? "Out of Stock"
+              : "In Stock",
       selectedCategories: initialCategories,
+      relatedProducts: initialRelatedProducts,
       variation: (() => {
         if (Array.isArray(product.options) && product.options.length > 0) {
           // Old format: options is array of variations
@@ -281,10 +362,10 @@ export default function EditProductClient({
       options: (() => {
         if (Array.isArray(product.options)) {
           // Old format: options is array of variations
-          return product.options;
+          return product.options.map(normalizeOptionForForm);
         } else if (product.options && typeof product.options === "object") {
           // New format: options is object with variations and customizations
-          return product.options.variations || [];
+          return (product.options.variations || []).map(normalizeOptionForForm);
         }
         return [];
       })(),
@@ -349,11 +430,12 @@ export default function EditProductClient({
   }, [product.images]);
 
   // Add after form definition
+  const watchedVariation = form.watch("variation");
   useEffect(() => {
-    if (form.watch("variation") === "Yes") {
+    if (watchedVariation === "Yes") {
       form.setValue("price", undefined);
     }
-  }, [form, form.watch("variation")]);
+  }, [form, watchedVariation]);
 
   // --- Handlers ---
   // 3. Update handleImageUpload to add new uploads to images state
@@ -483,6 +565,7 @@ export default function EditProductClient({
   const onSubmit = async (data: ProductFormValues) => {
     setIsSubmitting(true);
     setFormErrors(null);
+    setErrorDetails([]);
     try {
       // Use images state for current images
       const safeImages = images.filter((img) => typeof img === "string");
@@ -574,6 +657,7 @@ export default function EditProductClient({
         options: optionsData,
         list_price: data.list_price ?? null,
         in_season: data.in_season,
+        related_products: data.relatedProducts?.map((p) => p.value) || [],
       };
       if (data.variation === "No") {
         productData.price = data.price ?? 0;
@@ -583,6 +667,7 @@ export default function EditProductClient({
         productData.price = null;
         productData.stock_status = null;
       }
+      console.log("[DEBUG] Submitting product update payload:", productData);
       await updateProductAction(product.id, productData);
       showToast("Product updated successfully!", "success");
       // Force refresh to get latest data from DB
@@ -593,39 +678,6 @@ export default function EditProductClient({
       setIsSubmitting(false);
     }
   };
-
-  // Utility function to remove File objects and other non-serializable data
-  function deepSanitize(obj: any): any {
-    if (Array.isArray(obj)) {
-      return obj
-        .filter(
-          (item) =>
-            !(item instanceof File) &&
-            !(typeof Blob !== "undefined" && item instanceof Blob)
-        )
-        .map(deepSanitize);
-    } else if (
-      obj &&
-      typeof obj === "object" &&
-      Object.getPrototypeOf(obj) === Object.prototype
-    ) {
-      const plain: any = {};
-      for (const key in obj) {
-        const value = obj[key];
-        if (
-          value instanceof File ||
-          (typeof Blob !== "undefined" && value instanceof Blob) ||
-          typeof value === "function" ||
-          typeof value === "undefined"
-        ) {
-          continue;
-        }
-        plain[key] = deepSanitize(value);
-      }
-      return plain;
-    }
-    return obj;
-  }
 
   // --- UI ---
   return (
@@ -661,14 +713,29 @@ export default function EditProductClient({
         <form
           onSubmit={form.handleSubmit(onSubmit, (errors) => {
             setFormErrors(errors);
+            const messages = collectErrorMessages(errors);
+            setErrorDetails(messages);
+            console.error("[DEBUG] Form validation errors:", messages, errors);
           })}
           className="p-6 rounded-lg shadow-md bg-white flex flex-col gap-2"
         >
           {/* Show visible error message if there are form errors */}
           {formErrors && (
             <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
-              There are form errors. Please check the fields below and try
-              again.
+              <div>
+                There are form errors. Please check the fields below and try
+                again.
+              </div>
+              {errorDetails.length > 0 && (
+                <ul className="list-disc list-inside mt-2 text-sm">
+                  {errorDetails.slice(0, 5).map((msg) => (
+                    <li key={msg}>{msg}</li>
+                  ))}
+                  {errorDetails.length > 5 && (
+                    <li>...and more. Scroll to the highlighted fields.</li>
+                  )}
+                </ul>
+              )}
             </div>
           )}
           {/* Product Name */}
@@ -684,6 +751,27 @@ export default function EditProductClient({
                   <Input
                     {...field}
                     placeholder="Enter product name"
+                    className="col-span-7"
+                  />
+                </FormControl>
+                <FormMessage className="col-span-7 col-start-3" />
+              </FormItem>
+            )}
+          />
+
+          {/* Description */}
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem className="mb-4 grid grid-cols-1 sm:grid-cols-9 gap-4">
+                <FormLabel className="text-sm font-medium col-span-2">
+                  Description
+                </FormLabel>
+                <FormControl>
+                  <Textarea
+                    {...field}
+                    placeholder="Enter product description"
                     className="col-span-7"
                   />
                 </FormControl>
@@ -720,20 +808,28 @@ export default function EditProductClient({
             )}
           />
 
-          {/* Description */}
+          {/* Recipes */}
           <FormField
             control={form.control}
-            name="description"
+            name="relatedProducts"
             render={({ field }) => (
               <FormItem className="mb-4 grid grid-cols-1 sm:grid-cols-9 gap-4">
                 <FormLabel className="text-sm font-medium col-span-2">
-                  Description
+                  Bundles
                 </FormLabel>
                 <FormControl>
-                  <Textarea
+                  <ReactSelect
                     {...field}
-                    placeholder="Enter product description"
+                    isMulti
+                    options={allProducts.map((p) => ({
+                      label: p.name,
+                      value: p.id,
+                    }))}
+                    value={field.value}
+                    onChange={field.onChange}
+                    components={animatedComponents}
                     className="col-span-7"
+                    placeholder="Select bundles..."
                   />
                 </FormControl>
                 <FormMessage className="col-span-7 col-start-3" />
@@ -1329,48 +1425,13 @@ export default function EditProductClient({
                       onClick={addCustomization}
                       className="w-full border-dashed"
                     >
-                      <Plus size={16} className="mr-2" />
-                      Add Customization Option
+                      <Plus size={14} className="mr-1" />
+                      Add Customization
                     </Button>
                   </div>
-                  <FormMessage className="col-span-7 col-start-3" />
                 </div>
               );
             }}
-          />
-
-          {/* In Season Select */}
-          <FormField
-            control={form.control}
-            name="in_season"
-            render={({ field }) => (
-              <FormItem className="mb-4 grid grid-cols-1 sm:grid-cols-9 gap-4">
-                <FormLabel className="text-sm font-medium col-span-2">
-                  Seasonality
-                </FormLabel>
-                <FormControl>
-                  <select
-                    value={
-                      field.value === null
-                        ? "null"
-                        : field.value
-                          ? "true"
-                          : "false"
-                    }
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      field.onChange(val === "null" ? null : val === "true");
-                    }}
-                    className="col-span-7 border rounded px-2 py-1"
-                  >
-                    <option value="null">Not Applicable</option>
-                    <option value="true">In Season</option>
-                    <option value="false">Out of Season</option>
-                  </select>
-                </FormControl>
-                <FormMessage className="col-span-7 col-start-3" />
-              </FormItem>
-            )}
           />
 
           {/* Published Toggle */}

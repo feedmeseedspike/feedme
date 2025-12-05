@@ -78,9 +78,10 @@ export const useUpdateCartMutation = () => {
       // Cancel outgoing refetches to avoid overwriting optimistic update
       await queryClient.cancelQueries({ queryKey: cartQueryKey });
       
-      // Snapshot the previous value
+      // Snapshot the previous value - use the latest data from the query cache
       const previousCart = queryClient.getQueryData<CartItem[]>(cartQueryKey);
-      const currentCart = previousCart || [];
+      // Ensure we have an array, even if it's empty
+      const currentCart = Array.isArray(previousCart) ? previousCart : [];
       
       // Replace the cart with newItems, matching existing items to preserve IDs
       // Use a Set to track processed items and prevent duplicates
@@ -99,15 +100,35 @@ export const useUpdateCartMutation = () => {
         processedKeys.add(itemKey);
         
         // Find existing item by matching product/bundle/offer + option + black_friday_item_id
+        // CRITICAL: For bundles, we only match by bundle_id (no option/blackfriday needed)
+        // For products, we match by product_id + option + black_friday
         const existingItem = currentCart.find((item) => {
-          const sameProduct = item.product_id === newItem.product_id && newItem.product_id !== null;
-          const sameBundle = item.bundle_id === newItem.bundle_id && newItem.bundle_id !== null;
-          const sameOffer = item.offer_id === newItem.offer_id && newItem.offer_id !== null;
-          const itemBlackFridayId = (item as any).black_friday_item_id ?? null;
-          const newItemBlackFridayId = newItem.black_friday_item_id ?? null;
-          const sameBlackFriday = itemBlackFridayId === newItemBlackFridayId;
-          const sameOption = JSON.stringify(item.option || null) === JSON.stringify(newItem.option || null);
-          return (sameProduct || sameBundle || sameOffer) && sameBlackFriday && sameOption;
+          // For bundles: match ONLY by bundle_id (bundles don't have options)
+          if (newItem.bundle_id !== null && newItem.bundle_id !== undefined) {
+            return item.bundle_id === newItem.bundle_id && item.bundle_id !== null;
+          }
+          
+          // For products: match by product_id + option + black_friday
+          if (newItem.product_id !== null && newItem.product_id !== undefined) {
+            const sameProduct = item.product_id === newItem.product_id;
+            const itemBlackFridayId = (item as any).black_friday_item_id ?? null;
+            const newItemBlackFridayId = newItem.black_friday_item_id ?? null;
+            const sameBlackFriday = itemBlackFridayId === newItemBlackFridayId;
+            const sameOption = JSON.stringify(item.option || null) === JSON.stringify(newItem.option || null);
+            return sameProduct && sameBlackFriday && sameOption;
+          }
+          
+          // For offers: match by offer_id + option + black_friday
+          if (newItem.offer_id !== null && newItem.offer_id !== undefined) {
+            const sameOffer = item.offer_id === newItem.offer_id;
+            const itemBlackFridayId = (item as any).black_friday_item_id ?? null;
+            const newItemBlackFridayId = newItem.black_friday_item_id ?? null;
+            const sameBlackFriday = itemBlackFridayId === newItemBlackFridayId;
+            const sameOption = JSON.stringify(item.option || null) === JSON.stringify(newItem.option || null);
+            return sameOffer && sameBlackFriday && sameOption;
+          }
+          
+          return false;
         });
         
         if (existingItem) {
@@ -143,12 +164,21 @@ export const useUpdateCartMutation = () => {
       
       return { previousCart };
     },
-    onSuccess: (data) => {
-      // Invalidate the cart query to refetch and get the correct state from the server
-      // Use a small delay to ensure server has processed the update
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: cartQueryKey });
-      }, 100);
+    onSuccess: async (data) => {
+      // Refetch the cart query to get the correct state from the server
+      // Use a delay to ensure the database transaction has fully committed
+      // The optimistic update will keep the UI responsive until the refetch completes
+      setTimeout(async () => {
+        // Use refetchQueries instead of invalidateQueries to ensure we get fresh data
+        // and can handle errors gracefully
+        try {
+          await queryClient.refetchQueries({ queryKey: cartQueryKey });
+        } catch (error) {
+          // If refetch fails, invalidate to trigger a refetch on next access
+          console.error('Failed to refetch cart:', error);
+          queryClient.invalidateQueries({ queryKey: cartQueryKey });
+        }
+      }, 500);
     },
     onError: (error, variables, context) => {
       // Revert to previous cart on error

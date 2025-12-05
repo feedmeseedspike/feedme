@@ -164,21 +164,21 @@ const CartClient: React.FC<CartClientProps> = ({
 
             return {
               id: anonItem.id,
-              product_id: anonItem.product_id,
-              bundle_id: anonItem.bundle_id,
-              offer_id: anonItem.offer_id || null,
-              black_friday_item_id: (anonItem as any).black_friday_item_id || null,
+              product_id: anonItem.product_id ?? null,
+              bundle_id: anonItem.bundle_id ?? null,
+              offer_id: anonItem.offer_id ?? null,
+              black_friday_item_id:
+                (anonItem as any).black_friday_item_id || null,
               quantity: anonItem.quantity,
               price: anonItem.price,
               option: anonItem.option,
               created_at: anonItem.created_at,
-              user_id: null,
               cart_id: null,
               products: productData,
               bundles: bundleData,
               offers: offerData,
               black_friday_items: null,
-            } as CartItem;
+            } satisfies CartItem;
           })
         );
 
@@ -269,21 +269,21 @@ const CartClient: React.FC<CartClientProps> = ({
 
             return {
               id: anonItem.id,
-              product_id: anonItem.product_id,
-              bundle_id: anonItem.bundle_id,
-              offer_id: (anonItem as any).offer_id || null,
-              black_friday_item_id: (anonItem as any).black_friday_item_id || null,
+              product_id: anonItem.product_id ?? null,
+              bundle_id: anonItem.bundle_id ?? null,
+              offer_id: (anonItem as any).offer_id ?? null,
+              black_friday_item_id:
+                (anonItem as any).black_friday_item_id || null,
               quantity: anonItem.quantity,
               price: anonItem.price,
               option: anonItem.option,
               created_at: anonItem.created_at,
-              user_id: null,
               cart_id: null,
               products: productData,
               bundles: bundleData,
               offers: offerData,
               black_friday_items: null,
-            } as CartItem;
+            } satisfies CartItem;
           })
         );
         console.log("Setting enriched anonymous items:", enriched);
@@ -453,9 +453,9 @@ const CartClient: React.FC<CartClientProps> = ({
                 return {
                   product_id: cartItem.product_id,
                   bundle_id: cartItem.bundle_id,
-              offer_id: cartItem.offer_id || null,
-              black_friday_item_id:
-                (cartItem as any).black_friday_item_id || null,
+                  offer_id: cartItem.offer_id || null,
+                  black_friday_item_id:
+                    (cartItem as any).black_friday_item_id || null,
                   option: cartItem.option,
                   quantity:
                     cartItem.id === itemToUpdate.id

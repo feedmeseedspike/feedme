@@ -28,4 +28,5 @@ export interface ProductInterface {
   options: ProductOptionInterface[];
   rating_distribution: Record<string, any>; // Empty object in JSON, using Record for flexibility
   in_season: boolean | null;
+  related_products?: ProductInterface[];
 }

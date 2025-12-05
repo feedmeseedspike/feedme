@@ -4,6 +4,8 @@ import EditProductClient from "./EditProductClient";
 import {
   getProductById,
   getAllCategories,
+  getBundles,
+  getRelatedProducts,
 } from "src/lib/actions/product.actions";
 import { notFound } from "next/navigation";
 
@@ -93,17 +95,27 @@ export default async function EditProductPage({
   const productId = params.id;
   let product = null;
   let allCategories = [];
+  let allProducts = [];
+  let relatedProducts = [];
 
   try {
-    [product, allCategories] = await Promise.all([
+    const [productData, categoriesData, bundlesData, relatedData] = await Promise.all([
       getProductById(productId),
       getAllCategories(),
+      getBundles(), // Fetch bundles instead of products
+      getRelatedProducts(productId),
     ]);
+
+    product = productData;
+    allCategories = categoriesData;
+    allProducts = bundlesData || []; // Use bundlesData for the selection list
+    relatedProducts = relatedData || [];
 
     if (!product) {
       return notFound();
     }
   } catch (error) {
+    console.error("Error fetching product data:", error);
     return notFound();
   }
 
@@ -114,6 +126,8 @@ export default async function EditProductPage({
     <EditProductClient
       product={normalizedProduct}
       allCategories={allCategories}
+      allProducts={allProducts}
+      relatedProducts={relatedProducts}
     />
   );
 }

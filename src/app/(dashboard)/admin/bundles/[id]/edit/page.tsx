@@ -20,7 +20,7 @@ export default async function EditBundlePage({
       .select(`
         *,
         bundle_products (
-          product:products (*)
+          product_id
         )
       `)
       .eq('id', id)
@@ -31,8 +31,24 @@ export default async function EditBundlePage({
       throw error;
     }
 
+    // Fetch products manually
+    const productIds = data.bundle_products?.map((bp: any) => bp.product_id).filter(Boolean) || [];
+    let linkedProducts: any[] = [];
+    
+    if (productIds.length > 0) {
+      const { data: products, error: productsError } = await supabase
+        .from('products')
+        .select('*')
+        .in('id', productIds);
+        
+      if (productsError) {
+        console.error('EditBundlePage - error fetching linked products:', productsError);
+      } else {
+        linkedProducts = products || [];
+      }
+    }
+
     // Transform the data
-    const linkedProducts = data?.bundle_products?.map((bp: { product: any }) => bp.product).filter(Boolean) || [];
     initialBundle = {
       ...data,
       products: linkedProducts

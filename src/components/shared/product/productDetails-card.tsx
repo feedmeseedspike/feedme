@@ -139,16 +139,10 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
     );
 
     // Find the item in the cart (authenticated or anonymous)
-    // Find the item in the cart (authenticated or anonymous)
     const currentCartItem = useMemo(() => {
       if (user) {
         if (!cartItems) return undefined;
         return cartItems.find((item) => {
-          // Check for bundle match first if product is a bundle
-          if (product.bundleId) {
-            return item.bundle_id === product.bundleId;
-          }
-          // Otherwise check for product match
           return (
             item.product_id === product.id &&
             JSON.stringify(item.option || null) ===
@@ -158,10 +152,6 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       } else {
         // For anonymous users, find item in anonymous cart
         return anonymousCart.items.find((item) => {
-          // Check for bundle match first if product is a bundle
-          if (product.bundleId) {
-            return item.bundle_id === product.bundleId;
-          }
           return (
             item.product_id === product.id &&
             JSON.stringify(item.option || null) ===
@@ -169,7 +159,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           );
         });
       }
-    }, [user, cartItems, anonymousCart.items, product.id, product.bundleId, selectedOptionData]);
+    }, [user, cartItems, anonymousCart.items, product.id, selectedOptionData]);
 
     const [quantity, setQuantity] = useState(currentCartItem?.quantity ?? 1);
     const [showQuantityControls, setShowQuantityControls] = useState(
@@ -185,22 +175,8 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
     useEffect(() => {
       if (updateCartMutation.isPending) return;
       
-      // If we have a currentCartItem, it means we found a match in the cart
-      // (which now correctly respects bundleId from the useMemo above).
-      // So we can safely use its quantity.
-      if (currentCartItem) {
-        setQuantity(currentCartItem.quantity);
-        setShowQuantityControls(true);
-      } else {
-        // If no match in cart, reset controls
-        // But be careful not to reset if we are in the middle of an optimistic update 
-        // (though the isPending check helps there).
-        // More importantly, we shouldn't reset just because *another* item updated.
-        // The useMemo for currentCartItem depends on cartItems, so this effect runs when cart changes.
-        // If currentCartItem becomes undefined, it means this specific product/bundle is not in the cart.
-        setQuantity(1);
-        setShowQuantityControls(false);
-      }
+      setQuantity(currentCartItem?.quantity ?? 1);
+      setShowQuantityControls(Boolean(currentCartItem));
     }, [currentCartItem, updateCartMutation.isPending]);
 
     // Handler to update quantity via mutation
@@ -270,11 +246,10 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
 
         const itemsForMutation: ItemToUpdateMutation[] = currentItems
           .map((item: CartItem) => {
-            const isTargetItem = product.bundleId
-              ? item.bundle_id === product.bundleId
-              : item.product_id === product.id &&
-                JSON.stringify(item.option || null) ===
-                  JSON.stringify(selectedOptionData || null);
+            const isTargetItem =
+              item.product_id === product.id &&
+              JSON.stringify(item.option || null) ===
+                JSON.stringify(selectedOptionData || null);
 
             return {
               product_id: item.product_id || null,
@@ -294,16 +269,10 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           .filter((item) => item.quantity > 0);
 
         const targetItemExistsInMutationArray = itemsForMutation.some(
-          (item) => {
-            if (product.bundleId) {
-              return item.bundle_id === product.bundleId;
-            }
-            return (
-              item.product_id === product.id &&
-              JSON.stringify(item.option || null) ===
-                JSON.stringify(selectedOptionData || null)
-            );
-          }
+          (item) =>
+            item.product_id === product.id &&
+            JSON.stringify(item.option || null) ===
+              JSON.stringify(selectedOptionData || null)
         );
 
         const itemPriceForNew = selectedOptionData?.price ?? product.price ?? 0;
@@ -311,7 +280,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
         if (newQuantity > 0 && !targetItemExistsInMutationArray) {
           itemsForMutation.push({
             product_id: product.bundleId ? null : product.id,
-            bundle_id: product.bundleId ? product.bundleId : null, // Use product.bundleId directly if it exists
+            bundle_id: product.bundleId ? product.id : null,
             offer_id: null,
             black_friday_item_id: null,
             option: selectedOptionData
@@ -324,7 +293,6 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
 
         try {
           // Optimistically update UI first for instant feedback
-          // This only affects the local state of THIS component instance
           setQuantity(newQuantity);
           setShowQuantityControls(newQuantity > 0);
 

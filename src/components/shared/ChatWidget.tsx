@@ -66,7 +66,7 @@ export default function ChatWidget({
               <div className="flex items-center gap-3">
                 <div className="relative w-10 h-10 rounded-full bg-white overflow-hidden flex items-center justify-center p-1.5">
                   <Image
-                    src={"/footerlogo.png"}
+                    src={"/Footerlogo.png"}
                     width={30}
                     height={30}
                     alt="FeedMe Logo"
