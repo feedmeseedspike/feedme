@@ -398,3 +398,53 @@ export async function getAllCategories() {
 }
 
 export { getProductsServer as getProducts };
+
+export async function getRelatedProducts(productId: string) {
+  const supabase = await createClient();
+  
+  // 1. Get the relation IDs
+  const { data: relations, error: relationError } = await supabase
+    .from("product_relations")
+    .select("target_product_id")
+    .eq("source_product_id", productId);
+
+  if (relationError) throw relationError;
+
+  if (!relations || relations.length === 0) return [];
+
+  const targetIds = relations.map((r: any) => r.target_product_id);
+
+  // 2. Fetch the actual bundles
+  const { data: bundles, error: bundlesError } = await supabase
+    .from("bundles")
+    .select("*")
+    .in("id", targetIds);
+
+  if (bundlesError) throw bundlesError;
+
+  return bundles;
+}
+
+export async function linkProducts(sourceId: string, targetId: string, type: string = 'related') {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("product_relations")
+    .insert({
+      source_product_id: sourceId,
+      target_product_id: targetId,
+      relation_type: type
+    });
+
+  if (error) throw error;
+  return true;
+}
+
+export async function getBundles() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("bundles")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}

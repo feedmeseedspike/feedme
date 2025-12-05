@@ -33,8 +33,8 @@ export default function BundleCard({
     countInStock:
       bundle.stock_status && bundle.stock_status !== "in_stock" ? 0 : null,
     options: [] as any[],
-    option: null,
-    selectedOption: null,
+    option: undefined,
+    selectedOption: undefined,
     bundleId: bundle.id,
     in_season: null,
     iconOnly: true,

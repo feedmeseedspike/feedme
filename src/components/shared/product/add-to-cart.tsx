@@ -17,7 +17,7 @@ import { useAnonymousCart } from "src/hooks/useAnonymousCart";
 import { Loader2 } from "lucide-react";
 import { showToast } from "src/lib/utils";
 import { Json } from "src/utils/database.types";
-import { ProductOption } from "src/lib/actions/cart.actions";
+import { ProductOption, type CartItem } from "src/lib/actions/cart.actions";
 import { ItemToUpdateMutation } from "src/queries/cart";
 import { Trash2, Minus, Plus } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -45,13 +45,13 @@ interface AddToCartProps {
     images: string[];
     countInStock?: number | null;
     options?: ProductOption[];
-    selectedOption?: string | null;
+    selectedOption?: string;
     option?: ProductOption | null;
     customizations?: Record<string, string>;
     onOutOfStock?: () => void;
     iconOnly?: boolean;
     bundleId?: string;
-    in_season?: boolean | null;
+    in_season?: boolean | null; // <-- add this
   };
   blackFridayItem?: {
     id: string;
@@ -246,40 +246,70 @@ const AddToCart = React.memo(
     );
 
     const currentCartItem = useMemo(() => {
-      const sourceItems = user ? cartItems || [] : anonymousCart.items;
+      // CRITICAL: Use query cache for authenticated users to get optimistic updates
+      // For bundles, we need the most up-to-date data to avoid showing quantity controls on all bundles
+      const cachedCartData = queryClient.getQueryData<CartItem[]>(cartQueryKey);
+      const sourceItems = user
+        ? cachedCartData !== undefined &&
+          cachedCartData !== null &&
+          Array.isArray(cachedCartData)
+          ? cachedCartData
+          : cartItems || []
+        : anonymousCart.items;
 
+      // For bundles, we must match EXACTLY by bundle_id - no fallbacks
+      // This ensures only the specific bundle that's in the cart shows quantity controls
+      if (bundleIdentifier) {
+        const bundleMatch = sourceItems.find((cartItem) => {
+          // Strict matching: bundle_id must exist and match exactly
+          if (!cartItem.bundle_id) return false;
+          return String(cartItem.bundle_id) === String(bundleIdentifier);
+        });
+        // Only return if we found THIS specific bundle - no fallbacks
+        return bundleMatch || undefined;
+      }
+
+      // For products, use exact match with option and black friday
       const exactMatch = sourceItems.find((cartItem) =>
         matchesCartEntry(cartItem)
       );
       if (exactMatch) return exactMatch;
 
-      if (bundleIdentifier) {
-        const bundleMatch = sourceItems.find(
-          (cartItem) =>
-            cartItem.bundle_id &&
-            String(cartItem.bundle_id) === String(bundleIdentifier)
-        );
-        return bundleMatch; // Return undefined if no bundle match, do NOT fall back to productMatch
-      }
-
-      const productMatch = sourceItems.find(
-        (cartItem) => cartItem.product_id === productIdentifierForCart
-      );
-      return productMatch;
+      // Don't fall back to any product match - we need exact matches only
+      return undefined;
     }, [
       user,
       cartItems,
       anonymousCart.items,
       matchesCartEntry,
       bundleIdentifier,
-      productIdentifierForCart,
+      queryClient,
     ]);
 
     useEffect(() => {
       if (updateCartMutation.isPending) return;
+      // For bundles, only show quantity controls if THIS specific bundle is in cart
+      // For products, show if the exact product+option+blackfriday combo is in cart
+      const shouldShowControls = bundleIdentifier
+        ? currentCartItem !== undefined &&
+          currentCartItem !== null &&
+          currentCartItem.bundle_id === bundleIdentifier
+        : Boolean(currentCartItem);
+
       setQuantity(currentCartItem?.quantity ?? 1);
-      setShowQuantityControls(Boolean(currentCartItem));
-    }, [currentCartItem, updateCartMutation.isPending]);
+      setShowQuantityControls(shouldShowControls);
+
+      // Debug logging for bundles
+      if (process.env.NODE_ENV === "development" && bundleIdentifier) {
+        console.log(`Bundle ${bundleIdentifier}:`, {
+          inCart: currentCartItem !== undefined && currentCartItem !== null,
+          bundleId: currentCartItem?.bundle_id,
+          expectedBundleId: bundleIdentifier,
+          quantity: currentCartItem?.quantity,
+          showControls: shouldShowControls,
+        });
+      }
+    }, [currentCartItem, updateCartMutation.isPending, bundleIdentifier]);
 
     const getQuantityForOption = useCallback(
       (option?: ProductOption | null) => {
@@ -401,7 +431,45 @@ const AddToCart = React.memo(
           return;
         }
         if (requestedQuantity < 0) return;
-        const currentCartItems = Array.isArray(cartItems) ? cartItems : [];
+
+        // CRITICAL: Get the most up-to-date cart data
+        // Priority: 1) Query cache (includes optimistic updates), 2) Query data
+        // We MUST have the complete cart before mutating, otherwise the RPC will delete items
+        const cachedCartData =
+          queryClient.getQueryData<CartItem[]>(cartQueryKey);
+        let currentCartItems: CartItem[] = [];
+
+        // Use cache if it exists and is valid (includes optimistic updates from previous mutations)
+        if (
+          cachedCartData !== undefined &&
+          cachedCartData !== null &&
+          Array.isArray(cachedCartData)
+        ) {
+          currentCartItems = cachedCartData;
+        }
+        // Fall back to query data if cache is empty/null and query has loaded
+        else if (!isCartLoading && Array.isArray(cartItems)) {
+          currentCartItems = cartItems;
+        }
+        // If cart is still loading and we have no valid cached data, we must wait
+        // Otherwise we'll send an incomplete array and delete existing items
+        else if (isCartLoading) {
+          const hasValidCache =
+            cachedCartData !== undefined &&
+            cachedCartData !== null &&
+            Array.isArray(cachedCartData);
+          if (
+            !hasValidCache ||
+            (hasValidCache && (cachedCartData as CartItem[]).length === 0)
+          ) {
+            showToast("Please wait, loading cart...", "info");
+            return;
+          }
+          // If we have valid cache with items, use it
+          currentCartItems = cachedCartData as CartItem[];
+        }
+        // If we have no data at all and cart isn't loading, it's likely empty (first item)
+        // This is okay - we'll just send the new item
         const existingItemInCart = currentCartItems.find((cartItem) =>
           matchesCartEntry(cartItem, combinedForAction)
         );
@@ -432,46 +500,119 @@ const AddToCart = React.memo(
           setQuantity(requestedQuantity);
           setShowQuantityControls(true);
           try {
+            // Build mutation array from current cart items
+            // CRITICAL: The RPC function deletes ALL items and inserts only what we send
+            // So we MUST include ALL existing items, only updating the target item's quantity
             const itemsForMutation: ItemToUpdateMutation[] = currentCartItems
-              .map((cartItem) => ({
-                product_id: cartItem.product_id || null,
-                bundle_id: cartItem.bundle_id || null,
-                black_friday_item_id:
-                  (cartItem as any).black_friday_item_id || null,
-                option:
-                  cartItem.option && typeof cartItem.option === "object"
-                    ? JSON.parse(JSON.stringify(cartItem.option))
-                    : null,
-                quantity: matchesCartEntry(cartItem, combinedForAction)
-                  ? requestedQuantity
-                  : cartItem.quantity,
-                price:
-                  cartItem.option &&
-                  typeof cartItem.option === "object" &&
-                  "price" in cartItem.option
-                    ? ((cartItem.option as any).price ?? cartItem.price ?? 0)
-                    : (cartItem.price ?? 0),
-              }))
+              .map((cartItem: CartItem) => {
+                const isTargetItem = matchesCartEntry(
+                  cartItem,
+                  combinedForAction
+                );
+
+                // Properly serialize option - handle both object and already-serialized cases
+                let serializedOption: Json | null = null;
+                if (cartItem.option) {
+                  if (typeof cartItem.option === "object") {
+                    // Deep clone to avoid reference issues
+                    serializedOption = JSON.parse(
+                      JSON.stringify(cartItem.option)
+                    ) as Json;
+                  } else {
+                    // Already serialized or null
+                    serializedOption = cartItem.option as Json;
+                  }
+                }
+
+                return {
+                  product_id: cartItem.product_id || null,
+                  bundle_id: cartItem.bundle_id || null,
+                  offer_id: cartItem.offer_id || null,
+                  black_friday_item_id:
+                    (cartItem as any).black_friday_item_id || null,
+                  option: serializedOption,
+                  quantity: isTargetItem
+                    ? requestedQuantity
+                    : cartItem.quantity,
+                  price:
+                    cartItem.option &&
+                    typeof cartItem.option === "object" &&
+                    "price" in cartItem.option
+                      ? ((cartItem.option as any).price ?? cartItem.price ?? 0)
+                      : (cartItem.price ?? 0),
+                };
+              })
               .filter((item) => item.quantity > 0);
-            const targetItemExists = itemsForMutation.some((cartItem) =>
-              matchesCartEntry(cartItem, combinedForAction)
-            );
+
+            // Check if target item exists in mutation array
+            // For bundles, check by bundle_id only
+            // For products, check by product_id + option + black_friday
+            const targetItemExists = bundleIdentifier
+              ? itemsForMutation.some(
+                  (item) =>
+                    item.bundle_id &&
+                    String(item.bundle_id) === String(bundleIdentifier)
+                )
+              : itemsForMutation.some((item) => {
+                  const sameProduct =
+                    item.product_id === productIdentifierForCart;
+                  const sameOption =
+                    serializeOptionValue(item.option) ===
+                    serializeOptionValue(combinedForAction);
+                  const sameBlackFriday =
+                    (item.black_friday_item_id ?? null) ===
+                    blackFridayIdentifier;
+                  return sameProduct && sameOption && sameBlackFriday;
+                });
+
+            // Debug: Log what we're sending to catch any issues
+            if (process.env.NODE_ENV === "development") {
+              console.log(
+                "Cart mutation - Items count:",
+                itemsForMutation.length,
+                "Target exists:",
+                targetItemExists,
+                bundleIdentifier
+                  ? `Bundle ID: ${bundleIdentifier}`
+                  : `Product ID: ${productIdentifierForCart}`,
+                "Current cart items count:",
+                currentCartItems.length,
+                "Items in mutation:",
+                itemsForMutation.map((item) => ({
+                  bundle_id: item.bundle_id,
+                  product_id: item.product_id,
+                  quantity: item.quantity,
+                })),
+                "Current cart items:",
+                currentCartItems.map((item) => ({
+                  bundle_id: item.bundle_id,
+                  product_id: item.product_id,
+                  quantity: item.quantity,
+                }))
+              );
+            }
             if (!targetItemExists) {
+              // Serialize the option properly for the new item
+              let serializedNewOption: Json | null = null;
+              if (combinedForAction && typeof combinedForAction === "object") {
+                serializedNewOption = JSON.parse(
+                  JSON.stringify(combinedForAction)
+                ) as Json;
+              }
+
               itemsForMutation.push({
                 product_id: productIdentifierForCart,
                 bundle_id: bundleIdentifier,
+                offer_id: null,
                 black_friday_item_id: blackFridayIdentifier,
-                option:
-                  combinedForAction && typeof combinedForAction === "object"
-                    ? JSON.parse(JSON.stringify(combinedForAction))
-                    : null,
+                option: serializedNewOption,
                 quantity: requestedQuantity,
                 price: getUnitPrice(targetOption),
               });
             }
             await updateCartMutation.mutateAsync(itemsForMutation);
-            // Invalidate cart query for authenticated users
-            queryClient.invalidateQueries({ queryKey: cartQueryKey });
+            // Don't invalidate here - let the mutation's onSuccess handle it
+            // This prevents race conditions where the refetch happens before DB commit
             onAddToCart?.();
           } catch (error: any) {
             console.error("Failed to update cart:", error);
@@ -512,6 +653,7 @@ const AddToCart = React.memo(
         blackFridayIdentifier,
         resolvedMaxQuantity,
         getUnitPrice,
+        isCartLoading,
       ]
     );
 
@@ -962,13 +1104,7 @@ const AddToCart = React.memo(
       );
 
       const minimalQuantityControls = (
-        <div 
-          className="flex items-center gap-2 rounded-full bg-white shadow-[0_10px_24px_rgba(15,23,42,0.12)] border border-[#E4E7EC] px-3 py-1.5 text-sm"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-        >
+        <div className="flex items-center gap-2 rounded-full bg-white shadow-[0_10px_24px_rgba(15,23,42,0.12)] border border-[#E4E7EC] px-3 py-1.5 text-sm">
           <button
             onClick={(e) => {
               e.preventDefault();
@@ -984,13 +1120,7 @@ const AddToCart = React.memo(
               <Minus className="size-[14px]" />
             )}
           </button>
-          <span 
-            className="min-w-[20px] text-center font-semibold text-[#101828] text-sm"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-          >
+          <span className="min-w-[20px] text-center font-semibold text-[#101828] text-sm">
             {quantity}
           </span>
           <button
@@ -1029,8 +1159,6 @@ const AddToCart = React.memo(
           ) : (
             <button
               onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
                 if (isOutOfSeason || isOutOfStock) return;
                 handleAddToCartClick();
               }}

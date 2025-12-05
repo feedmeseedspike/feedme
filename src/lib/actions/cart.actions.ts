@@ -93,29 +93,62 @@ export async function getCart(): Promise<GetCartSuccess | GetCartFailure> {
   try {
     const cartId = await getUserCartId(user.id);
 
+    // Fetch cart items - Supabase's default join is LEFT JOIN, so cart items are returned even if product doesn't exist
+    // Use explicit LEFT JOIN syntax to avoid 400 errors with nested selects
+    // Note: Supabase PostgREST may have issues with multiple nested selects, so we use a simpler approach
     const { data, error } = await supabase
       .from("cart_items")
-      .select("*, products(*), bundles(*), offers(*), black_friday_items(*)") // Select cart item fields and join with related entities
-      .eq("cart_id", cartId) // Use cart_id instead of user_id
+      .select("*, products(*), bundles(*), offers(*), black_friday_items(*)")
+      .eq("cart_id", cartId)
       .order("created_at", { ascending: true });
 
     if (error) {
+      // Log the error for debugging
+      console.error("Error fetching cart:", error);
+      // If it's a query syntax error or relationship error, try a simpler query without nested selects
+      const errorCode = (error as any).code;
+      const errorStatus = (error as any).status;
+      // PGRST200 = relationship not found, PGRST300 = syntax error, 400 = bad request, 22P02 = invalid input
+      if (errorCode === "PGRST200" || errorCode === "PGRST300" || errorStatus === 400 || errorCode === "22P02") {
+        // Fallback: fetch without joins and then fetch related data separately
+        const { data: simpleData, error: simpleError } = await supabase
+          .from("cart_items")
+          .select("*")
+          .eq("cart_id", cartId)
+          .order("created_at", { ascending: true });
+
+        if (simpleError) {
+          throw simpleError;
+        }
+
+        // Map to CartItem format with null joins (we'll fetch them if needed)
+        const typedData: CartItem[] = (simpleData || []).map((item: any) => ({
+          ...item,
+          products: null,
+          bundles: null,
+          offers: null,
+          black_friday_items: null,
+        }));
+
+        return { success: true, data: typedData, error: null };
+      }
       throw error;
     }
 
-    // Map the fetched data to the CartItem type, ensuring the option field is correctly typed
-    const typedData: CartItem[] = (data || []).map((item) => ({
+    // Map the fetched data to the CartItem type
+    // Supabase returns joined data as objects (not arrays) when using the default syntax
+    // Handle cases where the join might return null if the related record doesn't exist
+    const typedData: CartItem[] = (data || []).map((item: any) => ({
       ...item,
-      products: item.products,
-      bundles: item.bundles, // Map bundles data
-      offers: item.offers, // Map offers data
-      black_friday_items: item.black_friday_items,
+      products: item.products || null,
+      bundles: item.bundles || null,
+      offers: item.offers || null,
+      black_friday_items: item.black_friday_items || null,
     }));
-
-    // Debug logging removed
 
     return { success: true, data: typedData, error: null };
   } catch (error: any) {
+    console.error("Cart fetch error:", error);
     return {
       success: false,
       data: null,
@@ -158,16 +191,32 @@ export async function updateCartItems(
   try {
     const cartId = await getUserCartId(user.id);
 
+    // Ensure all items have the correct structure for the RPC function
+    // The RPC expects JSONB, so we need to ensure proper serialization
+    const serializedItems = items.map((item) => ({
+      product_id: item.product_id || null,
+      bundle_id: item.bundle_id || null,
+      offer_id: item.offer_id || null,
+      black_friday_item_id: item.black_friday_item_id || null,
+      option: item.option || null,
+      quantity: item.quantity,
+      price: item.price || null,
+    }));
+
     // Call the RPC function to update cart items
     const { error } = await supabase.rpc("update_cart_items", {
       p_cart_id: cartId,
-      p_new_items: items as any, // Cast to any because Json type might not perfectly match
+      p_new_items: serializedItems as any, // Cast to any because Json type might not perfectly match
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error("RPC error updating cart:", error);
+      throw error;
+    }
 
     return { success: true };
   } catch (error: any) {
+    console.error("Error in updateCartItems:", error);
     return {
       success: false,
       error: error.message || "Failed to update cart items",

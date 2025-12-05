@@ -4,7 +4,9 @@ import { createClient } from "@utils/supabase/client";
 export function getAllCategoriesQuery(client: TypedSupabaseClient) {
   return client
     .from('categories')
-    .select('id, title, thumbnail');
+    .select('id, title, thumbnail')
+    .order('display_order', { ascending: true })
+    .order('created_at', { ascending: true });
 }
 
 export async function getCategoryById(client: TypedSupabaseClient, id: string) {

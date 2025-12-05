@@ -29,6 +29,14 @@ import {
 } from "@components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
 import { Label } from "@components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@components/ui/dialog";
+import { formatNaira, toSlug } from "src/lib/utils";
 
 const datas = [
   {
@@ -56,6 +64,7 @@ interface ProductOption {
 export default function ProductDetailsClient({
   product,
   cartItemId,
+  recipes,
 }: {
   product: {
     _id?: string;
@@ -78,6 +87,7 @@ export default function ProductDetailsClient({
     slug: string;
     category: string;
     price: number;
+    list_price?: number;
     vendor: {
       id: string;
       shopId: string;
@@ -85,10 +95,10 @@ export default function ProductDetailsClient({
       logo?: string;
     };
     countInStock?: number | null;
-    list_price?: number;
     in_season?: boolean | null;
   };
   cartItemId: string;
+  recipes?: any[];
 }) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [customizationSelections, setCustomizationSelections] = useState<
@@ -114,17 +124,83 @@ export default function ProductDetailsClient({
     product._id ? state.options.selectedOptions[product._id] : undefined
   );
 
+  const sanitizeImage = useCallback(
+    (img: any): string => {
+      const storageBase = process.env.NEXT_PUBLIC_SUPABASE_URL
+        ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/`
+        : null;
+
+      if (typeof img === "string" && img.trim().length > 0) {
+        // Accept only absolute URLs or root-relative paths; otherwise fallback
+        if (img.startsWith("http://") || img.startsWith("https://") || img.startsWith("/")) {
+          return img;
+        }
+        // try parse json with url
+        try {
+          const parsed = JSON.parse(img);
+          if (parsed && typeof parsed === "object" && typeof parsed.url === "string") {
+            const url = parsed.url;
+            if (
+              url.startsWith("http://") ||
+              url.startsWith("https://") ||
+              url.startsWith("/")
+            ) {
+              return url;
+            }
+            if (storageBase) {
+              return `${storageBase}${url.replace(/^\//, "")}`;
+            }
+          }
+        } catch {
+          /* ignore */
+        }
+        // Unknown/relative path: if we have storage base, prepend; else placeholder
+        if (storageBase) {
+          return `${storageBase}${img.replace(/^\//, "")}`;
+        }
+        return "/placeholder.png";
+      } else if (img && typeof img === "object" && typeof (img as any).url === "string") {
+        const url = (img as any).url;
+        if (
+          url.startsWith("http://") ||
+          url.startsWith("https://") ||
+          url.startsWith("/")
+        ) {
+          return url;
+        }
+        if (storageBase) {
+          return `${storageBase}${url.replace(/^\//, "")}`;
+        }
+      }
+      // fallback: product primary image or placeholder
+      if (Array.isArray(product.images) && product.images[0]) {
+        return typeof product.images[0] === "string"
+          ? (product.images[0] as string)
+          : "/placeholder.png";
+      }
+      return "/placeholder.png";
+    },
+    [product.images]
+  );
+
   const optionsArr = useMemo(() => {
     // Handle both old array format and new object format for options
     if (Array.isArray(product.options)) {
       // Old format: options is array of variations
-      return product.options.filter(Boolean);
+      return product.options.filter(Boolean).map((opt: any) => ({
+        ...opt,
+        image: sanitizeImage(opt?.image),
+      }));
     } else if (product.options && typeof product.options === "object") {
       // New format: options is object with variations and customizations
-      return (product.options as any).variations || [];
+      const vars = (product.options as any).variations || [];
+      return vars.map((opt: any) => ({
+        ...opt,
+        image: sanitizeImage(opt?.image),
+      }));
     }
     return [];
-  }, [product.options]);
+  }, [product.options, sanitizeImage]);
 
   const selectedOptionData = useMemo(() => {
     if (optionsArr.length === 0) return null;
@@ -362,6 +438,114 @@ export default function ProductDetailsClient({
                   )}
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+        {/* Recipes Section */}
+        {recipes && recipes.length > 0 && (
+          <div className="mt-4">
+            <Separator className="mb-4" />
+            <h3 className="text-sm font-semibold text-gray-800 mb-3">
+              Recipes
+            </h3>
+            <div className="flex flex-wrap gap-3">
+              {recipes.slice(0, 4).map((recipe: any) => (
+                <div key={recipe.id} className="w-20 group flex flex-col gap-1">
+                  <div className="relative w-20 h-20">
+                    <Link
+                      href={`/bundle/${
+                        recipe.slug ||
+                        (recipe.name ? toSlug(recipe.name) : recipe.id) ||
+                        ""
+                      }`}
+                      className="block w-full h-full rounded-lg overflow-hidden border border-gray-200 group-hover:border-[#F0800F] transition-colors"
+                    >
+                      <Image
+                        src={sanitizeImage(
+                          recipe.image ||
+                            (Array.isArray(recipe.images) && recipe.images[0]) ||
+                            recipe.image_url
+                        )}
+                        alt={recipe.name}
+                        width={80}
+                        height={80}
+                        className="w-full h-full object-cover"
+                      />
+                    </Link>
+                  </div>
+                  <Link
+                    href={`/bundle/${
+                      recipe.slug ||
+                      (recipe.name ? toSlug(recipe.name) : recipe.id) ||
+                      ""
+                    }`}
+                  >
+                    <p className="text-xs text-gray-600 truncate group-hover:text-[#F0800F]">
+                      {recipe.name}
+                    </p>
+                  </Link>
+                </div>
+              ))}
+              {recipes.length > 4 && (
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <button className="w-20 h-20 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors">
+                      <span className="text-sm font-medium text-gray-600">
+                        +{recipes.length - 4}
+                      </span>
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Recipes</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4">
+                      {recipes.map((recipe: any) => (
+                        <div
+                          key={recipe.id}
+                          className="group flex flex-col gap-2 relative"
+                        >
+                          <Link
+                            href={`/bundle/${
+                              recipe.slug ||
+                              (recipe.name ? toSlug(recipe.name) : recipe.id) ||
+                              ""
+                            }`}
+                            className="aspect-square rounded-lg overflow-hidden border border-gray-200 group-hover:border-[#F0800F] transition-colors relative block"
+                          >
+                            <Image
+                              src={sanitizeImage(
+                                recipe.image ||
+                                  recipe.image_url ||
+                                  (Array.isArray(recipe.images) && recipe.images[0])
+                              )}
+                              alt={recipe.name}
+                              fill
+                              className="object-cover"
+                            />
+                          </Link>
+                          <Link
+                            href={`/bundle/${
+                              recipe.slug ||
+                              (recipe.name ? toSlug(recipe.name) : recipe.id) ||
+                              ""
+                            }`}
+                          >
+                            <div>
+                              <p className="text-sm font-medium text-gray-900 group-hover:text-[#F0800F] line-clamp-2">
+                                {recipe.name}
+                              </p>
+                              <p className="text-sm font-bold text-[#1B6013]">
+                                {formatNaira(recipe.price || 0)}
+                              </p>
+                            </div>
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
             </div>
           </div>
         )}

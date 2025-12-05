@@ -456,25 +456,28 @@ export default function CustomerReviews({
                             const thumbnailSrc =
                               review.thumbnailUrl ||
                               generatedThumbnails[review.id];
+                            const resolvedItem = resolveLinkedItem(review);
+                            
                             if (thumbnailSrc) {
                               return (
                                 <video
-                                  src={review.videoUrl}
+                                  // Seek to ~0.5s to ensure a visible frame
+                                  src={`${review.videoUrl}#t=0.5`}
                                   poster={thumbnailSrc}
                                   muted
                                   playsInline
-                                  preload="none"
+                                  preload="metadata"
                                   controls={false}
-                                  className="absolute inset-0 h-full w-full object-cover"
+                                  className="absolute inset-0 h-full w-full object-cover bg-[#E6F4EA]"
                                   onLoadedMetadata={(event) => {
                                     const videoEl = event.currentTarget;
                                     try {
                                       videoEl.currentTime = Math.min(
-                                        0.1,
-                                        videoEl.duration || 0.1
+                                        0.5,
+                                        videoEl.duration || 0.5
                                       );
                                     } catch {
-                                      // no-op seek fallback
+                                      // ignore seek issues
                                     }
                                     videoEl.pause();
                                   }}
@@ -482,8 +485,37 @@ export default function CustomerReviews({
                                 />
                               );
                             }
+                            
+                            // Fallback: Show linked item image, customer initials, or gradient
+                            if (resolvedItem?.image) {
+                              return (
+                                <div className="absolute inset-0">
+                                  <Image
+                                    src={resolvedItem.image}
+                                    alt={resolvedItem.name}
+                                    fill
+                                    className="object-cover"
+                                    sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                                </div>
+                              );
+                            }
+                            
+                            // Fallback: Show customer initials with gradient background
                             return (
-                              <div className="absolute inset-0 bg-gradient-to-br from-[#1B6013] to-[#4CAF50]" />
+                              <div className="absolute inset-0 bg-gradient-to-br from-[#1B6013] via-[#2E7D32] to-[#4CAF50] flex items-center justify-center">
+                                <div className="text-center">
+                                  <div className="w-24 h-24 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center mb-4 mx-auto border-2 border-white/30">
+                                    <span className="text-4xl font-bold text-white">
+                                      {getInitials(review.customerName)}
+                                    </span>
+                                  </div>
+                                  <p className="text-white/90 text-sm font-medium px-4">
+                                    {review.customerName}
+                                  </p>
+                                </div>
+                              </div>
                             );
                           })()}
                           <div className="absolute inset-0 bg-black/0 group-hover/card:bg-black/25 transition-colors flex items-center justify-center pointer-events-none">

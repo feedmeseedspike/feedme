@@ -185,19 +185,16 @@ export const fetchBundleByIdWithProducts = async (bundleId: string, supabase?: a
     supabase = createClient();
   }
 
-  // Fetch the bundle details and join with bundle_products and products
+  // Fetch the bundle details and bundle_products (without nested products)
   const { data, error } = await supabase
     .from('bundles')
     .select(
       `
       *,
       bundle_products (
-        product:products (*)
+        product_id
       )
       `
-      // Select all bundle columns (*)
-      // Then select product_id from the linking table bundle_products
-      // And select all columns (*) from the products table aliased through the bundle_products relationship
     )
     .eq('id', bundleId)
     .single(); // Expecting a single bundle
@@ -206,15 +203,27 @@ export const fetchBundleByIdWithProducts = async (bundleId: string, supabase?: a
     throw error; // Propagate the error
   }
 
-  // Supabase returns the joined data in a nested structure.
-  // We need to transform it into a more usable format:
-  // { ...bundleDetails, products: [...productObjects] }
-  const bundleDetails = data;
-  const linkedProducts = data?.bundle_products?.map((bp: { product: Tables<'products'> | null }) => bp.product).filter(Boolean) || [];
+  // Extract product IDs
+  const productIds = data.bundle_products?.map((bp: any) => bp.product_id).filter(Boolean) || [];
+
+  // Fetch products manually
+  let linkedProducts: Tables<'products'>[] = [];
+  if (productIds.length > 0) {
+    const { data: products, error: productsError } = await supabase
+      .from('products')
+      .select('*')
+      .in('id', productIds);
+    
+    if (productsError) {
+      console.error("Error fetching linked products:", productsError);
+    } else {
+      linkedProducts = products || [];
+    }
+  }
 
   const transformedBundle = {
-    ...bundleDetails,
-    products: linkedProducts as Tables<'products'>[] // Extract product objects and cast
+    ...data,
+    products: linkedProducts
   };
 
   return transformedBundle;
@@ -244,14 +253,14 @@ export const fetchBundleBySlugWithProducts = async (bundleSlug: string) => {
     throw new Error('Bundle not found');
   }
 
-  // Now fetch the bundle with its products using the ID
+  // Now fetch the bundle with its bundle_products (without nested products)
   const { data, error } = await supabase
     .from('bundles')
     .select(
       `
       *,
       bundle_products (
-        product:products (*)
+        product_id
       )
       `
     )
@@ -262,15 +271,27 @@ export const fetchBundleBySlugWithProducts = async (bundleSlug: string) => {
     throw error; // Propagate the error
   }
 
-  // Supabase returns the joined data in a nested structure.
-  // We need to transform it into a more usable format:
-  // { ...bundleDetails, products: [...productObjects] }
-  const bundleDetails = data;
-  const linkedProducts = data?.bundle_products?.map((bp: { product: Tables<'products'> | null }) => bp.product).filter(Boolean) || [];
+  // Extract product IDs
+  const productIds = data.bundle_products?.map((bp: any) => bp.product_id).filter(Boolean) || [];
+
+  // Fetch products manually
+  let linkedProducts: Tables<'products'>[] = [];
+  if (productIds.length > 0) {
+    const { data: products, error: productsError } = await supabase
+      .from('products')
+      .select('*')
+      .in('id', productIds);
+    
+    if (productsError) {
+      console.error("Error fetching linked products:", productsError);
+    } else {
+      linkedProducts = products || [];
+    }
+  }
 
   const transformedBundle = {
-    ...bundleDetails,
-    products: linkedProducts as Tables<'products'>[] // Extract product objects and cast
+    ...data,
+    products: linkedProducts
   };
 
   return transformedBundle;

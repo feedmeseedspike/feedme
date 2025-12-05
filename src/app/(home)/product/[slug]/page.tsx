@@ -2,6 +2,7 @@ import React from "react";
 import {
   getProductBySlug,
   getRelatedProductsByCategory,
+  getRelatedProducts,
 } from "src/lib/actions/product.actions";
 import ProductGalleryWrapper from "@components/shared/product/gallery-wrapper";
 import { Tables } from "@/utils/database.types";
@@ -53,6 +54,32 @@ export async function generateMetadata({
     const product = await getProductBySlug(slug);
 
     if (product) {
+      const normalizeImage = (img: any): string | null => {
+        if (typeof img === "string" && img.trim().length > 0) {
+          if (
+            img.startsWith("http://") ||
+            img.startsWith("https://") ||
+            img.startsWith("/")
+          ) {
+            return img;
+          }
+          try {
+            const parsed = JSON.parse(img);
+            if (parsed && typeof parsed === "object" && typeof parsed.url === "string") {
+              return parsed.url;
+            }
+          } catch {
+            return null;
+          }
+        } else if (img && typeof img === "object" && typeof (img as any).url === "string") {
+          return (img as any).url;
+        }
+        return null;
+      };
+      const metaImage =
+        (Array.isArray(product.images) && normalizeImage(product.images[0])) ||
+        "/opengraph-image.jpg";
+
       return {
         title: product.name,
         description: `${
@@ -66,14 +93,14 @@ export async function generateMetadata({
         openGraph: {
           title: product.name,
           description: product.description || "",
-          images: product.images?.[0] || "/opengraph-image.jpg",
+          images: metaImage,
           url: `https://shopfeedme.com/product/${slug}`,
         },
         twitter: {
           card: "summary_large_image",
           title: product.name,
           description: product.description || "",
-          images: [product.images?.[0] || "/opengraph-image.jpg"],
+          images: [metaImage],
         },
       };
     }
@@ -164,6 +191,16 @@ const ProductDetails = async (props: {
     console.error("Error fetching also bought products:", error);
   }
 
+  let linkedBundles: any[] = [];
+  try {
+    const rawLinkedBundles = await getRelatedProducts(product.id);
+    if (rawLinkedBundles) {
+      linkedBundles = rawLinkedBundles;
+    }
+  } catch (error) {
+    console.error("Error fetching related bundles:", error);
+  }
+
   const ProductJsonLd = ({
     product,
   }: {
@@ -238,16 +275,101 @@ const ProductDetails = async (props: {
     );
   };
 
+  // Helpers to sanitize image strings coming from DB
+  const normalizeImage = (img: any): string | null => {
+    const storageBase = process.env.NEXT_PUBLIC_SUPABASE_URL
+      ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/`
+      : null;
+    if (typeof img === "string" && img.trim().length > 0) {
+      // Allow absolute or site-root relative paths
+      if (img.startsWith("http://") || img.startsWith("https://") || img.startsWith("/")) {
+        return img;
+      }
+      // If it's a JSON string with url, attempt to parse
+      try {
+        const parsed = JSON.parse(img);
+        if (parsed && typeof parsed === "object" && typeof parsed.url === "string") {
+          const url = parsed.url;
+          if (
+            url.startsWith("http://") ||
+            url.startsWith("https://") ||
+            url.startsWith("/")
+          ) {
+            return url;
+          }
+          if (storageBase) {
+            return `${storageBase}${url.replace(/^\//, "")}`;
+          }
+        }
+      } catch {
+        if (storageBase) {
+          return `${storageBase}${img.replace(/^\//, "")}`;
+        }
+        return null;
+      }
+    } else if (img && typeof img === "object" && typeof (img as any).url === "string") {
+      const url = (img as any).url;
+      if (
+        url.startsWith("http://") ||
+        url.startsWith("https://") ||
+        url.startsWith("/")
+      ) {
+        return url;
+      }
+      if (storageBase) {
+        return `${storageBase}${url.replace(/^\//, "")}`;
+      }
+    }
+    return null;
+  };
+
+  const safeImages = (() => {
+    if (Array.isArray(product.images)) {
+      const cleaned = product.images
+        .map((img) => normalizeImage(img))
+        .filter((u): u is string => typeof u === "string" && u.length > 0);
+      return cleaned.length > 0 ? cleaned : ["/placeholder.png"];
+    }
+    return ["/placeholder.png"];
+  })();
+
+  // Sanitize linked recipes/bundles (images and slug)
+  const safeRecipes =
+    Array.isArray(linkedBundles) && linkedBundles.length > 0
+      ? linkedBundles.map((recipe: any) => {
+          const img =
+            normalizeImage(recipe.image) ||
+            normalizeImage(recipe.image_url) ||
+            (Array.isArray(recipe.images)
+              ? normalizeImage(recipe.images[0])
+              : null) ||
+            normalizeImage((recipe as any).thumbnail_url) ||
+            "/placeholder.png";
+          return {
+            ...recipe,
+            slug:
+              recipe.slug ||
+              (recipe.name ? toSlug(recipe.name) : recipe.id) ||
+              recipe.id ||
+              "",
+            images: recipe.images || (img ? [img] : []),
+            image: img,
+          };
+        })
+      : [];
+
   // Handle both old array format and new object format for options
   const productOptions = (() => {
-    if (Array.isArray(product.options)) {
-      // Old format: options is array of variations
-      return (product.options as any[]).filter(Boolean);
-    } else if (product.options && typeof product.options === "object") {
-      // New format: options is object with variations and customizations
-      return (product.options as any).variations || [];
-    }
-    return [];
+    const base =
+      Array.isArray(product.options)
+        ? (product.options as any[]).filter(Boolean)
+        : product.options && typeof product.options === "object"
+          ? (product.options as any).variations || []
+          : [];
+    return base.map((opt: any) => ({
+      ...opt,
+      image: normalizeImage(opt?.image) || "/placeholder-product.png",
+    }));
   })();
 
   // Extract customizations from new format
@@ -301,11 +423,11 @@ const ProductDetails = async (props: {
             id={product.id!}
             category={product.category_ids || []}
           />
-          <ProductDetailsClient
+            <ProductDetailsClient
             product={{
               _id: product.id,
               name: product.name,
-              images: product.images || [],
+              images: safeImages,
               avgRating: product.avg_rating || 0,
               numReviews: product.num_reviews || 0,
               ratingDistribution: ratingDistArr,
@@ -323,6 +445,7 @@ const ProductDetails = async (props: {
               in_season: product.in_season,
             }}
             cartItemId={cartItemId}
+            recipes={safeRecipes}
           />
 
           {/* Product Description and Reviews */}
@@ -358,10 +481,10 @@ const ProductDetails = async (props: {
           )}
           {alsoBoughtProducts.length > 0 && (
             <section className="mt-10">
-              <ProductSlider
-                products={alsoBoughtProducts}
-                title={"Customers who bought this item also bought"}
-              />
+            <ProductSlider
+              products={alsoBoughtProducts}
+              title={"Customers who bought this item also bought"}
+            />
             </section>
           )}
           <section>

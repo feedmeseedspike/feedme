@@ -115,14 +115,14 @@ export default async function BundleDetailPage({ params }: BundleDetailPageProps
       notFound();
     }
 
-    // Now fetch the bundle with its products using the ID
+    // Now fetch the bundle with its bundle_products (without nested products)
     const { data: bundle, error } = await supabase
       .from('bundles')
       .select(
         `
         *,
         bundle_products (
-          product:products (*)
+          product_id
         )
         `
       )
@@ -133,11 +133,28 @@ export default async function BundleDetailPage({ params }: BundleDetailPageProps
       throw error;
     }
 
+    // Extract product IDs
+    const productIds = bundle.bundle_products?.map((bp: any) => bp.product_id).filter(Boolean) || [];
+
+    // Fetch products manually
+    let linkedProducts: Tables<'products'>[] = [];
+    if (productIds.length > 0) {
+      const { data: products, error: productsError } = await supabase
+        .from('products')
+        .select('*')
+        .in('id', productIds);
+      
+      if (productsError) {
+        console.error("Error fetching linked products:", productsError);
+      } else {
+        linkedProducts = products || [];
+      }
+    }
+
     // Transform the data structure
-    const linkedProducts = bundle?.bundle_products?.map((bp: { product: Tables<'products'> | null }) => bp.product).filter(Boolean) || [];
     const transformedBundle = {
       ...bundle,
-      products: linkedProducts as Tables<'products'>[]
+      products: linkedProducts
     };
 
     if (!transformedBundle) {

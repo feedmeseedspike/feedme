@@ -241,9 +241,14 @@ export const mapSupabaseProductToIProductInput = (
     images: Array.isArray(supabaseProduct.images)
       ? supabaseProduct.images.filter((img): img is string => typeof img === 'string' && !!img)
       : [],
-    options: Array.isArray(supabaseProduct.options)
-      ? (supabaseProduct.options as any[]).filter((opt) => opt && typeof opt === 'object' && 'name' in opt && 'price' in opt)
-      : [],
+    options: (() => {
+      if (Array.isArray(supabaseProduct.options)) {
+        return (supabaseProduct.options as any[]).filter((opt) => opt && typeof opt === 'object' && 'name' in opt && 'price' in opt);
+      } else if (supabaseProduct.options && typeof supabaseProduct.options === 'object' && 'variations' in supabaseProduct.options) {
+        return ((supabaseProduct.options as any).variations || []).filter((opt: any) => opt && typeof opt === 'object' && 'name' in opt && 'price' in opt);
+      }
+      return [];
+    })(),
     ratingDistribution: (supabaseProduct.rating_distribution as { rating: number; count: number }[] || []),
     stockStatus: supabaseProduct.stock_status || 'In Stock',
     vendor: undefined,
@@ -282,4 +287,3 @@ export const mapSupabaseBundleToIProductInput = (
     bundleId: supabaseBundle.id, // Crucially, set the bundleId here
   };
 };
-  
