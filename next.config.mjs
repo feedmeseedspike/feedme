@@ -4,19 +4,23 @@ const nextConfig = {
     return [
       {
         source: "/api/:path*",
-        headers: [
-          { key: "Cache-Control", value: "no-store, max-age=0" },
-        ],
+        headers: [{ key: "Cache-Control", value: "no-store, max-age=0" }],
       },
     ];
   },
   experimental: {
     serverActions: {
-      allowedOrigins: ["c7jc2vm8-3000.uks1.devtunnels.ms", "localhost:3000","shopfeedme.com","www.shopfeedme.com"],
+      allowedOrigins: [
+        "c7jc2vm8-3000.uks1.devtunnels.ms",
+        "mgw57qjh-3000.uks1.devtunnels.ms",
+        "localhost:3000",
+        "shopfeedme.com",
+        "www.shopfeedme.com",
+      ],
     },
   },
   images: {
-    unoptimized: process.env.NODE_ENV === 'production',
+    unoptimized: process.env.NODE_ENV === "production",
     remotePatterns: [
       {
         protocol: "https",
