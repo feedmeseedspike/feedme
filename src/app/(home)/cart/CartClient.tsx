@@ -97,228 +97,116 @@ const CartClient: React.FC<CartClientProps> = ({
     }
   });
 
-  // Enrich anonymous cart items with offer/product/bundle data (similar to header Cart component)
+  // Enrich anonymous cart items with offer/product/bundle data
   useEffect(() => {
-    if (!user && anonymousCart.items && anonymousCart.items.length > 0) {
+    // Authenticated user: use passed cartItems directly
+    if (user) {
+      setItems(cartItems);
+      return;
+    }
+
+    // Anonymous user: enrich items from local cart
+    if (anonymousCart.items && anonymousCart.items.length > 0) {
       const enrichItems = async () => {
         const supabase = createSupabaseClient();
-        const enriched = await Promise.all(
-          anonymousCart.items.map(async (anonItem) => {
-            let offerData: any = null;
-            let productData: any = null;
-            let bundleData: any = null;
+        console.log("Enriching anonymous items...", anonymousCart.items.length);
+        
+        try {
+          const enriched = await Promise.all(
+            anonymousCart.items.map(async (anonItem) => {
+              let offerData: any = null;
+              let productData: any = null;
+              let bundleData: any = null;
 
-            // Fetch offer data if this is an offer item
-            if (anonItem.offer_id) {
-              try {
-                const response = await fetch(
-                  `/api/offers/${anonItem.offer_id}`
-                );
-                if (response.ok) {
-                  const { offer } = await response.json();
-                  offerData = offer;
+              // Fetch offer data if this is an offer item
+              if ((anonItem as any).offer_id) {
+                try {
+                  const response = await fetch(
+                    `/api/offers/${(anonItem as any).offer_id}`
+                  );
+                  if (response.ok) {
+                    const { offer } = await response.json();
+                    offerData = offer;
+                  }
+                } catch (error) {
+                  console.error(
+                    `Failed to fetch offer data for ${(anonItem as any).offer_id}:`,
+                    error
+                  );
                 }
-              } catch (error) {
-                console.error(
-                  `Failed to fetch offer data for ${anonItem.offer_id}:`,
-                  error
-                );
               }
-            }
 
-            // Fetch product data if product_id exists
-            if (anonItem.product_id) {
-              try {
-                const { data } = await supabase
-                  .from("products")
-                  .select(
-                    "id, name, slug, images, price, list_price, is_published"
-                  )
-                  .eq("id", anonItem.product_id)
-                  .single();
-                if (data) productData = data;
-              } catch (error) {
-                console.error(
-                  `Failed to fetch product data for ${anonItem.product_id}:`,
-                  error
-                );
+              // Fetch product data if product_id exists
+              if (anonItem.product_id) {
+                try {
+                  const { data } = await supabase
+                    .from("products")
+                    .select(
+                      "id, name, slug, images, price, list_price, is_published"
+                    )
+                    .eq("id", anonItem.product_id)
+                    .single();
+                  if (data) productData = data;
+                } catch (error) {
+                  console.error(
+                    `Failed to fetch product data for ${anonItem.product_id}:`,
+                    error
+                  );
+                }
               }
-            }
 
-            // Fetch bundle data if bundle_id exists
-            if (anonItem.bundle_id) {
-              try {
-                const { data } = await supabase
-                  .from("bundles")
-                  .select("id, name, thumbnail_url, price")
-                  .eq("id", anonItem.bundle_id)
-                  .single();
-                if (data) bundleData = data;
-              } catch (error) {
-                console.error(
-                  `Failed to fetch bundle data for ${anonItem.bundle_id}:`,
-                  error
-                );
+              // Fetch bundle data if bundle_id exists
+              if (anonItem.bundle_id) {
+                try {
+                  const { data } = await supabase
+                    .from("bundles")
+                    .select("id, name, thumbnail_url, price")
+                    .eq("id", anonItem.bundle_id)
+                    .single();
+                  if (data) bundleData = data;
+                } catch (error) {
+                  console.error(
+                    `Failed to fetch bundle data for ${anonItem.bundle_id}:`,
+                    error
+                  );
+                }
               }
-            }
 
-            return {
-              id: anonItem.id,
-              product_id: anonItem.product_id ?? null,
-              bundle_id: anonItem.bundle_id ?? null,
-              offer_id: anonItem.offer_id ?? null,
-              black_friday_item_id:
-                (anonItem as any).black_friday_item_id || null,
-              quantity: anonItem.quantity,
-              price: anonItem.price,
-              option: anonItem.option,
-              created_at: anonItem.created_at,
-              cart_id: null,
-              products: productData,
-              bundles: bundleData,
-              offers: offerData,
-              black_friday_items: null,
-            } satisfies CartItem;
-          })
-        );
+              return {
+                id: anonItem.id,
+                product_id: anonItem.product_id ?? null,
+                bundle_id: anonItem.bundle_id ?? null,
+                offer_id: (anonItem as any).offer_id ?? null,
+                black_friday_item_id:
+                  (anonItem as any).black_friday_item_id || null,
+                quantity: anonItem.quantity,
+                price: anonItem.price,
+                option: anonItem.option,
+                created_at: anonItem.created_at,
+                cart_id: null,
+                products: productData,
+                bundles: bundleData,
+                offers: offerData,
+                black_friday_items: null,
+              } satisfies CartItem;
+            })
+          );
 
-        console.log("Anonymous cart items enriched:", enriched);
-        setItems(enriched);
+          console.log("Anonymous cart items enriched:", enriched);
+          setItems(enriched);
+        } catch (error) {
+           console.error("Error preventing enrichment failure:", error);
+           // Fallback? probably better to show nothing than broken state, or keep old items?
+           // For now, logging.
+        }
       };
 
       enrichItems();
-    } else if (user) {
-      setItems(cartItems);
     } else {
+      // No items in anonymous cart
       setItems([]);
     }
   }, [user, cartItems, anonymousCart.items]);
-
-  // Initialize and keep items in sync with anonymous cart changes
-  useEffect(() => {
-    console.log("CartClient useEffect triggered", {
-      user: !!user,
-      anonymousItems: anonymousCart.items?.length || 0,
-      isLoading: anonymousCart.isLoading,
-      localStorage:
-        typeof window !== "undefined"
-          ? localStorage.getItem("feedme_anonymous_cart")
-          : "server",
-    });
-
-    if (!user && !anonymousCart.isLoading) {
-      // Initial load or update of anonymous cart items with enrichment
-      const supabase = createSupabaseClient();
-      const enrichAndSet = async () => {
-        const enriched = await Promise.all(
-          (anonymousCart.items || []).map(async (anonItem) => {
-            let offerData: any = null;
-            let productData: any = null;
-            let bundleData: any = null;
-
-            if ((anonItem as any).offer_id) {
-              try {
-                const response = await fetch(
-                  `/api/offers/${(anonItem as any).offer_id}`
-                );
-                if (response.ok) {
-                  const { offer } = await response.json();
-                  offerData = offer;
-                }
-              } catch (error) {
-                console.error(
-                  `Failed to fetch offer data for ${(anonItem as any).offer_id}:`,
-                  error
-                );
-              }
-            }
-
-            if (anonItem.product_id) {
-              try {
-                const { data } = await supabase
-                  .from("products")
-                  .select(
-                    "id, name, slug, images, price, list_price, is_published"
-                  )
-                  .eq("id", anonItem.product_id)
-                  .single();
-                if (data) productData = data;
-              } catch (error) {
-                console.error(
-                  `Failed to fetch product data for ${anonItem.product_id}:`,
-                  error
-                );
-              }
-            }
-
-            if (anonItem.bundle_id) {
-              try {
-                const { data } = await supabase
-                  .from("bundles")
-                  .select("id, name, thumbnail_url, price")
-                  .eq("id", anonItem.bundle_id)
-                  .single();
-                if (data) bundleData = data;
-              } catch (error) {
-                console.error(
-                  `Failed to fetch bundle data for ${anonItem.bundle_id}:`,
-                  error
-                );
-              }
-            }
-
-            return {
-              id: anonItem.id,
-              product_id: anonItem.product_id ?? null,
-              bundle_id: anonItem.bundle_id ?? null,
-              offer_id: (anonItem as any).offer_id ?? null,
-              black_friday_item_id:
-                (anonItem as any).black_friday_item_id || null,
-              quantity: anonItem.quantity,
-              price: anonItem.price,
-              option: anonItem.option,
-              created_at: anonItem.created_at,
-              cart_id: null,
-              products: productData,
-              bundles: bundleData,
-              offers: offerData,
-              black_friday_items: null,
-            } satisfies CartItem;
-          })
-        );
-        console.log("Setting enriched anonymous items:", enriched);
-        setItems(enriched);
-      };
-
-      enrichAndSet();
-
-      const handleAnonymousCartUpdate = () => {
-        enrichAndSet();
-      };
-
-      // Listen for anonymous cart updates
-      window.addEventListener(
-        "anonymousCartUpdated",
-        handleAnonymousCartUpdate
-      );
-
-      // Also listen for storage changes (cross-tab sync)
-      const handleStorageChange = (e: StorageEvent) => {
-        if (e.key === "feedme_anonymous_cart") {
-          handleAnonymousCartUpdate();
-        }
-      };
-      window.addEventListener("storage", handleStorageChange);
-
-      return () => {
-        window.removeEventListener(
-          "anonymousCartUpdated",
-          handleAnonymousCartUpdate
-        );
-        window.removeEventListener("storage", handleStorageChange);
-      };
-    }
-  }, [user, anonymousCart.items, anonymousCart.isLoading]);
 
   const groupedItems = useMemo(() => {
     return items.reduce(
@@ -543,10 +431,6 @@ const CartClient: React.FC<CartClientProps> = ({
   const totalAmount = subtotal;
 
   const handleCheckout = () => {
-    if (!user) {
-      router.push("/login?callbackUrl=/checkout");
-      return;
-    }
     router.push("/checkout");
   };
 
@@ -1005,7 +889,7 @@ const CartClient: React.FC<CartClientProps> = ({
                     onClick={handleCheckout}
                     disabled={totalQuantity === 0}
                   >
-                    {!user ? "Sign in to Checkout" : "Proceed to Checkout"}
+                    Proceed to Checkout
                   </Button>
                 </Card>
               </div>

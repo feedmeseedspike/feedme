@@ -34,13 +34,9 @@ export function NewVisitorProvider({ children }: NewVisitorProviderProps) {
         recentlyDismissed = hoursSinceDismissed < 24;
       }
       
-      // Don't show if any condition is met
-      if (hasShown || recentlyDismissed || sessionShown || justSignedUp) return;
-      
       // Mark session to prevent showing again in same session
       sessionStorage.setItem('feedme_modal_session', 'true');
       
-      // Show modal after 5 seconds delay
       const timer = setTimeout(() => {
         setShowModal(true);
       }, 5000);

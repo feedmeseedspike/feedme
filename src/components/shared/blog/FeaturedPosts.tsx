@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { BlogPost } from "@/lib/actions/blog.actions";
 import BlogCard from "./BlogCard";
+import { Skeleton } from "@components/ui/skeleton";
 
 export default function FeaturedPosts() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -29,17 +30,17 @@ export default function FeaturedPosts() {
 
   if (loading) {
     return (
-      <div>
-        <h2 className="text-3xl font-bold text-gray-900 mb-8">Featured Posts</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="space-y-4">
-              <div className="h-64 bg-gray-200 rounded-lg animate-pulse" />
-              <div className="h-6 bg-gray-200 rounded animate-pulse" />
-              <div className="h-4 bg-gray-200 rounded animate-pulse" />
-              <div className="h-4 bg-gray-200 rounded animate-pulse w-2/3" />
+      <div className="mb-16">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="lg:col-span-8">
+                <Skeleton className="h-[500px] w-full rounded-[20px]" />
+                <Skeleton className="h-8 w-3/4 mt-6" />
+                <Skeleton className="h-4 w-full mt-3" />
             </div>
-          ))}
+            <div className="lg:col-span-4 flex flex-col gap-8">
+                <Skeleton className="h-[240px] w-full rounded-[20px]" />
+                <Skeleton className="h-[240px] w-full rounded-[20px]" />
+            </div>
         </div>
       </div>
     );
@@ -49,13 +50,26 @@ export default function FeaturedPosts() {
     return null;
   }
 
+  // Split posts into Hero (first one) and Side (rest)
+  const heroPost = posts[0];
+  const sidePosts = posts.slice(1);
+
   return (
-    <section>
-      <h2 className="text-3xl font-bold text-gray-900 mb-8">Featured Posts</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {posts.map((post) => (
-          <BlogCard key={post.id} post={post} featured />
-        ))}
+    <section className="mb-20">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+        {/* Hero Post - Takes up 8 columns */}
+        <div className="lg:col-span-8">
+            <BlogCard post={heroPost} featured={true} />
+        </div>
+
+        {/* Side Posts - Takes up 4 columns */}
+        <div className="lg:col-span-4 flex flex-col gap-10">
+            {sidePosts.map((post) => (
+                <div key={post.id} className="flex-1">
+                    <BlogCard post={post} featured={false} />
+                </div>
+            ))}
+        </div>
       </div>
     </section>
   );

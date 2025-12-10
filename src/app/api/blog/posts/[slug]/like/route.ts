@@ -12,11 +12,11 @@ export async function POST(
   const { slug } = params;
 
   try {
-    const { userId } = await req.json();
+    const { userId, guestId } = await req.json();
     
-    if (!userId) {
+    if (!userId && !guestId) {
       return NextResponse.json(
-        { error: "User ID required", success: false }, 
+        { error: "User ID or Guest ID required", success: false }, 
         { status: 400 }
       );
     }
@@ -30,7 +30,8 @@ export async function POST(
       );
     }
     
-    const result = await toggleBlogPostLike(post.id, userId);
+    // Explicitly pass undefined if the value is missing/null to match function signature
+    const result = await toggleBlogPostLike(post.id, userId || undefined, guestId || undefined);
     
     return NextResponse.json({ ...result, success: true });
   } catch (error) {
@@ -49,10 +50,11 @@ export async function GET(
   const { slug } = params;
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
+  const guestId = searchParams.get("guestId");
 
-  if (!userId) {
+  if (!userId && !guestId) {
     return NextResponse.json(
-      { error: "User ID required", success: false }, 
+      { error: "User ID or Guest ID required", success: false }, 
       { status: 400 }
     );
   }
@@ -67,7 +69,8 @@ export async function GET(
       );
     }
     
-    const result = await checkBlogPostLike(post.id, userId);
+    // Pass undefined for missing values explicitly if needed, but the function signature handles it
+    const result = await checkBlogPostLike(post.id, userId || undefined, guestId || undefined);
     
     return NextResponse.json({ ...result, success: true });
   } catch (error) {

@@ -33,7 +33,7 @@ export default function BlogCategories({ selectedCategory }: BlogCategoriesProps
 
   if (loading) {
     return (
-      <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
+      <div className="flex gap-4 mb-12 overflow-x-auto pb-4">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="h-10 w-32 bg-gray-200 rounded-full animate-pulse flex-shrink-0" />
         ))}
@@ -42,18 +42,18 @@ export default function BlogCategories({ selectedCategory }: BlogCategoriesProps
   }
 
   return (
-    <div className="mb-8">
-      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+    <div className="mb-12">
+      <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
         {/* All Categories */}
         <Link
           href="/blog"
-          className={`px-5 py-2 rounded-full font-medium whitespace-nowrap transition-colors ${
+          className={`px-6 py-2.5 rounded-full font-medium text-sm whitespace-nowrap transition-all duration-300 ${
             !selectedCategory
-              ? "bg-[#1B6013] text-white shadow-sm"
-              : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 shadow-sm"
+              ? "bg-[#1B6013] text-white shadow-md transform scale-105"
+              : "bg-white text-gray-600 border border-gray-100 hover:border-[#1B6013]/30 hover:text-[#1B6013] hover:shadow-sm"
           }`}
         >
-          All Posts
+          All Stories
         </Link>
         
         {/* Category Buttons */}
@@ -64,22 +64,13 @@ export default function BlogCategories({ selectedCategory }: BlogCategoriesProps
             <Link
               key={category.id}
               href={`/blog?category=${category.slug}`}
-              className={`px-5 py-2 rounded-full font-medium whitespace-nowrap transition-colors flex items-center gap-2 ${
+              className={`px-6 py-2.5 rounded-full font-medium text-sm whitespace-nowrap transition-all duration-300 flex items-center gap-2 ${
                 isSelected
-                  ? "text-white shadow-sm"
-                  : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 shadow-sm"
+                  ? "text-white shadow-md transform scale-105"
+                  : "bg-white text-gray-600 border border-gray-100 hover:border-[#1B6013]/30 hover:text-[#1B6013] hover:shadow-sm"
               }`}
-              style={isSelected ? { backgroundColor: category.color } : {}}
+              style={isSelected ? { backgroundColor: category.color || '#1B6013' } : {}}
             >
-              {category.icon && (
-                <span className="w-4 h-4">
-                  {/* You can replace this with actual icons */}
-                  <div 
-                    className="w-4 h-4 rounded-full opacity-75" 
-                    style={{ backgroundColor: isSelected ? 'rgba(255,255,255,0.3)' : category.color }}
-                  />
-                </span>
-              )}
               {category.name}
             </Link>
           );

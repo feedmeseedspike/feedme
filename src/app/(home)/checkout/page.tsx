@@ -19,9 +19,9 @@ export default async function CheckoutPage() {
   // const data = session?.data;
   // console.log(session);
 
-  if (!user) {
-    redirect("/login?callbackUrl=/checkout");
-  }
+  // if (!user) {
+  //   redirect("/login?callbackUrl=/checkout");
+  // }
 
   // Fetch addresses and wallet balance server-side
   const addresses = user ? await getAddressesForCurrentUser() : [];

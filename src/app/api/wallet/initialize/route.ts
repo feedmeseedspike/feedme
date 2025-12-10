@@ -2,11 +2,15 @@ import { NextResponse } from "next/server";
 import paystack from "../../../../utils/paystack";
 import { authMiddleware } from "middleware/auth";
 import { supabase } from "src/lib/supabaseClient";
+import { createClient } from "@/utils/supabase/server";
 
-export const POST = authMiddleware(
-  async (request: Request, user_id: string) => {
+export const POST = async (request: Request) => {
+    // Manually handle auth
+    const supabaseServer = await createClient();
+    const { data: { user } } = await supabaseServer.auth.getUser();
+    const user_id = user?.id || null;
+
     try {
-      console.log("Payment initialization started");
       const {
         email,
         amount,
@@ -23,22 +27,6 @@ export const POST = authMiddleware(
         serviceCharge,
         subtotal
       } = await request.json();
-
-      console.log({
-        email,
-        amount,
-        type,
-        orderId,
-        autoAppliedReferralVoucher,
-        customerName,
-        customerPhone,
-        itemsOrdered,
-        deliveryAddress,
-        localGovernment,
-        deliveryFee,
-        serviceCharge,
-        subtotal,
-      });
 
       // Validate common fields
       if (!email || !amount || !type) {
@@ -69,6 +57,13 @@ export const POST = authMiddleware(
 
       // Handle different payment types
       if (type === "wallet_funding") {
+        if (!user_id) {
+            return NextResponse.json(
+                { message: "User must be logged in to fund wallet" },
+                { status: 401 }
+            );
+        }
+
         // Check or create wallet for funding
         let { data: existingWallet, error: walletError } = await supabase
           .from("wallets")
@@ -98,7 +93,7 @@ export const POST = authMiddleware(
         callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL!}/order/order-confirmation?orderId=${orderId}`;
         metadata = {
           type: "direct_payment",
-          user_id,
+          user_id: user_id, // Can be null for anonymous
           orderId,
           // Additional data for webhook processing
           email: email,
@@ -113,16 +108,6 @@ export const POST = authMiddleware(
           serviceCharge: serviceCharge || 0,
           subtotal: subtotal || amount,
         };
-
-        // Update the order with pending status (we'll add reference after Paystack response)
-        // const { error: orderUpdateError } = await supabase
-        //   .from("orders")
-        //   .update({ payment_status: "Pending" })
-        //   .eq("id", orderId);
-
-        // if (orderUpdateError) {
-        //   console.error("Failed to update order status:", orderUpdateError);
-        // }
       } else {
         return NextResponse.json(
           {
@@ -133,11 +118,6 @@ export const POST = authMiddleware(
         );
       }
 
-      // Debug: Check if Paystack secret key is present
-      console.log(
-        "Paystack Secret Key present:",
-        !!process.env.PAYSTACK_SECRET_KEY
-      );
       // Initialize Paystack transaction
       const transactionData = await paystack.initializeTransaction({
         email,
@@ -147,34 +127,35 @@ export const POST = authMiddleware(
       });
 
       // Save transaction with type-specific data
-      const transactionRecord: any = {
-        user_id,
-        transaction_id: transactionData.data.reference,
-        amount,
-        currency: "NGN",
-        payment_status: "pending",
-        reference: transactionData.data.reference,
-        order_id: orderId || null,
-      };
+      // Only attempt to save transaction if we have a user_id.
+      // Anonymous users trigger a unique constraint violation on the not-null user_id column.
+      if (user_id) {
+        const transactionRecord: any = {
+          user_id: user_id, 
+          transaction_id: transactionData.data.reference,
+          amount,
+          currency: "NGN",
+          payment_status: "pending",
+          reference: transactionData.data.reference,
+          order_id: orderId || null,
+        };
 
-     
+        // Add wallet_id for funding transactions
+        if (type === "wallet_funding" && wallet) {
+          transactionRecord.wallet_id = wallet.id;
+        }
 
-      // Add wallet_id for funding transactions
-      if (type === "wallet_funding" && wallet) {
-        transactionRecord.wallet_id = wallet.id;
+        const { error: txError } = await supabase
+          .from("transactions")
+          .insert(transactionRecord);
+
+        if (txError) {
+           // Log error but generally don't block flow if it's just tracking
+           console.error("Failed to save transaction record:", txError);
+        }
+      } else {
+        console.log("Anonymous payment initialized. Skipping 'transactions' table insert (requires user_id). Order state will be managed via orders table.");
       }
-
-      const { error: txError } = await supabase
-        .from("transactions")
-        .insert(transactionRecord);
-
-    
-
-      if (txError) {
-        throw new Error(`Failed to save transaction: ${txError.message}`);
-      }
-
-   
 
       // Update order with Paystack reference for direct payments
       if (type === "direct_payment") {
@@ -204,5 +185,4 @@ export const POST = authMiddleware(
         { status: 500 }
       );
     }
-  }
-);
+  };

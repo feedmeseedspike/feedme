@@ -5,6 +5,7 @@ import BlogPostContent from "@components/shared/blog/BlogPostContent";
 import BlogPostSkeleton from "@components/shared/blog/BlogPostSkeleton";
 import RelatedPosts from "@components/shared/blog/RelatedPosts";
 import { Metadata } from "next";
+import { getBlogPostBySlug, incrementBlogPostViews } from "@/lib/actions/blog.actions";
 
 export const revalidate = 0;
 
@@ -18,25 +19,7 @@ export async function generateMetadata({
   params,
 }: BlogPostPageProps): Promise<Metadata> {
   try {
-    let baseUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      process.env.NEXT_PUBLIC_APP_URL ||
-      "http://localhost:3000";
-    // Ensure baseUrl has proper protocol
-    if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
-      baseUrl = `http://${baseUrl}`;
-    }
-    const response = await fetch(`${baseUrl}/api/blog/posts/${params.slug}`, {
-      next: { revalidate: 0 },
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const post = data.success ? data.post : null;
+    const post = await getBlogPostBySlug(params.slug);
 
     if (!post) {
       return {
@@ -81,48 +64,24 @@ export async function generateMetadata({
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
   try {
-    let baseUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      process.env.NEXT_PUBLIC_APP_URL ||
-      "http://localhost:3000";
-    // Ensure baseUrl has proper protocol
-    if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
-      baseUrl = `http://${baseUrl}`;
-    }
-    const response = await fetch(`${baseUrl}/api/blog/posts/${params.slug}`, {
-      next: { revalidate: 0 },
-      cache: "no-store",
-    });
-
-    // If the API returns 404, we should trigger notFound()
-    if (!response.ok) {
-      if (response.status === 404) {
-        notFound();
-      }
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const post = data.success ? data.post : null;
+    const post = await getBlogPostBySlug(params.slug);
 
     if (!post) {
       notFound();
     }
 
-    // Increment view count asynchronously
-    fetch(`${baseUrl}/api/blog/posts/${post.slug}/views`, {
-      method: "POST",
-    }).catch(console.error);
+    // Increment view count asynchronously (fire and forget)
+    incrementBlogPostViews(post.id).catch(console.error);
 
     return (
-      <div className="min-h-screen bg-white">
-        <Container className="py-8">
-          <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen bg-[#FAFAF9]">
+        <Container className="py-12 md:py-20">
+          <div className="max-w-5xl mx-auto">
             <Suspense fallback={<BlogPostSkeleton />}>
               <BlogPostContent post={post} />
             </Suspense>
 
-            <div className="mt-16">
+            <div className="mt-24">
               <Suspense fallback={<RelatedPostsSkeleton />}>
                 <RelatedPosts slug={post.slug} />
               </Suspense>
@@ -132,21 +91,24 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       </div>
     );
   } catch (error) {
+    if ((error as any)?.message?.includes('JSON object requested, multiple (or no) rows returned')) {
+       notFound();
+    }
     console.error("Error fetching blog post:", error);
-    notFound();
+    notFound(); 
   }
 }
 
 function RelatedPostsSkeleton() {
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-6">Related Posts</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="border-t border-gray-100 pt-16">
+      <h2 className="text-3xl font-proxima font-bold text-[#1D2939] mb-10">More to Explore</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="space-y-4">
-            <div className="h-48 bg-gray-200 rounded-lg animate-pulse" />
-            <div className="h-6 bg-gray-200 rounded animate-pulse" />
-            <div className="h-4 bg-gray-200 rounded animate-pulse" />
+            <div className="h-[280px] bg-gray-200 rounded-[20px] animate-pulse" />
+            <div className="h-6 bg-gray-200 rounded animate-pulse w-3/4" />
+            <div className="h-4 bg-gray-200 rounded animate-pulse w-full" />
           </div>
         ))}
       </div>
