@@ -154,7 +154,7 @@ const fetchProducts = async () => {
                         {p.name}
                       </td>
                       <td className="px-6 py-3 text-gray-700">
-                        ₦{p.price.toLocaleString()}
+                        ₦{p?.price}
                       </td>
                       <td className="px-6 py-3 font-medium text-gray-700">
                         {p.description}
