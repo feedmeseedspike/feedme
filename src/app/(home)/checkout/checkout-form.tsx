@@ -72,6 +72,8 @@ import { clearCart } from "src/store/features/cartSlice";
 import { useClearCartMutation } from "src/queries/cart";
 import axios from "axios";
 import { sendPushNotification } from "@/lib/actions/pushnotification.action";
+import { useAnonymousCart } from "src/hooks/useAnonymousCart";
+import { createClient as createSupabaseClient } from "src/utils/supabase/client";
 
 interface GroupedCartItem {
   product?: CartItem["products"];
@@ -196,6 +198,7 @@ const shippingAddressDefaultValues =
         street: "",
         location: "",
         phone: "",
+        email: "",
       };
 
 interface OrderProcessingResult {
@@ -228,7 +231,91 @@ const CheckoutForm = ({
   const router = useRouter();
   const dispatch = useDispatch();
   const { data: cartItems, isLoading, isError, error } = useCartQuery();
-  const items: CartItem[] = useMemo(() => cartItems || [], [cartItems]);
+  const anonymousCart = useAnonymousCart();
+  const [enrichedAnonItems, setEnrichedAnonItems] = useState<CartItem[]>([]);
+
+  // Initialize items - strictly use memoization to prevent loops
+  const items: CartItem[] = useMemo(() => {
+    if (user) return cartItems || [];
+    return enrichedAnonItems;
+  }, [user, cartItems, enrichedAnonItems]);
+
+  // Enrich anonymous cart items
+  useEffect(() => {
+    if (!user && anonymousCart.items && anonymousCart.items.length > 0) {
+      const enrichItems = async () => {
+        const supabase = createSupabaseClient();
+        const enriched = await Promise.all(
+          anonymousCart.items.map(async (anonItem) => {
+            let offerData: any = null;
+            let productData: any = null;
+            let bundleData: any = null;
+
+            if (anonItem.offer_id) {
+              try {
+                const response = await fetch(`/api/offers/${anonItem.offer_id}`);
+                if (response.ok) {
+                  const { offer } = await response.json();
+                  offerData = offer;
+                }
+              } catch (e) {
+                console.error(e);
+              }
+            }
+
+            if (anonItem.product_id) {
+              try {
+                const { data } = await supabase
+                  .from("products")
+                  .select("id, name, slug, images, price, list_price, is_published")
+                  .eq("id", anonItem.product_id)
+                  .single();
+                if (data) productData = data;
+              } catch (e) {
+                console.error(e);
+              }
+            }
+
+            if (anonItem.bundle_id) {
+              try {
+                const { data } = await supabase
+                  .from("bundles")
+                  .select("id, name, thumbnail_url, price")
+                  .eq("id", anonItem.bundle_id)
+                  .single();
+                if (data) bundleData = data;
+              } catch (e) {
+                console.error(e);
+              }
+            }
+
+            return {
+              id: anonItem.id,
+              product_id: anonItem.product_id ?? null,
+              bundle_id: anonItem.bundle_id ?? null,
+              offer_id: anonItem.offer_id ?? null,
+              black_friday_item_id: (anonItem as any).black_friday_item_id || null,
+              quantity: anonItem.quantity,
+              price: anonItem.price,
+              option: anonItem.option,
+              created_at: anonItem.created_at,
+              cart_id: null,
+              products: productData,
+              bundles: bundleData,
+              offers: offerData,
+              black_friday_items: null,
+            } satisfies CartItem;
+          })
+        );
+        // Only update if specific content changes to avoid render loops
+        setEnrichedAnonItems(prev => {
+           if (JSON.stringify(prev) === JSON.stringify(enriched)) return prev;
+           return enriched;
+        });
+      };
+      enrichItems();
+    }
+  }, [user, anonymousCart.items]);
 
   const [isPending, startTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -305,7 +392,14 @@ const CheckoutForm = ({
         street: selectedAddress.street,
         location: selectedAddress.city,
         phone: selectedAddress.phone,
+        email: user?.email || "",
       });
+    } else if (user?.email) {
+      // If no selected address but we have user email (and no address selected yet), ensure email field is set if empty
+      const currentEmail = shippingAddressForm.getValues("email");
+      if (!currentEmail) {
+        shippingAddressForm.setValue("email", user.email);
+      }
     }
   }, [
     selectedAddressId,
@@ -621,14 +715,15 @@ const CheckoutForm = ({
 
       startTransition(async () => {
         try {
-          // GUARD: Ensure user.user_id is defined
-          if (!user?.user_id) {
-            showToast("User not found. Please log in again.", "error");
+          // Check for email
+          const email = user?.email || shippingAddressForm.getValues("email");
+          if (!email) {
+            showToast("Email is required.", "error");
             setIsSubmitting(false);
             return;
           }
           const orderData = {
-            userId: user.user_id, // now always a string
+            userId: user?.user_id || null,
             cartItems: (items || []).map((item) => ({
               productId: item.product_id || "",
               bundleId: item.bundle_id || "",
@@ -785,18 +880,13 @@ const CheckoutForm = ({
             return;
           } else if (selectedPaymentMethod === "paystack") {
             // For Paystack, create the order first, then pass orderId to the payment initializer
-            // GUARD: Ensure user.user_id is defined
-            if (!user?.user_id) {
-              showToast("User not found. Please log in again.", "error");
-              setIsSubmitting(false);
-              return;
-            }
+     
             // Create the order in the backend (simulate processWalletPayment but for paystack)
             const orderRes = await fetch("/api/orders/initialize", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                email: user.email,
+                email: email,
                 amount: totalAmountPaid,
                 orderDetails: orderData,
               }),
@@ -815,22 +905,16 @@ const CheckoutForm = ({
               return;
             }
             // Now initialize Paystack with the orderId
-            const userEmail =
-              user && "email" in user && user.email ? user.email : undefined;
-            if (!userEmail) {
-              showToast("User email not found. Please log in again.", "error");
-              setIsSubmitting(false);
-              return;
-            }
+            
             const response = await axios.post("/api/wallet/initialize", {
-              email: user.email,
+              email: email,
               amount: Math.round(totalAmountPaid),
               type: "direct_payment",
               orderId: orderResult.data.orderId,
               // Additional data for webhook processing
               autoAppliedReferralVoucher: autoAppliedReferralVoucher,
               customerName:
-                user.display_name || shippingAddressForm.getValues().fullName,
+                user?.display_name || shippingAddressForm.getValues().fullName,
               customerPhone: shippingAddressForm.getValues().phone,
               itemsOrdered: items.map((item) => ({
                 title: item.products?.name || item.bundles?.name || "",
@@ -1107,6 +1191,23 @@ const CheckoutForm = ({
                                 />
                                 <FormField
                                   control={shippingAddressForm.control}
+                                  name="email"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Email Address</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          placeholder="Enter email address"
+                                          {...field}
+                                          disabled={!!user?.email} 
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={shippingAddressForm.control}
                                   name="street"
                                   render={({ field }) => (
                                     <FormItem>
@@ -1262,6 +1363,23 @@ const CheckoutForm = ({
                                       placeholder="Enter full name"
                                       {...field}
                                       disabled={isAddingAddress}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={shippingAddressForm.control}
+                              name="email"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Email Address</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Enter email address"
+                                      {...field}
+                                      disabled={isAddingAddress || !!user?.email}
                                     />
                                   </FormControl>
                                   <FormMessage />

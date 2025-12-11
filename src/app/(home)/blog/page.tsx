@@ -9,11 +9,11 @@ import BlogCategories from "@components/shared/blog/BlogCategories";
 import { Skeleton } from "@components/ui/skeleton";
 
 export const metadata = {
-  title: "Blog | FeedMe - Recipes, Food Stories & Cooking Tips",
+  title: "The Journal | FeedMe",
   description: "Discover delicious recipes, food stories, nutrition tips, and cooking guides from FeedMe's blog. Learn about local food culture and cooking techniques.",
   keywords: "recipes, food blog, cooking tips, nutrition, food stories, Nigerian cuisine, cooking guides",
   openGraph: {
-    title: "Blog | FeedMe - Recipes, Food Stories & Cooking Tips",
+    title: "The Journal | FeedMe",
     description: "Discover delicious recipes, food stories, nutrition tips, and cooking guides from FeedMe's blog.",
     url: "https://shopfeedme.com/blog",
     siteName: "FeedMe",
@@ -21,7 +21,7 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Blog | FeedMe - Recipes, Food Stories & Cooking Tips",
+    title: "The Journal | FeedMe",
     description: "Discover delicious recipes, food stories, nutrition tips, and cooking guides from FeedMe's blog.",
   },
   alternates: {
@@ -41,27 +41,32 @@ export default function BlogPage({ searchParams }: BlogPageProps) {
   const page = parseInt(searchParams.page || "1", 10);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#FAFAF9]">
       <BlogHero />
 
-      <Container className="py-8">
+      <Container className="py-12 md:py-16">
         <Suspense fallback={<CategoriesSkeleton />}>
           <BlogCategories selectedCategory={category} />
         </Suspense>
 
         {!category && (
-          <section className="mb-12">
-            <Suspense fallback={<FeaturedPostsSkeleton />}>
-              <FeaturedPosts />
-            </Suspense>
-          </section>
+          <Suspense fallback={<FeaturedPostsSkeleton />}>
+            <FeaturedPosts />
+          </Suspense>
         )}
 
-        <section>
+        <section className="mb-20">
+          <div className="flex items-center justify-between mb-10">
+             <h3 className="text-2xl font-serif font-bold text-[#1D2939]">
+                {category ? `Category: ${category}` : "Latest Stories"}
+             </h3>
+             <div className="h-px flex-grow bg-gray-200 ml-6" />
+          </div>
           <Suspense fallback={<BlogGridSkeleton />}>
             <BlogGrid category={category} page={page} />
           </Suspense>
         </section>
+
       </Container>
     </div>
   );
@@ -69,7 +74,7 @@ export default function BlogPage({ searchParams }: BlogPageProps) {
 
 function CategoriesSkeleton() {
   return (
-    <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
+    <div className="flex gap-4 mb-12 overflow-x-auto pb-2">
       {Array.from({ length: 6 }).map((_, i) => (
         <Skeleton key={i} className="h-10 w-32 flex-shrink-0 rounded-full" />
       ))}
@@ -79,17 +84,17 @@ function CategoriesSkeleton() {
 
 function FeaturedPostsSkeleton() {
   return (
-    <div>
-      <Skeleton className="h-8 w-48 mb-6" />
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="space-y-4">
-            <Skeleton className="h-48 w-full rounded-lg" />
-            <Skeleton className="h-6 w-3/4" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-2/3" />
-          </div>
-        ))}
+    <div className="mb-16">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-8">
+            <Skeleton className="h-[500px] w-full rounded-[20px]" />
+            <Skeleton className="h-8 w-3/4 mt-6" />
+            <Skeleton className="h-4 w-full mt-3" />
+        </div>
+        <div className="lg:col-span-4 flex flex-col gap-8">
+            <Skeleton className="h-[240px] w-full rounded-[20px]" />
+            <Skeleton className="h-[240px] w-full rounded-[20px]" />
+        </div>
       </div>
     </div>
   );
@@ -97,17 +102,13 @@ function FeaturedPostsSkeleton() {
 
 function BlogGridSkeleton() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {Array.from({ length: 9 }).map((_, i) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
+      {Array.from({ length: 6 }).map((_, i) => (
         <div key={i} className="space-y-4">
-          <Skeleton className="h-48 w-full rounded-lg" />
+          <Skeleton className="h-[280px] w-full rounded-[20px]" />
+          <Skeleton className="h-4 w-24" />
           <Skeleton className="h-6 w-3/4" />
           <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-2/3" />
-          <div className="flex justify-between items-center">
-            <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-4 w-16" />
-          </div>
         </div>
       ))}
     </div>

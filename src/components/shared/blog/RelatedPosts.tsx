@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { BlogPost } from "@/lib/actions/blog.actions";
 import BlogCard from "./BlogCard";
+import { Skeleton } from "@components/ui/skeleton";
 
 interface RelatedPostsProps {
   slug: string;
@@ -33,15 +34,14 @@ export default function RelatedPosts({ slug }: RelatedPostsProps) {
 
   if (loading) {
     return (
-      <section>
-        <h2 className="text-2xl font-bold text-gray-900 mb-8">Related Posts</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <section className="border-t border-gray-100 pt-16">
+        <h2 className="text-3xl font-serif font-bold text-[#1D2939] mb-10">More to Explore</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="space-y-4">
-              <div className="h-48 bg-gray-200 rounded-lg animate-pulse" />
-              <div className="h-6 bg-gray-200 rounded animate-pulse" />
-              <div className="h-4 bg-gray-200 rounded animate-pulse" />
-              <div className="h-4 bg-gray-200 rounded animate-pulse w-2/3" />
+              <Skeleton className="h-[280px] w-full rounded-[20px]" />
+              <Skeleton className="h-6 w-3/4" />
+              <Skeleton className="h-4 w-full" />
             </div>
           ))}
         </div>
@@ -54,9 +54,9 @@ export default function RelatedPosts({ slug }: RelatedPostsProps) {
   }
 
   return (
-    <section>
-      <h2 className="text-2xl font-bold text-gray-900 mb-8">Related Posts</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <section className="border-t border-gray-100 pt-16">
+      <h2 className="text-3xl font-serif font-bold text-[#1D2939] mb-10">More to Explore</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {posts.map((post) => (
           <BlogCard key={post.id} post={post} />
         ))}

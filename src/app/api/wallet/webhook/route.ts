@@ -23,9 +23,8 @@ export async function POST(request: Request) {
     if (body.event === "charge.success") {
       console.log("charge success");
       const { reference, amount, metadata } = body.data;
-      console.log({ amount, metadata });
 
-      // Update transaction status
+      // Update transaction status (if record exists)
       const { data: transaction, error: txError } = await supabase
         .from("transactions")
         .update({ payment_status: "successful" })
@@ -34,18 +33,23 @@ export async function POST(request: Request) {
         .select()
         .maybeSingle();
 
-      if (txError) throw txError;
-      console.log({ transaction });
+      if (txError) {
+          console.error("Error updating transaction status:", txError);
+      }
 
-      if (transaction) {
-        // Handle based on payment type
-        if (metadata.type === "wallet_funding") {
-          await handleWalletFunding(metadata, amount);
-        } else if (metadata.type === "direct_payment") {
-          await handleDirectPayment(metadata, amount, metadata.orderId);
-        }
+      // Handle based on payment type
+      if (metadata.type === "wallet_funding") {
+          if (transaction) {
+               await handleWalletFunding(metadata, amount);
+          } else {
+               console.warn("Wallet funding succeeded but transaction record not found.");
+          }
+      } else if (metadata.type === "direct_payment") {
+          await handleDirectPayment(metadata, amount, reference);
+      }
 
-        // Send push notification
+      // Send push notification if user exists
+      if (metadata.user_id) {
         await sendPushNotification(
           metadata.user_id,
           metadata.type,
@@ -66,9 +70,6 @@ export async function POST(request: Request) {
 }
 
 async function handleWalletFunding(metadata: any, amount: number) {
-  console.log("Processing wallet funding");
-
-  // Update wallet balance
   const { data: wallet, error: fetchError } = await supabase
     .from("wallets")
     .select("balance")
@@ -85,10 +86,6 @@ async function handleWalletFunding(metadata: any, amount: number) {
     .eq("id", metadata.wallet_id);
 
   if (walletError) throw walletError;
-
-  console.log(
-    `Wallet funded: ${amount / 100} added to wallet ${metadata.wallet_id}`
-  );
 }
 
 async function handleDirectPayment(
@@ -96,22 +93,25 @@ async function handleDirectPayment(
   amount: number,
   reference: string
 ) {
-  console.log("Processing direct payment for order:", metadata.orderId);
-
   // Update order status to paid
-  const { error: orderError } = await supabase
+  let query = supabase
     .from("orders")
     .update({
       payment_status: "Paid",
       reference: reference,
       updated_at: new Date().toISOString(),
     })
-    .eq("order_id", metadata.orderId)
-    .eq("user_id", metadata.user_id);
+    .eq("order_id", metadata.orderId);
+
+  if (metadata.user_id) {
+    query = query.eq("user_id", metadata.user_id);
+  }
+  
+  const { error: orderError } = await query;
 
   if (orderError) throw orderError;
 
-  // Send order confirmation emails to admin and user
+  // Send order confirmation emails
   try {
     const emailRes = await axios.post(
       `${process.env.NEXT_PUBLIC_SITE_URL!}/api/email/send-order-confirmation`,
@@ -141,19 +141,12 @@ async function handleDirectPayment(
       }
     );
 
-    const emailData = emailRes.data;
-    console.log("Order confirmation email response:", emailData);
-
-    if (emailData.success) {
-      console.log("Order confirmation email sent successfully!");
-    } else {
-      console.error("Failed to send confirmation email:", emailData.error);
+    if (!emailRes.data.success) {
+      console.error("Failed to send confirmation email:", emailRes.data.error);
     }
   } catch (err) {
     console.error("Failed to send confirmation email:", err);
   }
-
-  console.log(`Order ${metadata.orderId} marked as paid and processed`);
 }
 
 async function sendPushNotification(

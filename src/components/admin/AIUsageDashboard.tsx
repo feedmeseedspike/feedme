@@ -15,7 +15,7 @@ import {
   AlertTriangle,
   Clock,
   Cpu,
-  Image
+  Image as ImageIcon
 } from 'lucide-react';
 
 interface AIUsageDashboardProps {
@@ -422,7 +422,7 @@ const AIUsageDashboard: React.FC<AIUsageDashboardProps> = ({ className }) => {
                 <div key={index} className="flex items-center justify-between p-3 rounded-lg border bg-gray-50">
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
-                      {log.has_image && <Image className="h-4 w-4 text-purple-600" />}
+                      {log.has_image && <ImageIcon className="h-4 w-4 text-purple-600" />}
                       <Badge className={getFeatureBadgeColor(log.feature_type)}>
                         {log.feature_type.replace('_', ' ')}
                       </Badge>

@@ -159,9 +159,14 @@ export default async function CategoryPage({
   })));
   console.log("Looking for slug:", categorySlug.toLowerCase());
   
-  const categoryObj = allCategories.find(
-    (c: Category) => toSlug(c.title).toLowerCase() === categorySlug.toLowerCase()
-  );
+  const categoryObj =
+    allCategories.find((c: Category) => toSlug(c.title).toLowerCase() === categorySlug.toLowerCase()) ||
+    allCategories.find((c: Category) =>
+      c.title
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '') === categorySlug.toLowerCase()
+    );
 
   if (!categoryObj) {
     console.log("Category not found for slug:", categorySlug);
