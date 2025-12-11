@@ -152,13 +152,16 @@ export async function fetchUserOrders(
 ) {
   const supabase = createClient();
   
+  console.log("Running fetchUserOrders - Manual enrichment version");
+  
+  // 1. Fetch Orders
   let query = supabase
     .from("orders")
     .select(
       `
       *,
-      order_items(*, products(name, images))
-    `, { count: 'exact' } // Request exact count
+      profiles:user_id(display_name)
+    `, { count: 'exact' }
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
@@ -168,13 +171,60 @@ export async function fetchUserOrders(
   const end = start + itemsPerPage - 1;
   query = query.range(start, end);
 
-  const { data, error, count } = await query;
+  const { data: orders, error, count } = await query;
 
   if (error) {
     throw error;
   }
 
-  return { data, count };
+  // 2. Enrich orders with items (Manual Fetch to bypass schema cache issues)
+  const enrichedOrders = await Promise.all(
+    (orders || []).map(async (order: any) => {
+      // Fetch items for this order
+      const { data: items } = await supabase
+        .from("order_items")
+        .select("*")
+        .eq("order_id", order.id);
+      
+      if (!items) return { ...order, order_items: [] };
+
+      // Enrich items with product/bundle details
+      const enrichedItems = await Promise.all(
+        items.map(async (item: any) => {
+           let product = null;
+           let bundle = null;
+
+           if (item.product_id) {
+             const { data: p } = await supabase
+               .from("products")
+               .select("name, images")
+               .eq("id", item.product_id)
+               .single();
+             product = p;
+           }
+           
+           if (item.bundle_id) {
+             const { data: b } = await supabase
+               .from("bundles")
+               .select("name, thumbnail_url")
+               .eq("id", item.bundle_id)
+               .single();
+             bundle = b;
+           }
+
+           return {
+             ...item,
+             products: product,
+             bundles: bundle
+           };
+        })
+      );
+
+      return { ...order, order_items: enrichedItems };
+    })
+  );
+
+  return { data: enrichedOrders, count };
 }
 
 export async function addPurchase(body: AddPurchaseBody) {
