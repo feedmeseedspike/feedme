@@ -938,7 +938,21 @@ const CheckoutForm = ({
               if (orderResult.data.orderId) {
                 localStorage.setItem("lastOrderId", orderResult.data.orderId);
               }
-              window.location.href = response.data.authorization_url;
+
+              const paymentUrl = response.data.authorization_url;
+              
+              // Google Tag conversion event
+              if (typeof window !== 'undefined' && (window as any).gtag) {
+                (window as any).gtag('event', 'conversion_event_purchase_2', {
+                  'event_callback': function() {
+                    window.location.href = paymentUrl;
+                  },
+                  'event_timeout': 2000,
+                });
+              } else {
+                window.location.href = paymentUrl;
+              }
+              
               setIsSubmitting(false);
               return; // Stop further execution
             } else {
