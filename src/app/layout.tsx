@@ -30,6 +30,14 @@ const DynamicReferralBanner = dynamic(
   }
 );
 
+const DealsPopup = dynamic(
+  () => import("@components/shared/DealsPopup"),
+  {
+    ssr: false,
+    loading: () => null,
+  }
+);
+
 const proxima = localFont({
   src: [
     {
@@ -235,11 +243,12 @@ export default async function RootLayout({
       </head>
       <head>
         {/* Google Analytics - Deferred to reduce blocking */}
+        {/* Google Analytics - Load after interactive for reliable tracking */}
         <Script
-          strategy="lazyOnload"
+          strategy="afterInteractive"
           src="https://www.googletagmanager.com/gtag/js?id=G-DT105JV69M"
         />
-        <Script id="google-analytics" strategy="lazyOnload">
+        <Script id="google-analytics" strategy="afterInteractive">
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
@@ -247,8 +256,8 @@ export default async function RootLayout({
             gtag('config', 'G-DT105JV69M');
           `}
         </Script>
-        {/* Google Tag Manager - Deferred to reduce blocking */}
-        <Script id="google-tag-manager" strategy="lazyOnload">
+        {/* Google Tag Manager - Load after interactive for reliable tracking */}
+        <Script id="google-tag-manager" strategy="afterInteractive">
           {`
             (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
             new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -307,6 +316,7 @@ export default async function RootLayout({
                     <CustomScrollbar>
                       <PathnameProvider hasReferralStatus={hasReferralStatus}>
                         <SignupWelcomeProvider>
+                          <DealsPopup />
                           <NewVisitorProvider>{children}</NewVisitorProvider>
                         </SignupWelcomeProvider>
                       </PathnameProvider>
