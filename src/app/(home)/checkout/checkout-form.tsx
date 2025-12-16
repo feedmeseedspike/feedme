@@ -69,11 +69,12 @@ import {
 } from "@/app/(dashboard)/account/addresses/actions";
 import { Pencil, Trash2, Loader2 } from "lucide-react";
 import { clearCart } from "src/store/features/cartSlice";
-import { useClearCartMutation } from "src/queries/cart";
+import { useClearCartMutation, useRemoveFromCartMutation } from "src/queries/cart";
 import axios from "axios";
 import { sendPushNotification } from "@/lib/actions/pushnotification.action";
 import { useAnonymousCart } from "src/hooks/useAnonymousCart";
 import { createClient as createSupabaseClient } from "src/utils/supabase/client";
+import { calculateCartDiscount } from "src/lib/deals";
 
 interface GroupedCartItem {
   product?: CartItem["products"];
@@ -85,10 +86,11 @@ interface GroupedCartItem {
 interface CartProductGroupDisplayProps {
   productGroup: GroupedCartItem;
   productId: string;
+  onRemove?: (id: string) => void;
 }
 
 const CartProductGroupDisplay = React.memo(
-  ({ productId, productGroup }: CartProductGroupDisplayProps) => {
+  ({ productId, productGroup, onRemove }: CartProductGroupDisplayProps) => {
     return (
       <div key={productId} className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
@@ -106,7 +108,11 @@ const CartProductGroupDisplay = React.memo(
         </div>
         {Object.entries(productGroup.options).map(
           ([optionKey, item]: [string, CartItem]) => (
-            <CartItemDisplay key={item.id} item={item} />
+            <CartItemDisplay
+              key={item.id}
+              item={item}
+              onRemove={onRemove}
+            />
           )
         )}
       </div>
@@ -119,9 +125,10 @@ CartProductGroupDisplay.displayName = "CartProductGroupDisplay";
 // New component for individual cart items
 interface CartItemDisplayProps {
   item: CartItem;
+  onRemove?: (id: string) => void;
 }
 
-const CartItemDisplay = React.memo(({ item }: CartItemDisplayProps) => {
+const CartItemDisplay = React.memo(({ item, onRemove }: CartItemDisplayProps) => {
   const productOption = isProductOption(item.option) ? item.option : null;
 
   return (
@@ -160,7 +167,19 @@ const CartItemDisplay = React.memo(({ item }: CartItemDisplayProps) => {
                   : item.price) || 0
               )}{" "}
             </p>
-            <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+              {onRemove && (
+                <button
+                  type="button"
+                  onClick={() => onRemove(item.id)}
+                  className="text-red-500 hover:text-red-700 transition-colors p-1"
+                  aria-label="Remove item"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -333,6 +352,7 @@ const CheckoutForm = ({
   const { mutateAsync: validateVoucherMutation } =
     useVoucherValidationMutation();
   const clearCartMutation = useClearCartMutation();
+  const { mutateAsync: removeAuthItem } = useRemoveFromCartMutation();
 
   const { showToast } = useToast();
   const queryClient = useQueryClient();
@@ -469,18 +489,20 @@ const CheckoutForm = ({
   }, [subtotal]);
   */
 
+  const dealsDiscount = useMemo(() => calculateCartDiscount(subtotal, items), [subtotal, items]);
+
   const staffDiscount = useMemo(() => {
     if (user?.is_staff) {
       // 10% off subtotal + service charge (not delivery fee or voucher discount)
       // return 0.1 * (subtotal + serviceCharge);
-      return 0.1 * subtotal; // Service charge commented out
+      return 0.1 * (subtotal - dealsDiscount); // Discount applies after deals? or before? Usually stackable or not. Let's assume on remaining.
     }
     return 0;
-  }, [user, subtotal /*, serviceCharge*/]);
+  }, [user, subtotal, dealsDiscount /*, serviceCharge*/]);
 
-  const totalAmount = subtotal;
+  const totalAmount = subtotal; // Keeps track of gross
   const totalAmountPaid =
-    subtotal + cost /*+ serviceCharge*/ - voucherDiscount - staffDiscount;
+    subtotal - dealsDiscount + cost /*+ serviceCharge*/ - voucherDiscount - staffDiscount;
 
   const isReferralVoucher = isVoucherValid && voucherCode.startsWith("REF-");
 
@@ -696,6 +718,20 @@ const CheckoutForm = ({
     });
   };
 
+  const handleRemoveItem = async (itemId: string) => {
+    if (user) {
+      try {
+        await removeAuthItem(itemId);
+        showToast("Item removed", "success");
+      } catch (e) {
+        showToast("Failed to remove item", "error");
+      }
+    } else {
+      anonymousCart.removeItem(itemId);
+      showToast("Item removed from cart", "success");
+    }
+  };
+
   const handleOrderSubmission = async () => {
     if (isSubmitting) return;
     try {
@@ -716,8 +752,14 @@ const CheckoutForm = ({
       startTransition(async () => {
         try {
           // Check for email
-          const email = user?.email || shippingAddressForm.getValues("email");
+          const formValues = shippingAddressForm.getValues();
+          const email = user?.email || formValues.email;
+          const formLocation = formValues.location;
+
+          console.log("DEBUG: Submission Details", { email, formLocation, paymentMethod: selectedPaymentMethod });
+
           if (!email) {
+            console.error("DEBUG: Email missing");
             showToast("Email is required.", "error");
             setIsSubmitting(false);
             return;
@@ -941,17 +983,18 @@ const CheckoutForm = ({
 
               const paymentUrl = response.data.authorization_url;
               
-              // Google Tag conversion event
+              // Non-blocking GTM event
               if (typeof window !== 'undefined' && (window as any).gtag) {
-                (window as any).gtag('event', 'conversion_event_purchase_2', {
-                  'event_callback': function() {
-                    window.location.href = paymentUrl;
-                  },
-                  'event_timeout': 2000,
-                });
-              } else {
-                window.location.href = paymentUrl;
+                try {
+                  (window as any).gtag('event', 'conversion_event_purchase_2');
+                } catch (e) {
+                  console.error("GTM Error:", e);
+                }
               }
+              
+              // Redirect immediately
+              console.log("Redirecting to:", paymentUrl);
+              window.location.href = paymentUrl;
               
               setIsSubmitting(false);
               return; // Stop further execution
@@ -1126,12 +1169,8 @@ const CheckoutForm = ({
                                   async (values) => {
                                     setIsAddingAddress(true);
                                     try {
-                                      let address: AddressWithId;
-                                      if (editingAddress) {
-                                        // For now, just remove and re-add (implement updateAddressAction if needed)
-                                        // address = await updateAddressAction(editingAddress.id, { ...values });
-                                        // For demo, just add as new
-                                        address = await addAddressAction({
+                                      let address: any;
+                                      const newDetails = {
                                           label: values.fullName || "Home",
                                           street: values.street,
                                           city: values.location,
@@ -1139,7 +1178,22 @@ const CheckoutForm = ({
                                           zip: "",
                                           country: "",
                                           phone: values.phone,
-                                        });
+                                      };
+
+                                      if (user) {
+                                        // Authenticated: Use Server Action
+                                        // Note: Logic implies creating new address even for edits (as per original code)
+                                        address = await addAddressAction(newDetails);
+                                      } else {
+                                        // Anonymous: Local Object
+                                        address = {
+                                            id: editingAddress ? editingAddress.id : `temp-${Date.now()}`,
+                                            ...newDetails,
+                                            user_id: null
+                                        };
+                                      }
+
+                                      if (editingAddress) {
                                         setUserAddresses((prev) =>
                                           prev.map((a) =>
                                             a.id === editingAddress.id
@@ -1148,15 +1202,6 @@ const CheckoutForm = ({
                                           )
                                         );
                                       } else {
-                                        address = await addAddressAction({
-                                          label: values.fullName || "Home",
-                                          street: values.street,
-                                          city: values.location,
-                                          state: "",
-                                          zip: "",
-                                          country: "",
-                                          phone: values.phone,
-                                        });
                                         setUserAddresses((prev) => [
                                           ...prev,
                                           address,
@@ -1333,15 +1378,31 @@ const CheckoutForm = ({
                               async (values) => {
                                 setIsAddingAddress(true);
                                 try {
-                                  const address = await addAddressAction({
-                                    label: values.fullName || "Home",
-                                    street: values.street,
-                                    city: values.location,
-                                    state: "",
-                                    zip: "",
-                                    country: "",
-                                    phone: values.phone,
-                                  });
+                                  let address: any;
+                                  if (user) {
+                                    address = await addAddressAction({
+                                      label: values.fullName || "Home",
+                                      street: values.street,
+                                      city: values.location,
+                                      state: "",
+                                      zip: "",
+                                      country: "",
+                                      phone: values.phone,
+                                    });
+                                  } else {
+                                    // Handle guest/anonymous user - local state only
+                                    address = {
+                                      id: `temp-${Date.now()}`,
+                                      label: values.fullName || "Guest",
+                                      street: values.street,
+                                      city: values.location,
+                                      state: "",
+                                      zip: "",
+                                      country: "",
+                                      phone: values.phone,
+                                    };
+                                  }
+
                                   setUserAddresses((prev) => [
                                     ...prev,
                                     address,
@@ -1622,6 +1683,7 @@ const CheckoutForm = ({
                               key={productId}
                               productId={productId}
                               productGroup={productGroup}
+                              onRemove={handleRemoveItem}
                             />
                           )
                         )}

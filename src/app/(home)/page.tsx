@@ -1,4 +1,5 @@
 import Banner from "@components/shared/home/Home-banner";
+import Link from "next/link";
 // import { HomeCarousel } from "@components/shared/home/Home-carousel";
 import TopCategories from "@components/shared/home/TopCategories";
 import ProductSlider from "@components/shared/product/product-slider";
@@ -292,6 +293,21 @@ export default async function Home() {
         <div className="bg-[#F9FAFB]">
           <Container>
             <Banner />
+
+            {/* <Link href="/spin-to-win" className="block w-full mt-6 mb-2">
+              <div className="rounded-xl overflow-hidden relative h-20 md:h-24 bg-gradient-to-r from-[#1B6013] to-[#F0800F] flex items-center justify-between px-6 md:px-12 shadow-lg group hover:shadow-xl transition-all">
+                <div className="flex items-center gap-4">
+                  <span className="text-3xl md:text-4xl animate-bounce">🎡</span>
+                  <div>
+                    <h3 className="text-white font-bold text-lg md:text-2xl">Daily Spin & Win</h3>
+                    <p className="text-white/90 text-xs md:text-sm">Win up to ₦1,000 Wallet Cash & Free Items!</p>
+                  </div>
+                </div>
+                <div className="bg-white text-[#1B6013] px-4 py-2 rounded-lg font-bold text-sm group-hover:scale-105 transition-transform">
+                    Play Now
+                </div>
+              </div>
+            </Link> */}
 
             <Suspense
               fallback={

@@ -10,6 +10,8 @@ import { clearCart } from "src/store/features/cartSlice";
 import { useClearCartMutation } from "@/queries/cart";
 import { formatNaira, showToast } from "src/lib/utils";
 import { Separator } from "@components/ui/separator";
+import { DEFAULT_DECEMBER_DEALS } from "src/lib/deals";
+
 import { 
   Check, 
   ChefHat, 
@@ -211,6 +213,12 @@ export default function OrderConfirmationPage() {
   const voucherDiscount = order.voucher_discount ?? 0; 
   const totalAmountPaid = order.total_amount_paid || (subtotal + deliveryFee - voucherDiscount);
   
+  // Cashback Calculation
+  const jollyDeal = DEFAULT_DECEMBER_DEALS.JOLLY_CASHBACK;
+  const cashbackAmount = (order.user_id && subtotal >= jollyDeal.min_spend) 
+      ? subtotal * jollyDeal.percentage 
+      : 0;
+
   // Confetti Logic
   const confettiPieces = Array.from({ length: 30 });
 
@@ -314,6 +322,29 @@ export default function OrderConfirmationPage() {
           Thank you, {order.profiles?.display_name || (order.shipping_address as any)?.email || "Guest"}.<br/>
           Your order has been received.
         </motion.p>
+
+        {/* CASHBACK CELEBRATION */}
+        {cashbackAmount > 0 && order.payment_status === "Paid" && (
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.5, type: "spring" }}
+            className="mb-10 text-center bg-[#F0FDF4] border border-[#1B6013]/20 p-6 rounded-2xl max-w-md mx-auto relative overflow-hidden"
+          >
+             <div className="relative z-10">
+                <span className="text-3xl mb-2 block">🎉</span>
+                <h3 className={`${playfair.className} text-xl font-bold text-[#1B6013] mb-1`}>
+                   You earned Cashback!
+                </h3>
+                <p className="text-[#1B6013]">
+                   <span className="font-bold">{formatNaira(cashbackAmount)}</span> has been added to your wallet.
+                </p>
+             </div>
+             {/* Background Decoration */}
+             <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-[#A3E635] rounded-full opacity-20 blur-2xl" />
+             <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-20 h-20 bg-[#1B6013] rounded-full opacity-10 blur-xl" />
+          </motion.div>
+        )}
 
         {/* Payment Status Message (Restored) */}
         {paymentStatusLabel !== "Paid" && (

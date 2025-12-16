@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { supabase } from "src/lib/supabaseClient";
 import axios from "axios";
 import admin from "@/utils/firebase/admin";
+import { DEFAULT_DECEMBER_DEALS } from "src/lib/deals";
 
 export async function POST(request: Request) {
   try {
@@ -93,6 +94,21 @@ async function handleDirectPayment(
   amount: number,
   reference: string
 ) {
+  // 1. Idempotency Check: Fetch current order status
+  const { data: existingOrder, error: fetchError } = await supabase
+    .from("orders")
+    .select("payment_status")
+    .eq("order_id", metadata.orderId)
+    .single();
+
+  if (fetchError) {
+      console.error("Error fetching order for idempotency check:", fetchError);
+      // Proceed with caution, or throw? If we can't read, update might fail anyway.
+  } else if (existingOrder && existingOrder.payment_status === "Paid") {
+      console.log(`Order ${metadata.orderId} is already Paid. Skipping processing.`);
+      return;
+  }
+
   // Update order status to paid
   let query = supabase
     .from("orders")
@@ -110,6 +126,79 @@ async function handleDirectPayment(
   const { error: orderError } = await query;
 
   if (orderError) throw orderError;
+
+  // --- CASHBACK LOGIC (Jolly 10% Off) ---
+  // Only for authenticated users
+  if (metadata.user_id) {
+      const subtotal = Number(metadata.subtotal || 0); // Assuming Naira
+      const jollyDeal = DEFAULT_DECEMBER_DEALS.JOLLY_CASHBACK;
+      
+      if (subtotal >= jollyDeal.min_spend) {
+          try {
+              const cashbackAmount = subtotal * jollyDeal.percentage;
+              console.log(`Applying Jolly Cashback: ₦${cashbackAmount} for order ${metadata.orderId}`);
+
+              // 1. Get Wallet
+              let { data: wallet, error: walletError } = await supabase
+                  .from("wallets")
+                  .select("*")
+                  .eq("user_id", metadata.user_id)
+                  .single();
+
+              if (!wallet && !walletError) {
+                  // Create wallet if not exists
+                  const { data: newWallet, error: createError } = await supabase
+                      .from("wallets")
+                      .insert({ user_id: metadata.user_id, balance: 0, currency: "NGN" })
+                      .select()
+                      .single();
+                  if (!createError) wallet = newWallet;
+              }
+
+              if (wallet) {
+                  // 2. Credit Wallet
+                  const newBalance = (wallet.balance || 0) + cashbackAmount;
+                  const { error: updateError } = await supabase
+                      .from("wallets")
+                      .update({ balance: newBalance })
+                      .eq("id", wallet.id);
+
+                  if (updateError) {
+                      console.error("Failed to credit cashback to wallet:", updateError);
+                  } else {
+                      console.log(`Cashback credited successfully. New Balance: ${newBalance}`);
+                      
+                      // 3. Insert Transaction Record for History Visibility
+                      const { error: txInsertError } = await supabase
+                        .from("transactions")
+                        .insert({
+                             user_id: metadata.user_id,
+                             amount: cashbackAmount,
+                             description: "Cashback Reward: Jolly 10%",
+                             reference: `cb_${metadata.orderId}_${Date.now()}`,
+                             payment_status: "Paid",
+                             type: "wallet_funding", // Using wallet_funding to ensure it shows as credit
+                             created_at: new Date().toISOString()
+                        });
+
+                      if (txInsertError) {
+                          console.error("Failed to insert cashback transaction record:", txInsertError);
+                      }
+
+                      // Optional: Send Cashback Notification?
+                      await sendPushNotification(
+                          metadata.user_id, 
+                          "wallet_funding", 
+                          cashbackAmount * 100, 
+                          { ...metadata, type: 'cashback_reward' } 
+                      );
+                  }
+              }
+          } catch (err) {
+              console.error("Error processing cashback:", err);
+          }
+      }
+  }
 
   // Send order confirmation emails
   try {
