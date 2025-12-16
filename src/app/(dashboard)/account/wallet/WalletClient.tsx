@@ -1,43 +1,31 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import { Button } from "@components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
-import { Input } from "@components/ui/input";
-import { Badge } from "@components/ui/badge";
-import { Separator } from "@components/ui/separator";
+
+import React, { useState } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@components/ui/select";
+  motion,
+  AnimatePresence,
+} from "framer-motion";
 import {
   Wallet,
   Plus,
   ArrowUpRight,
   ArrowDownLeft,
   Search,
-  Filter,
   Eye,
   EyeOff,
 } from "lucide-react";
-import { formatNaira } from "src/lib/utils";
-import { Skeleton } from "@components/ui/skeleton";
+import { formatNaira, cn } from "src/lib/utils";
 import PaginationBar from "@components/shared/pagination";
 import { Tables } from "src/utils/database.types";
-import { createClient } from "@utils/supabase/client";
 import axios from "axios";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@components/ui/dialog";
+import { Button } from "@components/ui/button";
 
+// --- Types ---
 interface WalletClientProps {
   user: any;
   walletBalance: number;
@@ -47,6 +35,112 @@ interface WalletClientProps {
   pageSize: number;
 }
 
+// --- Components ---
+
+const AuroraBackground = () => (
+  <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+    <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-[#1B6013]/5 rounded-full blur-[120px] mix-blend-multiply animate-pulse-slow" />
+    <div className="absolute bottom-[-10%] right-[-5%] w-[60vw] h-[60vw] bg-[#1B6013]/10 rounded-full blur-[100px] mix-blend-multiply animate-pulse-slower" />
+    <div className="absolute top-[30%] left-[30%] w-[40vw] h-[40vw] bg-[#e8f5e9] rounded-full blur-[80px] mix-blend-multiply" />
+  </div>
+);
+
+const GlassCard = ({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+    className={cn(
+      "relative overflow-hidden rounded-[32px] border border-white/60 bg-white/60 backdrop-blur-xl shadow-sm",
+      className
+    )}
+  >
+    {children}
+  </motion.div>
+);
+
+const TransactionItem = ({ tx }: { tx: Tables<"transactions"> }) => (
+  <motion.div
+    initial={{ opacity: 0, scale: 0.98 }}
+    animate={{ opacity: 1, scale: 1 }}
+    whileHover={{ scale: 1.01, backgroundColor: "rgba(255,255,255,0.8)" }}
+    transition={{ duration: 0.2 }}
+    className="group flex items-center justify-between p-4 mb-2 rounded-2xl cursor-default transition-colors hover:shadow-sm"
+  >
+    <div className="flex items-center gap-5">
+      <div
+        className={cn(
+          "w-12 h-12 rounded-2xl flex items-center justify-center transition-all bg-white shadow-sm border border-gray-100",
+          tx.amount >= 0 ? "text-[#1B6013]" : "text-gray-400"
+        )}
+      >
+        {tx.amount >= 0 ? (
+          <ArrowDownLeft className="w-5 h-5" strokeWidth={1.5} />
+        ) : (
+          <ArrowUpRight className="w-5 h-5" strokeWidth={1.5} />
+        )}
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className="text-[15px] font-medium text-gray-900 leading-none">
+          {tx.description || "Transaction"}
+        </span>
+        <div className="flex items-center gap-2 text-xs text-gray-500 font-medium">
+{tx.created_at && (
+            <>
+              <span>
+                {new Date(tx.created_at).toLocaleDateString(undefined, {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short',
+                })}
+              </span>
+              <span className="w-1 h-1 rounded-full bg-gray-300" />
+              <span>
+                {new Date(tx.created_at).toLocaleTimeString(undefined, {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+
+    <div className="text-right">
+      <span
+        className={cn(
+          "block text-[15px] font-semibold tracking-tight",
+          tx.amount >= 0 ? "text-[#1B6013]" : "text-gray-900"
+        )}
+      >
+        {tx.amount >= 0 ? "+" : ""}
+        {formatNaira(tx.amount)}
+      </span>
+      <span
+        className={cn(
+          "text-[10px] uppercase tracking-wider font-semibold",
+          tx.payment_status === "Paid"
+            ? "text-emerald-600"
+            : tx.payment_status === "Pending"
+            ? "text-amber-600"
+            : "text-gray-400"
+        )}
+      >
+        {tx.payment_status}
+      </span>
+    </div>
+  </motion.div>
+);
+
+// --- Main Page ---
+
 export default function WalletClient({
   user,
   walletBalance,
@@ -55,371 +149,234 @@ export default function WalletClient({
   currentPage,
   pageSize,
 }: WalletClientProps) {
-  const [showBalance, setShowBalance] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState("all");
-  const [selectedTransaction, setSelectedTransaction] =
-    useState<Tables<"transactions"> | null>(null);
   const [isAddFundsOpen, setIsAddFundsOpen] = useState(false);
-  const [amount, setAmount] = useState("");
-  const [addFundsLoading, setAddFundsLoading] = useState(false);
-  const [addFundsError, setAddFundsError] = useState<string | null>(null);
+  const [fundingAmount, setFundingAmount] = useState("");
+  const [fundingLoading, setFundingLoading] = useState(false);
+  const [showBalance, setShowBalance] = useState(true);
 
-  const supabase = createClient();
-  // console.log(supabase);
-  // supabase.auth.getSession().then(console.log);
-
-  // useEffect(() => {
-  //   supabase.auth.getSession().then(({ data }) => {
-  //     console.log("Supabase session in WalletClient:", data.session);
-  //   });
-  // }, []);
-
-  // Filtered transactions
+  // Filter transactions
   const filteredTransactions = (transactions || []).filter((transaction) => {
     const description = transaction.description || "";
-    const matchesSearch = description
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-
-    let matchesFilter = false;
-    if (filterType === "all") {
-      matchesFilter = true;
-    } else if (filterType === "credit") {
-      matchesFilter = transaction.amount >= 0;
-    } else if (filterType === "debit") {
-      matchesFilter = transaction.amount < 0;
-    }
-
-    return matchesSearch && matchesFilter;
+    return description.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
   const totalPages = Math.ceil(totalTransactions / pageSize);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "Paid":
-        return "bg-green-100 text-green-800";
-      case "Cancelled":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getTransactionIcon = (amount: number) => {
-    return amount >= 0 ? (
-      <ArrowDownLeft className="w-4 h-4 text-green-600" />
-    ) : (
-      <ArrowUpRight className="w-4 h-4 text-red-600" />
-    );
-  };
-
-  const formatTransactionDate = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    };
-    return dateString
-      ? new Date(dateString).toLocaleDateString(undefined, options)
-      : "N/A";
-  };
-
   const handleAddFunds = async () => {
-    setAddFundsLoading(true);
-    setAddFundsError(null);
+    setFundingLoading(true);
     try {
-      // console.log('trying...')
-      // const {
-      //   data: { session },
-      // } = await supabase.auth.getSession();
-      // const accessToken = session?.access_token;
-      // if (!accessToken) {
-      //   throw new Error("You are not authenticated. Please log in again.");
-      // }
-      // console.log("get session => ", accessToken);
-      const res = await axios.post(
-        "/api/wallet/initialize",
-        {
-          email: user.email,
-          amount: parseFloat(amount),
-          type: "wallet_funding",
+      const res = await axios.post("/api/wallet/initialize", {
+        email: user.email,
+        amount: parseFloat(fundingAmount),
+        type: "wallet_funding",
+      });
+      if (res.data.authorization_url) {
+        const paymentUrl = res.data.authorization_url;
+
+        // Google Tag conversion event
+        if (typeof window !== 'undefined' && (window as any).gtag) {
+          (window as any).gtag('event', 'conversion_event_purchase_2', {
+            'event_callback': function() {
+              window.location.href = paymentUrl;
+            },
+            'event_timeout': 2000,
+          });
+        } else {
+          window.location.href = paymentUrl;
         }
-        // {
-        //   headers: {
-        //     Authorization: `Bearer ${accessToken}`,
-        //   },
-        // }
-      );
-      if (!res.data.authorization_url)
-        throw new Error(res.data.message || "Failed to initialize payment");
-      window.location.href = res.data.authorization_url;
-    } catch (err: any) {
-      setAddFundsError(
-        err.response?.data?.message || err.message || "Failed to add funds"
-      );
+      }
+    } catch (err) {
+      console.error(err);
     } finally {
-      setAddFundsLoading(false);
+      setFundingLoading(false);
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Wallet</h1>
-          <p className="text-gray-600">Manage your wallet and transactions</p>
-        </div>
-      </div>
+    <div className="relative min-h-screen w-full bg-[#FAFAFA] text-gray-900 font-sans selection:bg-[#1B6013]/20">
+      <AuroraBackground />
 
-      {/* Balance Card */}
-      <Card className="bg-gradient-to-r from-[#1B6013] to-[#2d7a1f]">
-        <CardHeader className="text-white">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Wallet className="w-6 h-6" />
-              <CardTitle className="text-lg">Wallet Balance</CardTitle>
+      <main className="relative z-10 container mx-auto px-4 py-12 max-w-4xl space-y-12">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div>
+            <h1 className="text-3xl font-light tracking-tight text-gray-900">
+              Wallet
+            </h1>
+          </div>
+        </div>
+
+        {/* Hero: Glass Balance Card */}
+        <GlassCard className="p-8 md:p-12 bg-[#1B6013] border-white/10 shadow-xl overflow-hidden relative group">
+          {/* Subtle pattern overlay */}
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay pointer-events-none" />
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/10 rounded-full blur-2xl -ml-12 -mb-12 pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
+            <div className="space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="p-2.5 rounded-xl bg-white/20 backdrop-blur-md border border-white/10 shadow-sm">
+                     <Wallet className="w-5 h-5 text-white" strokeWidth={1.5} />
+                </div>
+                <span className="text-sm font-medium text-white/80 uppercase tracking-wider">Available Balance</span>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <AnimatePresence mode="wait" initial={false}>
+                    {showBalance ? (
+                        <motion.div
+                            key="balance"
+                            initial={{ opacity: 0, filter: "blur(4px)" }}
+                            animate={{ opacity: 1, filter: "blur(0px)" }}
+                            exit={{ opacity: 0, filter: "blur(4px)" }}
+                            transition={{ duration: 0.3 }}
+                            className="flex items-baseline gap-1"
+                        >
+                            <span className="text-6xl md:text-7xl font-light tracking-tighter text-white">
+                                {formatNaira(walletBalance).replace("₦", "")}
+                            </span>
+                            <span className="text-2xl md:text-3xl text-white/60 font-light translate-y-[-4px]">NGN</span>
+                        </motion.div>
+                    ) : (
+                        <motion.div
+                            key="hidden"
+                            initial={{ opacity: 0, filter: "blur(4px)" }}
+                            animate={{ opacity: 1, filter: "blur(0px)" }}
+                            exit={{ opacity: 0, filter: "blur(4px)" }}
+                            transition={{ duration: 0.3 }}
+                            className="text-6xl md:text-7xl font-light tracking-widest text-white/80 select-none flex items-center h-[1.1em]"
+                        >
+                            ••••••
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+                
+                <button 
+                  onClick={() => setShowBalance(!showBalance)}
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/70 hover:text-white"
+                >
+                    {showBalance ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
+
             <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowBalance(!showBalance)}
-              className="text-white hover:bg-white/20">
-              {showBalance ? (
-                <EyeOff className="w-4 h-4" />
-              ) : (
-                <Eye className="w-4 h-4" />
-              )}
+              onClick={() => setIsAddFundsOpen(true)}
+              className="h-14 px-8 rounded-full bg-white text-[#1B6013] hover:bg-gray-100 shadow-lg shadow-black/10 transition-all hover:scale-[1.02] active:scale-[0.98] text-base font-semibold border-none"
+            >
+              <Plus className="w-5 h-5 mr-2" /> Add Funds
             </Button>
           </div>
-        </CardHeader>
-        <CardContent className="text-white">
-          <div className="space-y-4">
-            <div>
-              <p className="text-2xl font-bold">
-                {showBalance ? formatNaira(walletBalance) : "••••••"}
-              </p>
-              <p className="text-white/80 text-sm">Available Balance</p>
-            </div>
-            <div className="flex gap-3">
-              <Dialog open={isAddFundsOpen} onOpenChange={setIsAddFundsOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-white text-[#1B6013] hover:bg-white/90">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Funds
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add Funds to Wallet</DialogTitle>
-                    <DialogDescription>
-                      Enter the amount you want to add to your wallet.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium">Amount</label>
-                      <Input
-                        type="number"
-                        placeholder="Enter amount"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        className="mt-1"
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsAddFundsOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button
-                      className="bg-[#1B6013] hover:bg-[#1B6013]/90"
-                      disabled={
-                        !amount || parseFloat(amount) <= 0 || addFundsLoading
-                      }
-                      onClick={handleAddFunds}>
-                      {addFundsLoading ? "Processing..." : "Continue"}
-                    </Button>
-                  </DialogFooter>
-                  {addFundsError && (
-                    <div className="text-red-500 text-sm mt-2">
-                      {addFundsError}
-                    </div>
-                  )}
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        </GlassCard>
 
-      {/* Transaction History */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Transaction History</CardTitle>
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <Input
-                  placeholder="Search transactions..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-64"
+        {/* Transaction Section */}
+        <section className="space-y-6">
+          <div className="flex items-center justify-between sticky top-4 z-20 md:static">
+             <h2 className="text-xl font-medium tracking-tight">Activity</h2>
+             <div className="relative group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-[#1B6013] transition-colors" />
+                <input 
+                    type="text"
+                    placeholder="Search..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-40 md:w-64 pl-10 pr-4 py-2.5 bg-white border border-gray-100 rounded-full text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B6013]/10 focus:w-64 md:focus:w-80 transition-all shadow-sm"
                 />
-              </div>
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-32">
-                  <Filter className="w-4 h-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="credit">Credit</SelectItem>
-                  <SelectItem value="debit">Debit</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {filteredTransactions.length === 0 ? (
-              <div className="text-center text-gray-500">
-                No transactions found.
-              </div>
-            ) : (
-              filteredTransactions.map((transaction, index) => (
-                <div key={transaction.id}>
-                  <div
-                    className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
-                    onClick={() => setSelectedTransaction(transaction)}>
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 bg-gray-100 rounded-full">
-                        {getTransactionIcon(transaction.amount)}
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">
-                          {formatTransactionDate(transaction.created_at || "")}{" "}
-                          • {transaction.reference}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          {transaction.payment_gateway && (
-                            <span className="text-xs text-gray-500">
-                              Via {transaction.payment_gateway}
-                            </span>
-                          )}
-                          {transaction.payment_status && (
-                            <Badge
-                              className={getStatusColor(
-                                transaction.payment_status
-                              )}>
-                              {transaction.payment_status}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p
-                        className={`font-semibold ${
-                          transaction.amount >= 0
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}>
-                        {transaction.amount >= 0 ? "+" : "-"}
-                        {formatNaira(Math.abs(transaction.amount))}
-                      </p>
-                    </div>
-                  </div>
-                  {index < filteredTransactions.length - 1 && <Separator />}
+
+          <div className="relative min-h-[400px]">
+            {/* Timeline Line */}
+            <div className="absolute left-[27px] top-4 bottom-4 w-px bg-gray-100 hidden md:block" />
+
+            <AnimatePresence mode="wait">
+              {filteredTransactions.length > 0 ? (
+                <div className="space-y-1">
+                   {filteredTransactions.map((tx, i) => (
+                      <TransactionItem key={tx.id} tx={tx} />
+                   ))}
                 </div>
-              ))
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex flex-col items-center justify-center h-64 text-center"
+                >
+                  <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mb-4">
+                     <Search className="w-6 h-6 text-gray-300" />
+                  </div>
+                  <p className="text-gray-500 font-medium">No transactions found</p>
+                  <p className="text-gray-400 text-sm">Try adjusting your search terms</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            
+            {totalPages > 1 && (
+                <div className="mt-8">
+                     <PaginationBar page={currentPage} totalPages={totalPages} />
+                </div>
             )}
           </div>
-        </CardContent>
-        {/* Add PaginationBar here */}
-        {totalPages > 1 && (
-          <div className="p-4">
-            <PaginationBar page={currentPage} totalPages={totalPages} />
-          </div>
-        )}
-      </Card>
+        </section>
+      </main>
 
-      {/* Transaction Detail Modal */}
-      {selectedTransaction && (
-        <Dialog
-          open={!!selectedTransaction}
-          onOpenChange={() => setSelectedTransaction(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Transaction Details</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Transaction ID:</span>
-                <span className="font-medium">{selectedTransaction.id}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Amount:</span>
-                <span
-                  className={`font-semibold ${
-                    selectedTransaction.amount >= 0
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}>
-                  {selectedTransaction.amount >= 0 ? "+" : "-"}
-                  {formatNaira(Math.abs(selectedTransaction.amount))}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Status:</span>
-                {selectedTransaction.payment_status && (
-                  <Badge
-                    className={getStatusColor(
-                      selectedTransaction.payment_status
-                    )}>
-                    {selectedTransaction.payment_status}
-                  </Badge>
-                )}
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Date:</span>
-                <span className="font-medium">
-                  {selectedTransaction.created_at
-                    ? formatTransactionDate(selectedTransaction.created_at)
-                    : "N/A"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Reference:</span>
-                <span className="font-medium">
-                  {selectedTransaction.reference}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Payment Method:</span>
-                <span className="font-medium">
-                  {selectedTransaction.payment_gateway || "N/A"}
-                </span>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setSelectedTransaction(null)}>
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+      {/* Add Funds Modal */}
+      <Dialog open={isAddFundsOpen} onOpenChange={setIsAddFundsOpen}>
+        <DialogContent className="sm:max-w-md bg-white/90 backdrop-blur-xl border-white/20 shadow-2xl rounded-[32px] p-0 overflow-hidden">
+             <div className="p-8 space-y-8">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <DialogTitle className="text-xl font-semibold text-gray-900">Top Up</DialogTitle>
+                        <p className="text-sm text-gray-500">Add funds to your wallet instantly.</p>
+                    </div>
+                </div>
+
+                <div className="space-y-6">
+                    <div className="bg-gray-50 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 border border-gray-100">
+                         <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Amount</span>
+                         <div className="relative flex items-center justify-center w-full">
+                            <span className="text-3xl text-gray-300 font-light mr-2">₦</span>
+                            <input 
+                                autoFocus
+                                type="number"
+                                placeholder="0"
+                                value={fundingAmount}
+                                onChange={(e) => setFundingAmount(e.target.value)}
+                                className="w-full bg-transparent text-center text-4xl font-medium text-gray-900 placeholder:text-gray-200 outline-none"
+                            />
+                         </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                        {[1000, 5000, 10000].map((amt) => (
+                            <button
+                                key={amt}
+                                onClick={() => setFundingAmount(amt.toString())}
+                                className="py-3 px-4 rounded-xl bg-white border border-gray-100 shadow-sm text-sm font-medium text-gray-600 hover:border-[#1B6013] hover:text-[#1B6013] hover:shadow-md transition-all active:scale-95"
+                            >
+                                +{amt.toLocaleString()}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <Button 
+                    disabled={!fundingAmount || parseFloat(fundingAmount) <= 0 || fundingLoading}
+                    onClick={handleAddFunds}
+                    className="w-full h-14 bg-[#1B6013] hover:bg-[#154d0f] text-white rounded-2xl text-lg font-medium shadow-xl shadow-green-900/20 transition-all hover:translate-y-[-2px] active:translate-y-[0px]"
+                >
+                    {fundingLoading ? (
+                        <div className="flex items-center gap-2">
+                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                             Processing...
+                        </div>
+                    ) : "Pay with Paystack"}
+                </Button>
+             </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

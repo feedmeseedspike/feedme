@@ -171,10 +171,10 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                               </div>
                             </div>
 
-                            {/* Today's Deals */}
+                            {/* Today's Deals & Rewards */}
                             <div className="pb-2">
                               <p className="uppercase text-xs text-white/70 px-2 mb-1">
-                                Today&apos;s Deals
+                                Deals & Rewards
                               </p>
                               <Link
                                 href="/todays-deal"
@@ -183,6 +183,13 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                               >
                                 Shop Today&apos;s Deals
                               </Link>
+                              {/* <Link
+                                href="/spin-to-win"
+                                className="block py-2 hover:bg-white/10 rounded text-lg px-2 text-[#F0800F] font-bold transition-colors flex items-center gap-2"
+                                onClick={() => setOpenMobileSheet(false)}
+                              >
+                                <span>🎡</span> Spin & Win
+                              </Link> */}
                             </div>
                           </div>
                         )}

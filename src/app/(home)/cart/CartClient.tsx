@@ -1,5 +1,6 @@
 "use client";
 import React, { useMemo, useCallback, useState, useEffect } from "react";
+import { getDealMessages, calculateCartDiscount } from "src/lib/deals";
 import Container from "@components/shared/Container";
 import { Button } from "@components/ui/button";
 import { Card } from "@components/ui/card";
@@ -428,7 +429,10 @@ const CartClient: React.FC<CartClientProps> = ({
     }, 0);
   }, [items]);
 
-  const totalAmount = subtotal;
+  const dealMessages = useMemo(() => getDealMessages(subtotal, items), [subtotal, items]);
+  const dealsDiscount = useMemo(() => calculateCartDiscount(subtotal, items), [subtotal, items]);
+
+  const totalAmount = Math.max(0, subtotal - dealsDiscount);
 
   const handleCheckout = () => {
     router.push("/checkout");
@@ -559,6 +563,19 @@ const CartClient: React.FC<CartClientProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
               {/* Cart Items Table */}
               <div className="md:col-span-2">
+                
+                {/* Deal Messages */}
+                {dealMessages.length > 0 && (
+                  <div className="space-y-3 mb-6">
+                    {dealMessages.map((msg, i) => (
+                      <div key={i} className="flex items-center gap-3 p-4 bg-[#F2FCE2] text-[#1B6013] border border-[#1B6013]/20 rounded-xl shadow-sm">
+                        <span className="text-xl">🎉</span>
+                        <p className="font-medium text-sm md:text-base">{msg}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* Free Delivery Progress Bar */}
                 {totalQuantity > 0 &&
                   (() => {
@@ -866,21 +883,27 @@ const CartClient: React.FC<CartClientProps> = ({
                   <h2 className="text-xl font-bold text-primary mb-4">
                     Order Summary
                   </h2>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-muted-foreground">
-                      Subtotal ({totalQuantity} items)
-                    </span>
-                    <span className="font-semibold text-primary">
-                      {formatNaira(subtotal)}
-                    </span>
-                  </div>
-                  <Separator className="my-2" />
-                  <div className="flex justify-between mb-2">
-                    <span className="text-muted-foreground">Total</span>
-                    <span className="font-bold text-xl text-primary">
-                      {formatNaira(subtotal)}
-                    </span>
-                  </div>
+                    <div className="flex justify-between mb-2">
+                      <span className="text-muted-foreground">
+                        Subtotal ({totalQuantity} items)
+                      </span>
+                      <span className="font-semibold text-primary">
+                        {formatNaira(subtotal)}
+                      </span>
+                    </div>
+                    {dealsDiscount > 0 && (
+                      <div className="flex justify-between mb-2 text-green-600">
+                        <span>Discount</span>
+                        <span>-{formatNaira(dealsDiscount)}</span>
+                      </div>
+                    )}
+                    <Separator className="my-2" />
+                    <div className="flex justify-between mb-2">
+                      <span className="text-muted-foreground">Total</span>
+                      <span className="font-bold text-xl text-primary">
+                        {formatNaira(totalAmount)}
+                      </span>
+                    </div>
                   <p className="text-muted-foreground text-xs mb-4">
                     Delivery fees not included yet.
                   </p>

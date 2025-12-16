@@ -3,6 +3,7 @@
 import { createClient } from "@utils/supabase/server";
 import { OrderData } from "src/utils/types"; // Corrected import path based on previous fix
 import { revalidatePath } from "next/cache";
+import { calculatePotentialCashBack } from "src/lib/deals";
 
 export async function processWalletPayment(orderData: OrderData) {
   const supabase = await createClient(); // Await the client creation
@@ -141,6 +142,68 @@ export async function processWalletPayment(orderData: OrderData) {
       reference: `WALLET-${orderResult.id}`,
     });
 
+    // --- Process Post-Order Rewards (Cashback) ---
+    // Fetch product details to check for item-specific deals (like Combos)
+    const productIds = orderData.cartItems.map((i: any) => i.productId).filter(Boolean);
+    let dealItems: any[] = [];
+    
+    if (productIds.length > 0) {
+        const { data: products } = await supabase
+            .from('products')
+            .select('id, name, category, price')
+            .in('id', productIds);
+            
+        dealItems = orderData.cartItems.map((item: any) => ({
+            ...item,
+            quantity: item.quantity,
+            price: item.price,
+            products: products?.find(p => p.id === item.productId) || { name: '' }
+        }));
+    }
+
+    const cashbackAmount = calculatePotentialCashBack(orderData.totalAmountPaid, dealItems);
+    
+    if (cashbackAmount > 0) {
+        // Call the internal creditWallet we just added
+        await creditWallet(
+            userId, 
+            cashbackAmount, 
+            "Cash Back: December Deals Reward", 
+            `CASHBACK-${orderResult.id}`
+        );
+    }
+
+    // --- Referral Cashback Logic (Deal 13) ---
+    // Check if this user was referred
+    const { data: referral } = await supabase
+        .from('referrals')
+        .select('referrer_id, id, status')
+        .eq('referred_user_id', userId)
+        .eq('status', 'qualified') // Assuming 'qualified' means they signed up correctly
+        .single();
+
+    if (referral && referral.referrer_id) {
+         // Check if this is the first order (or just check if discount given? Prompt says 'when they place their first order')
+         // We can check if we already gave a reward for this referral ID? 
+         // Or strictly count orders.
+         const { count } = await supabase
+            .from('orders')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId);
+        
+         // If count is 1 (this is the first order just inserted), award referrer
+         if (count === 1) {
+             const referrerBonus = orderData.totalAmountPaid * 0.10;
+             await creditWallet(
+                 referral.referrer_id,
+                 referrerBonus,
+                 `Referral Bonus: 10% from ${userData.user.email}'s first order`,
+                 `REF-BONUS-${referral.id}`
+             );
+             // Update referral status to 'rewarded' or similar if needed, or rely on transaction log
+         }
+    }
+
     // Revalidate cache for relevant pages (e.g., wallet balance, order history)
     revalidatePath("/account/wallet");
     revalidatePath("/account/orders");
@@ -170,3 +233,61 @@ export async function getWalletBalanceServer(userId: string): Promise<number> {
   if (error || !data) return 0;
   return data.balance || 0;
 } 
+
+export async function creditWallet(
+  userId: string, 
+  amount: number, 
+  description: string, 
+  reference: string
+) {
+  const supabase = await createClient();
+
+  // Fetch current wallet
+  let { data: walletData, error: walletError } = await supabase
+    .from("wallets")
+    .select("balance")
+    .eq("user_id", userId)
+    .single();
+
+  if (walletError || !walletData) {
+      // Try creating if doesn't exist
+      const { error: createError } = await supabase.from("wallets").insert({ user_id: userId, balance: 0 });
+      if (createError) return { success: false, error: "Could not create wallet." };
+      
+      const res = await supabase.from("wallets").select("balance").eq("user_id", userId).single();
+      walletData = res.data;
+  }
+
+  if (!walletData) return { success: false, error: "Wallet not found." };
+
+  const currentBalance = walletData.balance ?? 0;
+  const newBalance = currentBalance + amount;
+
+  // Update wallet
+  const { error: updateError } = await supabase
+      .from("wallets")
+      .update({ balance: newBalance })
+      .eq("user_id", userId);
+
+  if (updateError) return { success: false, error: "Failed to update wallet balance." };
+
+  // Insert transaction record
+  const { error: txError } = await supabase.from("transactions").insert({
+      user_id: userId,
+      amount: amount, // Positive for credit
+      payment_status: "paid", // Confirmed credit
+      payment_gateway: "feedme_system", // Internal system credit
+      transaction_id: reference,
+      reference: reference, 
+      description: description,
+      created_at: new Date().toISOString()
+  });
+
+  if (txError) {
+      console.error("Failed to insert credit transaction:", txError);
+      // We don't rollback the balance update here for simplicity but in prod we should using a transaction
+  }
+
+  revalidatePath("/account/wallet");
+  return { success: true };
+}

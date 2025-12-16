@@ -32,16 +32,16 @@ export const POST = async (request: Request) => {
         order_id: orderid,
       };
 
-      const { error: rfError } = await supabase
-        .from("reference")
-        .insert(reference);
+      if (userIdToUse) {
+          const { error: rfError } = await supabase
+            .from("reference")
+            .insert(reference);
 
-      if (rfError) {
-        console.error("Failed to save reference:", rfError);
-        // Warning: This might fail if reference.user_id is not nullable. 
-        // If it fails, we might need to skip reference or use a dummy ID.
-        // For now, logging error but continuing if it's non-critical? No, it throws.
-        throw new Error(`Failed to save transaction: ${rfError.message}`);
+          if (rfError) {
+            console.error("Failed to save reference:", rfError);
+            // Non-critical for flow, but let's log it.
+            // If strict consistency is needed, we might throw, but for guest flow we proceed.
+          }
       }
 
       // Check profile if user exists

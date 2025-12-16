@@ -1,10 +1,10 @@
 import { toSlug } from "src/lib/utils"
 
 export const headerMenus =  [
-  {
-    name: "Black Friday",
-    href: '/black-friday',
-  },
+  // {
+  //   name: "Black Friday",
+  //   href: '/black-friday',
+  // },
   {
     name: "Today's Deal",
     href: '/todays-deal',
