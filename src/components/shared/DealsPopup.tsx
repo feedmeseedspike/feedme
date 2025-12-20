@@ -6,10 +6,12 @@ import { Button } from '@components/ui/button';
 import { X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useUser } from 'src/hooks/useUser';
 
 export default function DealsPopup() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const { user } = useUser();
 
   useEffect(() => {
     // 1. Route Check: Don't show on auth or admin pages as requested
@@ -80,18 +82,20 @@ export default function DealsPopup() {
                 </motion.div>
 
                 <h2 className="text-3xl font-bold mb-2 tracking-tight font-serif text-[#A3E635] drop-shadow-md">
-                   Earn while you shop
+                   {user ? "Earn while you shop" : "Sign up & Earn!"}
                 </h2>
                 
                 <div className="my-8 p-6 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 shadow-inner">
                     <div className="text-5xl font-bold mb-2 text-white drop-shadow-md">10%</div>
                     <div className="text-xl font-bold text-[#A3E635] uppercase tracking-wide mb-1">Jolly Cash Back</div>
-                    <p className="text-white/80 text-sm font-medium">On all orders above ₦25,000</p>
+                    <p className="text-white/80 text-sm font-medium">
+                        {user ? "On all orders above ₦25,000" : "Create an account to get 10% back on orders above ₦25,000"}
+                    </p>
                 </div>
 
-                <Link href="/" onClick={handleClose} className="block w-full pointer-events-auto">
+                <Link href={user ? "/" : "/register"} onClick={handleClose} className="block w-full pointer-events-auto">
                     <Button className="w-full h-12 rounded-xl bg-white text-[#1B6013] hover:bg-[#A3E635] hover:text-[#1B6013] font-bold text-lg shadow-lg border-2 border-transparent hover:border-white transition-all transform hover:scale-[1.02] active:scale-[0.98]">
-                        Start Shopping
+                        {user ? "Start Shopping" : "Register Now"}
                     </Button>
                 </Link>
             </div>

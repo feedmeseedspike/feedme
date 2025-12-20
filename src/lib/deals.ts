@@ -68,43 +68,43 @@ export function calculateCartDiscount(subtotal: number, items: CartItem[]): numb
   let flashSaleDiscount = 0;
 
   // 1. Calculate Family Feast Discount (15% off > 45k)
-  if (subtotal >= DECEMBER_DEALS.FAMILY_FEAST.min_spend) {
-    familyFeastDiscount = subtotal * DECEMBER_DEALS.FAMILY_FEAST.percentage;
-  }
+  // if (subtotal >= DECEMBER_DEALS.FAMILY_FEAST.min_spend) {
+  //   familyFeastDiscount = subtotal * DECEMBER_DEALS.FAMILY_FEAST.percentage;
+  // }
 
   // 2. Calculate Weekend Flash Sale Discount (20% off Fresh Produce)
-  if (isFlashSaleActive()) {
-      items.forEach(item => {
-          const product = item.products;
-          if (product) {
-              const categories = (product as any).category || (product as any).tags || [];
-              const name = product.name?.toLowerCase() || "";
+  // if (isFlashSaleActive()) {
+  //     items.forEach(item => {
+  //         const product = item.products;
+  //         if (product) {
+  //             const categories = (product as any).category || (product as any).tags || [];
+  //             const name = product.name?.toLowerCase() || "";
               
-              const isFreshProduce = 
-                  (Array.isArray(categories) && categories.some((c: string) => 
-                      c.toLowerCase().includes("fruit") || c.toLowerCase().includes("vegetable")
-                  )) ||
-                  name.includes("fruit") || 
-                  name.includes("vegetable") ||
-                  name.includes("pepper") ||
-                  name.includes("tomato") ||
-                  name.includes("onion");
+  //             const isFreshProduce = 
+  //                 (Array.isArray(categories) && categories.some((c: string) => 
+  //                     c.toLowerCase().includes("fruit") || c.toLowerCase().includes("vegetable")
+  //                 )) ||
+  //                 name.includes("fruit") || 
+  //                 name.includes("vegetable") ||
+  //                 name.includes("pepper") ||
+  //                 name.includes("tomato") ||
+  //                 name.includes("onion");
               
-              if (isFreshProduce) {
-                  const itemTotal = (item.price || 0) * item.quantity;
-                  flashSaleDiscount += itemTotal * DECEMBER_DEALS.WEEKEND_FLASH_SALE.percentage;
-              }
-          }
-      });
-  }
+  //             if (isFreshProduce) {
+  //                 const itemTotal = (item.price || 0) * item.quantity;
+  //                 flashSaleDiscount += itemTotal * DECEMBER_DEALS.WEEKEND_FLASH_SALE.percentage;
+  //             }
+  //         }
+  //     });
+  // }
 
   // LOGIC: Prevent Stacking.
   // Most e-commerce sites do not allow stacking of broad 15% discounts with specific 20% deals.
   // We will apply the HIGHER of the two discounts to give the customer the best deal without killing margins.
   
-  if (flashSaleDiscount > 0 && familyFeastDiscount > 0) {
-      return Math.max(flashSaleDiscount, familyFeastDiscount);
-  }
+  // if (flashSaleDiscount > 0 && familyFeastDiscount > 0) {
+  //     return Math.max(flashSaleDiscount, familyFeastDiscount);
+  // }
 
   return flashSaleDiscount + familyFeastDiscount; // One of them is 0, so this returns the active one.
 }
@@ -169,9 +169,9 @@ export function getDealMessages(subtotal: number, items: CartItem[] = []): strin
   const messages: string[] = [];
   
   // Flash Sale Message
-  if (isFlashSaleActive()) {
-      messages.push(`⚡ Weekend Flash Sale Active! 20% Off Fresh Produce!`);
-  }
+  // if (isFlashSaleActive()) {
+  //     messages.push(`⚡ Weekend Flash Sale Active! 20% Off Fresh Produce!`);
+  // }
 
   // Jolly Cashback Message
   if (subtotal >= DECEMBER_DEALS.JOLLY_CASHBACK.min_spend) {
@@ -185,9 +185,9 @@ export function getDealMessages(subtotal: number, items: CartItem[] = []): strin
   }
 
   // Family Feast Message
-  if (subtotal >= DECEMBER_DEALS.FAMILY_FEAST.min_spend) {
-      messages.push(`✨ Family Feast Discount Applied (15% Off)!`);
-  }
+  // if (subtotal >= DECEMBER_DEALS.FAMILY_FEAST.min_spend) {
+  //     messages.push(`✨ Family Feast Discount Applied (15% Off)!`);
+  // }
 
   // Fruit Fest Combo (Deal 6)
   // "Buy a mix of fresh fruits worth 17,500 and get a free pack of dates."
@@ -225,63 +225,148 @@ export type SpinPrize = {
     text: string;
   };
   code?: string; // For item/voucher codes
+  image?: string;
 };
 
 export const SPIN_PRIZES_CONFIG: SpinPrize[] = [
   { 
-    id: "wallet_500", 
-    label: "₦500", 
-    sub: "CASH", 
-    type: "wallet_cash", 
-    value: 500, 
-    probability: 0.15, 
-    color: { bg: "#FFFFFF", text: "#1B6013" } // Winner: White
+    id: "kings_oil", 
+    label: "1L Kings", 
+    sub: "OIL", 
+    type: "item", 
+    value: 2500, 
+    probability: 0.02, 
+    color: { bg: "#FFFFFF", text: "#1B6013" }, 
+    code: "FREE-KINGS-OIL-1L",
+    image: "https://images.unsplash.com/photo-1474606139728-647f607a5105?auto=format&fit=crop&w=100&q=80" 
   },
   { 
-    id: "try_again_1", 
-    label: "TRY", 
-    sub: "AGAIN", 
-    type: "none", 
-    value: 0, 
-    probability: 0.25, 
-    color: { bg: "#1F2937", text: "#FFFFFF" } // Loser: Dark Grey
+    id: "rice_paint", 
+    label: "1 Paint", 
+    sub: "RICE", 
+    type: "item", 
+    value: 4500, 
+    probability: 0.01, 
+    color: { bg: "#F0800F", text: "#FFFFFF" }, 
+    code: "FREE-RICE-PAINT",
+    image: "https://images.unsplash.com/photo-1586201375761-fa8610a78716?auto=format&fit=crop&w=100&q=80"
   },
   { 
-    id: "voucher_5", 
-    label: "5%", 
-    sub: "OFF", 
-    type: "voucher_percent", 
-    value: 5, 
-    probability: 0.20, 
-    color: { bg: "#FFFFFF", text: "#F0800F" } // Winner: White
+    id: "chicken_cube", 
+    label: "Knorr", 
+    sub: "CUBES", 
+    type: "item", 
+    value: 800, 
+    probability: 0.10, 
+    color: { bg: "#FFFFFF", text: "#1B6013" }, 
+    code: "FREE-KNORR-CUBES",
+    image: "https://images.unsplash.com/photo-1610450949065-221685292415?auto=format&fit=crop&w=100&q=80" 
   },
   { 
-    id: "dates_pack", 
-    label: "FREE", 
-    sub: "DATES", 
+    id: "apples_4", 
+    label: "4", 
+    sub: "APPLES", 
+    type: "item", 
+    value: 1200, 
+    probability: 0.08, 
+    color: { bg: "#F0800F", text: "#FFFFFF" }, 
+    code: "FREE-APPLES-4",
+    image: "https://images.unsplash.com/photo-1570913149827-d2ac84ab3f9a?auto=format&fit=crop&w=100&q=80"
+  },
+  { 
+    id: "watermelon", 
+    label: "1", 
+    sub: "MELON", 
+    type: "item", 
+    value: 2000, 
+    probability: 0.05, 
+    color: { bg: "#FFFFFF", text: "#1B6013" }, 
+    code: "FREE-WATERMELON-1",
+    image: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=100&q=80"
+  },
+  { 
+    id: "salt_1kg", 
+    label: "1kg", 
+    sub: "SALT", 
+    type: "item", 
+    value: 400, 
+    probability: 0.10, 
+    color: { bg: "#F0800F", text: "#FFFFFF" }, 
+    code: "FREE-SALT-1KG",
+    image: "https://images.unsplash.com/photo-1518110925495-5696987c6776?auto=format&fit=crop&w=100&q=80"
+  },
+  { 
+    id: "chicken_1kg", 
+    label: "1kg", 
+    sub: "CHICKEN", 
+    type: "item", 
+    value: 3500, 
+    probability: 0.02, 
+    color: { bg: "#FFFFFF", text: "#1B6013" }, 
+    code: "FREE-CHICKEN-1KG",
+    image: "https://images.unsplash.com/photo-1615962079010-fb81467adc9b?auto=format&fit=crop&w=100&q=80"
+  },
+  { 
+    id: "yam_1", 
+    label: "1", 
+    sub: "YAM", 
     type: "item", 
     value: 1500, 
     probability: 0.05, 
-    color: { bg: "#FFFFFF", text: "#1B6013" }, // Winner: White
-    code: "FREE-DATES-DEC"
+    color: { bg: "#F0800F", text: "#FFFFFF" }, 
+    code: "FREE-YAM-1",
+    image: "https://images.unsplash.com/photo-1632208604727-463d1ce5f585?auto=format&fit=crop&w=100&q=80"
+  },
+  { 
+    id: "free_delivery", 
+    label: "FREE", 
+    sub: "DELIVERY", 
+    type: "item", 
+    value: 1500, 
+    probability: 0.05, 
+    color: { bg: "#FFFFFF", text: "#1B6013" }, 
+    code: "FREE-DELIVERY",
+    image: "https://cdn-icons-png.flaticon.com/512/2769/2769339.png"
+  },
+  { 
+    id: "credit_1k", 
+    label: "₦1,000", 
+    sub: "CREDIT", 
+    type: "wallet_cash", 
+    value: 1000, 
+    probability: 0.05, 
+    color: { bg: "#FBBF24", text: "#FFFFFF" },
+    image: "https://cdn-icons-png.flaticon.com/512/550/550638.png"
+  },
+  { 
+    id: "credit_2k", 
+    label: "₦2,000", 
+    sub: "CREDIT", 
+    type: "wallet_cash", 
+    value: 2000, 
+    probability: 0.02, 
+    color: { bg: "#FFFFFF", text: "#FBBF24" },
+    image: "https://cdn-icons-png.flaticon.com/512/550/550638.png"
+  },
+  { 
+    id: "try_again_1", 
+    label: "NO", 
+    sub: "PRIZE", 
+    type: "none", 
+    value: 0, 
+    probability: 0.225, 
+    color: { bg: "#1F2937", text: "#FFFFFF" },
+    image: "https://img.icons8.com/ios-filled/100/ffffff/sad.png"
   },
   { 
     id: "try_again_2", 
-    label: "TRY", 
-    sub: "AGAIN", 
+    label: "NO", 
+    sub: "PRIZE", 
     type: "none", 
     value: 0, 
-    probability: 0.25, 
-    color: { bg: "#1F2937", text: "#FFFFFF" } // Loser: Dark Grey
-  },
-  { 
-    id: "wallet_1000", 
-    label: "₦1k", 
-    sub: "CASH", 
-    type: "wallet_cash", 
-    value: 1000, 
-    probability: 0.10, 
-    color: { bg: "#FFFFFF", text: "#FBBF24" } // Winner: White
+    probability: 0.225, 
+    color: { bg: "#1F2937", text: "#FFFFFF" },
+    image: "https://img.icons8.com/ios-filled/100/ffffff/sad.png"
   }
 ];
 
