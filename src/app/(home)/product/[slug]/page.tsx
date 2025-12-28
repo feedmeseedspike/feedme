@@ -328,9 +328,9 @@ const ProductDetails = async (props: {
       const cleaned = product.images
         .map((img) => normalizeImage(img))
         .filter((u): u is string => typeof u === "string" && u.length > 0);
-      return cleaned.length > 0 ? cleaned : ["/placeholder.png"];
+      return cleaned.length > 0 ? cleaned : ["/product-placeholder.png"];
     }
-    return ["/placeholder.png"];
+    return ["/product-placeholder.png"];
   })();
 
   // Sanitize linked recipes/bundles (images and slug)
@@ -344,7 +344,7 @@ const ProductDetails = async (props: {
               ? normalizeImage(recipe.images[0])
               : null) ||
             normalizeImage((recipe as any).thumbnail_url) ||
-            "/placeholder.png";
+            "/product-placeholder.png";
           return {
             ...recipe,
             slug:
@@ -368,7 +368,7 @@ const ProductDetails = async (props: {
           : [];
     return base.map((opt: any) => ({
       ...opt,
-      image: normalizeImage(opt?.image) || "/placeholder-product.png",
+      image: normalizeImage(opt?.image) || "/product-placeholder.png",
     }));
   })();
 

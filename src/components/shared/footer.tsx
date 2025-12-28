@@ -46,7 +46,7 @@ const footerData = [
   {
     title: "Get Help",
     links: [
-      { name: "Chat With Us", href: "/" },
+      // { name: "Chat With Us", href: "/" },
       { name: "Send An Email", href: "/" },
     ],
   },

@@ -48,14 +48,14 @@ const ProductCard = ({
     if (typeof imageData === "string") {
       try {
         const parsed = JSON.parse(imageData) as ImageJSON;
-        return parsed.url || "/images/placeholder-banner.jpg";
+        return parsed.url || "/product-placeholder.png";
       } catch {
         // If it's a string but not JSON, assume it's a direct URL
         return imageData;
       }
     }
     // If it's already an object (ImageJSON), use its URL
-    return imageData.url || "/images/placeholder-banner.jpg";
+    return imageData.url || "/product-placeholder.png";
   };
 
   // Only consider out of stock if countInStock is explicitly set to a number <= 0
@@ -72,7 +72,7 @@ const ProductCard = ({
             src={
               product.images && product.images.length > 0
                 ? getImageUrl(product.images[0])
-                : "/images/placeholder-banner.jpg"
+                : "/product-placeholder.png"
             }
             alt={product.name}
             fill

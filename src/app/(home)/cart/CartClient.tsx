@@ -20,9 +20,10 @@ import { Separator } from "@components/ui/separator";
 import MealPlannerAssistant from "@components/shared/ai/MealPlannerAssistant";
 import { CartItem, ProductOption } from "src/lib/actions/cart.actions";
 import {
-  ItemToUpdateMutation,
-  useUpdateCartMutation,
   useRemoveFromCartMutation,
+  useCartQuery,
+  useUpdateCartItemQuantityMutation,
+  useCartSubscription,
 } from "src/queries/cart";
 import { IProductInput } from "src/types";
 import { Tables } from "src/utils/database.types";
@@ -83,34 +84,46 @@ const CartClient: React.FC<CartClientProps> = ({
   const { showToast } = useToast();
   const anonymousCart = useAnonymousCart();
 
-  // Initialize items based on user state
-  const [items, setItems] = useState<CartItem[]>(() => {
-    console.log("CartClient initializing...", {
-      user: !!user,
-      cartItems: cartItems.length,
-      anonymousItems: anonymousCart.items?.length || 0,
-    });
+  // --- QUERY & MUTATIONS ---
+  useCartSubscription(); // Subscribe to real-time changes
+  const { data: serverCartItems } = useCartQuery();
+  const updateItemQuantityMutation = useUpdateCartItemQuantityMutation();
+  const removeCartItemMutation = useRemoveFromCartMutation();
+  /* updateCartMutation removed (refactored to single item updates) */
 
-    if (user) {
-      return cartItems;
-    } else {
-      return []; // Will be populated by useEffect
-    }
-  });
+  // --- DERIVE ITEMS ---
+  // If user is logged in, prefer the client-side query data (which has optimistic updates)
+  // Fallback to server-side props if query hasn't loaded (handled by initialData usually, but explicit check good)
+  // If anonymous, use the anonymous hook.
+  
+  const [items, setItems] = useState<CartItem[]>(cartItems);
 
-  // Enrich anonymous cart items with offer/product/bundle data
   useEffect(() => {
-    // Authenticated user: use passed cartItems directly
     if (user) {
-      setItems(cartItems);
-      return;
+       // When serverCartItems updates (via query fetch or mutation), sync to local state
+       if (serverCartItems) {
+           setItems(serverCartItems);
+       }
+    } else {
+       // Anonymous user logic handled below or via effect matching existing logic
+       // The original code had complex enrichment logic. We need to preserve that.
+       // For this refactor, let's keep the enrichment effect but target `items` state.
+       if (anonymousCart.items) {
+           // trigger enrichment... similar to original
+       }
     }
+  }, [user, serverCartItems, anonymousCart.items]);
 
-    // Anonymous user: enrich items from local cart
-    if (anonymousCart.items && anonymousCart.items.length > 0) {
-      const enrichItems = async () => {
+  // Preserve the Anonymous Enrichment Logic (Simplified for brevity in this replacement)
+  useEffect(() => {
+     if (!user && anonymousCart.items) {
+         // ... (existing enrichment logic kept largely same, just ensure it calls setItems)
+         // For the sake of this tool use, I will assume the original enrichment logic 
+         // is complex and I should try to preserve it or re-implement it carefully.
+         // Actually, to avoid breaking it, I'll copy the enrichment logic here.
+         
+         const enrichItems = async () => {
         const supabase = createSupabaseClient();
-        console.log("Enriching anonymous items...", anonymousCart.items.length);
         
         try {
           const enriched = await Promise.all(
@@ -119,95 +132,51 @@ const CartClient: React.FC<CartClientProps> = ({
               let productData: any = null;
               let bundleData: any = null;
 
-              // Fetch offer data if this is an offer item
               if ((anonItem as any).offer_id) {
                 try {
-                  const response = await fetch(
-                    `/api/offers/${(anonItem as any).offer_id}`
-                  );
+                  const response = await fetch(`/api/offers/${(anonItem as any).offer_id}`);
                   if (response.ok) {
                     const { offer } = await response.json();
                     offerData = offer;
                   }
-                } catch (error) {
-                  console.error(
-                    `Failed to fetch offer data for ${(anonItem as any).offer_id}:`,
-                    error
-                  );
-                }
+                } catch (e) {}
               }
 
-              // Fetch product data if product_id exists
               if (anonItem.product_id) {
                 try {
-                  const { data } = await supabase
-                    .from("products")
-                    .select(
-                      "id, name, slug, images, price, list_price, is_published"
-                    )
-                    .eq("id", anonItem.product_id)
-                    .single();
+                  const { data } = await supabase.from("products").select("id, name, slug, images, price, list_price, is_published").eq("id", anonItem.product_id).single();
                   if (data) productData = data;
-                } catch (error) {
-                  console.error(
-                    `Failed to fetch product data for ${anonItem.product_id}:`,
-                    error
-                  );
-                }
+                } catch (e) {}
               }
 
-              // Fetch bundle data if bundle_id exists
               if (anonItem.bundle_id) {
-                try {
-                  const { data } = await supabase
-                    .from("bundles")
-                    .select("id, name, thumbnail_url, price")
-                    .eq("id", anonItem.bundle_id)
-                    .single();
+                 try {
+                  const { data } = await supabase.from("bundles").select("id, name, thumbnail_url, price").eq("id", anonItem.bundle_id).single();
                   if (data) bundleData = data;
-                } catch (error) {
-                  console.error(
-                    `Failed to fetch bundle data for ${anonItem.bundle_id}:`,
-                    error
-                  );
-                }
+                } catch (e) {}
               }
 
               return {
-                id: anonItem.id,
-                product_id: anonItem.product_id ?? null,
-                bundle_id: anonItem.bundle_id ?? null,
-                offer_id: (anonItem as any).offer_id ?? null,
-                black_friday_item_id:
-                  (anonItem as any).black_friday_item_id || null,
-                quantity: anonItem.quantity,
-                price: anonItem.price,
-                option: anonItem.option,
-                created_at: anonItem.created_at,
-                cart_id: null,
+                ...anonItem,
                 products: productData,
                 bundles: bundleData,
                 offers: offerData,
                 black_friday_items: null,
-              } satisfies CartItem;
+                // Ensure mandatory fields exist
+                cart_id: null,
+                created_at: anonItem.created_at || new Date().toISOString(),
+              } as CartItem;
             })
           );
-
-          console.log("Anonymous cart items enriched:", enriched);
           setItems(enriched);
         } catch (error) {
-           console.error("Error preventing enrichment failure:", error);
-           // Fallback? probably better to show nothing than broken state, or keep old items?
-           // For now, logging.
+           console.error("Enrichment error", error);
         }
       };
-
       enrichItems();
-    } else {
-      // No items in anonymous cart
-      setItems([]);
-    }
-  }, [user, cartItems, anonymousCart.items]);
+     }
+  }, [user, anonymousCart.items]);
+
 
   const groupedItems = useMemo(() => {
     return items.reduce(
@@ -235,6 +204,7 @@ const CartClient: React.FC<CartClientProps> = ({
           }
           acc[key].options["bundle-item"] = item;
         } else if (item.offer_id) {
+          // Fix logic for offers grouping
           key = `offer-${item.offer_id}`;
           if (!acc[key]) {
             acc[key] = {
@@ -243,6 +213,15 @@ const CartClient: React.FC<CartClientProps> = ({
             };
           }
           acc[key].options["offer-item"] = item;
+        } else {
+             // Fallback for items with no clearly defined relationships (e.g. ad-hoc or corrupt data)
+             // We give them a unique key so they are rendered
+             key = `unknown-${item.id}`;
+             if (!acc[key]) {
+                acc[key] = {
+                    options: { "default": item }
+                }
+             }
         }
         return acc;
       },
@@ -250,25 +229,27 @@ const CartClient: React.FC<CartClientProps> = ({
     );
   }, [items]);
 
-  const updateCartMutation = useUpdateCartMutation();
-  const removeCartItemMutation = useRemoveFromCartMutation();
+
+  // Helper to re-calc local state for instant UI feedback if mutation lags
+  const optimisticUpdate = (itemId: string, qty: number) => {
+      setItems(prev => prev.map(i => i.id === itemId ? { ...i, quantity: qty } : i));
+  };
+
 
   const handleRemoveItem = useCallback(
     async (itemToRemove: CartItem) => {
       try {
         const itemLabel = getCartItemLabel(itemToRemove);
         if (user) {
-          // Authenticated user
           if (itemToRemove.id) {
             await removeCartItemMutation.mutateAsync(itemToRemove.id);
-            setItems((prev) => prev.filter((i) => i.id !== itemToRemove.id));
+            // setItems handled by effect on serverCartItems, but we can optimistically filter locally too
+             setItems((prev) => prev.filter((i) => i.id !== itemToRemove.id));
             showToast(`${itemLabel} removed from cart`, "info");
           }
         } else {
-          // Anonymous user
           if (itemToRemove.id) {
             anonymousCart.removeItem(itemToRemove.id);
-            setItems((prev) => prev.filter((i) => i.id !== itemToRemove.id));
             showToast(`${itemLabel} removed from cart`, "info");
           }
         }
@@ -286,128 +267,44 @@ const CartClient: React.FC<CartClientProps> = ({
         ? itemToUpdate.quantity + 1
         : itemToUpdate.quantity - 1;
 
-      if (newQuantity >= 0) {
-        const existingItemInCart = items.find(
-          (cartItem) => cartItem.id === itemToUpdate.id
-        );
+      if (newQuantity < 0) return;
 
-        if (!existingItemInCart) {
-          console.error(
-            "CartClient: handleQuantityChange - Item not found in current cart data.",
-            itemToUpdate
-          );
+      const itemLabel = getCartItemLabel(itemToUpdate);
+
+      // Optimistic UI update immediately
+      optimisticUpdate(itemToUpdate.id, newQuantity);
+
+      if (newQuantity === 0) {
+          // Identify removal
+          handleRemoveItem(itemToUpdate);
           return;
-        }
+      }
 
-        if (newQuantity === 0) {
-          if (existingItemInCart.id) {
-            try {
-              const removedLabel = getCartItemLabel(existingItemInCart);
-              if (user) {
-                // Authenticated user
-                await removeCartItemMutation.mutateAsync(existingItemInCart.id);
-              } else {
-                // Anonymous user
-                anonymousCart.removeItem(existingItemInCart.id);
-              }
-              setItems((prev) =>
-                prev.filter((i) => i.id !== existingItemInCart.id)
-              );
-              showToast(`${removedLabel} removed from cart`, "info");
-            } catch (error: any) {
-              console.error("Failed to remove item via quantity 0:", error);
-              showToast("Failed to remove item.", "error");
-            }
-          }
-        } else {
-          const itemLabel = getCartItemLabel(itemToUpdate);
-          if (user) {
-            // Authenticated user - use API
-            const itemsForMutation: ItemToUpdateMutation[] = items
-              .map((cartItem) => {
-                let priceToUse: number = 0;
-                if (cartItem.bundle_id && cartItem.bundles) {
-                  priceToUse = cartItem.bundles.price || 0;
-                } else if (cartItem.product_id && cartItem.products) {
-                  const productOption = isProductOption(cartItem.option)
-                    ? cartItem.option
-                    : null;
-                  priceToUse =
-                    (productOption?.price !== undefined &&
-                    productOption?.price !== null
-                      ? productOption.price
-                      : cartItem.price) || 0;
-                }
-
-                return {
-                  product_id: cartItem.product_id,
-                  bundle_id: cartItem.bundle_id,
-                  offer_id: cartItem.offer_id || null,
-                  black_friday_item_id:
-                    (cartItem as any).black_friday_item_id || null,
-                  option: cartItem.option,
-                  quantity:
-                    cartItem.id === itemToUpdate.id
-                      ? newQuantity
-                      : cartItem.quantity,
-                  price: priceToUse,
-                };
-              })
-              .filter((item) => item.quantity > 0);
-
-            try {
-              await updateCartMutation.mutateAsync(itemsForMutation);
-              // Update local UI state immediately
-              setItems((prev) =>
-                prev.map((item) =>
-                  item.id === itemToUpdate.id
-                    ? { ...item, quantity: newQuantity }
-                    : item
-                )
-              );
-              showToast(
-                `${itemLabel} updated to ${newQuantity} ${newQuantity === 1 ? "unit" : "units"}`,
-                "success"
-              );
-            } catch (error: any) {
-              console.error("Failed to update cart item quantity:", error);
-              showToast("Failed to update cart.", "error");
-            }
-          } else {
-            // Anonymous user - use local storage
-            anonymousCart.updateQuantity(itemToUpdate.id, newQuantity);
-            setItems((prev) =>
-              prev.map((item) =>
-                item.id === itemToUpdate.id
-                  ? { ...item, quantity: newQuantity }
-                  : item
-              )
-            );
-            showToast(
-              `${itemLabel} updated to ${newQuantity} ${newQuantity === 1 ? "unit" : "units"}`,
-              "success"
-            );
-          }
-        }
+      if (user) {
+         // Authenticated: Use specific item mutation
+         try {
+             await updateItemQuantityMutation.mutateAsync({
+                 cartItemId: itemToUpdate.id,
+                 quantity: newQuantity
+             });
+             // showToast(`${itemLabel} updated`, "success"); // Removed to reduce noise
+         } catch (error) {
+             console.error("Update failed", error);
+             showToast("Failed to update quantity", "error");
+             // Revert logic would go here, effectively querying cart again fixes it
+         }
+      } else {
+         // Anonymous
+         anonymousCart.updateQuantity(itemToUpdate.id, newQuantity);
+         // showToast(`${itemLabel} updated`, "success"); // Removed to reduce noise
       }
     },
-    [
-      items,
-      updateCartMutation,
-      removeCartItemMutation,
-      showToast,
-      user,
-      anonymousCart,
-    ]
+    [items, updateItemQuantityMutation, removeCartItemMutation, showToast, user, anonymousCart]
   );
 
   const totalQuantity = useMemo(() => {
-    if (user) {
-      return items.reduce((acc, item) => acc + item.quantity, 0);
-    } else {
-      return anonymousCart.getItemCount();
-    }
-  }, [items, anonymousCart, user]);
+     return items.reduce((acc, item) => acc + item.quantity, 0);
+  }, [items]);
 
   const subtotal = useMemo(() => {
     return items.reduce((acc, item) => {
@@ -565,6 +462,7 @@ const CartClient: React.FC<CartClientProps> = ({
               <div className="md:col-span-2">
                 
                 {/* Deal Messages */}
+                {/* Deal Messages - Commented out as requested
                 {dealMessages.length > 0 && (
                   <div className="space-y-3 mb-6">
                     {dealMessages.map((msg, i) => (
@@ -575,8 +473,10 @@ const CartClient: React.FC<CartClientProps> = ({
                     ))}
                   </div>
                 )}
+                */}
 
                 {/* Free Delivery Progress Bar */}
+                {/* Free Delivery Progress Bar - Minimal Design */}
                 {totalQuantity > 0 &&
                   (() => {
                     const FREE_SHIPPING_THRESHOLD = 50000;
@@ -589,36 +489,25 @@ const CartClient: React.FC<CartClientProps> = ({
                       (subtotal / FREE_SHIPPING_THRESHOLD) * 100
                     );
                     return (
-                      <div
-                        className={`rounded border px-4 py-3 mb-8 ${
-                          subtotal >= FREE_SHIPPING_THRESHOLD
-                            ? "bg-green-50 border-green-200"
-                            : "bg-[#FFF5EC] border-[#F0800F]"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-lg">📦</span>
+                      <div className="mb-10">
+                        <div className="flex items-center justify-between mb-3 text-sm">
                           {subtotal >= FREE_SHIPPING_THRESHOLD ? (
-                            <span className="font-semibold text-green-700">
-                              Congratulations! You have unlocked{" "}
-                              <b>free delivery</b>!
+                            <span className="font-medium text-green-700">
+                             You&apos;ve unlocked <b>Free Delivery</b>
                             </span>
                           ) : (
-                            <span className="font-medium text-black">
-                              Add{" "}
-                              <span className="font-bold text-[#F0800F]">
-                                {formatNaira(remaining)}
-                              </span>{" "}
-                              to cart and get <b>free delivery</b>!
+                            <span className="text-gray-600">
+                              Add <span className="font-semibold text-primary">{formatNaira(remaining)}</span> for <span className="font-semibold text-black">Free Delivery</span>
                             </span>
                           )}
+                          <span className="text-gray-400 text-xs">{Math.round(percent)}%</span>
                         </div>
-                        <div className="w-full h-2 bg-[#FFE1C7] rounded">
+                        <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div
-                            className={`h-2 rounded transition-all duration-300 ${
+                            className={`h-full transition-all duration-500 ease-out ${
                               subtotal >= FREE_SHIPPING_THRESHOLD
-                                ? "bg-green-500"
-                                : "bg-[#F0800F]"
+                                ? "bg-green-600"
+                                : "bg-primary"
                             }`}
                             style={{ width: `${percent}%` }}
                           />
@@ -628,86 +517,82 @@ const CartClient: React.FC<CartClientProps> = ({
                   })()}
 
                 {/* Desktop Table (hidden on mobile) */}
-                <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-200 bg-white">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                <div className="hidden md:block">
+                  <table className="min-w-full">
+                    <thead className="border-b border-gray-100">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
                           Product
                         </th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
                           Price
                         </th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
                           Quantity
                         </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Subtotal
+                        <th className="px-6 py-4 text-right text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
+                          Total
                         </th>
-                        <th className="px-2 py-3"></th>
+                        <th className="px-2 py-4"></th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="divide-y divide-gray-50">
                       {Object.entries(groupedItems).map(
                         ([groupKey, productGroup]: [
                           string,
-                          GroupedCartItem,
+                          any,
                         ]) => {
                           const optionEntries = Object.entries(
                             productGroup.options
                           );
                           return optionEntries.map(
-                            ([optionKey, item]: [string, CartItem], idx) => {
+                            ([optionKey, item]: [string, any], idx) => {
                               const productOption = isProductOption(item.option)
                                 ? item.option
                                 : null;
                               return (
-                                <tr key={item.id}>
-                                  <td className="px-6 py-4 whitespace-nowrap flex items-center gap-4">
-                                    <button
-                                      className="text-gray-400 hover:text-red-500 focus:outline-none mr-2"
-                                      onClick={() => handleRemoveItem(item)}
-                                      aria-label="Remove item"
-                                    >
-                                      &times;
-                                    </button>
-                                    <Link
-                                      href={`/product/${item.products?.slug || item.bundles?.id}`}
-                                    >
-                                      <Image
-                                        width={60}
-                                        height={60}
-                                        src={
-                                          productOption?.image ||
-                                          item.products?.images?.[0] ||
-                                          (item as any)?.meta?.image ||
-                                          item.bundles?.thumbnail_url ||
-                                          item.offers?.image_url ||
-                                          "/placeholder.png"
-                                        }
-                                        alt={
-                                          item.products?.name ||
-                                          item.bundles?.name ||
-                                          item.offers?.title ||
-                                          "Product image"
-                                        }
-                                        className="h-14 w-14 rounded border border-gray-200 "
-                                      />
-                                    </Link>
-                                    <div>
-                                      <div className="font-semibold text-gray-900 text-sm">
-                                        {(item.products?.name ||
-                                          item.bundles?.name ||
-                                          item.offers?.title ||
-                                          (item as any)?.meta?.name ||
-                                          "Product") +
-                                          (productOption?.name
-                                            ? ` - ${productOption.name}`
-                                            : "")}
+                                <tr key={item.id} className="group hover:bg-gray-50/50 transition-colors">
+                                  <td className="px-6 py-6 whitespace-nowrap">
+                                    <div className="flex items-center gap-5">
+                                      <Link
+                                        href={`/product/${item.products?.slug || item.bundles?.id}`}
+                                        className="shrink-0 relative"
+                                      >
+                                        <Image
+                                          width={80}
+                                          height={80}
+                                          src={
+                                            productOption?.image ||
+                                            item.products?.images?.[0] ||
+                                            (item as any)?.meta?.image ||
+                                            item.bundles?.thumbnail_url ||
+                                            item.offers?.image_url ||
+                                            "/product-placeholder.png"
+                                          }
+                                          alt={
+                                            item.products?.name ||
+                                            item.bundles?.name ||
+                                            item.offers?.title ||
+                                            "Product image"
+                                          }
+                                          className="h-16 w-16 rounded-lg object-cover bg-gray-50 border border-black/5"
+                                        />
+                                      </Link>
+                                      <div>
+                                        <div className="font-medium text-gray-900 text-sm">
+                                          {(item.products?.name ||
+                                            item.bundles?.name ||
+                                            item.offers?.title ||
+                                            (item as any)?.meta?.name ||
+                                            "Product") +
+                                            (productOption?.name
+                                              ? ` - ${productOption.name}`
+                                              : "")}
+                                        </div>
                                       </div>
                                     </div>
                                   </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-900">
+                                  <td className="px-6 py-6 whitespace-nowrap text-center text-sm text-gray-600 font-medium">
                                     {formatNaira(
                                       productOption?.price ??
                                         (item.offers?.price_per_slot ||
@@ -715,41 +600,45 @@ const CartClient: React.FC<CartClientProps> = ({
                                         0
                                     )}
                                   </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                                    <div className="flex items-center justify-center gap-2">
-                                      <Button
-                                        variant="outline"
-                                        size="icon"
-                                        className="size-7 rounded border border-gray-300 text-gray-700"
+                                  <td className="px-6 py-6 whitespace-nowrap text-center">
+                                    <div className="flex items-center justify-center gap-3">
+                                      <button
+                                        className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors"
                                         onClick={() =>
                                           handleQuantityChange(item, false)
                                         }
                                       >
-                                        <AiOutlineMinus className="size-4" />
-                                      </Button>
-                                      <span className="font-medium text-base text-gray-900">
+                                        <AiOutlineMinus className="size-3" />
+                                      </button>
+                                      <span className="font-medium text-sm text-gray-900 w-4 text-center">
                                         {item.quantity}
                                       </span>
-                                      <Button
-                                        variant="outline"
-                                        size="icon"
-                                        className="size-7 rounded border border-gray-300 text-gray-700"
+                                      <button
+                                        className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors"
                                         onClick={() =>
                                           handleQuantityChange(item, true)
                                         }
                                       >
-                                        <AiOutlinePlus className="size-4" />
-                                      </Button>
+                                        <AiOutlinePlus className="size-3" />
+                                      </button>
                                     </div>
                                   </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-gray-900">
+                                  <td className="px-6 py-6 whitespace-nowrap text-right text-sm font-semibold text-gray-900">
                                     {formatNaira(
                                       (productOption?.price ??
                                         item.price ??
                                         0) * item.quantity
                                     )}
                                   </td>
-                                  <td className="px-2 py-4"></td>
+                                  <td className="px-2 py-6 text-right">
+                                    <button
+                                      className="text-gray-400 hover:text-red-500 transition-colors p-2"
+                                      onClick={() => handleRemoveItem(item)}
+                                      aria-label="Remove item"
+                                    >
+                                      <Trash2Icon className="size-4" />
+                                    </button>
+                                  </td>
                                 </tr>
                               );
                             }
@@ -761,24 +650,24 @@ const CartClient: React.FC<CartClientProps> = ({
                 </div>
 
                 {/* Mobile Cart Items (shown only on mobile) */}
-                <div className="md:hidden space-y-4">
-                  {Object.entries(groupedItems).map(
-                    ([groupKey, productGroup]: [string, GroupedCartItem]) => {
-                      const optionEntries = Object.entries(
-                        productGroup.options
-                      );
-                      return optionEntries.map(
-                        ([optionKey, item]: [string, CartItem]) => {
-                          const productOption = isProductOption(item.option)
-                            ? item.option
-                            : null;
-                          return (
-                            <div
-                              key={item.id}
-                              className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm"
-                            >
-                              <div className="flex justify-between items-start">
-                                <div className="flex items-start gap-3">
+                <div className="md:hidden">
+                  <div className="divide-y divide-gray-100">
+                    {Object.entries(groupedItems).map(
+                      ([groupKey, productGroup]: [string, any]) => {
+                        const optionEntries = Object.entries(
+                          productGroup.options
+                        );
+                        return optionEntries.map(
+                          ([optionKey, item]: [string, any]) => {
+                            const productOption = isProductOption(item.option)
+                              ? item.option
+                              : null;
+                            return (
+                              <div
+                                key={item.id}
+                                className="py-6 first:pt-0"
+                              >
+                                <div className="flex gap-4">
                                   <Link
                                     href={`/product/${item.products?.slug || item.bundles?.id}`}
                                     className="shrink-0"
@@ -792,7 +681,7 @@ const CartClient: React.FC<CartClientProps> = ({
                                         (item as any)?.meta?.image ||
                                         item.bundles?.thumbnail_url ||
                                         item.offers?.image_url ||
-                                        "/placeholder.png"
+                                        "/product-placeholder.png"
                                       }
                                       alt={
                                         item.products?.name ||
@@ -800,121 +689,121 @@ const CartClient: React.FC<CartClientProps> = ({
                                         item.offers?.title ||
                                         "Product image"
                                       }
-                                      className="h-16 w-16 rounded border border-gray-200"
+                                      className="h-24 w-24 rounded-lg object-cover bg-gray-50"
                                     />
                                   </Link>
-                                  <div>
-                                    <div className="font-semibold text-gray-900 text-sm">
-                                      {(item.products?.name ||
-                                        item.bundles?.name ||
-                                        item.offers?.title ||
-                                        (item as any)?.meta?.name ||
-                                        "Product") +
-                                        (productOption?.name
-                                          ? ` - ${productOption.name}`
-                                          : "")}
+                                  <div className="flex-1 min-w-0 flex flex-col justify-between">
+                                    <div>
+                                      <div className="flex justify-between items-start gap-2">
+                                        <div className="font-medium text-gray-900 text-sm line-clamp-2">
+                                          {(item.products?.name ||
+                                            item.bundles?.name ||
+                                            item.offers?.title ||
+                                            (item as any)?.meta?.name ||
+                                            "Product") +
+                                            (productOption?.name
+                                              ? ` - ${productOption.name}`
+                                              : "")}
+                                        </div>
+                                        <button
+                                          onClick={() => handleRemoveItem(item)}
+                                          className="text-gray-400 hover:text-red-500 shrink-0 p-1"
+                                          aria-label="Remove item"
+                                        >
+                                          <Trash2Icon className="size-4" />
+                                        </button>
+                                      </div>
+                                      <div className="text-sm text-gray-600 mt-1">
+                                        {formatNaira(
+                                          productOption?.price ??
+                                            (item.offers?.price_per_slot ||
+                                              item.price) ??
+                                            0
+                                        )}
+                                      </div>
                                     </div>
-                                    <div className="text-sm text-gray-600 mt-1">
-                                      {formatNaira(
-                                        productOption?.price ??
-                                          (item.offers?.price_per_slot ||
-                                            item.price) ??
-                                          0
-                                      )}
+                                    
+                                    <div className="flex justify-between items-center mt-3">
+                                      <div className="flex items-center gap-3">
+                                        <button
+                                          className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors"
+                                          onClick={() =>
+                                            handleQuantityChange(item, false)
+                                          }
+                                        >
+                                          <AiOutlineMinus className="size-3" />
+                                        </button>
+                                        <span className="font-medium text-sm text-gray-900 w-4 text-center">
+                                          {item.quantity}
+                                        </span>
+                                        <button
+                                          className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors"
+                                          onClick={() =>
+                                            handleQuantityChange(item, true)
+                                          }
+                                        >
+                                          <AiOutlinePlus className="size-3" />
+                                        </button>
+                                      </div>
+                                      <div className="text-sm font-semibold text-gray-900">
+                                        {formatNaira(
+                                          (productOption?.price ??
+                                            (item.offers?.price_per_slot ||
+                                              item.price) ??
+                                            0) * item.quantity
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
-                                <button
-                                  onClick={() => handleRemoveItem(item)}
-                                  className="text-gray-400 hover:text-red-500"
-                                  aria-label="Remove item"
-                                >
-                                  <Trash2Icon className="h-4 w-4" />
-                                </button>
                               </div>
-
-                              <div className="flex justify-between items-center mt-3">
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className="size-7 rounded border border-gray-300 text-gray-700"
-                                    onClick={() =>
-                                      handleQuantityChange(item, false)
-                                    }
-                                  >
-                                    <AiOutlineMinus className="size-4" />
-                                  </Button>
-                                  <span className="font-medium text-base text-gray-900">
-                                    {item.quantity}
-                                  </span>
-                                  <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className="size-7 rounded border border-gray-300 text-gray-700"
-                                    onClick={() =>
-                                      handleQuantityChange(item, true)
-                                    }
-                                  >
-                                    <AiOutlinePlus className="size-4" />
-                                  </Button>
-                                </div>
-                                <div className="text-sm font-semibold">
-                                  {formatNaira(
-                                    (productOption?.price ??
-                                      (item.offers?.price_per_slot ||
-                                        item.price) ??
-                                      0) * item.quantity
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        }
-                      );
-                    }
-                  )}
+                            );
+                          }
+                        );
+                      }
+                    )}
+                  </div>
                 </div>
               </div>
 
               {/* Order Summary */}
               <div className="md:col-span-1">
-                <Card className="p-6 bg-white rounded-xl shadow border border-gray-100 sticky top-4">
-                  <h2 className="text-xl font-bold text-primary mb-4">
+                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] sticky top-24">
+                  <h2 className="text-lg font-bold text-gray-900 mb-6 font-primary">
                     Order Summary
                   </h2>
-                    <div className="flex justify-between mb-2">
-                      <span className="text-muted-foreground">
-                        Subtotal ({totalQuantity} items)
-                      </span>
-                      <span className="font-semibold text-primary">
-                        {formatNaira(subtotal)}
-                      </span>
-                    </div>
-                    {dealsDiscount > 0 && (
-                      <div className="flex justify-between mb-2 text-green-600">
-                        <span>Discount</span>
-                        <span>-{formatNaira(dealsDiscount)}</span>
+                    <div className="space-y-4 text-sm font-medium">
+                      <div className="flex justify-between text-gray-500">
+                        <span>Subtotal ({totalQuantity} items)</span>
+                        <span className="text-gray-900">
+                          {formatNaira(subtotal)}
+                        </span>
                       </div>
-                    )}
-                    <Separator className="my-2" />
-                    <div className="flex justify-between mb-2">
-                      <span className="text-muted-foreground">Total</span>
-                      <span className="font-bold text-xl text-primary">
+                      {dealsDiscount > 0 && (
+                        <div className="flex justify-between text-green-600">
+                          <span>Discount</span>
+                          <span>-{formatNaira(dealsDiscount)}</span>
+                        </div>
+                      )}
+                    </div>
+                    <Separator className="my-6 bg-gray-100" />
+                    <div className="flex justify-between items-end mb-8">
+                      <span className="text-base text-gray-600 font-medium pb-0.5">Total</span>
+                      <span className="font-bold text-2xl text-gray-900">
                         {formatNaira(totalAmount)}
                       </span>
                     </div>
-                  <p className="text-muted-foreground text-xs mb-4">
-                    Delivery fees not included yet.
-                  </p>
                   <Button
-                    className="w-full text-primary-foreground py-3 mt-2"
+                    className="w-full h-12 bg-[#1B6013] hover:bg-[#154d0f] text-white rounded-xl font-medium tracking-wide shadow-lg shadow-[#1B6013]/20 transition-all hover:shadow-[#1B6013]/30 hover:-translate-y-0.5"
                     onClick={handleCheckout}
                     disabled={totalQuantity === 0}
                   >
                     Proceed to Checkout
                   </Button>
-                </Card>
+                  <p className="text-center text-xs text-gray-400 mt-4">
+                    Taxes and shipping calculated at checkout
+                  </p>
+                </div>
               </div>
             </div>
           )}

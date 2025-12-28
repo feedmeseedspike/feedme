@@ -197,7 +197,7 @@ export default function WalletClient({
     <div className="relative min-h-screen w-full bg-[#FAFAFA] text-gray-900 font-sans selection:bg-[#1B6013]/20">
       <AuroraBackground />
 
-      <main className="relative z-10 container mx-auto px-4 py-12 max-w-4xl space-y-12">
+      <main className="relative z-10 container mx-auto px-4 py-6 max-w-4xl space-y-6">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div>

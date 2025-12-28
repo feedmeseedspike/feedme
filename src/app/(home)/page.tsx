@@ -294,6 +294,7 @@ export default async function Home() {
           <Container>
             <Banner />
 
+            {/* SPIN TO WIN - TEMPORARILY DISABLED */}
             {/* <Link href="/spin-to-win" className="block w-full mt-6 mb-2">
               <div className="rounded-xl overflow-hidden relative h-20 md:h-24 bg-gradient-to-r from-[#1B6013] to-[#F0800F] flex items-center justify-between px-6 md:px-12 shadow-lg group hover:shadow-xl transition-all">
                 <div className="flex items-center gap-4">

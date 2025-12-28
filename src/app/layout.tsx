@@ -21,6 +21,8 @@ import RegisterSW from "../components/register-sw";
 import RegisterPush from "@components/shared/RegisterPush";
 import { NewVisitorProvider } from "@components/shared/ExitIntentProvider";
 import SignupWelcomeProvider from "@components/shared/SignupWelcomeProvider";
+import { getStoreSettings } from "@/lib/actions/settings.actions";
+import { StoreStatusProvider } from "@/providers/StoreStatusProvider";
 
 const DynamicReferralBanner = dynamic(
   () => import("@components/shared/ReferralBanner"),
@@ -128,6 +130,13 @@ export default async function RootLayout({
   let user = null;
   let session = null;
   let hasReferralStatus = false;
+  let settings = null;
+
+  try {
+    settings = await getStoreSettings();
+  } catch (error) {
+    console.error("Failed to fetch store settings:", error);
+  }
 
   try {
     const supabase = await createServerComponentClient();
@@ -317,7 +326,11 @@ export default async function RootLayout({
                       <PathnameProvider hasReferralStatus={hasReferralStatus}>
                         <SignupWelcomeProvider>
                           <DealsPopup />
-                          <NewVisitorProvider>{children}</NewVisitorProvider>
+                          <NewVisitorProvider>
+                            <StoreStatusProvider settings={settings}>
+                              {children}
+                            </StoreStatusProvider>
+                          </NewVisitorProvider>
                         </SignupWelcomeProvider>
                       </PathnameProvider>
                     </CustomScrollbar>

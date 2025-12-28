@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { User as UserIcon, Package, Heart, Wallet } from "lucide-react";
+import { User as UserIcon, Package, Heart, Wallet, Truck } from "lucide-react";
 import LogoutButton from "./LogoutButton";
 import { Separator } from "@components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
@@ -40,11 +40,18 @@ const UserDropdownContent: React.FC<UserDropdownContentProps> = ({ user }) => (
         <Package className="mr-2 h-4 w-4" /> My Orders
       </Link>
       <Link
+        href="/track-order"
+        className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded transition-colors"
+      >
+        <Truck className="mr-2 h-4 w-4" /> Track Order
+      </Link>
+      <Link
         href="/account/wallet"
         className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded transition-colors"
       >
         <Wallet className="mr-2 h-4 w-4" /> Wallet
       </Link>
+      {/* SPIN TO WIN - TEMPORARILY DISABLED */}
       {/* <Link
         href="/spin-to-win"
         className="flex items-center gap-2 p-2 hover:bg-purple-50 text-purple-700 font-medium rounded transition-colors"

@@ -30,7 +30,7 @@ const footerData = [
     title: "Company",
     links: [
       { name: "Seedspike", href: "https://seedspikeafrica.com/" },
-      { name: "Community", href: "/" },
+      { name: "Community", isCommunityModal: true },
       { name: "Press Releases", href: "/" },
       { name: "Contact", isModal: true },
       { name: "Careers (Join Us)", href: "/careers" },
@@ -39,6 +39,7 @@ const footerData = [
   {
     title: "Get Help",
     links: [
+      { name: "Track Order", href: "/track-order" },
       { name: "Chat With Us", href: "/" },
       { name: "Send An Email", isEmailModal: true },
     ],
@@ -69,33 +70,6 @@ const Icons = [
   {
     href: "https://www.instagram.com/seedspikeafrica/profilecard/?igsh=MTE4OW5zY2RjYnprYQ==",
     icon: <SlSocialInstagram />,
-  },
-];
-
-const securityBadges = [
-  {
-    id: "paystack",
-    label: "Paystack Secure",
-    description: "PCI-DSS Level 1",
-    icon: "mdi:credit-card-check-outline",
-  },
-  {
-    id: "son",
-    label: "SON Certified",
-    description: "Standards Org. of Nigeria",
-    icon: "mdi:shield-check",
-  },
-  {
-    id: "nafdac",
-    label: "NAFDAC Verified",
-    description: "Safe food partners",
-    icon: "mdi:certificate-outline",
-  },
-  {
-    id: "delivery",
-    label: "Insured Deliveries",
-    description: "Trusted logistics partners",
-    icon: "mdi:truck-fast-outline",
   },
 ];
 
@@ -133,6 +107,56 @@ function ComingSoonModal({
   );
 }
 
+function CommunityModal() {
+  const [open, setOpen] = React.useState(false);
+  
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <button
+        onClick={() => setOpen(true)}
+        className="relative inline-block text-left bg-transparent border-none p-0 m-0 text-inherit cursor-pointer after:content-[''] after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:origin-bottom-right after:scale-x-0 after:bg-[#1B6013] after:transition-transform after:duration-300 after:ease-[cubic-bezier(0.65,0.05,0.36,1)] hover:after:origin-bottom-left hover:after:scale-x-100"
+      >
+        Community
+      </button>
+      <DialogContent className="max-w-sm w-full text-center p-8 rounded-[2rem] border-none shadow-2xl">
+        <DialogHeader>
+          <div className="flex justify-center mb-6">
+             <div className="w-24 h-24 bg-[#1B6013]/5 rounded-full flex items-center justify-center ring-1 ring-[#1B6013]/10 relative">
+               <div className="absolute inset-0 rounded-full bg-[#1B6013]/5 animate-pulse"></div>
+               <Icon icon="mdi:whatsapp" className="text-[#1B6013] w-12 h-12 text-5xl relative z-10"/>
+             </div>
+          </div>
+          <DialogTitle className="text-3xl font-bold mb-3 text-[#1B6013]">
+            Join Our Community
+          </DialogTitle>
+        </DialogHeader>
+        <div className="mb-8 text-gray-500 text-base leading-relaxed font-light px-2">
+          Connect with other food lovers, get exclusive updates, and share your experiences in our official WhatsApp group.
+        </div>
+        <DialogFooter className="flex-col gap-3 sm:flex-col">
+          <a
+            href="https://chat.whatsapp.com/Lrmjj1IEtoiCBHSBt40AMs?mode=hqrc"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full"
+          >
+            <Button className="w-full bg-[#1B6013] hover:bg-[#154a0f] text-white h-14 rounded-2xl text-lg font-bold shadow-xl shadow-[#1B6013]/20 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-2xl hover:shadow-[#1B6013]/30">
+              Join WhatsApp Group
+            </Button>
+          </a>
+          <Button
+            variant="ghost"
+            onClick={() => setOpen(false)}
+            className="w-full text-gray-400 hover:text-[#1B6013] hover:bg-[#1B6013]/5 h-12 rounded-xl text-base font-medium transition-colors"
+          >
+            Maybe Later
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 type CategoryListItem = {
   id: string;
   title: string;
@@ -149,6 +173,11 @@ export default function FooterClient({
   error: string | null;
 }) {
   const [comingSoonOpen, setComingSoonOpen] = React.useState(false);
+  const [showAllCategories, setShowAllCategories] = React.useState(false);
+
+  const visibleCategories = categories
+    .filter((category) => !!category.id)
+    .slice(0, showAllCategories ? undefined : 5);
 
   return (
     <>
@@ -183,9 +212,8 @@ export default function FooterClient({
                     ) : categories.length === 0 ? (
                       <li>No categories found.</li>
                     ) : (
-                      categories
-                        .filter((category) => !!category.id)
-                        .map((category, index) => (
+                      <>
+                        {visibleCategories.map((category, index) => (
                           <motion.li
                             key={category.id}
                             className="text-sm"
@@ -200,7 +228,23 @@ export default function FooterClient({
                               {category.title}
                             </Link>
                           </motion.li>
-                        ))
+                        ))}
+                        {categories.length > 5 && (
+                          <motion.li
+                            className="text-sm pt-1"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.3 }}
+                          >
+                            <button
+                              onClick={() => setShowAllCategories(!showAllCategories)}
+                              className="text-[#1B6013] hover:text-[#154a0f] font-medium flex items-center transition-colors duration-200"
+                            >
+                              {showAllCategories ? "See less" : "See more"}
+                            </button>
+                          </motion.li>
+                        )}
+                      </>
                     )}
                   </ul>
                 </div>
@@ -230,6 +274,8 @@ export default function FooterClient({
                             <ContactModal />
                           ) : "isEmailModal" in link && link.isEmailModal ? (
                             <EmailModal />
+                          ) : "isCommunityModal" in link && link.isCommunityModal ? (
+                            <CommunityModal />
                           ) : "href" in link && link.href === "/" ? (
                             <>
                               <button

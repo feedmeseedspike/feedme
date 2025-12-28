@@ -234,13 +234,15 @@ export async function getWalletBalanceServer(userId: string): Promise<number> {
   return data.balance || 0;
 } 
 
+import supabaseAdmin from "src/utils/supabase/admin";
+
 export async function creditWallet(
   userId: string, 
   amount: number, 
   description: string, 
   reference: string
 ) {
-  const supabase = await createClient();
+  const supabase = supabaseAdmin;
 
   // Fetch current wallet
   let { data: walletData, error: walletError } = await supabase

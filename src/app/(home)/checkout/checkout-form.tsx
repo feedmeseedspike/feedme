@@ -11,7 +11,7 @@ import {
 } from "@components/ui/form";
 import Container from "@components/shared/Container";
 import { Separator } from "@components/ui/separator";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import React, { useState, useTransition, useMemo, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -142,7 +142,7 @@ const CartItemDisplay = React.memo(({ item, onRemove }: CartItemDisplayProps) =>
             item.products?.images?.[0] ||
             item.bundles?.thumbnail_url ||
             item.offers?.image_url ||
-            "/placeholder.png"
+            "/product-placeholder.png"
           }
           alt={
             item.products?.name ||
@@ -517,6 +517,9 @@ const CheckoutForm = ({
     if (savedDiscount) setVoucherDiscount(Number(savedDiscount));
   }, []);
 
+  const searchParams = useSearchParams();
+  const voucherFromUrl = searchParams.get('apply_voucher');
+
   useEffect(() => {
     // Always check for referral and voucher for referred users
     const tryAutoApplyReferralVoucher = async () => {
@@ -589,9 +592,12 @@ const CheckoutForm = ({
       }
     };
 
-    if (user && !isLoadingReferralStatus && !autoAppliedReferralVoucher) {
+
+
+    if (user && !isLoadingReferralStatus && !autoAppliedReferralVoucher && !voucherFromUrl) { // Don't run referral logic if URL voucher is present
       startTransition(() => {
         tryAutoApplyReferralVoucher().catch((error) => {
+
           setVoucherCode("");
           setVoucherDiscount(0);
           setIsVoucherValid(false);
@@ -609,7 +615,61 @@ const CheckoutForm = ({
     validateVoucherMutation,
     showToast,
     startTransition,
+    voucherFromUrl,
   ]);
+
+  useEffect(() => {
+      // Auto-Apply Voucher from URL if present
+      const autoApplyUrlVoucher = () => {
+          if (!voucherFromUrl) return;
+          if (voucherValidationAttempted) return; // Prevent loop or re-attempt if already tried
+          if (isVoucherValid && voucherCode === voucherFromUrl) return; // Already applied
+
+          setVoucherCode(voucherFromUrl);
+          
+          // Trigger validation
+          startTransition(async () => {
+            try {
+                const result = await validateVoucherMutation({
+                  code: voucherFromUrl,
+                  totalAmount: subtotal || 0, // Use subtotal (might be 0 during loading)
+                });
+                
+                if (result.success && result.data) {
+                  const { id, discountType, discountValue } = result.data;
+                  setIsVoucherValid(true);
+                  setVoucherId(id);
+                  const calculatedDiscount = discountType === "percentage" 
+                        ? (discountValue / 100) * (subtotal || 0)
+                        : discountValue;
+                  const discount = Math.min(calculatedDiscount, subtotal || 9999999);
+                  setVoucherDiscount(discount);
+                  
+                  localStorage.setItem("voucherCode", voucherFromUrl);
+                  localStorage.setItem("voucherDiscount", discount.toString());
+                  showToast("Voucher from reward auto-applied!", "success");
+                  
+                  // Clear param from URL to keep it clean
+                  const newUrl = new URL(window.location.href);
+                  newUrl.searchParams.delete('apply_voucher');
+                  window.history.replaceState({}, '', newUrl.toString());
+
+                } else {
+                   if ((subtotal || 0) > 0) {
+                       showToast(result.error || "Failed to apply reward voucher.", "error");
+                   }
+                }
+            } catch (e) {
+                console.error("Auto-apply voucher error", e);
+            }
+          });
+          setVoucherValidationAttempted(true);
+      };
+
+      if (voucherFromUrl && !isVoucherValid && subtotal > 0) {
+          autoApplyUrlVoucher();
+      }
+  }, [voucherFromUrl, subtotal, isVoucherValid, validateVoucherMutation, startTransition, showToast, voucherValidationAttempted]);
 
   const groupedItems = useMemo(() => {
     return items.reduce(
@@ -852,6 +912,8 @@ const CheckoutForm = ({
                         deliveryAddress: shippingAddressForm.getValues().street,
                         localGovernment:
                           shippingAddressForm.getValues().location,
+                        discount: voucherDiscount,
+                        totalAmount: totalAmountPaid,
                       },
                       userOrderProps: {
                         orderNumber: result.data.orderId,
@@ -879,6 +941,7 @@ const CheckoutForm = ({
                         serviceCharge: /*serviceCharge*/ 0, // Service charge commented out
                         totalAmount: subtotal,
                         totalAmountPaid: totalAmountPaid,
+                        discount: voucherDiscount, // Pass discount
                         userid: user.user_id,
                       },
                     }),
@@ -1258,7 +1321,7 @@ const CheckoutForm = ({
                                         <Input
                                           placeholder="Enter email address"
                                           {...field}
-                                          disabled={!!user?.email} 
+                                          // disabled={!!user?.email} 
                                         />
                                       </FormControl>
                                       <FormMessage />

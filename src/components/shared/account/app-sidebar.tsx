@@ -17,6 +17,7 @@ import {
   ChevronRight,
   Bell,
   HelpCircle,
+  Gift,
 } from "lucide-react";
 import Circles from "../../icons/Cirles.svg";
 import {
@@ -89,6 +90,12 @@ export default function AppSidebar({ user }: AppSidebarProps) {
         url: "/account/referral",
         icon: Bell,
         description: "Referral from friends",
+      },
+      {
+        title: "My Rewards",
+        url: "/account/rewards",
+        icon: Gift,
+        description: "Spin & Win Prizes",
       },
     ],
     secondary: [

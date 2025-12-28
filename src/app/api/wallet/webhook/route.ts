@@ -200,42 +200,48 @@ async function handleDirectPayment(
       }
   }
 
-  // Send order confirmation emails
-  try {
-    const emailRes = await axios.post(
-      `${process.env.NEXT_PUBLIC_SITE_URL!}/api/email/send-order-confirmation`,
-      {
-        adminEmail: "orders.feedmeafrica@gmail.com",
-        userEmail: metadata.email,
-        adminOrderProps: {
-          orderNumber: metadata.orderId,
-          customerName: metadata.customerName,
-          customerPhone: metadata.customerPhone,
-          itemsOrdered: metadata.itemsOrdered,
-          deliveryAddress: metadata.deliveryAddress,
-          localGovernment: metadata.localGovernment,
-        },
-        userOrderProps: {
-          orderNumber: metadata.orderId,
-          customerName: metadata.customerName,
-          customerPhone: metadata.customerPhone,
-          itemsOrdered: metadata.itemsOrdered,
-          deliveryAddress: metadata.deliveryAddress,
-          deliveryFee: metadata.deliveryFee,
-          serviceCharge: metadata.serviceCharge,
-          totalAmount: metadata.amount,
-          totalAmountPaid: metadata.subtotal,
-          userid: metadata.user_id,
-        },
-      }
-    );
+    // Send order confirmation emails
+    try {
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+        console.log("Sending email via API:", `${siteUrl}/api/email/send-order-confirmation`);
 
-    if (!emailRes.data.success) {
-      console.error("Failed to send confirmation email:", emailRes.data.error);
+        const emailRes = await axios.post(
+            `${siteUrl}/api/email/send-order-confirmation`,
+            {
+                adminEmail: "orders.feedmeafrica@gmail.com",
+                userEmail: metadata.email,
+                adminOrderProps: {
+                    orderNumber: metadata.orderId,
+                    customerName: metadata.customerName,
+                    customerPhone: metadata.customerPhone,
+                    itemsOrdered: metadata.itemsOrdered,
+                    deliveryAddress: metadata.deliveryAddress,
+                    localGovernment: metadata.localGovernment,
+                },
+                userOrderProps: {
+                    orderNumber: metadata.orderId,
+                    customerName: metadata.customerName,
+                    customerPhone: metadata.customerPhone,
+                    itemsOrdered: metadata.itemsOrdered,
+                    deliveryAddress: metadata.deliveryAddress,
+                    deliveryFee: metadata.deliveryFee,
+                    serviceCharge: metadata.serviceCharge,
+                    totalAmount: metadata.amount,
+                    totalAmountPaid: metadata.subtotal,
+                    userid: metadata.user_id,
+                },
+            }
+        );
+
+        if (!emailRes.data.success) {
+            console.error("Failed to send confirmation email:", emailRes.data.error);
+        } else {
+             console.log("Email API processed successfully");
+        }
+    } catch (err: any) {
+        console.error("Failed to call email API endpoint:", err.message);
+        // Fallback: Try importing directly if API fails? (Optional, but user said "don't over change")
     }
-  } catch (err) {
-    console.error("Failed to send confirmation email:", err);
-  }
 }
 
 async function sendPushNotification(

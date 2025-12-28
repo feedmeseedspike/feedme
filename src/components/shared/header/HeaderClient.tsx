@@ -141,6 +141,13 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                               </p>
                               <div className="space-y-1">
                                 <Link
+                                  href="/track-order"
+                                  className="block py-2 hover:bg-white/10 rounded text-lg px-2 transition-colors flex items-center gap-2"
+                                  onClick={() => setOpenMobileSheet(false)}
+                                >
+                                  Track Order
+                                </Link>
+                                <Link
                                   href="/bundles"
                                   className="block py-2 hover:bg-white/10 rounded text-lg px-2 transition-colors"
                                   onClick={() => setOpenMobileSheet(false)}
@@ -183,6 +190,7 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                               >
                                 Shop Today&apos;s Deals
                               </Link>
+                              {/* SPIN TO WIN - TEMPORARILY DISABLED */}
                               {/* <Link
                                 href="/spin-to-win"
                                 className="block py-2 hover:bg-white/10 rounded text-lg px-2 text-[#F0800F] font-bold transition-colors flex items-center gap-2"
