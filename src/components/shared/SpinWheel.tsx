@@ -1,30 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, useAnimation, AnimatePresence, useMotionValue } from "framer-motion";
 import { spinTheWheel } from "src/lib/actions/spin.actions";
 import { cn } from "src/lib/utils";
-import { Leaf, Star, Volume2, VolumeX, X, Trophy } from "lucide-react";
+import { Star, Volume2, VolumeX, X, Trophy } from "lucide-react";
+import Link from "next/link";
 import { SPIN_PRIZES_CONFIG } from "src/lib/deals"; 
 import confetti from "canvas-confetti";
-
-// --- Configuration ---
-const PRIZES = SPIN_PRIZES_CONFIG;
-
-const PRIZE_IMAGES: Record<string, string> = {
-  "wallet_500": "/spin/wallet.png",
-  "wallet_1000": "/spin/wallet.png",
-  "voucher_5": "/spin/voucher.png",
-  "dates_pack": "/spin/dates.png",
-  "try_again_1": "/spin/try_again.png", 
-  "try_again_2": "/spin/try_again.png",
-};
-
-const PRIZE_MAP: Record<string, number[]> = {};
-PRIZES.forEach((p, index) => {
-    if (!PRIZE_MAP[p.id]) PRIZE_MAP[p.id] = [];
-    PRIZE_MAP[p.id].push(index);
-});
 
 // --- Sound Synthesizer ---
 const useSound = () => {
@@ -76,7 +59,7 @@ const useSound = () => {
 };
 
 // --- Standalone Visual Component to prevent re-renders ---
-const WheelVisualRender = ({ isFullscreen, activeLight, controls, rotation }: any) => (
+const WheelVisualRender = ({ isFullscreen, activeLight, controls, rotation, prizes }: any) => (
     <motion.div 
         layoutId="wheel-visual-core"
         className={cn(
@@ -127,12 +110,13 @@ const WheelVisualRender = ({ isFullscreen, activeLight, controls, rotation }: an
                     animate={controls}
                     style={{ rotate: rotation }}
                 >
-                    {PRIZES.map((prize, i) => {
-                        const imgSrc = PRIZE_IMAGES[prize.id];
+                    {prizes.map((prize: any, i: number) => {
+                        const imgSrc = prize.image;
                         const idx = i + 1;
                         const colors = ['#1B6013', '#FFFFFF', '#F97316', '#FFFFFF'];
+                        // Auto-color enforced: Ignore prize.color
                         const bgColor = colors[i % colors.length];
-                        const isWhite = bgColor === '#FFFFFF';
+                        const isWhite = bgColor === '#FFFFFF' || bgColor?.toLowerCase() === '#ffffff';
                         const textColor = isWhite ? '#1B6013' : '#FFFFFF';
 
                         return (
@@ -140,28 +124,38 @@ const WheelVisualRender = ({ isFullscreen, activeLight, controls, rotation }: an
                                 key={i}
                                 className="absolute top-0 left-0 w-full h-full flex items-center justify-start pl-[50px]"
                                 style={{
-                                    transform: `rotate(calc(360deg / ${PRIZES.length} * (${idx} - 1)))`,
+                                    transform: `rotate(calc(360deg / ${prizes.length} * (${idx} - 1)))`,
                                     transformOrigin: "center right", 
                                     width: "50%",
-                                    height: `calc((2 * 3.14159 * 50%) / ${PRIZES.length})`, 
+                                    height: `calc((2 * 3.14159 * 50%) / ${prizes.length})`, 
                                     background: bgColor,
                                     clipPath: "polygon(0% 0%, 100% 50%, 0% 100%)",
                                     top: "50%",
-                                    marginTop: `calc(-1 * (2 * 3.14159 * 50%) / ${PRIZES.length} / 2)`,
+                                    marginTop: `calc(-1 * (2 * 3.14159 * 50%) / ${prizes.length} / 2)`,
                                 }}
                             >
-                                <div className="flex items-center gap-3 transform rotate-90 md:rotate-0 origin-center">
+                                <div className="flex items-center gap-1 md:gap-2 transform rotate-90 md:rotate-0 origin-center max-w-[80%]">
                                     {imgSrc && (
-                                        <div className="w-8 h-8 md:w-12 md:h-12 flex-shrink-0">
-                                            <img src={imgSrc} alt="" className="w-full h-full object-contain" />
+                                        <div className="w-6 h-6 md:w-10 md:h-10 flex-shrink-0 bg-white rounded-full p-0.5 shadow-sm">
+                                            <img src={imgSrc} alt="" className="w-full h-full object-contain rounded-full" />
                                         </div>
                                     )}
-                                    <span 
-                                        className="font-bold text-xs md:text-xl uppercase tracking-tight font-['Quicksand']"
-                                        style={{ color: textColor }}
-                                    >
-                                        {prize.label}
-                                    </span>
+                                    <div className="flex flex-col leading-none">
+                                        <span 
+                                            className="font-bold text-[0.55rem] md:text-sm uppercase tracking-tight font-['Quicksand'] break-words whitespace-normal text-left line-clamp-2"
+                                            style={{ color: textColor }}
+                                        >
+                                            {prize.label}
+                                        </span>
+                                        {prize.sub && (
+                                            <span 
+                                                className="text-[0.45rem] md:text-xs opacity-80 font-['Source Sans Pro']"
+                                                style={{ color: textColor }}
+                                            >
+                                                {prize.sub}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </li>
                         )
@@ -177,7 +171,7 @@ const WheelVisualRender = ({ isFullscreen, activeLight, controls, rotation }: an
     </motion.div>
 );
 
-export default function SpinWheel() {
+export default function SpinWheel({ prizes = SPIN_PRIZES_CONFIG }: { prizes?: any[] }) {
   const [viewMode, setViewMode] = useState<'inline' | 'fullscreen'>('inline');
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<{ message: string; prize?: any } | null>(null);
@@ -188,6 +182,15 @@ export default function SpinWheel() {
   const lastTickRef = useRef(0);
   const [activeLight, setActiveLight] = useState(0);
 
+  const prizeMap = useMemo(() => {
+     const map: Record<string, number[]> = {};
+     prizes.forEach((p, index) => {
+        if (!map[p.id]) map[p.id] = [];
+        map[p.id].push(index);
+     });
+     return map;
+  }, [prizes]);
+
   // Chasing Lights Animation
   useEffect(() => {
     const interval = setInterval(() => {
@@ -197,11 +200,10 @@ export default function SpinWheel() {
   }, []);
 
   // Lock Scroll in Fullscreen
-  // Lock Scroll in Fullscreen
   useEffect(() => {
       if (viewMode === 'fullscreen') {
           document.body.style.overflow = 'hidden';
-          document.documentElement.style.overflow = 'hidden'; // Lock html tag too
+          document.documentElement.style.overflow = 'hidden'; 
       } else {
           document.body.style.overflow = '';
           document.documentElement.style.overflow = '';
@@ -215,7 +217,7 @@ export default function SpinWheel() {
   // Sound Tracking
   useEffect(() => {
      const unsubscribe = rotation.on("change", (latest) => {
-         const segmentAngle = 360 / PRIZES.length;
+         const segmentAngle = 360 / prizes.length;
          const normalizedRotation = latest % 360;
          const currentSegment = Math.floor(normalizedRotation / segmentAngle);
          if (currentSegment !== lastTickRef.current) {
@@ -224,7 +226,7 @@ export default function SpinWheel() {
          }
      });
      return () => unsubscribe();
-  }, [rotation, playTick]);
+  }, [rotation, playTick, prizes.length]);
 
   const fireConfetti = () => {
       const duration = 3000;
@@ -248,19 +250,16 @@ export default function SpinWheel() {
     if (spinning) return;
     initAudio(); 
     
-    // Switch to Cinema Mode & Start Immediate Spin
     setViewMode('fullscreen');
     setSpinning(true);
     setResult(null);
 
-    // 1. Immediate Feedback: Start generic fast spin
-    // Rotate significantly ahead to ensure movement while waiting
+    // 1. Immediate Feedback
     controls.start({ 
         rotate: currentRotation + 360 * 30, 
         transition: { duration: 20, ease: "linear" } 
     });
 
-    // 2. Network Request
     try {
         const response = await spinTheWheel();
         
@@ -272,25 +271,51 @@ export default function SpinWheel() {
         }
 
         // 3. Logic: Calculate smooth landing
-        let possibleIndices = PRIZE_MAP[response.prize.id];
-        if (!possibleIndices || possibleIndices.length === 0) possibleIndices = [1]; 
-        let targetIndex = possibleIndices[Math.floor(Math.random() * possibleIndices.length)];
+        const prizeId = response.prize.id;
+        let possibleIndices: number[] = [];
         
-        // Get current rotation state to ensure smooth transition
+        // Robust ID Matching
+        prizes.forEach((p, idx) => {
+            if (p.id === prizeId) possibleIndices.push(idx);
+        });
+
+        if (possibleIndices.length === 0) {
+            console.warn("Prize ID not found in local map. Defaulting to 0.", prizeId, prizes);
+            possibleIndices = [0]; 
+        }
+
+        const targetIndex = possibleIndices[Math.floor(Math.random() * possibleIndices.length)];
+        const totalSegments = prizes.length;
+        const segmentAngle = 360 / totalSegments;
+
+        // Pointer is at TOP (12 o'clock).
+        // Item 0 is positioned at 'left: 0', width: 50%, origin: 'center right'.
+        // This means Item 0 starts at 9 o'clock (270 deg) relative to circle center? 
+        // Or if standard CSS 0deg is 3 o'clock, then:
+        // Div at left:0 is the left semi-circle.
+        // It points Left.
+        // To get from Left (9 o'clock) to Top (12 o'clock), we rotate +90 deg.
+        // Current Logic: Rotation rotates the whole UL container.
+        
+        const baseTarget = 90 - (targetIndex * segmentAngle);
+
+        // Add small random jitter within the segment (avoid edges)
+        const safeZone = segmentAngle * 0.8; // 80% of segment width
+        const randomOffset = (Math.random() - 0.5) * safeZone; 
+        
         const currentReal = rotation.get();
-        const segmentAngle = 360 / PRIZES.length;
-        const randomOffset = (Math.random() - 0.5) * (segmentAngle * 0.4); 
+        // Determine minimum number of extra spins
+        const minDecelerationSpins = 5; 
         
-        // Target alignment (270 is top)
-        const baseTarget = 270 - (targetIndex * segmentAngle) + randomOffset;
+        const targetPhase = baseTarget + randomOffset;
+        const currentPhase = currentReal % 360;
         
-        // Ensure we spin at least 2 more full turns for deceleration effect
-        const minDecelerationSpins = 3;
-        const minTarget = currentReal + (360 * minDecelerationSpins);
+        // Distance to cover to align phases forward
+        let phaseDiff = targetPhase - currentPhase;
+        if (phaseDiff < 0) phaseDiff += 360;
         
-        // Calculate final absolute rotation
-        const spinsNeeded = Math.ceil((minTarget - baseTarget) / 360);
-        const finalRotation = baseTarget + (spinsNeeded * 360);
+        // Total rotation
+        const finalRotation = currentReal + phaseDiff + (minDecelerationSpins * 360);
 
         setCurrentRotation(finalRotation);
 
@@ -320,6 +345,11 @@ export default function SpinWheel() {
       setViewMode('inline');
   };
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    // You might want to add a toast here, but simple alert or text change is fine for this context
+  };
+
   return (
     <>
         <style jsx global>{`
@@ -327,13 +357,11 @@ export default function SpinWheel() {
           .font-quicksand { fontFamily: 'Quicksand', sans-serif; }
           .font-source { fontFamily: 'Source Sans Pro', sans-serif; }
         `}</style>
-
-        {/* State 1: Inline Display */}
+        
         {viewMode === 'inline' && (
             <div className="flex flex-col items-center justify-center w-full relative">
-                <WheelVisualRender isFullscreen={false} activeLight={activeLight} controls={controls} rotation={rotation} />
+                <WheelVisualRender isFullscreen={false} activeLight={activeLight} controls={controls} rotation={rotation} prizes={prizes} />
                 
-                {/* Spin Button Inline - styled to match reference 'Glassy Teal with Orange Border' */}
                 <div className="mt-12 z-20">
                         <button 
                             onClick={handleSpin} 
@@ -351,12 +379,10 @@ export default function SpinWheel() {
             </div>
         )}
 
-        {/* State 2: Cinematic Fullscreen Mode */}
         <AnimatePresence>
             {viewMode === 'fullscreen' && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden font-sans">
                     
-                    {/* 1. Deep Blue Background (Reference Color #14248a) */}
                     <motion.div 
                         layoutId="fullscreen-bg"
                         className="absolute inset-0 z-0 bg-[#14248a]" 
@@ -364,34 +390,11 @@ export default function SpinWheel() {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                     >
-                         {/* Radial Glow */}
                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-radial-gradient from-[#4338ca]/30 to-transparent blur-3xl"></div>
                     </motion.div>
 
-                    {/* 2. Decorative Bottom Corners */}
-                    <motion.div 
-                        className="absolute bottom-0 left-0 w-48 h-48 z-10 text-white/10 pointer-events-none"
-                        initial={{ y: 50, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                    >
-                         <svg viewBox="0 0 100 100" fill="currentColor" className="w-full h-full">
-                             <path d="M0 100 V 50 Q 25 25 50 50 T 100 50 V 100 Z" />
-                         </svg>
-                    </motion.div>
-                    <motion.div 
-                        className="absolute bottom-0 right-0 w-48 h-48 z-10 text-white/10 pointer-events-none transform scale-x-[-1]"
-                        initial={{ y: 50, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                    >
-                         <svg viewBox="0 0 100 100" fill="currentColor" className="w-full h-full">
-                             <path d="M0 100 V 50 Q 25 25 50 50 T 100 50 V 100 Z" />
-                         </svg>
-                    </motion.div>
-
-                    {/* 3. Main Stage */}
                     <div className="relative z-20 flex flex-col items-center justify-center w-full h-full pointer-events-none">
                          
-                         {/* Close Button */}
                          <button 
                             onClick={closeFullscreen}
                             className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors pointer-events-auto z-50 backdrop-blur-md"
@@ -399,7 +402,6 @@ export default function SpinWheel() {
                              <X className="w-6 h-6" />
                         </button>
 
-                         {/* Mute Toggle */}
                          <button 
                             onClick={(e) => { e.stopPropagation(); setMuted(!muted); }}
                             className="absolute top-6 left-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors pointer-events-auto z-50 backdrop-blur-md"
@@ -407,12 +409,10 @@ export default function SpinWheel() {
                              {muted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
                         </button>
 
-                         {/* The Wheel */}
                          <div className="pointer-events-auto relative">
-                             <WheelVisualRender isFullscreen={true} activeLight={activeLight} controls={controls} rotation={rotation} />
+                             <WheelVisualRender isFullscreen={true} activeLight={activeLight} controls={controls} rotation={rotation} prizes={prizes} />
                          </div>
                         
-                        {/* Result Display */}
                         <AnimatePresence>
                             {result && (
                                 <motion.div 
@@ -429,32 +429,69 @@ export default function SpinWheel() {
                                             className="absolute -top-10 left-1/2 -translate-x-1/2 w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-md"
                                             style={{ border: "6px solid #f7a838" }}
                                         >
-                                            {result.prize?.type === 'none' ? <span className="text-4xl">😢</span> : <Trophy className="w-10 h-10 text-[#f7a838]" />}
+                                            {(!result.prize || result.prize.type === 'none') ? <span className="text-4xl">😢</span> : <Trophy className="w-10 h-10 text-[#f7a838]" />}
                                         </div>
                                         
                                         <h2 
-                                            className="text-4xl font-black text-slate-800 mt-8 mb-2 uppercase tracking-tight"
+                                            className="text-3xl font-black text-slate-800 mt-8 mb-2 uppercase tracking-tight"
                                             style={{ fontFamily: "'Quicksand', sans-serif" }}
                                         >
-                                            {result.prize?.type === 'none' ? 'Oh No!' : 'You Won!'}
+                                            {(!result.prize || result.prize.type === 'none') ? 'Oh No!' : 'You Won!'}
                                         </h2>
                                         <p 
-                                            className="text-slate-600 mb-8 text-lg leading-tight"
+                                            className="text-slate-600 mb-6 text-base leading-tight font-medium"
                                             style={{ fontFamily: "'Source Sans Pro', sans-serif" }}
                                         >
                                             {result.message}
                                         </p>
+
+                                        {result.prize?.data?.code && (
+                                            <div className="bg-slate-100 p-3 rounded-lg border border-dashed border-slate-300 mb-6 flex items-center justify-between">
+                                                <code className="text-sm font-bold text-slate-700 tracking-wider">
+                                                    {result.prize.data.code}
+                                                </code>
+                                                <button 
+                                                    onClick={() => copyToClipboard(result.prize?.data?.code || '')}
+                                                    className="text-xs bg-white border border-slate-200 px-2 py-1 rounded hover:bg-slate-50 uppercase font-bold text-slate-500"
+                                                >
+                                                    Copy
+                                                </button>
+                                            </div>
+                                        )}
                                         
-                                        <button 
-                                            onClick={closeFullscreen}
-                                            className="w-full text-white py-4 rounded-xl font-bold uppercase tracking-wider shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all"
-                                            style={{ 
-                                                background: "linear-gradient(to right, #f7a838, #ea580c)",
-                                                fontFamily: "'Quicksand', sans-serif"
-                                            }}
-                                        >
-                                            {result.prize?.type === 'none' ? 'Try Again' : 'Collect Reward'}
-                                        </button>
+                                        <div className="flex flex-col gap-3">
+                                            {(!result.prize || result.prize.type === 'none') ? (
+                                                <button 
+                                                    onClick={closeFullscreen}
+                                                    className="w-full text-white py-4 rounded-xl font-bold uppercase tracking-wider shadow-lg transition-all hover:bg-opacity-90"
+                                                    style={{ 
+                                                        background: "linear-gradient(to right, #94a3b8, #64748b)",
+                                                        fontFamily: "'Quicksand', sans-serif"
+                                                    }}
+                                                >
+                                                    Try Again
+                                                </button>
+                                            ) : (
+                                                <>
+                                                    <Link
+                                                        href={result.prize?.data?.code ? `/checkout?apply_voucher=${result.prize.data.code}` : '/account/wallet'}
+                                                        className="w-full text-white py-4 rounded-xl font-bold uppercase tracking-wider shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
+                                                        style={{ 
+                                                            background: "linear-gradient(to right, #f7a838, #ea580c)",
+                                                            fontFamily: "'Quicksand', sans-serif"
+                                                        }}
+                                                    >
+                                                        {result.prize?.type === 'wallet_cash' ? 'Check Wallet' : 'Checkout Now'}
+                                                    </Link>
+                                                     <Link
+                                                        href="/account/rewards"
+                                                        className="w-full text-slate-500 py-3 rounded-xl font-bold uppercase text-sm hover:bg-slate-50 transition-all block"
+                                                    >
+                                                        View My Rewards
+                                                    </Link>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
                                 </motion.div>
                             )}
@@ -466,3 +503,4 @@ export default function SpinWheel() {
     </>
   );
 }
+

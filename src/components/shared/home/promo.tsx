@@ -188,7 +188,7 @@ const Promo = () => {
 
               <Image
                 className="absolute bottom-0 w-full"
-                src={promo.image_url || "/images/placeholder.png"}
+                src={promo.image_url || "/product-placeholder.png"}
                 width={430}
                 height={600}
                 alt={promo.title || ""}

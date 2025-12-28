@@ -21,7 +21,7 @@ import { useMemo, useState, useTransition } from "react";
 import { AiOutlineMinus, AiOutlinePlus } from "react-icons/ai";
 import { useUser } from "src/hooks/useUser";
 import { useAnonymousCart } from "src/hooks/useAnonymousCart";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useCartQuery,
   useUpdateCartMutation,
@@ -30,7 +30,9 @@ import {
   cartQueryKey,
   ItemToUpdateMutation,
   usePrefetchCart,
+  useAddToCartMutation,
 } from "src/queries/cart";
+import { getProducts } from "src/queries/products";
 import { CartItem } from "src/lib/actions/cart.actions";
 import { formatNaira } from "src/lib/utils";
 import { Input } from "@components/ui/input";
@@ -38,6 +40,7 @@ import Link from "next/link";
 import { useToast } from "src/hooks/useToast";
 import { useVoucherValidationMutation } from "src/queries/vouchers";
 import { createClient as createSupabaseClient } from "src/utils/supabase/client";
+import { Tables } from "@utils/database.types";
 
 // Explicitly define ProductOption here to resolve 'Cannot find name' errors
 interface ProductOption {
@@ -83,7 +86,7 @@ const CartProductGroupDisplay = React.memo(
       "Product";
 
     return (
-      <div key={productId} className="flex flex-col gap-4">
+      <div key={productId} className="flex flex-col gap-6">
         <div className="flex items-center gap-2">
           <p className="h6-bold text-lg">{groupName}</p>
         </div>
@@ -149,7 +152,7 @@ const CartItemDisplay = React.memo(
 
     return (
       <React.Fragment>
-        <div className="flex items-center gap-3 sm:gap-4 overflow-y-visible">
+        <div className="flex items-center gap-4 sm:gap-6 overflow-y-visible py-2">
           <div>
             <Image
               width={64}
@@ -163,7 +166,7 @@ const CartItemDisplay = React.memo(
                 "/placeholder.png"
               }
               alt={productName}
-              className="h-[64px] rounded-[5px] border-[0.31px] border-[#DDD5DD] object-contain"
+              className="h-[80px] w-[80px] rounded-[8px] bg-gray-50 border border-black/5 object-cover"
             />
           </div>
           <div className="flex flex-col gap-[6px] w-full">
@@ -239,6 +242,63 @@ function isProductOption(option: unknown): option is ProductOption {
     option !== null &&
     "price" in option &&
     typeof (option as any).price === "number"
+  );
+}
+
+const CartRecommendations = () => {
+  const { data: products } = useQuery({
+    queryKey: ["cart-recommendations"],
+    queryFn: () => getProducts({ limit: 4, sortBy: "num_sales", sortOrder: "desc" }),
+  });
+  const addToCartMutation = useAddToCartMutation();
+  const { showToast } = useToast();
+
+  if (!products?.data || products.data.length === 0) return null;
+
+  return (
+    <div className="mt-6 px-1 border-t border-gray-100 pt-6">
+      <h3 className="font-semibold text-gray-900 mb-4 text-sm">You might also like</h3>
+      <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-6 px-6">
+        {products.data.map((product: Tables<'products'>) => (
+          <div key={product.id} className="min-w-[120px] w-[120px] shrink-0 group">
+            <Link href={`/product/${product.slug}`}>
+              <div className="relative aspect-square mb-2 bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                <Image
+                  src={product.images?.[0] || "/placeholder.png"}
+                  alt={product.name}
+                  fill
+                  className="object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+              </div>
+            </Link>
+            <div className="space-y-1">
+              <Link href={`/product/${product.slug}`} className="text-xs font-medium text-gray-900 line-clamp-1 block decoration-0">
+                {product.name}
+              </Link>
+              <p className="text-xs text-gray-500 font-medium">{formatNaira(product.price)}</p>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="w-full h-7 text-[10px] mt-2 rounded-lg border-gray-200 hover:bg-primary hover:text-white hover:border-primary transition-colors"
+                onClick={async () => {
+                  try {
+                    await addToCartMutation.mutateAsync({
+                      product_id: product.id,
+                      quantity: 1,
+                    });
+                    showToast("Added to cart", "success");
+                  } catch (e) {
+                    showToast("Failed to add", "error");
+                  }
+                }}
+              >
+                Add
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -827,6 +887,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
         </SheetHeader>
 
         {/* Free Delivery Progress Bar */}
+        {/* Free Delivery Progress Bar - Minimal Design */}
         {items.length > 0 &&
           (() => {
             const FREE_SHIPPING_THRESHOLD = 50000;
@@ -836,35 +897,25 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
               (subtotal / FREE_SHIPPING_THRESHOLD) * 100
             );
             return (
-              <div
-                className={`rounded border px-4 py-3 mb-2 ${
-                  subtotal >= FREE_SHIPPING_THRESHOLD
-                    ? "bg-green-50 border-green-200"
-                    : "bg-red-50 border-red-200"
-                }`}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-lg">📦</span>
+              <div className="mb-2 px-1">
+                <div className="flex items-center justify-between mb-2 text-xs">
                   {subtotal >= FREE_SHIPPING_THRESHOLD ? (
-                    <span className="font-semibold text-[14px] text-green-700">
-                      Congratulations! You have unlocked <b>free delivery</b>!
+                    <span className="font-medium text-green-700">
+                     You&apos;ve unlocked <b>Free Delivery</b>
                     </span>
                   ) : (
-                    <span className="font-medium text-black">
-                      Add{" "}
-                      <span className="font-bold text-red-600">
-                        {formatNaira(remaining)}
-                      </span>{" "}
-                      to cart and get <b>free delivery</b>!
+                    <span className="text-gray-600">
+                      Add <span className="font-semibold text-primary">{formatNaira(remaining)}</span> for <span className="font-semibold text-black">Free Delivery</span>
                     </span>
                   )}
+                  <span className="text-gray-400 text-[10px]">{Math.round(percent)}%</span>
                 </div>
-                <div className="w-full h-2 bg-red-100 rounded">
+                <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
                   <div
-                    className={`h-2 rounded transition-all duration-300 ${
+                    className={`h-full transition-all duration-500 ease-out ${
                       subtotal >= FREE_SHIPPING_THRESHOLD
-                        ? "bg-green-500"
-                        : "bg-red-500"
+                        ? "bg-green-600"
+                        : "bg-primary"
                     }`}
                     style={{ width: `${percent}%` }}
                   />
@@ -900,6 +951,8 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
               )
             )
           )}
+          {/* Recommendations in scrollable area */}
+          {!isLoading && !isError && <CartRecommendations />}
         </div>
 
         {totalQuantity > 0 && (

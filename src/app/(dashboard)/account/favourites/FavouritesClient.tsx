@@ -151,7 +151,7 @@ const FavouritesClient: React.FC<FavouritesClientProps> = ({
                             <Image
                               width={60}
                               height={60}
-                              src={product.images?.[0] || "/placeholder.png"}
+                              src={product.images?.[0] || "/product-placeholder.png"}
                               alt={product.name}
                               className="h-14 w-14 rounded border border-gray-200"
                             />
@@ -199,7 +199,7 @@ const FavouritesClient: React.FC<FavouritesClientProps> = ({
                           <Image
                             width={80}
                             height={80}
-                            src={product.images?.[0] || "/placeholder.png"}
+                            src={product.images?.[0] || "/product-placeholder.png"}
                             alt={product.name}
                             className="h-16 w-16 rounded border border-gray-200"
                           />

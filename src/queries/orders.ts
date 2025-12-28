@@ -62,6 +62,7 @@ export async function fetchOrders({
   if (search) {
     const orParts = [
       `id.ilike.%${search}%`,
+      `reference.ilike.%${search}%`,
       `payment_method.ilike.%${search}%`,
       `status.ilike.%${search}%`,
     ];
@@ -92,57 +93,84 @@ export async function fetchOrders({
 }
 
 export async function fetchOrderById(orderId: string) {
+  console.log("fetchOrderById START", orderId);
   const supabase = createClient();
-  // 1. Fetch the order itself
-  const { data: order, error: orderError } = await supabase
+  
+  // 1. Fetch Order
+  const { data: order, error } = await supabase
     .from("orders")
-    .select("*, profiles(display_name)")
-    .eq("order_id", orderId)
+    .select("*, profiles:user_id(display_name)")
+    .eq("id", orderId)
     .single();
 
-  if (orderError) throw orderError;
-  if (!order) return null;
+  if (error) {
+    console.error("fetchOrderById Error fetching order:", error);
+    throw error;
+  }
+  if (!order) {
+    console.error("fetchOrderById Order not found");
+    return null;
+  }
 
-  // 2. Fetch order items
+  // 2. Fetch Items
   const { data: items, error: itemsError } = await supabase
     .from("order_items")
     .select("*")
-    .eq("order_id", order.id);
+    .eq("order_id", orderId);
 
-  if (itemsError) throw itemsError;
+  if (itemsError) {
+    console.error("fetchOrderById Error fetching items:", itemsError);
+    throw itemsError;
+  }
 
-  const enrichedItems = await Promise.all(
-    (items || []).map(async (item: any) => {
-      let product = null;
-      let bundle = null;
+  if (!items || items.length === 0) {
+    console.log("fetchOrderById No items found, returning early");
+    return { ...order, order_items: [] };
+  }
 
-      if (item.product_id) {
-        const { data: p } = await supabase
-          .from("products")
-          .select("name, images")
-          .eq("id", item.product_id)
-          .single();
-        product = p;
-      }
-      
-      if (item.bundle_id) {
-        const { data: b } = await supabase
-          .from("bundles")
-          .select("name, thumbnail_url")
-          .eq("id", item.bundle_id)
-          .single();
-        bundle = b;
-      }
+  // 3. Collect IDs
+  console.log("fetchOrderById Processing items:", items.length);
+  const productIds = [...new Set(items.map((i: any) => i.product_id).filter(Boolean))];
+  const bundleIds = [...new Set(items.map((i: any) => i.bundle_id).filter(Boolean))];
+  const offerIds = [...new Set(items.map((i: any) => i.offer_id).filter(Boolean))];
 
-      return {
-        ...item,
-        products: product,
-        bundles: bundle
-      };
-    })
-  );
+  // 4. Batch Fetch Details
+  let products: any[] = [];
+  let bundles: any[] = [];
+  let offers: any[] = [];
 
-  return { ...order, order_items: enrichedItems };
+  if (productIds.length > 0) {
+    const { data } = await supabase.from("products").select("id, name, images").in("id", productIds);
+    products = data || [];
+  }
+  
+  if (bundleIds.length > 0) {
+    const { data } = await supabase.from("bundles").select("id, name, thumbnail_url").in("id", bundleIds);
+    bundles = data || [];
+  }
+
+  if (offerIds.length > 0) {
+    const { data } = await supabase.from("offers").select("id, title").in("id", offerIds);
+    offers = data || [];
+  }
+
+  // 5. Map details back to items
+  const enrichedItems = items.map((item: any) => ({
+    ...item,
+    products: item.product_id ? products.find(p => p.id === item.product_id) : null,
+    bundles: item.bundle_id ? bundles.find(b => b.id === item.bundle_id) : null,
+    offers: item.offer_id ? offers.find(o => o.id === item.offer_id) : null,
+  }));
+
+  // 6. Fetch Voucher Details if exists
+  let voucherData = null;
+  if (order.voucher_id) {
+    const { data: v } = await supabase.from("vouchers").select("*").eq("id", order.voucher_id).single();
+    voucherData = v;
+  }
+
+  console.log("fetchOrderById END success");
+  return { ...order, order_items: enrichedItems, vouchers: voucherData };
 }
 
 export async function fetchUserOrders(
@@ -188,11 +216,12 @@ export async function fetchUserOrders(
       
       if (!items) return { ...order, order_items: [] };
 
-      // Enrich items with product/bundle details
+      // Enrich items with product/bundle/offer details
       const enrichedItems = await Promise.all(
         items.map(async (item: any) => {
            let product = null;
            let bundle = null;
+           let offer = null;
 
            if (item.product_id) {
              const { data: p } = await supabase
@@ -212,10 +241,20 @@ export async function fetchUserOrders(
              bundle = b;
            }
 
+           if (item.offer_id) {
+             const { data: o } = await supabase
+               .from("offers")
+               .select("title")
+               .eq("id", item.offer_id)
+               .single();
+             offer = o;
+           }
+
            return {
              ...item,
              products: product,
-             bundles: bundle
+             bundles: bundle,
+             offers: offer
            };
         })
       );
@@ -256,6 +295,9 @@ export async function addPurchase(body: AddPurchaseBody) {
       voucherToUse = voucher;
     }
 
+    // --- GENERATE REFERENCE CODE ---
+    const reference = `ORD-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
     // --- CREATE ORDER ---
     const { data: order, error: orderError } = await supabase.from('orders').insert({
       user_id: body.userId,
@@ -265,6 +307,7 @@ export async function addPurchase(body: AddPurchaseBody) {
       status: 'order confirmed',
       payment_status: body.paymentMethod === 'wallet' ? 'Paid' : 'Pending',
       voucher_id: body.voucherId,
+      reference: reference, // Add reference
     }).select().single();
 
     if (orderError) throw orderError;
@@ -274,6 +317,7 @@ export async function addPurchase(body: AddPurchaseBody) {
       order_id: order.id,
       product_id: item.productId || null,
       bundle_id: item.bundleId || null,
+      offer_id: item.offerId || null,
       quantity: item.quantity,
       price: item.price,
       option: item.option || null,

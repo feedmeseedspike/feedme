@@ -413,7 +413,7 @@ export default function PromoCardsManagerClient({
               style={{ backgroundColor: promo.background_color || "#ffffff" }}
             >
               <Image
-                src={promo.image_url || "/images/placeholder.png"}
+                src={promo.image_url || "/product-placeholder.png"}
                 alt={promo.title || "Promo image"}
                 fill
                 className="object-contain"

@@ -177,8 +177,8 @@ interface OrderItemDisplayProps {
 }
 // Utility to ensure image URLs are valid for next/image
 function getValidImageUrl(url?: string | null): string {
-  if (!url) return "/placeholder.png";
-  if (typeof url !== "string") return "/placeholder.png";
+  if (!url) return "/product-placeholder.png";
+  if (typeof url !== "string") return "/product-placeholder.png";
   if (
     url.startsWith("http://") ||
     url.startsWith("https://") ||

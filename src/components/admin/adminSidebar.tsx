@@ -23,7 +23,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
 import LogoutButton from "@components/shared/header/LogoutButton";
 import { useEffect, useState } from "react";
-import { Menu, X, Brain, Tag, FileText, Mail, Briefcase } from "lucide-react";
+import { Menu, X, Brain, Tag, FileText, Mail, Briefcase, Gift, Settings } from "lucide-react";
 import { Button } from "@components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@components/ui/sheet";
 import { getUnviewedOrdersCount } from "src/queries/orders";
@@ -76,18 +76,6 @@ export function AdminSidebar({ user }: AppSidebarProps) {
         },
         (payload: any) => {
           // Temporarily disabled due to missing admin_viewed column
-          // Only refetch if a new order is inserted or admin_viewed changes to false
-          // if (
-          //   payload.eventType === "INSERT" ||
-          //   (payload.eventType === "UPDATE" &&
-          //     payload.new.admin_viewed === false)
-          // ) {
-          //   fetchBadge();
-          //   showToast("New order received!", "info");
-          //   // Play notification sound
-          //   const audio = new Audio("/notification.mp3");
-          //   audio.play();
-          // }
         }
       )
       .subscribe();
@@ -111,12 +99,18 @@ export function AdminSidebar({ user }: AppSidebarProps) {
     { title: "Agents", url: "/admin/agents", icon: User },
     { title: "Customers", url: "/admin/customers", icon: Profile },
     { title: "Promotions", url: "/admin/promotions", icon: Product },
+    { title: "Spin Prizes", url: "/admin/prizes", icon: Gift },
     { title: "Black Friday", url: "/admin/black-friday", icon: Tag },
     { title: "AI Analytics", url: "/admin/ai-analytics", icon: Brain },
     {
       title: "Delivery Locations",
       url: "/admin/delivery-locations",
       icon: TiLocation,
+    },
+    {
+      title: "Settings",
+      url: "/admin/settings",
+      icon: Settings,
     },
   ];
 
@@ -176,6 +170,16 @@ export function AdminSidebar({ user }: AppSidebarProps) {
                             />
                           ) : item.title === "AI Analytics" ? (
                             <Brain
+                              size={20}
+                              color={isActive ? "white" : "#667085"}
+                            />
+                          ) : item.title === "Spin Prizes" ? (
+                            <Gift
+                              size={20}
+                              color={isActive ? "white" : "#667085"}
+                            />
+                          ) : item.title === "Settings" ? (
+                            <Settings
                               size={20}
                               color={isActive ? "white" : "#667085"}
                             />

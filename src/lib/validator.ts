@@ -323,6 +323,20 @@ export type UserAddress = z.infer<typeof UserAddressSchema>;
 export type AddressWithId = UserAddress & { id: string };
 
 // ======================
+// Settings Schema
+// ======================
+export const StoreSettingsSchema = z.object({
+  id: z.number().optional(),
+  open_time: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/, "Invalid time format"),
+  close_time: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/, "Invalid time format"),
+  closed_days: z.array(z.number().min(0).max(6)).default([]),
+  accept_orders_when_closed: z.boolean().default(true),
+  is_store_enabled: z.boolean().default(true),
+});
+
+export type StoreSettings = z.infer<typeof StoreSettingsSchema>;
+
+// ======================
 // Type Exports
 // ======================
 export type Products = z.infer<typeof ProductUpdateSchema>;

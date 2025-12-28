@@ -334,7 +334,7 @@ export default function TagBannersManagerClient({
               style={{ backgroundColor: promo.background_color || "#ffffff" }}
             >
               <Image
-                src={promo.image_url || "/images/placeholder.png"}
+                src={promo.image_url || "/product-placeholder.png"}
                 alt={promo.title || "Tag banner image"}
                 fill
                 className="object-contain"

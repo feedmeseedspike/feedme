@@ -190,12 +190,77 @@ export const useUpdateCartMutation = () => {
 };
 
 // Hook to add an item to the cart
-// Keeping this old hook for now, will remove after full transition
-// export const useAddToCartMutation = () => { ... };
+export const useAddToCartMutation = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation<
+    AddToCartSuccess | AddToCartFailure,
+    Error,
+    { product_id?: string; bundle_id?: string; offer_id?: string; quantity: number; option?: Json },
+    { previousCart: CartItem[] | undefined }
+  >({
+    mutationFn: (item) => addToCart(
+      item.product_id || null,
+      item.quantity,
+      item.option || null,
+      item.bundle_id || null,
+      item.offer_id || null,
+      null // blackFridayItemId
+    ),
+    onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: cartQueryKey });
+    },
+  });
+};
 
 // Hook to update cart item quantity
-// Keeping this old hook for now, will remove after full transition
-// export const useUpdateCartItemQuantityMutation = () => { ... };
+export const useUpdateCartItemQuantityMutation = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation<
+    UpdateCartItemQuantitySuccess | UpdateCartItemQuantityFailure,
+    Error,
+    { cartItemId: string; quantity: number },
+    { previousCart: CartItem[] | undefined }
+  >({
+    mutationFn: ({ cartItemId, quantity }) => updateCartItemQuantity(cartItemId, quantity),
+    onMutate: async ({ cartItemId, quantity }) => {
+      await queryClient.cancelQueries({ queryKey: cartQueryKey });
+      
+      const previousCart = queryClient.getQueryData<CartItem[]>(cartQueryKey);
+      
+      // Optimistic update
+      queryClient.setQueryData<CartItem[]>(cartQueryKey, (old) => {
+        if (!Array.isArray(old)) return [];
+        
+        if (quantity <= 0) {
+             return old.filter(item => item.id !== cartItemId);
+        }
+
+        return old.map((item) => {
+          if (item.id === cartItemId) {
+            return {
+                ...item,
+                quantity,
+                // price remains same
+            };
+          }
+          return item;
+        });
+      });
+      
+      return { previousCart };
+    },
+    onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: cartQueryKey });
+    },
+    onError: (error, variables, context) => {
+       if (context?.previousCart) {
+          queryClient.setQueryData<CartItem[]>(cartQueryKey, context.previousCart);
+       }
+    },
+  });
+};
 
 // Hook to remove an item from the cart
 // Keeping this old hook for now, will remove after full transition

@@ -18,13 +18,19 @@ import {
   ArrowUpDown,
   ListFilter,
   X,
+  Copy,
+  Filter,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
+
 import {
   Sheet,
   SheetTrigger,
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
   SheetFooter,
 } from "@components/ui/sheet";
 import { Checkbox } from "@components/ui/checkbox";
@@ -41,7 +47,7 @@ import { formatNaira } from "src/lib/utils";
 import PaginationBar from "@components/shared/pagination";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchOrders, markOrdersAsViewed } from "../../../../queries/orders";
+import { fetchOrders, markOrdersAsViewed, fetchOrderById } from "../../../../queries/orders";
 import { useToast } from "../../../../hooks/useToast";
 import { Database } from "../../../../utils/database.types";
 import { format, parseISO } from "date-fns";
@@ -153,35 +159,90 @@ export default function OrdersClient({
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
 
-  const handleOrderClick = async (orderId: string) => {
-    const orderData = data?.data?.find((order: any) => order.id === orderId);
 
-    if (!orderData) {
-      showToast("Order not found", "error");
-      return;
+
+  // --- URL SYNC FOR DEEP LINKING ---
+  // Sync URL with Selected Order
+  useEffect(() => {
+    const orderIdParam = searchParams.get("orderId");
+    if (orderIdParam && (!selectedOrder || selectedOrder.id !== orderIdParam)) {
+      handleOrderClick(orderIdParam);
+    } else if (!orderIdParam && isOrderDetailOpen) {
+       setIsOrderDetailOpen(false);
+    }
+  }, [searchParams]);
+
+  // Update URL when drawer state changes
+  const updateUrlWithOrderId = (orderId: string | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (orderId) {
+      params.set("orderId", orderId);
+    } else {
+      params.delete("orderId");
+    }
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
+
+  const handleOrderClick = async (orderId: string) => {
+    // 1. Try to find in current list
+    let basicOrderData = data?.data?.find((order: any) => order.id === orderId);
+
+    // 2. Setup initial drawer state
+    setIsOrderDetailOpen(true);
+    // If not in list, show loading state immediately without basic data
+    setSelectedOrder(basicOrderData ? {
+      ...basicOrderData,
+      loading: false,
+      loadingItems: true,
+       order_items: [],
+    } : {
+      id: orderId,
+      loading: true, // Full loading state
+      loadingItems: true,
+      order_items: [],
+    });
+
+    // 3. Update URL
+    // We only update if the param isn't already there to avoid infinite loops with the useEffect above
+    if (searchParams.get("orderId") !== orderId) {
+        updateUrlWithOrderId(orderId);
     }
 
-    setSelectedOrder({
-      ...orderData,
-      loading: false,
-      order_items: [],
-      loadingItems: true,
-    });
-    setIsOrderDetailOpen(true);
-
     try {
+      // 4. Fetch User & Order Details (Unified fetch or separate?)
+      // We'll use the existing action which fetches everything
       const fullOrderData = await fetchOrderDetailsAction(orderId);
+      
+      if (!fullOrderData) {
+         showToast("Order details could not be found.", "error");
+         setIsOrderDetailOpen(false);
+         updateUrlWithOrderId(null);
+         return;
+      }
+
       setSelectedOrder((prev: any) => ({
         ...prev,
         ...fullOrderData,
-        order_items: fullOrderData.order_items || [],
+        loading: false, // Ensure loading is False now
+        order_items: fullOrderData?.order_items || [],
         loadingItems: false,
       }));
     } catch (error) {
       console.error("Failed to fetch order details:", error);
-      setSelectedOrder((prev: any) => ({ ...prev, loadingItems: false }));
+      showToast("Failed to fetch order details", "error");
+      // Don't close immediately so user sees error, but maybe clear loading?
+      setSelectedOrder((prev: any) => ({ ...prev, loading: false, loadingItems: false }));
     }
   };
+
+  // Close handler to clean up URL
+  const handleCloseDrawer = (open: boolean) => {
+      setIsOrderDetailOpen(open);
+      if (!open) {
+          updateUrlWithOrderId(null);
+          setSelectedOrder(null);
+      }
+  }
 
   // Extract unique payment methods from initialOrders for filter options
   const paymentMethodOptions = Array.from(
@@ -190,8 +251,17 @@ export default function OrdersClient({
 
   // --- APPLY FILTERS ---
   const applyFilters = () => {
+    console.log('Applying filters:', {
+      search: draftSearch,
+      status: draftStatus,
+      paymentStatus: draftPaymentStatus,
+      paymentMethod: draftPaymentMethod,
+      startDate: draftStartDate,
+      endDate: draftEndDate,
+    });
+    
     setActiveFilters({
-      search: debouncedDraftSearch,
+      search: draftSearch,
       status: draftStatus,
       paymentStatus: draftPaymentStatus,
       paymentMethod: draftPaymentMethod,
@@ -228,26 +298,34 @@ export default function OrdersClient({
   const { data, isLoading, error } = useQuery({
     queryKey: ["orders", page, activeFilters, filterVersion],
     queryFn: () => {
+      console.log('Fetching orders with filters:', activeFilters);
       return fetchOrders({
         page: page,
         itemsPerPage: itemsPerPage,
         ...activeFilters,
       });
     },
-    placeholderData: (previousData) => previousData,
-    initialData: {
-      data: initialOrders.map((order) => ({
-        ...order,
-        order_id: order.id ?? null, // Add order_id mapping from id
-        delivery_fee: order.delivery_fee ?? null,
-        local_government: order.local_government ?? null,
-        total_amount_paid: order.total_amount_paid ?? null,
-        profiles: (order as any).profiles ?? null, // Ensure profiles is always present
-        reference: order.reference ?? null, // Ensure reference is always present
-      })),
-      count: totalOrdersCount,
-    },
+    staleTime: 0, // Always refetch when filters change
   });
+
+  // --- AUTO-OPEN SINGLE SEARCH RESULT ---
+  useEffect(() => {
+    // Only run if not loading, we have an active search, and exactly one result
+    if (!isLoading && activeFilters.search && data?.data && data.data.length === 1) {
+      const order = data.data[0];
+      
+      // If the URL param is already set to this order, we are good.
+      // If not, and we haven't manually closed it (need state for that?), open it.
+      if (searchParams.get("orderId") !== order.id) {
+         handleOrderClick(order.id);
+      }
+    }
+  }, [data, activeFilters.search, isLoading]); // Added isLoading dependency
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    showToast("Order ID copied to clipboard", "success");
+  };
 
   // Refactored: Use server actions for updating order status
   const updateOrderStatus = (
@@ -373,7 +451,7 @@ export default function OrdersClient({
           />
           <input
             type="text"
-            placeholder="Search for orders"
+            placeholder="Search by Order ID, Customer Name..."
             className="w-full pl-9 pr-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-gray-300 shadow-[0px_1px_3px_0px_rgba(16,24,40,0.10)]"
             value={draftSearch}
             onChange={(e) => setDraftSearch(e.target.value)}
@@ -409,9 +487,9 @@ export default function OrdersClient({
                     <X size={16} />
                   </button>
                 </div>
-                <p className="text-[#475467] text-sm">
+                <SheetDescription className="text-[#475467] text-sm">
                   Apply filters to table data.
-                </p>
+                </SheetDescription>
               </SheetHeader>
               <div className="mt-6 px-4">
                 <h3 className="text-sm text-[#344054] font-medium mb-2">
@@ -428,9 +506,13 @@ export default function OrdersClient({
                       <Checkbox
                         id={status}
                         className="size-4 !rounded-md border-[#D0D5DD]"
-                        checked={activeFilters.status.includes(statusValue)}
+                        checked={draftStatus.includes(statusValue)}
                         onCheckedChange={() => {
-                          toggleFilter(status);
+                          setDraftStatus((prev) =>
+                            prev.includes(statusValue)
+                              ? prev.filter((s) => s !== statusValue)
+                              : [...prev, statusValue]
+                          );
                         }}
                       />
                       <label className="font-medium text-sm" htmlFor={status}>
@@ -451,14 +533,13 @@ export default function OrdersClient({
                     <Checkbox
                       id={`payment-status-${status}`}
                       className="size-4 !rounded-md border-[#D0D5DD]"
-                      checked={activeFilters.paymentStatus.includes(status)}
+                      checked={draftPaymentStatus.includes(status)}
                       onCheckedChange={() => {
-                        setActiveFilters((prev) => ({
-                          ...prev,
-                          paymentStatus: prev.paymentStatus.includes(status)
-                            ? prev.paymentStatus.filter((s) => s !== status)
-                            : [...prev.paymentStatus, status],
-                        }));
+                        setDraftPaymentStatus((prev) =>
+                          prev.includes(status)
+                            ? prev.filter((s) => s !== status)
+                            : [...prev, status]
+                        );
                       }}
                     />
                     <label
@@ -481,14 +562,13 @@ export default function OrdersClient({
                     <Checkbox
                       id={`payment-method-${method}`}
                       className="size-4 !rounded-md border-[#D0D5DD]"
-                      checked={activeFilters.paymentMethod.includes(method)}
+                      checked={draftPaymentMethod.includes(method)}
                       onCheckedChange={() => {
-                        setActiveFilters((prev) => ({
-                          ...prev,
-                          paymentMethod: prev.paymentMethod.includes(method)
-                            ? prev.paymentMethod.filter((m) => m !== method)
-                            : [...prev.paymentMethod, method],
-                        }));
+                        setDraftPaymentMethod((prev) =>
+                          prev.includes(method)
+                            ? prev.filter((m) => m !== method)
+                            : [...prev, method]
+                        );
                       }}
                     />
                     <label
@@ -506,24 +586,18 @@ export default function OrdersClient({
                 <div className="flex gap-2 items-center mb-4">
                   <input
                     type="date"
-                    value={activeFilters.startDate || ""}
+                    value={draftStartDate || ""}
                     onChange={(e) =>
-                      setActiveFilters((prev) => ({
-                        ...prev,
-                        startDate: e.target.value || undefined,
-                      }))
+                      setDraftStartDate(e.target.value || undefined)
                     }
                     className="border rounded px-2 py-1 text-sm"
                   />
                   <span>to</span>
                   <input
                     type="date"
-                    value={activeFilters.endDate || ""}
+                    value={draftEndDate || ""}
                     onChange={(e) =>
-                      setActiveFilters((prev) => ({
-                        ...prev,
-                        endDate: e.target.value || undefined,
-                      }))
+                      setDraftEndDate(e.target.value || undefined)
                     }
                     className="border rounded px-2 py-1 text-sm"
                   />
@@ -538,10 +612,10 @@ export default function OrdersClient({
                     Clear all filters
                   </div>
                   <div className="flex gap-2">
-                    <Button variant={"outline"} onClick={closeSheet}>
+                    <Button type="button" variant={"outline"} onClick={closeSheet}>
                       Cancel
                     </Button>
-                    <Button className="bg-[#1B6013]" onClick={applyFilters}>
+                    <Button type="button" className="bg-[#1B6013]" onClick={applyFilters}>
                       Apply
                     </Button>
                   </div>
@@ -611,41 +685,77 @@ export default function OrdersClient({
                   }
                 >
                   <TableCell>
-                    <button
-                      onClick={() => handleOrderClick(order.id)}
-                      className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-                    >
-                      {order.id?.substring(0, 8) || "N/A"}
-                    </button>
+                    <div className="flex items-center gap-2">
+                       <button
+                        onClick={() => handleOrderClick(order.id)}
+                        className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                      >
+                        {order.id?.substring(0, 8) || "N/A"}
+                      </button>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          copyToClipboard(order.id);
+                        }}
+                        className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                        title="Copy Order ID"
+                      >
+                        <Copy size={14} />
+                      </button>
+                    </div>
                   </TableCell>
                   <TableCell>
-                    {order.created_at
-                      ? new Date(order.created_at).toLocaleString()
-                      : "N/A"}
+                    {(() => {
+                      if (!order.created_at) return "N/A";
+                      try {
+                        const date = new Date(order.created_at);
+                        return isNaN(date.getTime()) ? "Invalid Date" : date.toLocaleString();
+                      } catch {
+                        return "Date Error";
+                      }
+                    })()}
                   </TableCell>
                   {/* Display customer information from separately fetched user data */}
                   <TableCell className="flex items-center gap-2">
                     <Avatar>
                       <AvatarFallback>
-                        {order.profiles?.display_name
-                          ? order.profiles.display_name
-                              .split(" ")
-                              .map((n: string) => n[0])
-                              .join("")
-                              .substring(0, 2)
-                              .toUpperCase()
-                          : ""}
+                        {(() => {
+                           let name = "Unknown User";
+                           if (order.profiles?.display_name) {
+                             name = order.profiles.display_name;
+                           } else if (order.shipping_address && typeof order.shipping_address === 'object' && 'fullName' in order.shipping_address) {
+                             name = (order.shipping_address as any).fullName || "Unknown User";
+                           }
+                           
+                           return typeof name === 'string' 
+                             ? name.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase()
+                             : "??";
+                        })()}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <p className="font-medium">
-                        {order.profiles?.display_name || "Unknown User"}
+                        {(() => {
+                          if (order.profiles?.display_name) return order.profiles.display_name;
+                          if (order.shipping_address && typeof order.shipping_address === 'object' && 'fullName' in order.shipping_address) {
+                            return (order.shipping_address as any).fullName || "Unknown User";
+                          }
+                          return "Unknown User";
+                        })()}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {(() => {
+                           if (order.shipping_address && typeof order.shipping_address === 'object' && 'email' in order.shipping_address) {
+                             return (order.shipping_address as any).email || "";
+                           }
+                           return "";
+                        })()}
                       </p>
                     </div>
                   </TableCell>
                   <TableCell>
                     {order.total_amount
-                      ? `${formatNaira(order.total_amount)}`
+                      ? `${formatNaira(Number(order.total_amount))}`
                       : "₦0.00"}
                   </TableCell>
                   {/* Payment Status Dropdown */}
@@ -686,11 +796,10 @@ export default function OrdersClient({
                     typeof order.shipping_address === "object" &&
                     !Array.isArray(order.shipping_address)
                       ? [
+                          order.shipping_address.street,
+                          order.shipping_address.location || order.shipping_address.local_government,
                           order.shipping_address.city,
                           order.shipping_address.state,
-                          order.shipping_address.local_government,
-                          order.shipping_address.country,
-                          order.shipping_address.street,
                           order.shipping_address.zip,
                         ]
                           .filter(
@@ -751,17 +860,20 @@ export default function OrdersClient({
       </div>
 
       {/* Order Detail Drawer */}
-      <Sheet open={isOrderDetailOpen} onOpenChange={setIsOrderDetailOpen}>
+      <Sheet open={isOrderDetailOpen} onOpenChange={handleCloseDrawer}>
         <SheetContent
           side="left"
           className="w-[600px] sm:max-w-[600px] overflow-y-auto"
         >
-          <SheetHeader>
+          <SheetHeader className="flex flex-row items-center justify-between">
             <SheetTitle>
               {selectedOrder?.loading
                 ? "Loading Order..."
                 : `Order #${selectedOrder?.id?.substring(0, 8) || "N/A"}`}
             </SheetTitle>
+            <Button variant="ghost" size="icon" onClick={() => handleCloseDrawer(false)}>
+                <X className="h-5 w-5" />
+            </Button>
           </SheetHeader>
 
           {selectedOrder?.loading ? (
@@ -792,10 +904,50 @@ export default function OrdersClient({
                 <div className="space-y-2 text-sm">
                   <p>
                     <strong>Name:</strong>{" "}
-                    {selectedOrder.profiles?.display_name || "Unknown User"}
+                    {(() => {
+                      if (selectedOrder.profiles?.display_name) return selectedOrder.profiles.display_name;
+                      if (selectedOrder.shipping_address && typeof selectedOrder.shipping_address === 'object' && 'fullName' in selectedOrder.shipping_address) {
+                        return (selectedOrder.shipping_address as any).fullName || "Unknown User";
+                      }
+                      return "Unknown User";
+                    })()}
+                  </p>
+                  <p>
+                    <strong>Email:</strong>{" "}
+                     {(() => {
+                       if (selectedOrder.shipping_address && typeof selectedOrder.shipping_address === 'object' && 'email' in selectedOrder.shipping_address) {
+                         return (selectedOrder.shipping_address as any).email || "N/A";
+                       }
+                       return "N/A";
+                    })()}
+                  </p>
+                  <p>
+                    <strong>Phone:</strong>{" "}
+                     {(() => {
+                       if (selectedOrder.shipping_address && typeof selectedOrder.shipping_address === 'object' && 'phone' in selectedOrder.shipping_address) {
+                         return (selectedOrder.shipping_address as any).phone || "N/A";
+                       }
+                       return "N/A";
+                    })()}
                   </p>
                   <p>
                     <strong>User ID:</strong> {selectedOrder.user_id || "N/A"}
+                  </p>
+                  <p>
+                    <strong>Address:</strong>{" "}
+                     {(() => {
+                        const addr = selectedOrder.shipping_address;
+                        if (!addr || typeof addr !== 'object') return "N/A";
+                        // Construct address string if fields available
+                        const parts = [
+                            (addr as any).street,
+                            (addr as any).location || (addr as any).local_government,
+                            (addr as any).city,
+                            (addr as any).state
+                        ].filter(Boolean);
+                        
+                        return parts.length > 0 ? parts.join(", ") : "N/A";
+                     })()}
                   </p>
                 </div>
               </div>
@@ -813,19 +965,69 @@ export default function OrdersClient({
                     <strong>Payment Status:</strong>{" "}
                     {selectedOrder.payment_status || "N/A"}
                   </p>
+                  {selectedOrder.vouchers && (
+                    <p>
+                      <strong>Voucher Applied:</strong>{" "}
+                      <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs font-medium">
+                        {selectedOrder.vouchers.code} ({selectedOrder.vouchers.discount_value}% OFF)
+                      </span>
+                    </p>
+                  )}
                   <p>
                     <strong>Payment Method:</strong>{" "}
                     {selectedOrder.payment_method || "N/A"}
                   </p>
                   <p>
+                    <strong>Subtotal:</strong>{" "}
+                    {formatNaira(
+                      (selectedOrder.order_items || []).reduce(
+                        (sum: number, item: any) =>
+                          sum + (Number(item.price) || 0) * (Number(item.quantity) || 1),
+                        0
+                      )
+                    )}
+                  </p>
+                  {selectedOrder.delivery_fee !== null && selectedOrder.delivery_fee !== undefined && (
+                    <p>
+                      <strong>Delivery Fee:</strong>{" "}
+                      {formatNaira(Number(selectedOrder.delivery_fee))}
+                    </p>
+                  )}
+                   {(() => {
+                      const subtotal = (selectedOrder.order_items || []).reduce(
+                        (sum: number, item: any) =>
+                          sum + (Number(item.price) || 0) * (Number(item.quantity) || 1),
+                        0
+                      );
+                      const delivery = Number(selectedOrder.delivery_fee || 0);
+                      const total = Number(selectedOrder.total_amount || 0);
+                      const discount = (subtotal + delivery) - total;
+
+                      if (discount > 1) { // Use > 1 to avoid floating point tiny diffs
+                        return (
+                          <p className="text-green-600">
+                            <strong>Discount:</strong>{" "}
+                            -{formatNaira(discount)}
+                          </p>
+                        )
+                      }
+                      return null;
+                  })()}
+                  <p>
                     <strong>Total Amount:</strong>{" "}
-                    {formatNaira(selectedOrder.total_amount || 0)}
+                    {formatNaira(Number(selectedOrder.total_amount || 0))}
                   </p>
                   <p>
                     <strong>Created:</strong>{" "}
-                    {selectedOrder.created_at
-                      ? new Date(selectedOrder.created_at).toLocaleString()
-                      : "N/A"}
+                    {(() => {
+                      if (!selectedOrder.created_at) return "N/A";
+                      try {
+                        const date = new Date(selectedOrder.created_at);
+                        return isNaN(date.getTime()) ? "Invalid Date" : date.toLocaleString();
+                      } catch {
+                        return "Date Error";
+                      }
+                    })()}
                   </p>
                 </div>
               </div>
@@ -885,11 +1087,12 @@ export default function OrdersClient({
                           <h4 className="font-medium text-sm">
                             {item.products?.name ||
                               item.bundles?.name ||
+                              item.offers?.title ||
                               "Order Item"}
                           </h4>
                           <p className="text-xs text-gray-600 mt-1">
                             Quantity: {item.quantity} ×{" "}
-                            {formatNaira(item.price || 0)}
+                            {formatNaira(Number(item.price || 0))}
                           </p>
                           {item.option && (
                             <div className="mt-2 text-xs text-gray-600">
@@ -931,7 +1134,7 @@ export default function OrdersClient({
                         </div>
                         <div className="text-right">
                           <div className="font-medium text-sm">
-                            {formatNaira((item.price || 0) * item.quantity)}
+                            {formatNaira(Number(item.price || 0) * Number(item.quantity))}
                           </div>
                         </div>
                       </div>

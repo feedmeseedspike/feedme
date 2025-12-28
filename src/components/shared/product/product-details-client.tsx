@@ -158,7 +158,7 @@ export default function ProductDetailsClient({
         if (storageBase) {
           return `${storageBase}${img.replace(/^\//, "")}`;
         }
-        return "/placeholder.png";
+        return "/product-placeholder.png";
       } else if (img && typeof img === "object" && typeof (img as any).url === "string") {
         const url = (img as any).url;
         if (
@@ -176,9 +176,9 @@ export default function ProductDetailsClient({
       if (Array.isArray(product.images) && product.images[0]) {
         return typeof product.images[0] === "string"
           ? (product.images[0] as string)
-          : "/placeholder.png";
+          : "/product-placeholder.png";
       }
-      return "/placeholder.png";
+      return "/product-placeholder.png";
     },
     [product.images]
   );
