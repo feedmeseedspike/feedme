@@ -23,6 +23,7 @@ import { NewVisitorProvider } from "@components/shared/ExitIntentProvider";
 import SignupWelcomeProvider from "@components/shared/SignupWelcomeProvider";
 import { getStoreSettings } from "@/lib/actions/settings.actions";
 import { StoreStatusProvider } from "@/providers/StoreStatusProvider";
+import { Analytics } from "@vercel/analytics/next";
 
 const DynamicReferralBanner = dynamic(
   () => import("@components/shared/ReferralBanner"),
@@ -300,8 +301,7 @@ export default async function RootLayout({
             src="https://www.googletagmanager.com/ns.html?id=GTM-W8L93RRF"
             height="0"
             width="0"
-            style={{ display: "none", visibility: "hidden" }}
-          ></iframe>
+            style={{ display: "none", visibility: "hidden" }}></iframe>
         </noscript>
         <noscript>
           <img
@@ -320,8 +320,7 @@ export default async function RootLayout({
                 <CartMergeProvider>
                   <SupabaseAuthProvider
                     initialSession={session}
-                    initialUser={user}
-                  >
+                    initialUser={user}>
                     <CustomScrollbar>
                       <PathnameProvider hasReferralStatus={hasReferralStatus}>
                         <SignupWelcomeProvider>
@@ -329,6 +328,7 @@ export default async function RootLayout({
                           <NewVisitorProvider>
                             <StoreStatusProvider settings={settings}>
                               {children}
+                              <Analytics />
                             </StoreStatusProvider>
                           </NewVisitorProvider>
                         </SignupWelcomeProvider>
