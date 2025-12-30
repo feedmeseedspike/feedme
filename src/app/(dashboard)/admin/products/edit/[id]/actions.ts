@@ -107,10 +107,17 @@ export async function updateProductAction(productId: string, productData: any) {
   return data?.[0];
 }
 
-export async function uploadProductImageAction(file: File, bucketName: string = "product-images") {
+export async function uploadProductImageAction(formData: FormData) {
   const supabase = await createClient();
+  const file = formData.get("file") as File;
+  const bucketName = (formData.get("bucketName") as string) || "product-images";
+  
+  if (!file) {
+    throw new Error("No file provided");
+  }
+
   const fileExt = file.name.split(".").pop();
-  const filePath = `${Date.now()}.${fileExt}`;
+  const filePath = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
   
   const { error } = await supabase.storage
     .from(bucketName)

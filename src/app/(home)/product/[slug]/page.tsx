@@ -80,26 +80,28 @@ export async function generateMetadata({
         (Array.isArray(product.images) && normalizeImage(product.images[0])) ||
         "/opengraph-image.jpg";
 
+      const description =
+        product.meta_description ||
+        `${product.description || ""} Buy fresh and premium-quality ${
+          product.name
+        } online in Lagos with FeedMe. Enjoy competitive prices in Naira, swift delivery in Lagos, and the convenience of cash on delivery. Shop now and bring nature's goodness to your kitchen in Lagos, Ikeja, Lekki, Victoria Island, and more!`;
+
       return {
         title: product.name,
-        description: `${
-          product.description || ""
-        } Buy fresh and premium-quality ${
-          product.name
-        } online in Lagos with FeedMe. Enjoy competitive prices in Naira, swift delivery in Lagos, and the convenience of cash on delivery. Shop now and bring nature's goodness to your kitchen in Lagos, Ikeja, Lekki, Victoria Island, and more!`,
+        description: description,
         alternates: {
           canonical: `https://shopfeedme.com/product/${slug}`,
         },
         openGraph: {
           title: product.name,
-          description: product.description || "",
+          description: description,
           images: metaImage,
           url: `https://shopfeedme.com/product/${slug}`,
         },
         twitter: {
           card: "summary_large_image",
           title: product.name,
-          description: product.description || "",
+          description: description,
           images: [metaImage],
         },
       };

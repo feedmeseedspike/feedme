@@ -10,6 +10,8 @@ export async function getStoreSettings() {
   const { data, error } = await supabase
     .from("store_settings")
     .select("*")
+    .order('updated_at', { ascending: false })
+    .limit(1)
     .single();
 
   if (error) {
@@ -59,17 +61,28 @@ export async function updateStoreSettings(settings: z.infer<typeof StoreSettings
     updated_at: new Date().toISOString(),
   };
 
-  let query;
+  let result;
   
   if (id) {
       console.log("Updating row with ID:", id);
       // If we have an ID, update that specific row
-      query = supabaseAdmin
+      result = await supabaseAdmin
         .from("store_settings")
         .update(payload)
         .eq("id", id)
         .select()
         .single();
+        
+      // Fallback: If row not found (e.g. deleted or bad ID), try insert
+      if (result.error && result.error.code === 'PGRST116') {
+          console.log("ID not found, inserting new row as fallback.");
+           const { id: _, ...insertPayload } = payload as any;
+           result = await supabaseAdmin
+            .from("store_settings")
+            .insert(insertPayload)
+            .select()
+            .single();
+      }
   } else {
       console.log("No ID provided, performing singleton check...");
       // Fallback: Check if ANY row exists (Singleton pattern enforcement)
@@ -77,7 +90,7 @@ export async function updateStoreSettings(settings: z.infer<typeof StoreSettings
        
        if (existing) {
            console.log("Found existing row ID:", existing.id);
-           query = supabaseAdmin
+           result = await supabaseAdmin
             .from("store_settings")
             .update(payload)
             .eq("id", existing.id)
@@ -85,10 +98,7 @@ export async function updateStoreSettings(settings: z.infer<typeof StoreSettings
             .single();
        } else {
            console.log("No existing row found, inserting new row.");
-           if (findError && findError.code !== 'PGRST116') {
-                console.error("Error checking for existing row:", findError);
-           }
-           query = supabaseAdmin
+           result = await supabaseAdmin
             .from("store_settings")
             .insert(payload)
             .select()
@@ -96,7 +106,7 @@ export async function updateStoreSettings(settings: z.infer<typeof StoreSettings
        }
   }
 
-  const { data, error } = await query;
+  const { data, error } = result;
 
   if (error) {
       console.error("Database update error:", error);

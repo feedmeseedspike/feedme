@@ -68,15 +68,39 @@ export default function OptionModal({
     },
   });
 
-  const [image, setImage] = useState<File | string | null>(
-    safeInitialData.image || null
-  );
+  // Use watch to get the current image value for preview
+  const currentImage = watch("image");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!currentImage) {
+      setPreviewUrl(null);
+      return;
+    }
+    if (currentImage instanceof File) {
+      const url = URL.createObjectURL(currentImage);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+    if (typeof currentImage === "string") {
+      if (currentImage.startsWith("http") || currentImage.startsWith("/")) {
+        setPreviewUrl(currentImage);
+      } else if (currentImage.startsWith("ahisi/")) {
+        setPreviewUrl(
+          "https://res.cloudinary.com/ahisi/image/upload/" +
+            currentImage.replace(new RegExp("^ahisi/"), "")
+        );
+      } else {
+        setPreviewUrl("/" + currentImage);
+      }
+    }
+  }, [currentImage]);
+
 
   // Only reset form when modal is opened and initialData changes
   const prevInitialDataRef = useRef<any>(null);
   useEffect(() => {
     if (isOpen) {
-      // Only reset if initialData actually changed
       if (
         JSON.stringify(prevInitialDataRef.current) !==
         JSON.stringify(safeInitialData)
@@ -88,14 +112,17 @@ export default function OptionModal({
           list_price: toNumberOrUndefined(safeInitialData.list_price),
           image: safeInitialData.image || undefined,
         });
-        setImage(safeInitialData.image || null);
         prevInitialDataRef.current = safeInitialData;
       }
-    } else {
-      // Reset image state when modal closes (in add mode only)
-      if (mode === "add") {
-        setImage(null);
-      }
+    } else if (mode === "add") {
+       reset({
+          stockStatus: "In Stock",
+          name: "",
+          price: 50,
+          list_price: undefined,
+          image: undefined,
+       });
+       prevInitialDataRef.current = null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, safeInitialData, reset, mode]);
@@ -103,10 +130,10 @@ export default function OptionModal({
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setImage(file);
-      setValue("image", file); // Set the image value in the form
+      setValue("image", file, { shouldValidate: true });
     }
   };
+
 
   const submitForm = async (data: OptionFormValues) => {
     try {
@@ -117,11 +144,9 @@ export default function OptionModal({
           data.list_price !== undefined
             ? parseFloat(String(data.list_price))
             : undefined,
-        image: image || data.image || null,
+        // image is already in data
       };
       if (onSubmit) await onSubmit(formData);
-      // Reset image state after successful submit
-      setImage(null);
       onClose();
     } catch (error) {
       console.error("Error submitting option:", error);
@@ -233,13 +258,9 @@ export default function OptionModal({
             </label>
             <div className="flex flex-col items-center border p-4 rounded-md cursor-pointer">
               <input
-                {...register("image")}
                 type="file"
                 accept="image/png, image/jpeg"
-                onChange={(e) => {
-                  register("image").onChange(e);
-                  handleImageUpload(e);
-                }}
+                onChange={handleImageUpload}
                 className="hidden"
                 id="file-upload"
               />
@@ -247,13 +268,9 @@ export default function OptionModal({
                 htmlFor="file-upload"
                 className="cursor-pointer text-center"
               >
-                {image ? (
+                {previewUrl ? (
                   <Image
-                    src={
-                      image instanceof File 
-                        ? URL.createObjectURL(image)
-                        : image
-                    }
+                    src={previewUrl}
                     alt="Preview"
                     width={80}
                     height={80}

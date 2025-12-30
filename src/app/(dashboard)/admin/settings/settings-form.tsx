@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/useToast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "src/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 
 const DAYS = [
   { label: "Sunday", value: 0, short: "Sun" },
@@ -22,6 +23,19 @@ const DAYS = [
   { label: "Friday", value: 5, short: "Fri" },
   { label: "Saturday", value: 6, short: "Sat" },
 ];
+
+const formatDateForInput = (dateString: string | null | undefined) => {
+  if (!dateString) return "";
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "";
+    const offset = date.getTimezoneOffset();
+    const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+    return localDate.toISOString().slice(0, 16);
+  } catch (e) {
+    return "";
+  }
+};
 
 export default function SettingsForm({ defaultValues }: { defaultValues: StoreSettings }) {
   const [isPending, startTransition] = useTransition();
@@ -68,18 +82,11 @@ export default function SettingsForm({ defaultValues }: { defaultValues: StoreSe
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
-                    <FormLabel className="text-base">
-                      Store Enabled
-                    </FormLabel>
-                    <FormDescription>
-                      When disabled, customers cannot place orders
-                    </FormDescription>
+                    <FormLabel className="text-base">Store Enabled</FormLabel>
+                    <FormDescription>When disabled, customers cannot place orders</FormDescription>
                   </div>
                   <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>
                 </FormItem>
               )}
@@ -102,11 +109,7 @@ export default function SettingsForm({ defaultValues }: { defaultValues: StoreSe
                   <FormItem>
                     <FormLabel>Opening Time</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="time" 
-                        {...field} 
-                        className="h-10"
-                      />
+                      <Input type="time" {...field} className="h-10" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -119,11 +122,7 @@ export default function SettingsForm({ defaultValues }: { defaultValues: StoreSe
                   <FormItem>
                     <FormLabel>Closing Time</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="time" 
-                        {...field} 
-                        className="h-10"
-                      />
+                      <Input type="time" {...field} className="h-10" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -160,11 +159,7 @@ export default function SettingsForm({ defaultValues }: { defaultValues: StoreSe
                                 const currentValue = field.value || [];
                                 return checked
                                   ? field.onChange([...currentValue, day.value])
-                                  : field.onChange(
-                                      currentValue.filter(
-                                        (value) => value !== day.value
-                                      )
-                                    )
+                                  : field.onChange(currentValue.filter((value) => value !== day.value))
                               }}
                             />
                           </FormControl>
@@ -175,9 +170,7 @@ export default function SettingsForm({ defaultValues }: { defaultValues: StoreSe
                       );
                     })}
                   </div>
-                  <FormDescription className="mt-4">
-                    Customers will be notified about these closures
-                  </FormDescription>
+                  <FormDescription className="mt-4">Customers will be notified about these closures</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -192,28 +185,105 @@ export default function SettingsForm({ defaultValues }: { defaultValues: StoreSe
             <CardDescription>Manage orders outside operating hours</CardDescription>
           </CardHeader>
           <CardContent>
-            <FormField
+             <FormField
               control={form.control}
               name="accept_orders_when_closed"
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
-                    <FormLabel className="text-base">
-                      Accept Orders When Closed
-                    </FormLabel>
-                    <FormDescription>
-                      Allow customers to place orders outside operating hours
-                    </FormDescription>
+                    <FormLabel className="text-base">Accept Orders When Closed</FormLabel>
+                    <FormDescription>Allow customers to place orders outside operating hours</FormDescription>
                   </div>
                   <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>
                 </FormItem>
               )}
             />
+          </CardContent>
+        </Card>
+
+        {/* Announcement Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Announcement Banner</CardTitle>
+            <CardDescription>Display a global announcement to your customers (e.g., holiday closures)</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="is_announcement_enabled"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">Enable Announcement</FormLabel>
+                    <FormDescription>Show the banner on the website</FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="announcement_message"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Message</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="e.g. We will be closed from Jan 5th to Jan 10th." 
+                      className="resize-none" 
+                      {...field} 
+                      value={field.value || ""} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="announcement_start_at"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Start Date (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="datetime-local" 
+                          {...field} 
+                          value={formatDateForInput(field.value)}
+                          onChange={(e) => field.onChange(e.target.value)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="announcement_end_at"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>End Date (Optional)</FormLabel>
+                      <FormControl>
+                         <Input 
+                          type="datetime-local" 
+                          {...field} 
+                          value={formatDateForInput(field.value)} 
+                          onChange={(e) => field.onChange(e.target.value)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+            </div>
           </CardContent>
         </Card>
 

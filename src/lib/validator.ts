@@ -93,7 +93,7 @@ export const OptionSchema = z.object({
       .refine((file) => file.type.startsWith("image/"), {
         message: "Only image files are allowed",
       }),
-    z.string().url("Invalid image URL"),
+    z.string(), // Allow any string (e.g. relative paths)
     z.null() // Allow null
   ]).optional(), // Make the image field optional
 });
@@ -332,6 +332,10 @@ export const StoreSettingsSchema = z.object({
   closed_days: z.array(z.number().min(0).max(6)).default([]),
   accept_orders_when_closed: z.boolean().default(true),
   is_store_enabled: z.boolean().default(true),
+  announcement_message: z.string().optional().nullable(),
+  is_announcement_enabled: z.boolean().default(false),
+  announcement_start_at: z.string().optional().nullable().transform(e => e === "" ? null : e),
+  announcement_end_at: z.string().optional().nullable().transform(e => e === "" ? null : e),
 });
 
 export type StoreSettings = z.infer<typeof StoreSettingsSchema>;

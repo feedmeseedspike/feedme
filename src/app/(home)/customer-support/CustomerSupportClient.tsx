@@ -184,6 +184,7 @@ export default function CustomerSupportClient({ deliveryLocations }: CustomerSup
                 <div className="flex items-center justify-center mt-6 text-sm text-gray-400">
                   <Clock className="w-4 h-4 mr-2" />
                   <span>Mon-Fri: 8am-6pm • Sat: 9am-4pm</span>
+                  
                 </div>
               </div>
             </CardContent>

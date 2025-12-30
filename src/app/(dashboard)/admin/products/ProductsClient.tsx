@@ -486,7 +486,7 @@ export default function ProductsClient({
                 )}
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="!px-0">
+            <SheetContent side="right" className="!px-0 flex flex-col h-full">
               <SheetHeader className="px-4">
                 <div className="flex justify-between items-center">
                   <SheetTitle>Filters</SheetTitle>
@@ -504,7 +504,7 @@ export default function ProductsClient({
                   Apply filters to table data.
                 </p>
               </SheetHeader>
-              <div className="mt-6 px-4 space-y-6">
+              <div className="mt-6 px-4 space-y-6 flex-1 overflow-y-auto">
                 <div>
                   <h3 className="text-sm text-[#344054] font-medium mb-2">
                     Categories

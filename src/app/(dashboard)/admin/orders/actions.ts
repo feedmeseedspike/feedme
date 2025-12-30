@@ -20,6 +20,8 @@ export async function updateOrderStatusAction(orderId: string, newStatus: Databa
   if (newStatus !== "order confirmed") {
     try {
       // Get order details for email
+      // Note: This separate query for email might work if it uses a different query structure or if the relationship exists but is sensitive to how it's called. 
+      // We will leave this as is since the user's error is in the fetchOrderDetailsAction.
       const { data: order, error: orderError } = await supabase
         .from("orders")
         .select(`
@@ -98,14 +100,17 @@ export async function updatePaymentStatusAction(orderId: string, newStatus: Data
   return { success: true };
 }
 
+// Revert to manual batch fetching to avoid PGRST200 foreign key errors
 export async function fetchOrderDetailsAction(orderId: string) {
   const user = await getUser();
   if (!user || user.role !== "admin") throw new Error("Not authorized");
+  
   const supabase = await createClient();
   
   console.log("fetchOrderDetailsAction START", orderId);
 
   // 1. Fetch Order
+  // Removed 'phone' from profiles selection as it doesn't exist
   const { data: order, error } = await supabase
     .from('orders')
     .select(`
@@ -114,13 +119,21 @@ export async function fetchOrderDetailsAction(orderId: string) {
     `)
     .eq('id', orderId)
     .single()
-  
+
   if (error) {
     console.error("fetchOrderDetailsAction Error fetching order:", error);
     throw new Error(`Failed to fetch order details: ${error.message}`)
   }
 
-  // 2. Fetch Items
+  // Parse shipping_address if it is a string
+  const parsedShippingAddress = typeof order.shipping_address === "string"
+    ? (() => { try { return JSON.parse(order.shipping_address); } catch { return null; } })()
+    : order.shipping_address;
+  
+  // Assign parsed address back
+  const orderWithParsedAddress = { ...order, shipping_address: parsedShippingAddress };
+
+  // 2. Fetch Items (Manual Batching)
   const { data: items, error: itemsError } = await supabase
     .from('order_items')
     .select('*')
@@ -128,15 +141,15 @@ export async function fetchOrderDetailsAction(orderId: string) {
 
   if (itemsError) {
     console.error("fetchOrderDetailsAction Error fetching items:", itemsError);
-    return { ...order, order_items: [] };
+    return { ...orderWithParsedAddress, order_items: [] };
   }
 
   if (!items || items.length === 0) {
-     console.log("fetchOrderDetailsAction No items found");
-     return { ...order, order_items: [] };
+     console.log("fetchOrderDetailsAction No items found in order_items table");
+     return { ...orderWithParsedAddress, order_items: [] };
   }
 
-  // 3. Batch Fetch Details
+  // 3. Batch Fetch Related Data
   const productIds = [...new Set(items.map((i: any) => i.product_id).filter(Boolean))];
   const bundleIds = [...new Set(items.map((i: any) => i.bundle_id).filter(Boolean))];
   const offerIds = [...new Set(items.map((i: any) => i.offer_id).filter(Boolean))];
@@ -164,9 +177,17 @@ export async function fetchOrderDetailsAction(orderId: string) {
   const enrichedItems = items.map((item: any) => ({
     ...item,
     products: item.product_id ? products.find(p => p.id === item.product_id) : null,
-    bundles: item.bundle_id ? bundles.find(b => b.id === item.bundle_id) : null,
+    bundles: item.bundle_id ? bundles.find(b => b.id === item.bundle_id) : 
+              (item.bundle_id ? { id: item.bundle_id, name: 'Unknown Bundle' } : null), // Fallback
     offers: item.offer_id ? offers.find(o => o.id === item.offer_id) : null,
   }));
+  
+  // Normalize fields for UI (UI expects 'image' for bundles, 'images' for products)
+  const finalItems = enrichedItems.map((item: any) => ({
+      ...item,
+      bundles: item.bundles ? { ...item.bundles, image: item.bundles.thumbnail_url } : null
+  }));
+
 
   // 5. Fetch Voucher
   let voucherData = null;
@@ -175,6 +196,6 @@ export async function fetchOrderDetailsAction(orderId: string) {
     voucherData = v;
   }
   
-  console.log("fetchOrderDetailsAction END success, items:", enrichedItems.length);
-  return { ...order, order_items: enrichedItems, vouchers: voucherData };
+  console.log("fetchOrderDetailsAction END success, items:", finalItems.length);
+  return { ...orderWithParsedAddress, order_items: finalItems, vouchers: voucherData };
 }
