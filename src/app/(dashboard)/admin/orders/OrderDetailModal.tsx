@@ -284,13 +284,13 @@ export default function OrderDetailModal({ isOpen, onClose, order }: OrderDetail
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium text-sm">{order.profiles?.display_name || "Unknown User"}</p>
-                      <p className="text-xs text-gray-600">{order.profiles?.email}</p>
+                      <p className="font-medium text-sm">{order.profiles?.display_name || (order.shipping_address && (order.shipping_address as any).fullName) || "Unknown User"}</p>
+                      <p className="text-xs text-gray-600">{order.profiles?.email || (order.shipping_address && (order.shipping_address as any).email) || ""}</p>
                     </div>
                   </div>
-                  {order.profiles?.phone && (
+                  {(order.profiles?.phone || (order.shipping_address && (order.shipping_address as any).phone)) && (
                     <div className="text-xs">
-                      <span className="font-medium">Phone:</span> {order.profiles.phone}
+                      <span className="font-medium">Phone:</span> {order.profiles?.phone || (order.shipping_address as any).phone}
                     </div>
                   )}
                 </CardContent>

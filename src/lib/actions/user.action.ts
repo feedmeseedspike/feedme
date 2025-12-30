@@ -107,6 +107,8 @@ export async function updateUserInfo(currentState: any, formData: FormData) {
 }
 
 
+import supabaseAdmin from "../../utils/supabase/admin";
+
 export async function getCustomerByIdAction(customerId: string) {
   const supabase = await createClient();
 
@@ -116,18 +118,43 @@ export async function getCustomerByIdAction(customerId: string) {
       .select('*') // Select all fields, adjust if you need a specific subset
       // Query using the string ID directly
       .eq('user_id', customerId)
-      .eq('role', 'buyer')
       .single(); // Expect a single result
 
     if (error) {
       throw new Error(error.message); // Throw an error if fetching fails
     }
     
-    // The data structure from Supabase should ideally match your Customer interface.
-    // If there are differences, you might need to transform the data here.
+    // Fetch addresses for this user
+    const { data: addresses, error: addrError } = await supabase
+      .from('addresses')
+      .select('*')
+      .eq('user_id', customerId);
+
+    if (addrError) {
+      console.error("Error fetching addresses:", addrError);
+    }
+
+    // Fetch Auth User Data (for Email/Name fallback)
+    let authUser = null;
+    try {
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(customerId);
+      if (!authError && authData) {
+        authUser = authData.user;
+      }
+    } catch (e) {
+      console.error("Error fetching auth user:", e);
+    }
+
+    const email = data.email || authUser?.email || null;
+    const displayName = data.display_name || authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || authUser?.user_metadata?.display_name || null;
     
-    // Return null if no customer is found with the given ID and role
-    return data; // data will be null if .single() finds no match
+    // Return merged data
+    return {
+      ...data,
+      email: email,
+      display_name: displayName,
+      addresses: addresses || []
+    };
     
   } catch (error: any) {
     throw new Error(error.message || "Failed to fetch customer");

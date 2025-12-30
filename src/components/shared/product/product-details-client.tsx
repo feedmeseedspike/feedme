@@ -20,6 +20,7 @@ import { useCartQuery } from "src/queries/cart";
 import { Button } from "@components/ui/button";
 import { useUser } from "src/hooks/useUser";
 import { useRouter } from "next/navigation";
+import { ArrowUpRight } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -130,35 +131,33 @@ export default function ProductDetailsClient({
         ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/`
         : null;
 
+      let result = "/product-placeholder.png";
+
       if (typeof img === "string" && img.trim().length > 0) {
-        // Accept only absolute URLs or root-relative paths; otherwise fallback
         if (img.startsWith("http://") || img.startsWith("https://") || img.startsWith("/")) {
-          return img;
-        }
-        // try parse json with url
-        try {
-          const parsed = JSON.parse(img);
-          if (parsed && typeof parsed === "object" && typeof parsed.url === "string") {
-            const url = parsed.url;
-            if (
-              url.startsWith("http://") ||
-              url.startsWith("https://") ||
-              url.startsWith("/")
-            ) {
-              return url;
+          result = img;
+        } else {
+           // try parse json with url
+          try {
+            const parsed = JSON.parse(img);
+            if (parsed && typeof parsed === "object" && typeof parsed.url === "string") {
+              const url = parsed.url;
+              if (
+                url.startsWith("http://") ||
+                url.startsWith("https://") ||
+                url.startsWith("/")
+              ) {
+                result = url;
+              } else if (storageBase) {
+                result = `${storageBase}${url.replace(/^\//, "")}`;
+              }
             }
-            if (storageBase) {
-              return `${storageBase}${url.replace(/^\//, "")}`;
-            }
+          } catch {
+             if (storageBase) {
+                result = `${storageBase}${img.replace(/^\//, "")}`;
+             }
           }
-        } catch {
-          /* ignore */
         }
-        // Unknown/relative path: if we have storage base, prepend; else placeholder
-        if (storageBase) {
-          return `${storageBase}${img.replace(/^\//, "")}`;
-        }
-        return "/product-placeholder.png";
       } else if (img && typeof img === "object" && typeof (img as any).url === "string") {
         const url = (img as any).url;
         if (
@@ -166,19 +165,21 @@ export default function ProductDetailsClient({
           url.startsWith("https://") ||
           url.startsWith("/")
         ) {
-          return url;
-        }
-        if (storageBase) {
-          return `${storageBase}${url.replace(/^\//, "")}`;
+          result = url;
+        } else if (storageBase) {
+          result = `${storageBase}${url.replace(/^\//, "")}`;
         }
       }
-      // fallback: product primary image or placeholder
-      if (Array.isArray(product.images) && product.images[0]) {
-        return typeof product.images[0] === "string"
-          ? (product.images[0] as string)
-          : "/product-placeholder.png";
+
+      // If the result is the placeholder, try to use the main product image
+      if (result === "/product-placeholder.png" || result.includes("placeholder")) {
+           if (Array.isArray(product.images) && product.images.length > 0 && product.images[0]) {
+             const mainImg = product.images[0];
+             return typeof mainImg === "string" ? mainImg : "/product-placeholder.png";
+           }
       }
-      return "/product-placeholder.png";
+
+      return result;
     },
     [product.images]
   );
@@ -362,6 +363,28 @@ export default function ProductDetailsClient({
           </div>
         </div>
         <Separator className="mt-4 mb-2" />
+        
+        {/* Recipes / Bundles Links */}
+        {recipes && recipes.length > 0 && (
+          <div className="mt-4 mb-2">
+             <h3 className="text-sm font-semibold text-gray-900 mb-2">
+               Recipes
+             </h3>
+             <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {recipes.map((recipe: any) => (
+                  <Link
+                    key={recipe.id}
+                    href={`/bundle/${recipe.slug || (recipe.name ? toSlug(recipe.name) : recipe.id) || ""}`}
+                    className="text-sm text-[#1B6013] hover:underline flex items-center gap-1 w-fit group"
+                  >
+                    <span>{recipe.name}</span>
+                    <ArrowUpRight className="w-4 h-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                  </Link>
+                ))}
+            </div>
+          </div>
+        )}
+
         {optionsArr.length > 0 && (
           <Options
             options={optionsArr}
@@ -438,114 +461,6 @@ export default function ProductDetailsClient({
                   )}
                 </div>
               ))}
-            </div>
-          </div>
-        )}
-        {/* Recipes Section */}
-        {recipes && recipes.length > 0 && (
-          <div className="mt-4">
-            <Separator className="mb-4" />
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">
-              Recipes
-            </h3>
-            <div className="flex flex-wrap gap-3">
-              {recipes.slice(0, 4).map((recipe: any) => (
-                <div key={recipe.id} className="w-20 group flex flex-col gap-1">
-                  <div className="relative w-20 h-20">
-                    <Link
-                      href={`/bundle/${
-                        recipe.slug ||
-                        (recipe.name ? toSlug(recipe.name) : recipe.id) ||
-                        ""
-                      }`}
-                      className="block w-full h-full rounded-lg overflow-hidden border border-gray-200 group-hover:border-[#F0800F] transition-colors"
-                    >
-                      <Image
-                        src={sanitizeImage(
-                          recipe.image ||
-                            (Array.isArray(recipe.images) && recipe.images[0]) ||
-                            recipe.image_url
-                        )}
-                        alt={recipe.name}
-                        width={80}
-                        height={80}
-                        className="w-full h-full object-cover"
-                      />
-                    </Link>
-                  </div>
-                  <Link
-                    href={`/bundle/${
-                      recipe.slug ||
-                      (recipe.name ? toSlug(recipe.name) : recipe.id) ||
-                      ""
-                    }`}
-                  >
-                    <p className="text-xs text-gray-600 truncate group-hover:text-[#F0800F]">
-                      {recipe.name}
-                    </p>
-                  </Link>
-                </div>
-              ))}
-              {recipes.length > 4 && (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <button className="w-20 h-20 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors">
-                      <span className="text-sm font-medium text-gray-600">
-                        +{recipes.length - 4}
-                      </span>
-                    </button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Recipes</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4">
-                      {recipes.map((recipe: any) => (
-                        <div
-                          key={recipe.id}
-                          className="group flex flex-col gap-2 relative"
-                        >
-                          <Link
-                            href={`/bundle/${
-                              recipe.slug ||
-                              (recipe.name ? toSlug(recipe.name) : recipe.id) ||
-                              ""
-                            }`}
-                            className="aspect-square rounded-lg overflow-hidden border border-gray-200 group-hover:border-[#F0800F] transition-colors relative block"
-                          >
-                            <Image
-                              src={sanitizeImage(
-                                recipe.image ||
-                                  recipe.image_url ||
-                                  (Array.isArray(recipe.images) && recipe.images[0])
-                              )}
-                              alt={recipe.name}
-                              fill
-                              className="object-cover"
-                            />
-                          </Link>
-                          <Link
-                            href={`/bundle/${
-                              recipe.slug ||
-                              (recipe.name ? toSlug(recipe.name) : recipe.id) ||
-                              ""
-                            }`}
-                          >
-                            <div>
-                              <p className="text-sm font-medium text-gray-900 group-hover:text-[#F0800F] line-clamp-2">
-                                {recipe.name}
-                              </p>
-                              <p className="text-sm font-bold text-[#1B6013]">
-                                {formatNaira(recipe.price || 0)}
-                              </p>
-                            </div>
-                          </Link>
-                        </div>
-                      ))}
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              )}
             </div>
           </div>
         )}

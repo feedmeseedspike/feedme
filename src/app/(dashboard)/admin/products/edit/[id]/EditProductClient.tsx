@@ -61,7 +61,7 @@ import {
   BreadcrumbPage,
 } from "@components/ui/breadcrumb";
 import Image from "next/image";
-import { updateProductAction } from "./actions";
+import { updateProductAction, uploadProductImageAction } from "./actions";
 import { supabase } from "src/lib/supabaseClient";
 
 const animatedComponents = makeAnimated();
@@ -198,19 +198,15 @@ type EditProductClientProps = {
   relatedProducts: any[];
 };
 
-// Client-side image upload utility
+// Client-side image upload utility using Server Action
 async function uploadProductImageClient(
   file: File,
   bucketName = "product-images"
 ) {
-  const fileExt = file.name.split(".").pop();
-  const filePath = `${Date.now()}.${fileExt}`;
-  const { error } = await supabase.storage
-    .from(bucketName)
-    .upload(filePath, file);
-  if (error) throw new Error(error.message);
-  const { data } = supabase.storage.from(bucketName).getPublicUrl(filePath);
-  return data.publicUrl;
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("bucketName", bucketName);
+  return await uploadProductImageAction(formData);
 }
 
 export default function EditProductClient({
@@ -236,6 +232,7 @@ export default function EditProductClient({
   const [editOptionData, setEditOptionData] = useState<any>(null);
   const [formErrors, setFormErrors] = useState<any>(null);
   const [errorDetails, setErrorDetails] = useState<string[]>([]);
+  const [imageUploadLoading, setImageUploadLoading] = useState(false);
 
   // Flatten react-hook-form errors for easier debugging/visibility
   const collectErrorMessages = (errors: any, path: string[] = []): string[] => {
@@ -268,9 +265,22 @@ export default function EditProductClient({
   };
 
   // 1. Add a single source of truth for images
-  const [images, setImages] = useState<string[]>(() =>
-    Array.isArray(product.images) ? [...product.images] : []
-  );
+  // 1. Add a single source of truth for images, normalized to strings
+  const [images, setImages] = useState<string[]>(() => {
+    const rawImages = Array.isArray(product.images) ? product.images : [];
+    return rawImages.map((img: any) => {
+      if (typeof img === "string") {
+        try {
+          const parsed = JSON.parse(img);
+          if (parsed?.url) return parsed.url;
+        } catch {}
+        return img;
+      }
+      if (img && typeof img === "object" && img.url) return img.url;
+      return null;
+    }).filter((url: any): url is string => typeof url === "string" && url.length > 0);
+  });
+
 
   // 2. Update useEffect to sync previews with images state (fix linter error)
   useEffect(() => {
@@ -296,12 +306,8 @@ export default function EditProductClient({
     if (!opt || typeof opt !== "object") return opt;
     let image: any = opt.image;
     if (typeof image === "string") {
-      try {
-        // Only accept absolute URLs; otherwise null
-        new URL(image);
-      } catch {
-        image = null;
-      }
+      // Allow any string (e.g. relative paths)
+      // No strict URL validation
     } else if (image && typeof image === "object" && "url" in image) {
       image = (image as any).url;
     } else if (!(image instanceof File)) {
@@ -387,47 +393,8 @@ export default function EditProductClient({
   });
 
   // Set image previews from existing product images
-  useEffect(() => {
-    if (product.images && Array.isArray(product.images)) {
-      const previews = product.images
-        .map((img: any) => {
-          if (typeof img === "string") {
-            try {
-              const parsedImg = JSON.parse(img);
-              if (
-                parsedImg &&
-                typeof parsedImg === "object" &&
-                typeof parsedImg.url === "string"
-              ) {
-                return parsedImg.url;
-              }
-            } catch (e) {
-              // If parsing fails, check if it's already a URL
-              if (
-                img.startsWith("http://") ||
-                img.startsWith("https://") ||
-                img.startsWith("/")
-              ) {
-                return img;
-              }
-            }
-            return null;
-          } else if (
-            typeof img === "object" &&
-            img !== null &&
-            "url" in img &&
-            typeof (img as any).url === "string"
-          ) {
-            return (img as any).url;
-          }
-          return null;
-        })
-        .filter((url: any): url is string => url !== null);
-      setImagePreviews(previews);
-    } else {
-      setImagePreviews([]);
-    }
-  }, [product.images]);
+  // Removed conflicting useEffect here.
+
 
   // Add after form definition
   const watchedVariation = form.watch("variation");
@@ -444,12 +411,21 @@ export default function EditProductClient({
   ) => {
     const files = event.target.files;
     if (files && files.length > 0) {
-      const uploadPromises = Array.from(files).map(async (file) => {
-        const url = await uploadProductImageClient(file);
-        return url;
-      });
-      const uploadedUrls = await Promise.all(uploadPromises);
-      setImages((prev) => [...prev, ...uploadedUrls]);
+      setImageUploadLoading(true);
+      try {
+        const uploadPromises = Array.from(files).map(async (file) => {
+          const url = await uploadProductImageClient(file);
+          return url;
+        });
+        const uploadedUrls = await Promise.all(uploadPromises);
+        setImages((prev) => [...prev, ...uploadedUrls]);
+        showToast("Images uploaded successfully", "success");
+      } catch (error) {
+        console.error("Image upload failed:", error);
+        showToast("Failed to upload images", "error");
+      } finally {
+        setImageUploadLoading(false);
+      }
     }
     event.target.value = "";
   };

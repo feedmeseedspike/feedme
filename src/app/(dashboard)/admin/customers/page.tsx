@@ -1,21 +1,6 @@
 export const dynamic = "force-dynamic";
 
 import { fetchCustomers } from "../../../../queries/customers";
-import { Tables } from "../../../../utils/database.types";
-import { format } from "date-fns";
-import PaginationBar from "@components/shared/pagination";
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from "@components/ui/table";
-import { Input } from "@components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
-import { Search } from "lucide-react";
-import Link from "next/link";
 import CustomersClient from "./CustomersClient";
 
 export default async function CustomersPage({
@@ -29,6 +14,8 @@ export default async function CustomersPage({
   const search = searchParams.search || "";
   const role = searchParams.role || "";
   const status = searchParams.status || "";
+  const startDate = searchParams.startDate || "";
+  const endDate = searchParams.endDate || "";
   const sortBy = searchParams.sortBy || "created_at";
   const sortOrder = searchParams.sortOrder || "desc";
 
@@ -38,6 +25,10 @@ export default async function CustomersPage({
       page,
       itemsPerPage,
       search,
+      role,
+      status,
+      startDate,
+      endDate,
     });
 
   return (
@@ -50,6 +41,8 @@ export default async function CustomersPage({
         initialSearch={search}
         initialRole={role}
         initialStatus={status}
+        initialStartDate={startDate}
+        initialEndDate={endDate}
         initialSortBy={sortBy}
         initialSortOrder={sortOrder}
       />

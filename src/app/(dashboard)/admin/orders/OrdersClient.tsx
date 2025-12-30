@@ -92,6 +92,7 @@ const progressOptions: Database["public"]["Enums"]["order_status_enum"][] = [
   "In transit",
   "order delivered",
   "order confirmed",
+  "Cancelled",
 ];
 
 const paymentStatusOptions: Database["public"]["Enums"]["payment_status_enum"][] =
@@ -104,6 +105,10 @@ export default function OrdersClient({
   currentPage,
   initialSearch,
   initialStatus,
+  initialPaymentStatus,
+  initialPaymentMethod,
+  initialStartDate,
+  initialEndDate,
 }: {
   initialOrders: OrderRow[];
   totalOrdersCount: number;
@@ -111,22 +116,28 @@ export default function OrdersClient({
   currentPage: number;
   initialSearch: string;
   initialStatus: Database["public"]["Enums"]["order_status_enum"][];
+  initialPaymentStatus?: Database["public"]["Enums"]["payment_status_enum"][];
+  initialPaymentMethod?: string[];
+  initialStartDate?: string;
+  initialEndDate?: string;
 }) {
   // --- DRAFT STATE (for filter sheet) ---
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  
+  // Initialize drafts from props (URL)
   const [draftSearch, setDraftSearch] = useState(initialSearch || "");
   const [draftStatus, setDraftStatus] = useState<
     Database["public"]["Enums"]["order_status_enum"][]
   >(initialStatus || []);
   const [draftPaymentStatus, setDraftPaymentStatus] = useState<
     Database["public"]["Enums"]["payment_status_enum"][]
-  >([]);
-  const [draftPaymentMethod, setDraftPaymentMethod] = useState<string[]>([]);
+  >(initialPaymentStatus || []);
+  const [draftPaymentMethod, setDraftPaymentMethod] = useState<string[]>(initialPaymentMethod || []);
   const [draftStartDate, setDraftStartDate] = useState<string | undefined>(
-    undefined
+    initialStartDate
   );
   const [draftEndDate, setDraftEndDate] = useState<string | undefined>(
-    undefined
+    initialEndDate
   );
   const debouncedDraftSearch = useDebounce(draftSearch, 300);
 
@@ -134,11 +145,40 @@ export default function OrdersClient({
   const [activeFilters, setActiveFilters] = useState({
     search: initialSearch || "",
     status: initialStatus || [],
-    paymentStatus: [] as Database["public"]["Enums"]["payment_status_enum"][],
-    paymentMethod: [] as string[],
-    startDate: undefined as string | undefined,
-    endDate: undefined as string | undefined,
+    paymentStatus: initialPaymentStatus || [],
+    paymentMethod: initialPaymentMethod || [],
+    startDate: initialStartDate,
+    endDate: initialEndDate,
   });
+
+  // Sync active filters from props (when URL changes)
+  useEffect(() => {
+    setActiveFilters({
+      search: initialSearch || "",
+      status: initialStatus || [],
+      paymentStatus: initialPaymentStatus || [],
+      paymentMethod: initialPaymentMethod || [],
+      startDate: initialStartDate,
+      endDate: initialEndDate,
+    });
+    // Also sync drafts if sheet is closed to keep them fresh
+    if (!isSheetOpen) {
+       setDraftSearch(initialSearch || "");
+       setDraftStatus(initialStatus || []);
+       setDraftPaymentStatus(initialPaymentStatus || []);
+       setDraftPaymentMethod(initialPaymentMethod || []);
+       setDraftStartDate(initialStartDate);
+       setDraftEndDate(initialEndDate);
+    }
+  }, [
+    initialSearch, 
+    initialStatus, 
+    initialPaymentStatus, 
+    initialPaymentMethod, 
+    initialStartDate, 
+    initialEndDate, 
+    isSheetOpen
+  ]);
   const [filterVersion, setFilterVersion] = useState(0);
 
   // --- LOADING STATE FOR ROW UPDATES ---
@@ -251,43 +291,60 @@ export default function OrdersClient({
 
   // --- APPLY FILTERS ---
   const applyFilters = () => {
-    console.log('Applying filters:', {
-      search: draftSearch,
-      status: draftStatus,
-      paymentStatus: draftPaymentStatus,
-      paymentMethod: draftPaymentMethod,
-      startDate: draftStartDate,
-      endDate: draftEndDate,
-    });
+    const params = new URLSearchParams(searchParams.toString());
     
-    setActiveFilters({
-      search: draftSearch,
-      status: draftStatus,
-      paymentStatus: draftPaymentStatus,
-      paymentMethod: draftPaymentMethod,
-      startDate: draftStartDate,
-      endDate: draftEndDate,
-    });
-    setFilterVersion((v) => v + 1);
+    // Search
+    if (draftSearch) params.set("search", draftSearch);
+    else params.delete("search");
+    
+    // Status
+    params.delete("status");
+    draftStatus.forEach(s => params.append("status", s));
+
+    // Payment Status
+    params.delete("paymentStatus");
+    draftPaymentStatus.forEach(s => params.append("paymentStatus", s));
+
+    // Payment Method
+    params.delete("paymentMethod");
+    draftPaymentMethod.forEach(s => params.append("paymentMethod", s));
+
+    // Dates
+    if (draftStartDate) params.set("startDate", draftStartDate);
+    else params.delete("startDate");
+    
+    if (draftEndDate) params.set("endDate", draftEndDate);
+    else params.delete("endDate");
+    
+    // Reset page to 1 on filter change
+    params.set("page", "1");
+
+    router.replace(`?${params.toString()}`);
     setIsSheetOpen(false);
   };
 
   // --- CLEAR FILTERS ---
+  // --- CLEAR FILTERS ---
   const clearFilters = () => {
+    // Clear drafts
     setDraftStatus([]);
     setDraftPaymentStatus([]);
     setDraftPaymentMethod([]);
     setDraftStartDate(undefined);
     setDraftEndDate(undefined);
     setDraftSearch("");
-    setActiveFilters({
-      search: "",
-      status: [],
-      paymentStatus: [],
-      paymentMethod: [],
-      startDate: undefined,
-      endDate: undefined,
-    });
+
+    // Push cleared params to URL
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("search");
+    params.delete("status");
+    params.delete("paymentStatus");
+    params.delete("paymentMethod");
+    params.delete("startDate");
+    params.delete("endDate");
+    params.set("page", "1");
+    
+    router.replace(`?${params.toString()}`);
   };
 
   // --- FILTER SHEET TOGGLE ---
@@ -297,15 +354,34 @@ export default function OrdersClient({
   // --- useQuery ---
   const { data, isLoading, error } = useQuery({
     queryKey: ["orders", page, activeFilters, filterVersion],
-    queryFn: () => {
+    queryFn: async () => {
       console.log('Fetching orders with filters:', activeFilters);
-      return fetchOrders({
+      const result = await fetchOrders({
         page: page,
         itemsPerPage: itemsPerPage,
         ...activeFilters,
       });
+
+      // Normalize shipping_address for client-side fetches
+      if (result.data) {
+        result.data = result.data.map((order: any) => ({
+          ...order,
+          shipping_address:
+            typeof order.shipping_address === "string"
+              ? (() => {
+                  try {
+                    return JSON.parse(order.shipping_address);
+                  } catch {
+                    return null;
+                  }
+                })()
+              : order.shipping_address || null,
+        }));
+      }
+      return result;
     },
-    staleTime: 0, // Always refetch when filters change
+    initialData: { data: initialOrders, count: totalOrdersCount },
+    staleTime: 1000 * 60, // 1 minute
   });
 
   // --- AUTO-OPEN SINGLE SEARCH RESULT ---
@@ -399,26 +475,7 @@ export default function OrdersClient({
 
   const totalPages = Math.ceil((data?.count || 0) / itemsPerPage);
 
-  // Toggle filter for status
-  const toggleFilter = (value: string) => {
-    setActiveFilters((prev) => ({
-      ...prev,
-      status: (
-        prev.status as Database["public"]["Enums"]["order_status_enum"][]
-      ).includes(value as Database["public"]["Enums"]["order_status_enum"])
-        ? (
-            prev.status as Database["public"]["Enums"]["order_status_enum"][]
-          ).filter(
-            (item) =>
-              item !==
-              (value as Database["public"]["Enums"]["order_status_enum"])
-          )
-        : [
-            ...(prev.status as Database["public"]["Enums"]["order_status_enum"][]),
-            value as Database["public"]["Enums"]["order_status_enum"],
-          ],
-    }));
-  };
+
 
   // After data is loaded, mark all visible unviewed orders as viewed
   useEffect(() => {
@@ -627,228 +684,147 @@ export default function OrdersClient({
       </div>
 
       {/* Table Section */}
-      <div className="border rounded-lg shadow-sm">
+      <div className="rounded-md border bg-white shadow-sm overflow-hidden">
         <Table>
-          <TableHeader>
-            <TableRow className="bg-gray-100">
-              <TableHead>Order No</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Payment Status</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Progress</TableHead>
+          <TableHeader className="bg-gray-50">
+            <TableRow>
+              <TableHead className="w-[120px] text-xs font-semibold uppercase tracking-wider text-gray-500">Order No</TableHead>
+              <TableHead className="w-[150px] text-xs font-semibold uppercase tracking-wider text-gray-500">Date</TableHead>
+              <TableHead className="min-w-[250px] text-xs font-semibold uppercase tracking-wider text-gray-500">Customer</TableHead>
+              <TableHead className="w-[120px] text-xs font-semibold uppercase tracking-wider text-gray-500">Amount</TableHead>
+              <TableHead className="w-[170px] text-xs font-semibold uppercase tracking-wider text-gray-500">Payment Status</TableHead>
+              <TableHead className="max-w-[200px] text-xs font-semibold uppercase tracking-wider text-gray-500">Location</TableHead>
+              <TableHead className="w-[170px] text-xs font-semibold uppercase tracking-wider text-gray-500">Progress</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              // Skeleton loading rows
               Array.from({ length: itemsPerPage }).map((_, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    <div className="h-4 bg-gray-200 rounded w-16"></div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-4 bg-gray-200 rounded w-24"></div>
-                  </TableCell>
-                  <TableCell className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-full bg-gray-200"></div>
-                    <div>
-                      <div className="h-4 bg-gray-200 rounded w-20 mb-1"></div>
-                      <div className="h-4 bg-gray-200 rounded w-16"></div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-4 bg-gray-200 rounded w-12"></div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-4 bg-gray-200 rounded w-20"></div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-4 bg-gray-200 rounded w-24"></div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-4 bg-gray-200 rounded w-24"></div>
-                  </TableCell>
+                <TableRow key={index} className="h-16">
+                  <TableCell><div className="h-4 bg-gray-100 rounded w-16"></div></TableCell>
+                  <TableCell><div className="h-4 bg-gray-100 rounded w-24"></div></TableCell>
+                  <TableCell><div className="flex items-center gap-3"><div className="h-9 w-9 circle bg-gray-100"></div><div className="space-y-1"><div className="h-3 bg-gray-100 w-24"></div><div className="h-3 bg-gray-100 w-32"></div></div></div></TableCell>
+                  <TableCell><div className="h-4 bg-gray-100 rounded w-16"></div></TableCell>
+                  <TableCell><div className="h-8 bg-gray-100 rounded w-24"></div></TableCell>
+                  <TableCell><div className="h-4 bg-gray-100 rounded w-32"></div></TableCell>
+                  <TableCell><div className="h-8 bg-gray-100 rounded w-24"></div></TableCell>
                 </TableRow>
               ))
             ) : data?.data && data.data.length > 0 ? (
               data.data.map((order: any) => (
                 <TableRow
-                  key={order.id}
-                  className={
-                    // Temporarily disabled due to missing admin_viewed column
-                    // order.admin_viewed === false
-                    //   ? "border-2 border-gray-400"
-                    //   : ""
-                    ""
-                  }
-                >
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                       <button
-                        onClick={() => handleOrderClick(order.id)}
-                        className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                    key={order.id}
+                    className="cursor-pointer hover:bg-gray-50/80 transition-colors h-16 group"
+                    onClick={() => handleOrderClick(order.id)}
+                  >
+                    <TableCell className="font-mono text-xs font-medium text-blue-600">
+                      <div className="flex items-center gap-2">
+                        <span className="group-hover:underline">#{order.id?.substring(0, 8)}</span>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyToClipboard(order.id);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 transition-opacity"
+                        >
+                          <Copy size={12} />
+                        </button>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-500 whitespace-nowrap">
+                      {(() => {
+                        if (!order.created_at) return "N/A";
+                        try {
+                          const date = new Date(order.created_at);
+                          return isNaN(date.getTime()) ? "Invalid" : format(date, "MMM d, yyyy");
+                        } catch {
+                          return "Error";
+                        }
+                      })()}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-9 h-9 border border-gray-200">
+                          <AvatarFallback className="bg-gray-100 text-xs font-medium text-gray-600">
+                            {(() => {
+                               let name = "Unknown";
+                               if (order.profiles?.display_name) name = order.profiles.display_name;
+                               else if (order.shipping_address && typeof order.shipping_address === 'object' && 'fullName' in order.shipping_address) name = (order.shipping_address as any).fullName;
+                               return name.substring(0, 2).toUpperCase();
+                            })()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col max-w-[180px]">
+                          <span className="text-sm font-medium text-gray-900 truncate">
+                            {order.profiles?.display_name || (order.shipping_address as any)?.fullName || "Unknown Customer"}
+                          </span>
+                          <span className="text-xs text-gray-500 truncate">
+                            {order.profiles?.email || (order.shipping_address as any)?.email || ""}
+                          </span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium text-sm text-gray-900">
+                      {order.total_amount ? formatNaira(Number(order.total_amount)) : "₦0.00"}
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Select
+                        value={order.payment_status || "Pending"}
+                        onValueChange={(val) => updatePaymentStatus(order.id, val as any)}
+                        disabled={updatingPaymentStatus === order.id}
                       >
-                        {order.id?.substring(0, 8) || "N/A"}
-                      </button>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          copyToClipboard(order.id);
-                        }}
-                        className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
-                        title="Copy Order ID"
+                        <SelectTrigger className={`h-8 w-[140px] text-xs border-transparent bg-opacity-10 ${
+                          order.payment_status === 'Paid' ? 'bg-green-100 text-green-700 hover:bg-green-200' : 
+                          order.payment_status === 'Cancelled' ? 'bg-red-100 text-red-700 hover:bg-red-200' : 
+                          'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                        } focus:ring-0 rounded-full px-3`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {paymentStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell className="max-w-[200px]">
+                      <div className="truncate text-xs text-gray-600" title={
+                         order.shipping_address && typeof order.shipping_address === 'object' 
+                         ? [order.shipping_address.street, order.shipping_address.city].filter(Boolean).join(", ")
+                         : "No address"
+                      }>
+                        {order.shipping_address && typeof order.shipping_address === 'object' 
+                         ? [order.shipping_address.street, order.shipping_address.city].filter(Boolean).join(", ")
+                         : <span className="text-gray-400 italic">No address</span>}
+                      </div>
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                       <Select
+                        value={order.status || "order confirmed"}
+                        onValueChange={(val) => updateOrderStatus(order.id, val as any)}
+                        disabled={updatingOrderStatus === order.id}
                       >
-                        <Copy size={14} />
-                      </button>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {(() => {
-                      if (!order.created_at) return "N/A";
-                      try {
-                        const date = new Date(order.created_at);
-                        return isNaN(date.getTime()) ? "Invalid Date" : date.toLocaleString();
-                      } catch {
-                        return "Date Error";
-                      }
-                    })()}
-                  </TableCell>
-                  {/* Display customer information from separately fetched user data */}
-                  <TableCell className="flex items-center gap-2">
-                    <Avatar>
-                      <AvatarFallback>
-                        {(() => {
-                           let name = "Unknown User";
-                           if (order.profiles?.display_name) {
-                             name = order.profiles.display_name;
-                           } else if (order.shipping_address && typeof order.shipping_address === 'object' && 'fullName' in order.shipping_address) {
-                             name = (order.shipping_address as any).fullName || "Unknown User";
-                           }
-                           
-                           return typeof name === 'string' 
-                             ? name.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase()
-                             : "??";
-                        })()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">
-                        {(() => {
-                          if (order.profiles?.display_name) return order.profiles.display_name;
-                          if (order.shipping_address && typeof order.shipping_address === 'object' && 'fullName' in order.shipping_address) {
-                            return (order.shipping_address as any).fullName || "Unknown User";
-                          }
-                          return "Unknown User";
-                        })()}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {(() => {
-                           if (order.shipping_address && typeof order.shipping_address === 'object' && 'email' in order.shipping_address) {
-                             return (order.shipping_address as any).email || "";
-                           }
-                           return "";
-                        })()}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {order.total_amount
-                      ? `${formatNaira(Number(order.total_amount))}`
-                      : "₦0.00"}
-                  </TableCell>
-                  {/* Payment Status Dropdown */}
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <Select
-                      value={
-                        paymentStatusOptions.includes(
-                          order.payment_status as any
-                        )
-                          ? order.payment_status!
-                          : paymentStatusOptions[0]
-                      }
-                      onValueChange={(newValue) =>
-                        updatePaymentStatus(
-                          order.id,
-                          newValue as Database["public"]["Enums"]["payment_status_enum"]
-                        )
-                      }
-                      disabled={updatingPaymentStatus === order.id}
-                    >
-                      <SelectTrigger className="w-[150px] flex items-center justify-between">
-                        {updatingPaymentStatus === order.id ? (
-                          <span className="animate-spin mr-2 w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full inline-block"></span>
-                        ) : null}
-                        <SelectValue placeholder="Select Payment Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {paymentStatusOptions.map((status) => (
-                          <SelectItem key={status} value={status}>
-                            {status}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    {order.shipping_address &&
-                    typeof order.shipping_address === "object" &&
-                    !Array.isArray(order.shipping_address)
-                      ? [
-                          order.shipping_address.street,
-                          order.shipping_address.location || order.shipping_address.local_government,
-                          order.shipping_address.city,
-                          order.shipping_address.state,
-                          order.shipping_address.zip,
-                        ]
-                          .filter(
-                            (v) => v && typeof v === "string" && v.trim() !== ""
-                          )
-                          .join(", ") || "Unknown Location"
-                      : "Unknown Location"}
-                  </TableCell>
-
-                  {/* Progress Dropdown */}
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <Select
-                      value={
-                        progressOptions.includes(order.status as any)
-                          ? order.status!
-                          : progressOptions[0]
-                      }
-                      onValueChange={(newValue) =>
-                        updateOrderStatus(
-                          order.id,
-                          newValue as Database["public"]["Enums"]["order_status_enum"]
-                        )
-                      }
-                      disabled={updatingOrderStatus === order.id}
-                    >
-                      <SelectTrigger className="w-[150px] flex items-center justify-between">
-                        {updatingOrderStatus === order.id ? (
-                          <span className="animate-spin mr-2 w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full inline-block"></span>
-                        ) : null}
-                        <SelectValue placeholder="Select Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {progressOptions.map((status) => (
-                          <SelectItem key={status} value={status}>
-                            {status}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                </TableRow>
+                        <SelectTrigger className="h-8 w-[160px] text-xs border-gray-200 bg-white">
+                          <div className="flex items-center gap-2">
+                             <div className={`w-2 h-2 rounded-full ${
+                               order.status === 'order delivered' ? 'bg-green-500' :
+                               order.status === 'In transit' ? 'bg-blue-500' :
+                               order.status === 'Cancelled' ? 'bg-red-500' : 'bg-gray-400'
+                             }`} />
+                             <SelectValue />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {progressOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                  </TableRow>
               ))
             ) : (
-              // No orders message
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
-                  No orders found.
-                </TableCell>
-              </TableRow>
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center text-gray-500">
+                    No orders found.
+                  </TableCell>
+                </TableRow>
             )}
           </TableBody>
         </Table>
