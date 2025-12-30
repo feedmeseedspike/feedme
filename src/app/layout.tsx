@@ -24,6 +24,7 @@ import SignupWelcomeProvider from "@components/shared/SignupWelcomeProvider";
 import { getStoreSettings } from "@/lib/actions/settings.actions";
 import { StoreStatusProvider } from "@/providers/StoreStatusProvider";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const DynamicReferralBanner = dynamic(
   () => import("@components/shared/ReferralBanner"),
@@ -329,6 +330,7 @@ export default async function RootLayout({
                             <StoreStatusProvider settings={settings}>
                               {children}
                               <Analytics />
+                              <SpeedInsights />
                             </StoreStatusProvider>
                           </NewVisitorProvider>
                         </SignupWelcomeProvider>
