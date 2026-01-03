@@ -37,43 +37,46 @@ export const isProductFavoritedQuery = (productId: string) => ({
 export const useAddFavoriteMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (productId: string) => addToFavorite(productId),
+    mutationFn: async (productId: string) => {
+      const result = await addToFavorite(productId);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      return result;
+    },
     onMutate: async (productId: string) => {
       // Cancel any outgoing refetches for both queries
-      await queryClient.cancelQueries({ queryKey: ['favorites'] }); // Favorite IDs query
-      await queryClient.cancelQueries({ queryKey: ['favoriteProducts'] }); // Favorite Products query
+      await queryClient.cancelQueries({ queryKey: ['favorites'] });
+      await queryClient.cancelQueries({ queryKey: ['favoriteProducts'] });
 
       // Snapshot the previous values
-      const previousFavorites = queryClient.getQueryData<Favorite[] | null>(['favorites']);
-      const previousFavoriteProducts = queryClient.getQueryData<(Favorite & { products: Product | null })[] | null>(['favoriteProducts']);
+      const previousFavorites = queryClient.getQueryData<string[] | null>(['favorites']);
+      const previousFavoriteProducts = queryClient.getQueryData<any[] | null>(['favoriteProducts']);
 
-      // Optimistically update the favorite IDs list
-      queryClient.setQueryData<Favorite[] | null>(['favorites'], (old) => {
+      // Optimistically update the favorite IDs list (string[])
+      queryClient.setQueryData<string[]>(['favorites'], (old) => {
         const oldArray = Array.isArray(old) ? old : [];
-        if (!oldArray.some(fav => fav.product_id === productId)) {
-           return [...oldArray, { product_id: productId } as Favorite]; // Ensure type consistency
+        if (!oldArray.includes(productId)) {
+           return [...oldArray, productId];
         }
         return oldArray;
       });
-
-      // Note: Optimistically updating the full product list is more complex as we don't have the full product data here.
-      // We will rely on invalidation to refetch the full list for the favorites page.
 
       return { previousFavorites, previousFavoriteProducts };
     },
     onSuccess: () => {
       // Invalidate both queries to refetch
-      queryClient.invalidateQueries({ queryKey: ['favorites'] }); // Favorite IDs query
-      queryClient.invalidateQueries({ queryKey: ['favoriteProducts'] }); // Favorite Products query
+      queryClient.invalidateQueries({ queryKey: ['favorites'] });
+      queryClient.invalidateQueries({ queryKey: ['favoriteProducts'] });
     },
     onError: (error, productId, context) => {
       // Rollback favorite IDs list on error
       if (context?.previousFavorites) {
-        queryClient.setQueryData<Favorite[] | null>(['favorites'], context.previousFavorites);
+        queryClient.setQueryData<string[]>(['favorites'], context.previousFavorites);
       }
-       // Rollback favorite products list (if needed, though less critical without optimistic update)
+       // Rollback favorite products list
       if (context?.previousFavoriteProducts) {
-         queryClient.setQueryData<(Favorite & { products: Product | null })[] | null>(['favoriteProducts'], context.previousFavoriteProducts);
+         queryClient.setQueryData<any[]>(['favoriteProducts'], context.previousFavoriteProducts);
       }
     },
   });
@@ -83,43 +86,50 @@ export const useAddFavoriteMutation = () => {
 export const useRemoveFavoriteMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (productId: string) => removeFromFavorite(productId),
+    mutationFn: async (productId: string) => {
+      const result = await removeFromFavorite(productId);
+      if (!result.success) {
+         throw new Error(result.error);
+      }
+      return result;
+    },
      onMutate: async (productId: string) => {
       // Cancel any outgoing refetches for both queries
-      await queryClient.cancelQueries({ queryKey: ['favorites'] }); // Favorite IDs query
-      await queryClient.cancelQueries({ queryKey: ['favoriteProducts'] }); // Favorite Products query
+      await queryClient.cancelQueries({ queryKey: ['favorites'] });
+      await queryClient.cancelQueries({ queryKey: ['favoriteProducts'] });
 
       // Snapshot the previous values
-      const previousFavorites = queryClient.getQueryData<Favorite[] | null>(['favorites']);
-      const previousFavoriteProducts = queryClient.getQueryData<(Favorite & { products: Product | null })[] | null>(['favoriteProducts']);
+      const previousFavorites = queryClient.getQueryData<string[] | null>(['favorites']);
+      const previousFavoriteProducts = queryClient.getQueryData<any[] | null>(['favoriteProducts']);
 
-      // Optimistically update the favorite IDs list
-      queryClient.setQueryData<Favorite[] | null>(['favorites'], (old) => {
+      // Optimistically update the favorite IDs list (string[])
+      queryClient.setQueryData<string[]>(['favorites'], (old) => {
          const oldArray = Array.isArray(old) ? old : [];
-        return oldArray.filter(fav => fav.product_id !== productId);
+        return oldArray.filter(id => id !== productId);
       });
 
-      // Optimistically update the favorite products list
-       queryClient.setQueryData<(Favorite & { products: Product | null })[] | null>(['favoriteProducts'], (old) => {
+      // Optimistically update the favorite products list (objects)
+       queryClient.setQueryData<any[]>(['favoriteProducts'], (old) => {
          const oldArray = Array.isArray(old) ? old : [];
-         return oldArray.filter(fav => fav.products?.id !== productId); // Filter by product id in the joined data
+         // Filter by checking if the nested product id matches
+         return oldArray.filter(fav => fav.product_id !== productId && fav.products?.id !== productId);
        });
 
       return { previousFavorites, previousFavoriteProducts };
     },
     onSuccess: () => {
       // Invalidate both queries to refetch
-      queryClient.invalidateQueries({ queryKey: ['favorites'] }); // Favorite IDs query
-      queryClient.invalidateQueries({ queryKey: ['favoriteProducts'] }); // Favorite Products query
+      queryClient.invalidateQueries({ queryKey: ['favorites'] });
+      queryClient.invalidateQueries({ queryKey: ['favoriteProducts'] });
     },
      onError: (error, productId, context) => {
       // Rollback favorite IDs list on error
       if (context?.previousFavorites) {
-        queryClient.setQueryData<Favorite[] | null>(['favorites'], context.previousFavorites);
+        queryClient.setQueryData<string[]>(['favorites'], context.previousFavorites);
       }
       // Rollback favorite products list on error
       if (context?.previousFavoriteProducts) {
-         queryClient.setQueryData<(Favorite & { products: Product | null })[] | null>(['favoriteProducts'], context.previousFavoriteProducts);
+         queryClient.setQueryData<any[]>(['favoriteProducts'], context.previousFavoriteProducts);
       }
     },
   });

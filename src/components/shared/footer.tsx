@@ -50,13 +50,13 @@ const footerData = [
       { name: "Send An Email", href: "/" },
     ],
   },
-  {
-    title: "Business",
-    links: [
-      { name: "Become A Vendor", href: "/vendor" },
-      { name: "Become A Logistics Partner", href: "/" },
-    ],
-  },
+  // {
+  //   title: "Business",
+  //   links: [
+  //     { name: "Become A Vendor", href: "/vendor" },
+  //     { name: "Become A Logistics Partner", href: "/" },
+  //   ],
+  // },
   {
     title: "Legal",
     links: [{ name: "Privacy Policy", href: "/return-policy" }],

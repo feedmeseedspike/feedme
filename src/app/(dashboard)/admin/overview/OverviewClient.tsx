@@ -2,6 +2,7 @@
 
 import Chart from "@components/admin/chart";
 import React, { useState, useEffect, useMemo } from "react";
+import { Icon } from "@iconify/react";
 import {
   Table,
   TableHeader,
@@ -45,7 +46,7 @@ import {
   AccordionTrigger,
 } from "@components/ui/accordion";
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Cake, Gift } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import {
   addDays,
@@ -98,6 +99,7 @@ interface PendingOrderData {
   platform: string;
   location: string;
   progress: string;
+  id?: string;
 }
 
 interface OverviewClientProps {
@@ -109,6 +111,7 @@ interface OverviewClientProps {
   totalProducts: number;
   totalCustomers: number;
   totalCategories: number;
+  todaysBirthdays: any[];
 }
 
 const OverviewClient: React.FC<OverviewClientProps> = ({
@@ -120,6 +123,7 @@ const OverviewClient: React.FC<OverviewClientProps> = ({
   totalProducts,
   totalCustomers,
   totalCategories,
+  todaysBirthdays = [],
 }) => {
   const [date, setDate] = React.useState<DateRange | undefined>({
     from: new Date(2022, 0, 20),
@@ -668,6 +672,48 @@ const OverviewClient: React.FC<OverviewClientProps> = ({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {todaysBirthdays.length > 0 && (
+        <div className="bg-gradient-to-r from-pink-50 to-white p-6 rounded-xl border border-pink-100 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-pink-100 rounded-lg text-pink-600">
+               <Icon icon="solar:cake-bold-duotone" width="24" height="24" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-800">Today&apos;s Birthdays</h2>
+              <p className="text-sm text-gray-500">{todaysBirthdays.length} customer{todaysBirthdays.length !== 1 && 's'} celebrating today!</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {todaysBirthdays.map((user: any) => (
+               <div key={user.user_id} className="flex items-center gap-3 bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden text-sm font-bold text-gray-500">
+                      {user.avatar_url ? (
+                        <img src={user.avatar_url} alt={user.display_name} className="h-full w-full object-cover" />
+                      ) : (
+                        (user.display_name?.[0] || user.email?.[0] || 'U').toUpperCase()
+                      )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 truncate">{user.display_name || user.email || 'Unnamed User'}</p>
+                    {user.favorite_fruit ? (
+                       <p className="text-xs text-gray-500 flex items-center gap-1 truncate">
+                         Fav: {user.favorite_fruit} 🍎
+                       </p>
+                    ) : (
+                        <p className="text-xs text-gray-400 italic">No favorite fruit listed</p>
+                    )}
+                  </div>
+                  <Button size="icon" variant="ghost" className="h-8 w-8 text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded-full" title="Send Gift">
+                    <Icon icon="solar:gift-bold-duotone" width="16" height="16" />
+                  </Button>
+               </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Chart
           title="Total Orders"

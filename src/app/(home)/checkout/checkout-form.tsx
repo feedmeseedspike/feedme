@@ -742,7 +742,7 @@ const CheckoutForm = ({
       try {
         const result = await validateVoucherMutation({
           code: voucherCode,
-          totalAmount,
+          totalAmount: subtotal,
         });
         if (result.success && result.data) {
           const { id, discountType, discountValue } = result.data;
@@ -889,7 +889,7 @@ const CheckoutForm = ({
                       adminEmail: "orders.feedmeafrica@gmail.com",
                       userEmail: user.email,
                       adminOrderProps: {
-                        orderNumber: result.data.orderId,
+                        orderNumber: result.data.reference || result.data.orderId,
                         customerName:
                           user.display_name ||
                           shippingAddressForm.getValues().fullName,
@@ -916,7 +916,7 @@ const CheckoutForm = ({
                         totalAmount: totalAmountPaid,
                       },
                       userOrderProps: {
-                        orderNumber: result.data.orderId,
+                        orderNumber: result.data.reference || result.data.orderId,
                         customerName:
                           user.display_name ||
                           shippingAddressForm.getValues().fullName,

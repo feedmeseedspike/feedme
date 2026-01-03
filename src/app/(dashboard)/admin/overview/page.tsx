@@ -1,5 +1,6 @@
 import { createClient } from "@utils/supabase/server";
 import OverviewClient, { Order } from "./OverviewClient";
+import { getTodaysBirthdaysAction } from "src/lib/actions/user.action";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,7 @@ export default async function OverviewPage() {
     totalProductsRes,
     totalCustomersRes,
     totalCategoriesRes,
+    todaysBirthdaysRes,
   ] = await Promise.all([
     supabase.from("orders").select("id", { count: "exact", head: true }),
     supabase
@@ -46,6 +48,7 @@ export default async function OverviewPage() {
     supabase.from("products").select("id", { count: "exact", head: true }),
     supabase.from("profiles").select("user_id", { count: "exact", head: true }),
     supabase.from("categories").select("id", { count: "exact", head: true }),
+    getTodaysBirthdaysAction(), // Fetch today's birthdays
   ]);
 
   if (
@@ -66,6 +69,8 @@ export default async function OverviewPage() {
     0
   );
 
+  const todaysBirthdays = todaysBirthdaysRes.success ? todaysBirthdaysRes.data : [];
+
   return (
     <OverviewClient
       initialOrders={initialOrders}
@@ -76,6 +81,7 @@ export default async function OverviewPage() {
       totalProducts={totalProductsRes.count || 0}
       totalCustomers={totalCustomersRes.count || 0}
       totalCategories={totalCategoriesRes.count || 0}
+      todaysBirthdays={todaysBirthdays}
     />
   );
 }

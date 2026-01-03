@@ -6,6 +6,7 @@ import {
   getAllCategories,
   getBundles,
   getRelatedProducts,
+  getAllTags,
 } from "src/lib/actions/product.actions";
 import { notFound } from "next/navigation";
 
@@ -97,19 +98,22 @@ export default async function EditProductPage({
   let allCategories = [];
   let allProducts = [];
   let relatedProducts = [];
+  let allTags: string[] = [];
 
   try {
-    const [productData, categoriesData, bundlesData, relatedData] = await Promise.all([
+    const [productData, categoriesData, bundlesData, relatedData, tagsData] = await Promise.all([
       getProductById(productId),
       getAllCategories(),
       getBundles(), // Fetch bundles instead of products
       getRelatedProducts(productId),
+      getAllTags(),
     ]);
 
     product = productData;
     allCategories = categoriesData;
     allProducts = bundlesData || []; // Use bundlesData for the selection list
     relatedProducts = relatedData || [];
+    allTags = tagsData || [];
 
     if (!product) {
       return notFound();
@@ -128,6 +132,7 @@ export default async function EditProductPage({
       allCategories={allCategories}
       allProducts={allProducts}
       relatedProducts={relatedProducts}
+      allTags={allTags}
     />
   );
 }

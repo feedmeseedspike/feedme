@@ -719,11 +719,13 @@ export default function OrdersClient({
                   >
                     <TableCell className="font-mono text-xs font-medium text-blue-600">
                       <div className="flex items-center gap-2">
-                        <span className="group-hover:underline">#{order.id?.substring(0, 8)}</span>
+                        <span className="group-hover:underline" title={`Internal ID: ${order.id}`}>
+                          {order.reference || `#${order.id?.substring(0, 8)}...`}
+                        </span>
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
-                            copyToClipboard(order.id);
+                            copyToClipboard(order.reference || order.id);
                           }}
                           className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 transition-opacity"
                         >

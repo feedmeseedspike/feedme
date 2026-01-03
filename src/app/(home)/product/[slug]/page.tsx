@@ -161,6 +161,7 @@ const ProductDetails = async (props: {
     category: product.category_ids?.[0] || "",
     productId: product.id,
     page: Number(page || "1"),
+    limit: 12,
   });
 
   let alsoViewedProducts: IProductInput[] = [];
@@ -227,8 +228,8 @@ const ProductDetails = async (props: {
             "@context": "https://schema.org/",
             "@type": "Product",
             name: product.name,
-            image: product.images?.[0],
-            description: product.description,
+            image: Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : "/logo.png",
+            description: product.description || "",
             // brand: {
             //   "@type": "Brand",
             //   name: product.brand || "FeedMe",
@@ -251,7 +252,7 @@ const ProductDetails = async (props: {
               card: "summary_large_image",
               title: product.name,
               description: product.description || "",
-              images: product.images?.[0] || "/logo.png",
+              images: Array.isArray(product.images) && product.images.length > 0 ? [product.images[0]] : ["/logo.png"],
             },
             alternates: {
               canonical: `${process.env.NEXT_PUBLIC_SITE_URL}/product/${product.slug}`,
@@ -259,7 +260,7 @@ const ProductDetails = async (props: {
             openGraph: {
               title: product.name,
               description: product.description || "",
-              images: product.images?.[0] || "/logo.png",
+              images: Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : "/logo.png",
               url: `${process.env.NEXT_PUBLIC_SITE_URL}/product/${product.slug}`,
               type: "product",
             },
@@ -467,12 +468,12 @@ const ProductDetails = async (props: {
             </h2>
             <ReviewList product={product} />
           </section>
-          {/* <section className="mt-10">
-          <ProductSlider
-            products={relatedProducts.data || []}
-            title={"You may also like"}
-          />
-        </section> */}
+          <section className="mt-10">
+            <ProductSlider
+              products={relatedProducts.data || []}
+              title={"You may also like"}
+            />
+          </section>
           {alsoViewedProducts.length > 0 && (
             <section className="mt-10">
               <ProductSlider

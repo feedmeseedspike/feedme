@@ -388,7 +388,7 @@ export async function addPurchase(body: AddPurchaseBody) {
         .eq('id', referral.id);
     }
 
-    return { success: true, data: { orderId: order.id } };
+    return { success: true, data: { orderId: order.id, reference: order.reference } };
   } catch (error: any) {
     return { success: false, error: formatError(error.message) };
   }

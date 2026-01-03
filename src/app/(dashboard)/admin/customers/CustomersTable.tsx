@@ -96,8 +96,8 @@ export default function CustomersTable({ data }: { data: any[] }) {
                 >
                   <TableCell className="font-mono text-xs font-medium text-blue-600">
                     <div className="flex items-center gap-2">
-                      <span className="group-hover:underline">
-                        #{user_id ? user_id.substring(0, 8) : "N/A"}
+                      <span className="group-hover:underline" title={user_id}>
+                        #{user_id ? user_id.substring(0, 8) + '...' : "N/A"}
                       </span>
                       {user_id && (
                         <button

@@ -44,13 +44,13 @@ const footerData = [
       { name: "Send An Email", isEmailModal: true },
     ],
   },
-  {
-    title: "Business",
-    links: [
-      { name: "Become A Vendor", href: "/" },
-      { name: "Become A Logistics Partner", href: "/" },
-    ],
-  },
+  // {
+  //   title: "Business",
+  //   links: [
+  //     { name: "Become A Vendor", href: "/" },
+  //     { name: "Become A Logistics Partner", href: "/" },
+  //   ],
+  // },
   {
     title: "Legal",
     links: [{ name: "Privacy Policy", href: "/return-policy" }],
