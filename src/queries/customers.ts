@@ -67,8 +67,8 @@ export async function fetchCustomers({
   let profilesQuery = supabase.from('profiles').select('*', { count: 'exact' });
   
   if (search) {
-    // Search in display_name or email
-    profilesQuery = profilesQuery.or(`display_name.ilike.%${search}%,email.ilike.%${search}%`);
+    // Search in display_name
+    profilesQuery = profilesQuery.ilike('display_name', `%${search}%`);
   }
   
   if (role) {

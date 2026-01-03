@@ -93,6 +93,9 @@ export async function processWalletPayment(orderData: OrderData) {
       throw new Error("Failed to deduct from wallet.");
     }
 
+    // Generate Reference
+    const reference = `ORD-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
     // Create the order record
     const { data: orderResult, error: orderError } = await supabase
       .from("orders")
@@ -104,6 +107,7 @@ export async function processWalletPayment(orderData: OrderData) {
         shipping_address: JSON.stringify(orderData.shippingAddress),
         payment_method: orderData.paymentMethod, // 'wallet'
         payment_status: "Paid", 
+        reference: reference,
       })
       .select()
       .single();
@@ -208,7 +212,7 @@ export async function processWalletPayment(orderData: OrderData) {
     revalidatePath("/account/wallet");
     revalidatePath("/account/orders");
 
-    return { success: true, data: { orderId: orderResult.id } };
+    return { success: true, data: { orderId: orderResult.id, reference: reference } };
 
   } catch (error: any) {
     // Basic rollback mechanism: if order creation/items failed, try to refund the wallet

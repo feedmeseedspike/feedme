@@ -5,6 +5,12 @@ import { headerMenus } from "src/lib/data";
 import HeaderTagsClient from "./HeaderTagsClient";
 import HeaderTagsWrapper from "./HeaderTagsWrapper";
 import { createClient } from "src/utils/supabase/server";
+import {
+  TiSocialTwitter,
+  TiSocialFacebook,
+  TiSocialLinkedin,
+} from "react-icons/ti";
+import { SlSocialInstagram } from "react-icons/sl";
 
 type CategoryListItem = {
   id: string;
@@ -95,6 +101,21 @@ export default async function Headertags() {
                   {menu.name}
                 </Link>
               ))}
+            </div>
+            
+            <div className="ml-auto flex items-center gap-4 pl-4 border-l border-gray-200">
+               <a href="https://x.com/Seedspike15427" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#1DA1F2] transition-colors">
+                  <TiSocialTwitter className="w-5 h-5" />
+               </a>
+               <a href="https://www.facebook.com/profile.php?id=100093243737297&mibextid=ZbWKwL" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#1877F2] transition-colors">
+                  <TiSocialFacebook className="w-5 h-5" />
+               </a>
+               <a href="https://www.linkedin.com/company/seedspike/" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#0A66C2] transition-colors">
+                  <TiSocialLinkedin className="w-5 h-5" />
+               </a>
+               <a href="https://www.instagram.com/seedspikeafrica/profilecard/?igsh=MTE4OW5zY2RjYnprYQ==" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#E4405F] transition-colors">
+                  <SlSocialInstagram className="w-4 h-4" />
+               </a>
             </div>
           </div>
         </Container>

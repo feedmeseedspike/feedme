@@ -163,6 +163,9 @@ export async function getFavourites(): Promise<FavoritesSuccess | FavoritesFailu
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
+    // console.log("getFavourites raw data:", JSON.stringify(favorites, null, 2));
+    // console.log("getFavourites error:", error);
+
     if (error) throw error;
 
     return { 

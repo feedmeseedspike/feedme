@@ -195,7 +195,9 @@ export default function OrderDetailModal({ isOpen, onClose, order }: OrderDetail
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <div>
-              <span className="text-xl">Order #{order.id.substring(0, 8)}</span>
+              <span className="text-xl" title={`Internal ID: ${order.id}`}>
+                {order.reference ? order.reference : `Order #${order.id.substring(0, 8)}...`}
+              </span>
               <p className="text-sm font-normal text-gray-600 mt-1">
                 {order.created_at && format(new Date(order.created_at), "PPpp")}
               </p>

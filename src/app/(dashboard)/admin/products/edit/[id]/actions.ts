@@ -22,7 +22,8 @@ export async function updateProductAction(productId: string, productData: any) {
     "category_ids",
     "images",
     "options",
-    "in_season"
+    "in_season",
+    "tags"
   ];
   
   const cleanData: any = {};
@@ -45,6 +46,11 @@ export async function updateProductAction(productId: string, productData: any) {
           : [];
       } else if (field === "category_ids") {
         // Ensure category_ids is an array of strings
+        cleanData[field] = Array.isArray(productData[field]) 
+          ? productData[field]
+          : [];
+      } else if (field === "tags") {
+        // Ensure tags is an array of strings
         cleanData[field] = Array.isArray(productData[field]) 
           ? productData[field]
           : [];

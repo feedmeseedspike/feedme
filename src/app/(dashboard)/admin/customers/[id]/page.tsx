@@ -417,7 +417,11 @@ export default function CustomerDetailsPage() {
                 (orders as Tables<"orders">[]).map((order) => (
                   <TableRow key={order.id}>
                     {/* Map fetched data to Order interface structure for display */}
-                    <TableCell>{order.id?.substring(0, 8) || "#N/A"}</TableCell>{" "}
+                    <TableCell className="font-mono text-xs font-medium text-blue-600">
+                      <span title={`Internal ID: ${order.id}`} className="cursor-pointer hover:underline">
+                        {(order as any).reference || (order.id?.substring(0, 8) + '...')}
+                      </span>
+                    </TableCell>
                     {/* Mapping id to Order No */}
                     <TableCell>
                       {order.created_at
@@ -427,18 +431,20 @@ export default function CustomerDetailsPage() {
                     {/* Mapping created_at to Date - Fixed format string */}
                     <TableCell>
                       {order.total_amount
-                        ? `₦${order.total_amount.toFixed(2)}`
+                        ? `₦${order.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
                         : "₦0.00"}
                     </TableCell>{" "}
                     {/* Mapping total_amount to Amount */}
                     <TableCell>Website</TableCell>{" "}
                     {/* Placeholder for Platform */}
                     <TableCell>
-                      {(order.shipping_address as any)?.street
-                        ? `${(order.shipping_address as any)?.street}, ${
-                            (order.shipping_address as any)?.city
-                          }, ${(order.shipping_address as any)?.state}`
-                        : "N/A"}
+                      {(() => {
+                        const addr = order.shipping_address as any;
+                        if (!addr) return "N/A";
+                        return [addr.street, addr.city, addr.local_government, addr.state]
+                          .filter(part => part && typeof part === 'string' && part !== 'undefined')
+                          .join(", ");
+                      })()}
                     </TableCell>{" "}
                     {/* Mapping shipping_address to Address */}
                     <TableCell>

@@ -171,7 +171,9 @@ export const formatError = (error: any): string => {
 }
 
 export const formatDate = (isoString: string) => {
+  if (!isoString) return "N/A";
   const date = new Date(isoString);
+  if (isNaN(date.getTime())) return "N/A";
   return new Intl.DateTimeFormat("en-US", {
     day: "numeric",
     month: "long",

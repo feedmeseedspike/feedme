@@ -60,24 +60,17 @@ export async function updateOrderStatusAction(orderId: string, newStatus: Databa
       const userName = order.profiles?.display_name || order.profiles?.full_name || shipping?.fullName || "Customer";
 
       if (userEmail) {
-        // Send email notification
-        const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/email/send-order-status-update`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+        // Send email notification locally (no API call)
+        const { sendStatusUpdateEmail } = await import("@/utils/email/sendStatusUpdateEmail");
+        
+        await sendStatusUpdateEmail({
             userEmail,
-            orderNumber: order.order_id || order.id,
+            orderNumber: order.reference || order.order_id || order.id,
             customerName: userName,
             newStatus,
             itemsOrdered,
             deliveryAddress: shipping?.street || "Address not available",
-          }),
         });
-
-        const emailResult = await response.json();
-        if (!emailResult.success) {
-          console.error("Email notification failed:", emailResult.error);
-        }
       }
     } catch (emailError) {
       console.error("Failed to send status update email:", emailError);

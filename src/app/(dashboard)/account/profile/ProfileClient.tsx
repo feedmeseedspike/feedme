@@ -3,17 +3,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { UserProfileSchema } from "src/lib/validator";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
-import {
-  Pencil,
-  Loader2,
-  User,
-  Mail,
-  MapPin,
-  Shield,
-  Apple,
-} from "lucide-react";
-import { useState } from "react";
-import { formatDate } from "src/lib/utils";
+import { Loader2 } from "lucide-react";
+import { Icon } from "@iconify/react";
+import { useState, useMemo } from "react";
 import { useToast } from "src/hooks/useToast";
 import {
   Form,
@@ -25,24 +17,23 @@ import {
 } from "@components/ui/form";
 import { Input } from "@components/ui/input";
 import { Button } from "@components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@components/ui/select";
 import { z } from "zod";
 import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateUserInfo } from "src/lib/actions/user.action";
-import { format } from "date-fns";
+import { format, getDaysInMonth, setDate, setMonth, setYear } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Calendar } from "@components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@components/ui/popover";
 
 interface ProfileClientProps {
   user: any;
 }
-
-const isFile = (value: any): value is File => value instanceof File;
 
 const ProfileClient = ({ user }: ProfileClientProps) => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -98,7 +89,6 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
         if (result.avatarUrl) {
           setAvatarPreview(null);
         }
-        // Invalidate queries to refresh data
         queryClient.invalidateQueries({ queryKey: ["user"] });
       } else if (result?.message) {
         showToast(result.message, "error");
@@ -133,228 +123,253 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
     mutation.mutate(data);
   };
 
-  const watchedAvatar = form.watch("avatar");
+  // Helper logic for Birthday Selects
+  const currentYear = new Date().getFullYear();
+  // Generate years from current year down to 1920
+  const years = useMemo(() => Array.from({ length: currentYear - 1920 + 1 }, (_, i) => (currentYear - i).toString()), [currentYear]);
+  const months = [
+    "January", "February", "March", "April", "May", "June", 
+    "July", "August", "September", "October", "November", "December"
+  ];
 
   return (
-    <div className="min-h-screen md:px-6">
-      <div className="max-w-4xl mx-auto space-y-3">
-        <div className="">
-          <div className="pb-6 border-b border-gray-200 mb-3">
-            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-              <User className="w-6 h-6 text-[#1B6013]" />
-              Personal Information
-            </h2>
-            <p className="text-gray-600">
-              Update your profile information and preferences
-            </p>
+    <div className="min-h-screen md:px-6 py-6 font-sans">
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          
+          {/* Header Section */}
+          <div className="border-b border-gray-100 px-8 py-6 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                Personal Information
+              </h2>
+              <p className="text-gray-500 text-sm mt-1">
+                Manage your personal details and preferences.
+              </p>
+            </div>
+            {/* Simple Incentive Text */}
+
           </div>
 
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              {/* Avatar Upload Section */}
-              <div className="flex flex-col items-center gap-4 p-6 bg-gray-50 rounded-xl">
-                <div className="relative">
-                  <Avatar className="w-20 h-20 ring-2 ring-[#1B6013]/20">
-                    <AvatarImage
-                      className="w-full h-full object-cover"
-                      src={avatarPreview || user?.avatar_url || undefined}
+          <div className="p-8">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                
+                {/* Profile Photo */}
+                <div className="flex items-center gap-6">
+                  <div className="relative group">
+                    <Avatar className="w-20 h-20 ring-4 ring-gray-50">
+                      <AvatarImage
+                        className="w-full h-full object-cover"
+                        src={avatarPreview || user?.avatar_url || undefined}
+                      />
+                      <AvatarFallback className="text-2xl bg-gray-100 text-gray-500 font-bold">
+                        {user?.display_name ? user.display_name[0] : "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <label
+                      htmlFor="avatar"
+                      className="absolute -bottom-1 -right-1 bg-white border border-gray-200 text-gray-600 hover:text-[#1B6013] hover:border-[#1B6013] cursor-pointer rounded-full p-1.5 shadow-sm transition-colors"
+                    >
+                      <Icon icon="solar:camera-bold-duotone" className="w-3.5 h-3.5" />
+                    </label>
+                    <input
+                      type="file"
+                      id="avatar"
+                      name="avatar"
+                      className="hidden"
+                      accept=".jpg,.jpeg,.png,.webp"
+                      onChange={handleAvatarPreview}
                     />
-                    <AvatarFallback className="text-xl bg-[#1B6013]/10 text-[#1B6013]">
-                      {user?.display_name ? user.display_name[0] : "U"}
-                    </AvatarFallback>
-                  </Avatar>
-
-                  <label
-                    htmlFor="avatar"
-                    className="absolute -bottom-2 -right-2 bg-[#1B6013] hover:bg-green-700 cursor-pointer rounded-full p-2 text-white shadow-lg transition-colors"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </label>
-
-                  <input
-                    type="file"
-                    id="avatar"
-                    name="avatar"
-                    className="hidden"
-                    accept=".jpg,.jpeg,.png,.webp"
-                    onChange={handleAvatarPreview}
-                  />
+                  </div>
+                  <div>
+                     <h4 className="font-medium text-gray-900">Profile Picture</h4>
+                     <p className="text-xs text-gray-500 mt-0.5">
+                       JPG, PNG or WebP. Max 5MB.
+                     </p>
+                  </div>
                 </div>
 
-                <p className="text-xs text-gray-500 text-center max-w-xs">
-                  Upload a new profile picture. Max file size: 2MB. Supported
-                  formats: JPG, PNG, WebP
-                </p>
-              </div>
-
-              {/* Form Fields */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Display Name */}
-                <FormField
-                  control={form.control}
-                  name="display_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
-                        <User className="w-4 h-4 text-[#1B6013]" />
-                        Full Name
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="Enter your full name"
-                          className="h-12 border-gray-200 focus:border-[#1B6013] focus:ring-[#1B6013]/20 rounded-lg"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Email (Read-only) */}
-                <FormItem>
-                  <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-[#1B6013]" />
-                    Email Address
-                  </FormLabel>
-                  <Input
-                    value={user?.email || ""}
-                    readOnly
-                    className="h-12 bg-gray-50 border-gray-200 text-gray-600 rounded-lg cursor-not-allowed"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Email cannot be changed
-                  </p>
-                </FormItem>
-
-                {/* Address (Link to Address Management Page)*/}
-                <FormItem className="md:col-span-2">
-                  <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-[#1B6013]" />
-                    Addresses
-                  </FormLabel>
-                  <p className="text-gray-600 text-sm mb-2">
-                    Manage your delivery addresses.
-                  </p>
-                  <Link href="/account/addresses">
-                    <Button
-                      variant="outline"
-                      className="border-[#1B6013] text-[#1B6013] hover:bg-[#1B6013]/10"
-                    >
-                      Manage Addresses
-                    </Button>
-                  </Link>
-                </FormItem>
-
-                {/* Birthday Field */}
-                <FormField
-                  control={form.control}
-                  name="birthday"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
-                        <Apple className="w-4 h-4 text-[#1B6013]" />
-                        Birthday
-                      </FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(new Date(field.value), "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={
-                              field.value ? new Date(field.value) : undefined
-                            }
-                            onSelect={(date) =>
-                              field.onChange(
-                                date ? format(date, "yyyy-MM-dd") : null
-                              )
-                            }
-                            initialFocus
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  {/* Name */}
+                  <FormField
+                    control={form.control}
+                    name="display_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2 text-gray-700 text-sm font-medium">
+                          Full Name
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="Your full name"
+                            className="h-10 border-gray-200 focus:border-[#1B6013] focus:ring-0 rounded-lg text-sm"
                           />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Favorite Fruit Field */}
-                <FormField
-                  control={form.control}
-                  name="favorite_fruit"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
-                        <Apple className="w-4 h-4 text-[#1B6013]" />
-                        Favorite Fruit
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="e.g., Apple, Banana"
-                          className="h-12 border-gray-200 focus:border-[#1B6013] focus:ring-[#1B6013]/20 rounded-lg"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Role (Read-only for now, can be made editable later) */}
-                <FormItem>
-                  <FormLabel className="text-gray-700 font-medium flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-[#1B6013]" />
-                    Account Type
-                  </FormLabel>
-                  <Input
-                    value={user?.role || "customer"}
-                    readOnly
-                    className="h-12 bg-gray-50 border-gray-200 text-gray-600 rounded-lg cursor-not-allowed"
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Account type cannot be changed from here
-                  </p>
-                </FormItem>
-              </div>
 
-              {/* Submit Button */}
-              <div className="flex justify-end pt-6 border-t border-gray-200">
-                <Button
-                  type="submit"
-                  disabled={mutation.isPending || !form.formState.isValid}
-                  className="bg-[#1B6013]/90 hover:bg-[#1B6013] text-white px-8 py-3 rounded-lg font-medium transition-colors shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {mutation.isPending ? (
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Updating Profile...
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4" />
-                      Update Profile
-                    </div>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </Form>
+                  {/* Email */}
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2 text-gray-700 text-sm font-medium">
+                      Email Address
+                    </FormLabel>
+                    <Input
+                      value={user?.email || ""}
+                      readOnly
+                      className="h-10 bg-gray-50 border-gray-200 text-gray-500 rounded-lg cursor-not-allowed text-sm focus-visible:ring-0"
+                    />
+                  </FormItem>
+
+                  {/* Birthday - Custom Select Implementation */}
+                  <FormField
+                    control={form.control}
+                    name="birthday"
+                    render={({ field }) => {
+                        const date = field.value ? new Date(field.value) : undefined;
+                        const currentYearVal = date ? date.getFullYear().toString() : "";
+                        const currentMonthVal = date ? (date.getMonth()).toString() : "";
+                        const currentDayVal = date ? date.getDate().toString() : "";
+                        const isBirthdaySet = !!user?.birthday;
+
+                        const handleDateChange = (type: 'year' | 'month' | 'day', value: string) => {
+                            if (isBirthdaySet) return;
+                            let newDate = date ? new Date(date) : new Date(2000, 0, 1);
+                            if (type === 'year') newDate = setYear(newDate, parseInt(value));
+                            if (type === 'month') newDate = setMonth(newDate, parseInt(value));
+                            if (type === 'day') newDate = setDate(newDate, parseInt(value));
+                            field.onChange(format(newDate, "yyyy-MM-dd"));
+                        };
+
+                        return (
+                        <FormItem className="col-span-1 md:col-span-2">
+                          <FormLabel className="flex items-center gap-2 text-gray-700 text-sm font-medium mb-1.5 min-h-[20px]">
+                            <Icon icon="solar:cake-bold-duotone" className="w-4 h-4 text-pink-500" />
+                            Birthday
+                            {isBirthdaySet && (
+                                <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200 font-normal ml-2">
+                                    Locked
+                                </span>
+                            )}
+                          </FormLabel>
+                          <div className="flex flex-wrap gap-3">
+                              {/* Month */}
+                              <Select disabled={isBirthdaySet} value={currentMonthVal} onValueChange={(v) => handleDateChange('month', v)}>
+                                <SelectTrigger className="w-[140px] h-10 border-gray-200 focus:ring-0 pl-3 text-left font-normal text-sm bg-gray-50/50 disabled:opacity-80 disabled:cursor-not-allowed">
+                                  <SelectValue placeholder="Month" />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-[200px] overflow-y-auto">
+                                    {months.map((m, i) => (
+                                        <SelectItem key={i} value={i.toString()}>{m}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                              </Select>
+
+                              {/* Day */}
+                              <Select disabled={isBirthdaySet} value={currentDayVal} onValueChange={(v) => handleDateChange('day', v)}>
+                                <SelectTrigger className="w-[80px] h-10 border-gray-200 focus:ring-0 pl-3 text-left font-normal text-sm bg-gray-50/50 disabled:opacity-80 disabled:cursor-not-allowed">
+                                  <SelectValue placeholder="Day" />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-[200px] overflow-y-auto">
+                                    {Array.from({ length: getDaysInMonth(date || new Date()) }, (_, i) => (
+                                        <SelectItem key={i + 1} value={(i + 1).toString()}>{i + 1}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                              </Select>
+
+                              {/* Year */}
+                              <Select disabled={isBirthdaySet} value={currentYearVal} onValueChange={(v) => handleDateChange('year', v)}>
+                                <SelectTrigger className="w-[100px] h-10 border-gray-200 focus:ring-0 pl-3 text-left font-normal text-sm bg-gray-50/50 disabled:opacity-80 disabled:cursor-not-allowed">
+                                  <SelectValue placeholder="Year" />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-[200px] overflow-y-auto">
+                                    {years.map((y) => (
+                                        <SelectItem key={y} value={y}>{y}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                              </Select>
+                          </div>
+                          {isBirthdaySet && (
+                              <p className="text-[11px] text-gray-400 mt-1 italic">
+                                  Birthday cannot be changed once set. Contact support for updates.
+                              </p>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                        );
+                    }}
+                  />
+
+                  {/* Favorite Fruit */}
+                  <FormField
+                    control={form.control}
+                    name="favorite_fruit"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2"> 
+                        <FormLabel className="flex items-center gap-2 text-gray-700 text-sm font-medium">
+                          Favorite Fruit
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="e.g., Apple, Mango..."
+                            className="h-10 border-gray-200 focus:border-[#1B6013] focus:ring-0 rounded-lg text-sm"
+                          />
+                        </FormControl>
+                        <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                           <Icon icon="solar:stars-minimalistic-bold-duotone" className="w-3 h-3" />
+                           We might sneak this into your next order as a gift! 🍎
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Delivery Addresses Link */}
+                   <div className="md:col-span-2 flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
+                      <div className="flex items-center gap-3">
+                         <div className="bg-white p-1.5 rounded-md border border-gray-100 shadow-sm text-gray-500">
+                             <Icon icon="solar:map-point-bold-duotone" className="w-4 h-4" />
+                         </div>
+                         <div>
+                            <h4 className="font-medium text-gray-900 text-sm">Delivery Addresses</h4>
+                            <p className="text-xs text-gray-500">Manage your shipping locations.</p>
+                         </div>
+                      </div>
+                      <Link href="/account/addresses">
+                        <Button variant="outline" size="sm" className="h-8 text-xs bg-white border-gray-200 hover:text-[#1B6013] hover:border-[#1B6013]">
+                           Manage
+                        </Button>
+                      </Link>
+                   </div>
+
+                </div>
+
+                {/* Footer Actions */}
+                <div className="pt-6 border-t border-gray-100 flex justify-end">
+                  <Button
+                    type="submit"
+                    disabled={mutation.isPending || !form.formState.isValid}
+                    className="bg-[#1B6013] hover:bg-[#154d10] text-white rounded-lg shadow-sm transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    {mutation.isPending ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Saving...
+                      </div>
+                    ) : (
+                      "Save Changes"
+                    )}
+                  </Button>
+                </div>
+
+              </form>
+            </Form>
+          </div>
         </div>
       </div>
     </div>

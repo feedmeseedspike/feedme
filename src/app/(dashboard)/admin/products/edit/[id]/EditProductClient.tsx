@@ -24,6 +24,7 @@ import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
 import { ArrowDown, Plus } from "lucide-react";
 import { Separator } from "@components/ui/separator";
 import ReactSelect from "react-select";
+import CreatableSelect from "react-select/creatable";
 import makeAnimated from "react-select/animated";
 import { motion } from "framer-motion";
 import {
@@ -98,6 +99,7 @@ const formSchema = z
     selectedCategories: z
       .array(z.object({ label: z.string(), value: z.string() }))
       .min(1, "At least one category is required"),
+    tags: z.array(z.object({ label: z.string(), value: z.string() })).optional(),
     relatedProducts: z
       .array(z.object({ label: z.string(), value: z.string() }))
       .optional(),
@@ -196,6 +198,7 @@ type EditProductClientProps = {
   allCategories: any[];
   allProducts: any[];
   relatedProducts: any[];
+  allTags: string[];
 };
 
 // Client-side image upload utility using Server Action
@@ -214,6 +217,7 @@ export default function EditProductClient({
   allCategories,
   allProducts,
   relatedProducts,
+  allTags,
 }: EditProductClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -349,6 +353,10 @@ export default function EditProductClient({
               ? "Out of Stock"
               : "In Stock",
       selectedCategories: initialCategories,
+      tags: (product.tags || []).map((tag: string) => ({
+        label: tag,
+        value: tag,
+      })),
       relatedProducts: initialRelatedProducts,
       variation: (() => {
         if (Array.isArray(product.options) && product.options.length > 0) {
@@ -627,6 +635,7 @@ export default function EditProductClient({
         name: data.productName,
         description: data.description,
         category_ids: data.selectedCategories.map((c) => c.value),
+        tags: data.tags?.map((t) => t.value) || [],
         is_published: data.is_published,
         slug: toSlug(data.productName),
         images: safeImages,
@@ -779,6 +788,49 @@ export default function EditProductClient({
                     className="col-span-7"
                   />
                 </FormControl>
+                <FormMessage className="col-span-7 col-start-3" />
+              </FormItem>
+            )}
+          />
+
+          {/* Tags */}
+          <FormField
+            control={form.control}
+            name="tags"
+            render={({ field }) => (
+              <FormItem className="mb-4 grid grid-cols-1 sm:grid-cols-9 gap-4">
+                <FormLabel className="text-sm font-medium col-span-2">
+                  Tags
+                </FormLabel>
+                <div className="col-span-7">
+                  <FormControl>
+                    <CreatableSelect
+                      {...field}
+                      isMulti
+                      options={allTags.map((tag) => ({
+                        label: tag,
+                        value: tag,
+                      }))}
+                      value={field.value}
+                      onChange={(newValue) => {
+                        // Ensure all tags are lowercase
+                        const lowercasedTags = newValue.map((tag: any) => ({
+                          ...tag,
+                          label: tag.label.toLowerCase(),
+                          value: tag.value.toLowerCase(),
+                        }));
+                        field.onChange(lowercasedTags);
+                      }}
+                      components={animatedComponents}
+                      placeholder="Select or create tags..."
+                      className="basic-multi-select"
+                      classNamePrefix="select"
+                    />
+                  </FormControl>
+                  <FormDescription className="text-xs text-gray-500 mt-1">
+                    Type and press enter to create new tags. Used for sliders like &quot;New Arrival&quot;, &quot;Best Seller&quot;, &quot;Todays Deal&quot;, &quot;Trending&quot;.
+                  </FormDescription>
+                </div>
                 <FormMessage className="col-span-7 col-start-3" />
               </FormItem>
             )}

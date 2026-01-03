@@ -374,7 +374,7 @@ export default function ProductDetailsClient({
                 {recipes.map((recipe: any) => (
                   <Link
                     key={recipe.id}
-                    href={`/bundle/${recipe.slug || (recipe.name ? toSlug(recipe.name) : recipe.id) || ""}`}
+                    href={`/bundles/${recipe.slug || (recipe.name ? toSlug(recipe.name) : recipe.id) || ""}`}
                     className="text-sm text-[#1B6013] hover:underline flex items-center gap-1 w-fit group"
                   >
                     <span>{recipe.name}</span>

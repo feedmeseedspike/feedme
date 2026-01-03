@@ -372,35 +372,85 @@ export async function getUsersPurchasedProductIds(client: TypedSupabaseClient, u
 }
 
 export async function getAlsoViewedProducts(client: TypedSupabaseClient, currentProductId: string) {
-  const { data: historyData, error: historyError } = await client
+  // 1. Find users who viewed this product (limit to last 50 distinct users for performance)
+  const { data: userData, error: userError } = await client
     .from('browsing_history')
-    .select('product_id')
-    .neq('product_id', currentProductId)
+    .select('user_id')
+    .eq('product_id', currentProductId)
+    .neq('user_id', null) 
     .order('created_at', { ascending: false })
-    .limit(5);
+    .limit(50); 
 
-  if (historyError) {
-    // Optionally, handle this error more gracefully, e.g., return empty array or fewer recommendations
+  let sortedProducts: any[] = [];
+  
+  // Only proceed with collab filtering if we have user data
+  if (!userError && userData && userData.length > 0) {
+      // Extract unique user IDs
+      const userIds = [...new Set(userData.map(u => u.user_id))];
+
+      if (userIds.length > 0) {
+          // 2. Find what ELSE these users viewed
+          const { data: otherViews, error: otherViewsError } = await client
+            .from('browsing_history')
+            .select('product_id')
+            .in('user_id', userIds)
+            .neq('product_id', currentProductId)
+            .order('created_at', { ascending: false })
+            .limit(100); 
+
+          if (!otherViewsError && otherViews && otherViews.length > 0) {
+               // 3. Count frequency
+              const productFrequency: Record<string, number> = {};
+              otherViews.forEach((view: any) => {
+                  if(view.product_id) {
+                      productFrequency[view.product_id] = (productFrequency[view.product_id] || 0) + 1;
+                  }
+              });
+
+              // 4. Sort by frequency and get top 5 IDs
+              const topProductIds = Object.entries(productFrequency)
+                  .sort(([, a], [, b]) => b - a) 
+                  .slice(0, 5)
+                  .map(([id]) => id);
+
+              if (topProductIds.length > 0) {
+                  // 5. Fetch full product details
+                  const { data: products, error: productsError } = await client
+                    .from('products')
+                    .select('*')
+                    .in('id', topProductIds)
+                    .eq('is_published', true);
+
+                  if (!productsError && products) {
+                       sortedProducts = topProductIds
+                        .map(id => products.find(p => p.id === id))
+                        .filter(Boolean);
+                  }
+              }
+          }
+      }
   }
 
-  const productIds = historyData?.map((item: BrowsingHistoryItem) => item.product_id).filter(Boolean) as string[];
+  // FALLBACK LOGIC: If we don't have 5 products yet, fill with Best Sellers
+  if (sortedProducts.length < 5) {
+      const needed = 5 - sortedProducts.length;
+      const existingIds = sortedProducts.map(p => p.id);
+      existingIds.push(currentProductId); // Exclude current
 
-  if (!productIds || productIds.length === 0) {
-    return [];
+      const { data: fallbackProducts, error: fallbackError } = await client
+        .from('products')
+        .select('*')
+        .eq('is_published', true)
+        .not('id', 'in', `(${existingIds.join(',')})`) // Exclude existing
+        .order('num_sales', { ascending: false }) // Best sellers
+        .limit(needed);
+
+      if (!fallbackError && fallbackProducts) {
+          sortedProducts = [...sortedProducts, ...fallbackProducts];
+      }
   }
 
-  const { data: products, error: productsError } = await client
-    .from('products')
-    .select('*')
-    .in('id', productIds)
-    .eq('is_published', true)
-    .limit(5); // Ensure we only get up to 5 recommended products
-
-  if (productsError) {
-    throw productsError;
-  }
-
-  return products;
+  return sortedProducts;
 }
 
 export async function getAlsoBoughtProducts(client: TypedSupabaseClient, currentProductId: string) {

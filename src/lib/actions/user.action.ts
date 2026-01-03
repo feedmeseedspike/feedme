@@ -31,6 +31,27 @@ export async function updateUserInfo(currentState: any, formData: FormData) {
    
     if (authError || !user) throw new Error("Not authenticated");
 
+    // Fetch existing profile to check for birthday
+    const { data: existingProfile } = await supabase
+      .from("profiles")
+      .select("birthday")
+      .eq("user_id", user.id)
+      .single();
+
+    // Prevent birthday change if already set
+    if (existingProfile?.birthday && validatedFields.data.birthday) {
+        const newDate = new Date(validatedFields.data.birthday).toISOString().split('T')[0];
+        const oldDate = new Date(existingProfile.birthday).toISOString().split('T')[0];
+        
+        if (newDate !== oldDate) {
+             return {
+                success: false,
+                message: "Birthday cannot be changed once set. Please contact support.",
+                errors: { birthday: ["Birthday cannot be changed once set."] }
+             };
+        }
+    }
+
     let avatarUrl = null;
 
     // Handle avatar upload if it's a File
@@ -187,6 +208,7 @@ export async function getCustomerOrdersAction(customerId: string) {
   }
 }
 
+
 export async function updateStaffStatus(userId: string, isStaff: boolean) {
   const supabase = await createClient();
   try {
@@ -201,5 +223,32 @@ export async function updateStaffStatus(userId: string, isStaff: boolean) {
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || "Unknown error" };
+  }
+}
+
+export async function getTodaysBirthdaysAction() {
+  try {
+    const { data: profiles, error } = await supabaseAdmin
+      .from("profiles")
+      .select("user_id, display_name, email, birthday, avatar_url, favorite_fruit")
+      .not('birthday', 'is', null);
+
+    if (error) throw error;
+
+    const today = new Date();
+    const currentMonth = today.getMonth(); // 0-11
+    const currentDay = today.getDate();
+
+    const birthdays = (profiles || []).filter((profile) => {
+      if (!profile.birthday) return false;
+      const birthDate = new Date(profile.birthday);
+      // Check if month and day match
+      return birthDate.getMonth() === currentMonth && birthDate.getDate() === currentDay;
+    });
+
+    return { success: true, data: birthdays };
+  } catch (error: any) {
+    console.error("Error fetching birthdays:", error);
+    return { success: false, error: error.message, data: [] };
   }
 }

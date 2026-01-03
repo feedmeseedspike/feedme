@@ -71,6 +71,7 @@ export const POST = async (request: Request) => {
           shipping_address: orderDetails.shippingAddress,
           payment_status: "Pending",
           order_id: orderid,
+          reference: orderid,
         })
         .select()
         .single();
