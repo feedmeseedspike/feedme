@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     console.log("Request body received:", body);
 
-    const { testMode = true } = body;
+    const { testMode = false } = body;
 
     // if (!message || typeof message !== "string") {
     //   console.log("Validation failed: message missing or not string");
