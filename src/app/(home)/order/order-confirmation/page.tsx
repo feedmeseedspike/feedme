@@ -10,7 +10,12 @@ import { clearCart } from "src/store/features/cartSlice";
 import { useClearCartMutation } from "@/queries/cart";
 import { formatNaira, showToast } from "src/lib/utils";
 import { Separator } from "@components/ui/separator";
-import { DEFAULT_DECEMBER_DEALS } from "src/lib/deals";
+import { 
+  BONUS_CONFIG, 
+  calculatePotentialCashBack, 
+  calculateLoyaltyPoints 
+} from "src/lib/deals";
+import { getCustomerOrdersAction } from "src/lib/actions/user.action";
 
 import { 
   Check, 
@@ -20,10 +25,15 @@ import {
   Copy, 
   ArrowRight,
   ShoppingBag,
-  Leaf
+  Leaf,
+  Settings2,
+  X,
+  ShoppingBasket
 } from "lucide-react";
 import Image from "next/image";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@components/ui/table";
+import FloatingSpinWidget from "@components/shared/FloatingSpinWidget";
+import SpinWheel from "@components/shared/SpinWheel";
 
 // Fonts
 const playfair = Playfair_Display({ 
@@ -42,7 +52,6 @@ const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans"
 });
-
 export default function OrderConfirmationPage() {
   const searchParams = useSearchParams();
   const urlOrderId = searchParams.get("orderId");
@@ -54,6 +63,8 @@ export default function OrderConfirmationPage() {
   const [error, setError] = useState<string | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [rewardSummary, setRewardSummary] = useState<any>(null);
+  const [spinNotifVisible, setSpinNotifVisible] = useState(false);
   
   const dispatch = useDispatch();
   const clearCartMutation = useClearCartMutation();
@@ -109,31 +120,59 @@ export default function OrderConfirmationPage() {
         if (data.error) {
            setError(data.error);
            setLoading(false);
-           return true; // Stop polling on error
+           return true; 
         }
 
         setOrder(data);
+        
+        // Calculate items and subtotal for rewards
+        const orderItems = data.order_items || [];
+        const orderSubtotal = orderItems.reduce((acc: number, item: any) => {
+          const price = (item.option?.price ?? item.price) || 0;
+          return acc + price * item.quantity;
+        }, 0);
+
+        // Always set reward summary for UI feedback, even if payment is pending
+        const rewards = {
+            freeDelivery: orderSubtotal >= BONUS_CONFIG.SUBSEQUENT_FREE_DELIVERY.min_spend,
+            cashback: data.user_id ? calculatePotentialCashBack(orderSubtotal) : 0,
+            tierPoints: data.user_id ? calculateLoyaltyPoints(orderSubtotal) : 0,
+        };
+        setRewardSummary(rewards);
+
+        if (data.payment_status === "Paid") {
+           setSpinNotifVisible(true);
+           
+           // Automatically trigger the wheel
+           if (!localStorage.getItem(`spin_triggered_${id}`)) {
+              setTimeout(() => {
+                 window.dispatchEvent(new CustomEvent('trigger-spin-wheel'));
+                 localStorage.setItem(`spin_triggered_${id}`, "true");
+              }, 2500); 
+           }
+        }
+
         setLoading(false);
 
         // Check if we should stop polling
         const isTerminalState = ["Paid", "Failed", "Declined", "Cancelled"].includes(data.payment_status);
         if (isTerminalState) {
-           if (data.payment_status === "Paid") {
-              if (!showConfetti) setShowConfetti(true);
-              if (!localStorage.getItem(`toast_shown_${id}`)) {
+            if (data.payment_status === "Paid") {
+               if (!showConfetti) setShowConfetti(true);
+               if (!localStorage.getItem(`toast_shown_${id}`)) {
                 showToast("Order confirmed!", "success");
                 localStorage.setItem(`toast_shown_${id}`, "true");
               }
            }
-           return true; // Stop polling
+           return true; 
         }
         
-        return false; // Continue polling
+        return false; 
       } catch (err) {
         console.error(err);
         setError("Failed to load order");
         setLoading(false);
-        return true; // Stop polling on error
+        return true;
       }
     };
 
@@ -213,11 +252,6 @@ export default function OrderConfirmationPage() {
   const voucherDiscount = order.voucher_discount ?? 0; 
   const totalAmountPaid = order.total_amount_paid || (subtotal + deliveryFee - voucherDiscount);
   
-  // Cashback Calculation
-  const jollyDeal = DEFAULT_DECEMBER_DEALS.JOLLY_CASHBACK;
-  const cashbackAmount = (order.user_id && subtotal >= jollyDeal.min_spend) 
-      ? subtotal * jollyDeal.percentage 
-      : 0;
 
   // Confetti Logic
   const confettiPieces = Array.from({ length: 30 });
@@ -244,8 +278,13 @@ export default function OrderConfirmationPage() {
   }
 
   return (
-    <div className={`min-h-screen bg-[#FAFAF9] overflow-hidden relative selection:bg-[#A3E635] selection:text-[#1B6013] ${inter.className}`}>
-      
+    <div className={`min-h-screen bg-white selection:bg-[#ecfccb] selection:text-[#1B6013] ${inter.className}`}>
+      {/* Subtle Background Elements */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden overflow-x-hidden">
+        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#f7a838]/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#1B6013]/5 rounded-full blur-[120px]" />
+      </div>
+
       {/* Confetti Overlay */}
       <AnimatePresence>
         {showConfetti && (
@@ -271,271 +310,256 @@ export default function OrderConfirmationPage() {
                 }}
                 className="absolute"
               >
-                {i % 3 === 0 ? (
-                  <Leaf className="w-4 h-4 text-[#A3E635]" fill="currentColor" />
-                ) : (
-                  <div 
-                    className={`w-2 h-2 rounded-full ${i % 2 === 0 ? 'bg-[#1B6013]' : 'bg-[#D4AF37]'}`} 
-                  />
-                )}
+                <div className={`w-1.5 h-1.5 rounded-full ${i % 2 === 0 ? 'bg-[#1B6013]' : 'bg-[#A3E635]'}`} />
               </motion.div>
             ))}
           </div>
         )}
       </AnimatePresence>
 
-      <main className="max-w-4xl mx-auto px-4 py-12 md:py-20 flex flex-col items-center relative z-10">
-        
-        {/* STAGE 1: THE STAMP */}
-        <motion.div
-          initial={{ scale: 2, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className="mb-12 relative"
-        >
-          <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-[#1B6013] flex items-center justify-center relative bg-[#FAFAF9] z-20">
-            <Check className="w-16 h-16 md:w-20 md:h-20 text-[#1B6013]" strokeWidth={3} />
-          </div>
-          {/* Ripple Effect */}
-          <motion.div
-            initial={{ scale: 1, opacity: 0.5 }}
-            animate={{ scale: 1.5, opacity: 0 }}
-            transition={{ duration: 1.5, repeat: Infinity, delay: 0.5 }}
-            className="absolute inset-0 rounded-full bg-[#A3E635] -z-10"
-          />
-        </motion.div>
-
-        <motion.h1 
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className={`${playfair.className} text-4xl md:text-5xl text-[#1B6013] mb-2 text-center`}
-        >
-          Your order is completed!
-        </motion.h1>
-        <motion.p 
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="text-[#4B5563] text-lg mb-8 text-center max-w-md"
-        >
-          Thank you, {order.profiles?.display_name || (order.shipping_address as any)?.email || "Guest"}.<br/>
-          Your order has been received.
-        </motion.p>
-
-        {/* CASHBACK CELEBRATION */}
-        {cashbackAmount > 0 && order.payment_status === "Paid" && (
+      <main className="max-w-3xl mx-auto px-6 py-16 md:py-24 relative z-10">
+        {/* Success Header */}
+        <div className="flex flex-col items-center text-center mb-16">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.5, type: "spring" }}
-            className="mb-10 text-center bg-[#F0FDF4] border border-[#1B6013]/20 p-6 rounded-2xl max-w-md mx-auto relative overflow-hidden"
+            className="w-20 h-20 rounded-full bg-[#f0fdf4] flex items-center justify-center mb-8 relative"
           >
-             <div className="relative z-10">
-                <span className="text-3xl mb-2 block">🎉</span>
-                <h3 className={`${playfair.className} text-xl font-bold text-[#1B6013] mb-1`}>
-                   You earned Cashback!
-                </h3>
-                <p className="text-[#1B6013]">
-                   <span className="font-bold">{formatNaira(cashbackAmount)}</span> has been added to your wallet.
-                </p>
-             </div>
-             {/* Background Decoration */}
-             <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-[#A3E635] rounded-full opacity-20 blur-2xl" />
-             <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-20 h-20 bg-[#1B6013] rounded-full opacity-10 blur-xl" />
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring" }}
+              className="w-12 h-12 rounded-full bg-[#1B6013] flex items-center justify-center text-white"
+            >
+              <Check className="w-6 h-6" strokeWidth={3} />
+            </motion.div>
+            {/* Soft pulse */}
+            <motion.div
+              animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="absolute inset-0 rounded-full bg-[#1B6013]/10"
+            />
           </motion.div>
-        )}
 
-        {/* Payment Status Message (Restored) */}
-        {paymentStatusLabel !== "Paid" && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="mb-12 text-center text-red-600 text-sm max-w-md"
+          <motion.h1 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className={`${playfair.className} text-4xl md:text-5xl text-[#111827] font-bold mb-4`}
           >
-            {paymentStatusLabel === "Failed"
-              ? "Your payment was not successful. Please try again or contact support."
-              : paymentStatusLabel === "Pending"
-                ? "Your payment is still processing. If you have any issues, please contact support."
-                : null}
-          </motion.div>
-        )}
+            Order Confirmed
+          </motion.h1>
+          <motion.p 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="text-gray-500 text-lg"
+          >
+            Thank you, {order.profiles?.display_name || "Jerry"}. We&apos;ve sent a confirmation to your email.
+          </motion.p>
+        </div>
 
-
-        {/* STAGE 3: THE KITCHEN (Timeline) - Visual enhancement of status */}
+        {/* Order Status Timeline (Evolved) */}
         <motion.div 
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="w-full max-w-2xl mb-16"
+          transition={{ delay: 0.5 }}
+          className="bg-white border border-slate-100 p-8 rounded-xl mb-12 shadow-sm"
         >
-          <div className="relative">
-            <div className="absolute left-0 top-1/2 w-full h-0.5 bg-[#E5E7EB] -translate-y-1/2 z-0" />
-            
-            <div className="flex justify-between relative z-10 w-full px-2 md:px-8">
-              {/* Steps */}
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#1B6013] text-white flex items-center justify-center shadow-lg ring-4 ring-[#FAFAF9]">
-                  <Check className="w-5 h-5" />
-                </div>
-                <span className={`font-medium text-sm md:text-base text-[#1B6013]`}>Confirmed</span>
-              </div>
-
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white border-2 border-[#A3E635] text-[#1B6013] flex items-center justify-center shadow-lg ring-4 ring-[#FAFAF9]">
-                  <ChefHat className="w-5 h-5" />
-                </div>
-                <span className="text-gray-500 text-sm md:text-base">Prepping</span>
-              </div>
-
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center ring-4 ring-[#FAFAF9]">
-                  <Truck className="w-5 h-5" />
-                </div>
-                <span className="text-gray-400 text-sm md:text-base">En Route</span>
-              </div>
-
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center ring-4 ring-[#FAFAF9]">
-                  <MapPin className="w-5 h-5" />
-                </div>
-                <span className="text-gray-400 text-sm md:text-base">Delivered</span>
-              </div>
-            </div>
+          <div className="flex justify-between items-start">
+             <div className="flex flex-col items-center">
+                <div className="w-4 h-4 rounded-full bg-[#1B6013] mb-2 ring-4 ring-[#1B6013]/10" />
+                <span className="text-[10px] uppercase tracking-widest font-bold text-[#1B6013]">Confirmed</span>
+             </div>
+             <div className="flex-1 h-px bg-slate-100 mt-2" />
+             <div className="flex flex-col items-center">
+                <div className="w-4 h-4 rounded-full bg-slate-100 mb-2" />
+                <span className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Processing</span>
+             </div>
+             <div className="flex-1 h-px bg-slate-100 mt-2" />
+             <div className="flex flex-col items-center">
+                <div className="w-4 h-4 rounded-full bg-slate-100 mb-2" />
+                <span className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Shipped</span>
+             </div>
+             <div className="flex-1 h-px bg-slate-100 mt-2" />
+             <div className="flex flex-col items-center">
+                <div className="w-4 h-4 rounded-full bg-slate-100 mb-2" />
+                <span className="text-[10px] uppercase tracking-widest font-bold text-gray-400">Delivered</span>
+             </div>
           </div>
         </motion.div>
 
-        {/* STAGE 2: THE RECEIPT (Detailed) */}
-        <motion.div 
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: "auto", opacity: 1 }}
-          transition={{ duration: 0.8, ease: "easeOut", delay: 0.8 }}
-          className={`w-full max-w-lg bg-white shadow-2xl relative overflow-hidden mb-16 mx-auto group perspective ${spaceMono.className}`}
-        >
-          {/* Jagged Top Edge */}
-          <div className="absolute top-0 left-0 w-full h-4 -mt-3 z-10 pointer-events-none">
-             <svg className="w-full h-full text-[#FAFAF9] fill-current" preserveAspectRatio="none" viewBox="0 0 100 10">
-               <polygon points="0,10 5,0 10,10 15,0 20,10 25,0 30,10 35,0 40,10 45,0 50,10 55,0 60,10 65,0 70,10 75,0 80,10 85,0 90,10 95,0 100,10 100,0 0,0" />
-             </svg>
-          </div>
-
-          <div className="p-8 pt-12 pb-12 font-mono text-sm text-[#374151]">
-            <div className="text-center mb-8 border-b-2 border-dashed border-gray-200 pb-6">
-              <h2 className={`${playfair.className} text-2xl font-bold text-[#1B6013] mb-1`}>FEEDME</h2>
-              <p className="text-xs text-gray-400 uppercase tracking-widest">Official Store</p>
-              <div className="mt-4 flex flex-col gap-1 items-center">
-                 <p className="text-xs">ORDER ID: {orderId}</p>
-                 <p className="text-xs text-gray-500">PAYMENT: {order.payment_method}</p>
-              </div>
-              <p className="mt-2 text-xs text-gray-400">{new Date(order.created_at).toLocaleDateString()} — {new Date(order.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-            </div>
-
-            <div className="space-y-4 mb-8">
-              {items.map((item, idx) => (
-                <div key={idx} className="flex justify-between items-start gap-4">
-                  <div className="flex-1">
-                     <span className="text-gray-900 font-bold block mb-1">
-                       {item.products?.name || item.bundles?.name || "Unknown Item"}
-                     </span>
-                     {item.option && (
-                        <span className="text-xs text-gray-500 block">
-                            {item.option.name || Object.values(item.option).join(' ')}
-                        </span>
-                     )}
-                     <span className="text-xs text-gray-500">Qty: {item.quantity}</span>
+        {/* Rewards Section (Clean & Premium) */}
+        {rewardSummary && (rewardSummary.freeDelivery || rewardSummary.cashback > 0 || rewardSummary.tierPoints > 0) && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="mb-12"
+          >
+            <div className="bg-[#1B6013] rounded-xl p-8 text-white relative overflow-hidden group shadow-xl">
+               <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-6">
+                    <span className="px-3 py-1 bg-white/10 rounded-full text-[10px] font-bold uppercase tracking-widest text-[#A3E635]">
+                        Order Benefits
+                    </span>
                   </div>
-                  <span className="font-medium whitespace-nowrap">
-                    {formatNaira(
-                      (item.option?.price ?? item.price ?? 0) * item.quantity
-                    )}
-                  </span>
-                </div>
-              ))}
-            </div>
+                  
+                  <h3 className={`${playfair.className} text-3xl mb-8`}>Rewards earned with this order ✨</h3>
 
-            <div className="border-t-2 border-dashed border-gray-200 pt-4 space-y-2">
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>Subtotal</span>
-                <span>{formatNaira(subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>Delivery Fee</span>
-                <span>{formatNaira(deliveryFee)}</span>
-              </div>
-              {voucherDiscount > 0 && (
-                 <div className="flex justify-between text-xs text-[#1B6013]">
-                  <span>Voucher Discount</span>
-                  <span>-{formatNaira(voucherDiscount)}</span>
-                </div>
-              )}
-            </div>
+                  <div className="flex flex-wrap gap-8 mb-10">
+                     {rewardSummary.freeDelivery && (
+                        <div className="flex flex-col">
+                           <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider mb-1">Next Order</span>
+                           <span className="text-xl font-black">Free Delivery</span>
+                        </div>
+                     )}
+                     {rewardSummary.cashback > 0 && (
+                        <div className="flex flex-col border-l border-white/10 pl-8 first:border-0 first:pl-0">
+                           <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider mb-1">Cashback Reward</span>
+                           <span className="text-xl font-black">{formatNaira(rewardSummary.cashback)}</span>
+                        </div>
+                     )}
+                     {rewardSummary.tierPoints > 0 && (
+                        <div className="flex flex-col border-l border-white/10 pl-8 first:border-0 first:pl-0">
+                           <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider mb-1">Loyalty Points</span>
+                           <span className="text-xl font-black">+{rewardSummary.tierPoints}</span>
+                        </div>
+                     )}
+                  </div>
 
-            <div className="mt-6 flex justify-between items-center text-lg font-bold text-[#1B6013]">
-              <span>TOTAL</span>
-              <span className="relative z-10">
-                {formatNaira(totalAmountPaid)}
-                <svg className="absolute -top-3 -left-3 w-[140%] h-[160%] pointer-events-none text-[#A3E635] opacity-50" viewBox="0 0 100 50">
-                   <path d="M10,25 Q30,5 50,25 T90,25" fill="none" stroke="currentColor" strokeWidth="2" />
-                   <path d="M10,25 Q30,45 50,25 T90,25" fill="none" stroke="currentColor" strokeWidth="2" />
-                </svg>
-              </span>
+                  {spinNotifVisible && (
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => window.dispatchEvent(new CustomEvent('trigger-spin-wheel'))}
+                      className="inline-flex items-center gap-3 py-4 px-8 bg-[#A3E635] text-[#1B6013] rounded-xl font-black text-sm uppercase tracking-tight shadow-lg shadow-black/10"
+                    >
+                      <span>Claim Your Free Spin</span>
+                      <ArrowRight className="w-4 h-4" strokeWidth={3} />
+                    </motion.button>
+                  )}
+               </div>
             </div>
-            
-            <div className="mt-8 text-center">
-              <span className={`inline-block px-4 py-1 rounded-full text-xs font-semibold ${paymentStatusColor}`}>
-                {paymentStatusLabel}
-              </span>
-            </div>
-          </div>
+          </motion.div>
+        )}
 
-          {/* Jagged Bottom Edge */}
-          <div className="absolute bottom-0 left-0 w-full h-4 z-10 pointer-events-none rotate-180 mb-[-1px]">
-             <svg className="w-full h-full text-[#FAFAF9] fill-current" preserveAspectRatio="none" viewBox="0 0 100 10">
-               <polygon points="0,10 5,0 10,10 15,0 20,10 25,0 30,10 35,0 40,10 45,0 50,10 55,0 60,10 65,0 70,10 75,0 80,10 85,0 90,10 95,0 100,10 100,0 0,0" />
-             </svg>
-          </div>
-        </motion.div>
-
-        {/* STAGE 4: THE REWARD - Removed hardcoded 'Give 1000' text if not sure, but keeping simple Referral link if user has one, or removing completely if 'anyhow text' was the issue. 
-            User complaint was specific to 'anyhow text'. 'Give 1000 Get 2000' is specific business logic.
-            If I don't see it in the DB types, I should remove it to be safe.
-            Scanning previous files: referrals table exists. But discount amounts might vary.
-            Safest bet: Remove the 'Give X Get Y' hardcoded card and just leave a generic 'Share & Earn' or remove it if user wants STRICT adherence to previous content but with new design.
-            The user said "check what we have before". The previous file (step 18) had NO referral section.
-            I will REMOVE the referral section to comply with "check what we have before".
-        */}
-        
-        {/* FOOTER ACTIONS */}
+        {/* Order Details Accordion/List (Minimalist) */}
         <motion.div 
-           initial={{ opacity: 0, scale: 0.95 }}
-           animate={{ opacity: 1, scale: 1 }}
-           transition={{ delay: 1.4 }}
-           className="flex flex-col md:flex-row gap-4 w-full justify-center"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+          className="bg-white border border-slate-100 rounded-xl overflow-hidden"
         >
-          <Link href="/account/order" className="w-full md:w-auto">
-            <motion.button 
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="w-full md:w-auto group flex items-center justify-center gap-2 px-8 py-4 bg-white border border-[#1B6013] text-[#1B6013] rounded-full hover:shadow-lg transition-all font-medium"
-            >
-              <ShoppingBag size={18} />
-              <span>View My Orders</span>
-            </motion.button>
-          </Link>
-          
-          <Link href="/" className="w-full md:w-auto">
-            <motion.button 
-               whileHover={{ scale: 1.05 }}
-               whileTap={{ scale: 0.95 }}
-               className="w-full md:w-auto group flex items-center justify-center gap-2 px-8 py-4 bg-[#1B6013] text-white rounded-full hover:shadow-lg hover:bg-[#14510f] transition-all font-medium"
-            >
-              <span>Continue Shopping</span>
-              <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
-            </motion.button>
-          </Link>
+          <div className="p-8 border-b border-gray-50 flex justify-between items-center">
+             <div>
+                <p className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-1">Order Number</p>
+                <h4 className="font-bold text-gray-900"># {orderId?.substring(0, 8).toUpperCase()}</h4>
+             </div>
+             <button 
+                onClick={() => {
+                   navigator.clipboard.writeText(orderId || "");
+                   showToast("Order ID copied");
+                }}
+                className="p-2 hover:bg-gray-50 rounded-full transition-colors text-gray-400"
+             >
+                <Copy className="w-4 h-4" />
+             </button>
+          </div>
+
+          <div className="p-8 space-y-6">
+             {items.map((item, idx) => (
+                <div key={idx} className="flex gap-4">
+                   <div className="w-16 h-16 bg-slate-100 rounded-xl flex-shrink-0 flex items-center justify-center relative overflow-hidden border border-slate-50">
+                      { ((item as any).products?.images?.[0] || (item as any).bundles?.thumbnail_url || (item as any).offers?.image_url) ? (
+                         <Image 
+                            src={(item as any).products?.images?.[0] || (item as any).bundles?.thumbnail_url || (item as any).offers?.image_url} 
+                            alt={(item as any).products?.name || (item as any).bundles?.name || (item as any).offers?.title || "Item"} 
+                            fill 
+                            className="object-cover" 
+                         />
+                      ) : (
+                         <ShoppingBag className="w-6 h-6 text-slate-300" />
+                      )}
+                   </div>
+                   <div className="flex-1 flex justify-between items-start">
+                      <div className="space-y-0.5">
+                         <h5 className="font-bold text-slate-900 leading-tight">
+                            {(item as any).products?.name || (item as any).bundles?.name || (item as any).offers?.title || "Item"}
+                         </h5>
+                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Quantity: {item.quantity}</p>
+                      </div>
+                      <span className="font-black text-slate-900 text-sm tabular-nums">
+                         {formatNaira(((item as any).option?.price ?? item.price ?? 0) * item.quantity)}
+                      </span>
+                   </div>
+                </div>
+             ))}
+          </div>
+
+          <div className="bg-gray-50/50 p-8 space-y-3">
+             <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Subtotal</span>
+                <span className="text-gray-900 font-medium">{formatNaira(subtotal)}</span>
+             </div>
+             <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Delivery</span>
+                <span className="text-gray-900 font-medium">{formatNaira(deliveryFee)}</span>
+             </div>
+             {voucherDiscount > 0 && (
+                <div className="flex justify-between text-sm text-[#1B6013]">
+                   <span>Discount</span>
+                   <span className="font-medium">-{formatNaira(voucherDiscount)}</span>
+                </div>
+             )}
+             <Separator className="bg-gray-100 my-4" />
+             <div className="flex justify-between text-lg font-bold">
+                <span className="text-gray-900 text-sm md:text-lg">Total Paid</span>
+                <span className="text-[#1B6013] text-sm md:text-lg">{formatNaira(totalAmountPaid)}</span>
+             </div>
+          </div>
         </motion.div>
 
+        {/* Referral / Incentive (Subtle) */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1 }}
+          className="w-full max-w-lg mx-auto text-center mb-12 py-6 border-y border-gray-100 flex flex-col items-center gap-2"
+        >
+          <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Share the love</p>
+          <p className="text-gray-600 text-sm">
+            Refer a friend and get <strong className="text-gray-900">₦2,000 off</strong> your next purchase!
+          </p>
+          <button 
+            onClick={copyReferralCode}
+            className="mt-2 group flex items-center gap-2 text-[#1B6013] font-bold text-xs uppercase tracking-tighter"
+          >
+            <span>{copied ? "Copied!" : "Copy My Referral Code"}</span>
+            <Copy className="w-3 h-3 group-hover:scale-110 transition-transform" />
+          </button>
+        </motion.div>
+
+        {/* Action Buttons */}
+        <motion.div 
+           initial={{ opacity: 0 }}
+           animate={{ opacity: 1 }}
+           transition={{ delay: 1.1 }}
+           className="flex flex-col sm:flex-row gap-4 justify-center"
+        >
+          <Link href="/">
+             <button className="w-full sm:w-auto px-10 py-5 bg-[#1B6013] text-white rounded-full font-bold text-sm transition-all hover:bg-[#155e10] hover:shadow-[0_20px_40px_rgba(27,96,19,0.15)] active:scale-95">
+                Continue Shopping
+             </button>
+          </Link>
+          <Link href="/account/order">
+             <button className="w-full sm:w-auto px-10 py-5 bg-white border border-gray-100 text-gray-500 rounded-full font-bold text-sm transition-all hover:bg-gray-50 active:scale-95">
+                View My Orders
+             </button>
+          </Link>
+        </motion.div>
       </main>
+      <FloatingSpinWidget />
     </div>
   );
 }

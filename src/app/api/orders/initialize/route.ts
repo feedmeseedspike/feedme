@@ -74,6 +74,7 @@ export const POST = async (request: Request) => {
           payment_status: "Pending",
           order_id: orderid,
           reference: orderid,
+          note: orderDetails.note,
         })
         .select()
         .single();
@@ -110,7 +111,7 @@ export const POST = async (request: Request) => {
       return NextResponse.json({
         success: true,
         data: {
-          orderId: orderid,
+          orderId: order.id,
         },
       });
     } catch (error: any) {

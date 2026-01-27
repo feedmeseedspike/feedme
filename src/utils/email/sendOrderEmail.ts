@@ -27,6 +27,24 @@ export async function sendOrderConfirmationEmails({
           <p><strong>Phone:</strong> ${adminOrderProps.customerPhone}</p>
           <p><strong>Address:</strong> ${adminOrderProps.deliveryAddress}</p>
           <p><strong>Local Government:</strong> ${adminOrderProps.localGovernment}</p>
+          ${adminOrderProps.orderNote ? `<p style="margin-top: 10px; padding: 10px; background-color: #fff9db; border-radius: 4px;"><strong>Note from Customer:</strong><br/>${adminOrderProps.orderNote}</p>` : ''}
+        </div>
+
+        <h3 style="color: #1B6013; margin-bottom: 8px;">Payment & Rewards Information:</h3>
+        <div style="background: #e7f5e7; border-radius: 6px; padding: 14px 16px; margin-bottom: 18px; border: 1px solid #1B601320;">
+           <p style="margin: 4px 0;"><strong>Payment Method:</strong> ${adminOrderProps.paymentMethod?.toUpperCase() || 'PAYSTACK'}</p>
+           ${adminOrderProps.isFirstOrder ? `<p style="margin: 4px 0;"><span style="background: #1B6013; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">FIRST ORDER (10% OFF APPLIED)</span></p>` : ''}
+           
+           ${adminOrderProps.rewards ? `
+              <div style="margin-top: 10px; border-top: 1px solid #1B601310; pt-8;">
+                 <p style="margin: 4px 0; color: #1B6013;"><strong>Rewards Earned:</strong></p>
+                 <ul style="margin: 4px 0; padding-left: 20px; font-size: 14px;">
+                    ${adminOrderProps.rewards.cashback > 0 ? `<li>Cashback: ₦${adminOrderProps.rewards.cashback}</li>` : ''}
+                    ${adminOrderProps.rewards.freeDeliveryBonus ? `<li>Free Delivery for NEXT order: YES</li>` : ''}
+                    ${adminOrderProps.rewards.pointsAwarded > 0 ? `<li>Loyalty Points: +${adminOrderProps.rewards.pointsAwarded}</li>` : ''}
+                 </ul>
+              </div>
+           ` : ''}
         </div>
         
         <h3 style="color: #1B6013; margin-bottom: 8px;">Items Ordered:</h3>
@@ -174,5 +192,51 @@ export async function sendOrderConfirmationEmails({
   } catch (error: any) {
     console.error('❌ Order email failed:', error);
     throw error;
+  }
+}
+
+export async function sendWalletFundingEmail({
+  adminEmail,
+  userName,
+  userEmail,
+  amount,
+}: {
+  adminEmail: string;
+  userName: string;
+  userEmail: string;
+  amount: number;
+}) {
+  try {
+    const html = `
+      <div style="font-family: Arial, sans-serif; background: #fff; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaea; border-radius: 8px; padding: 24px;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <img src="https://res.cloudinary.com/ahisi/image/upload/v1731071676/logo_upovep.png" alt="FeedMe Logo" style="height: 37px; margin-bottom: 8px;" />
+        </div>
+        <h2 style="color: #1B6013; margin-bottom: 12px;">Wallet Funded Successfully</h2>
+        <div style="background: #e7f5e7; border-radius: 6px; padding: 20px; border: 1px solid #1B601320; margin-bottom: 20px;">
+           <p style="margin: 0; font-size: 16px; color: #1B6013;"><strong>Amount: ${new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount)}</strong></p>
+        </div>
+        <div style="font-size: 15px; color: #333;">
+          <p><strong>Customer:</strong> ${userName}</p>
+          <p><strong>Email:</strong> ${userEmail}</p>
+          <p style="margin-top: 20px; font-size: 13px; color: #666;">This user has successfully added funds to their wallet via Paystack.</p>
+        </div>
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; font-size: 12px; color: #888;">
+          © ${new Date().getFullYear()} FeedMe Africa. All rights reserved.
+        </div>
+      </div>
+    `;
+
+    await sendMail({
+      to: adminEmail,
+      subject: `💰 Wallet Funded: ${new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount)} by ${userName}`,
+      html,
+    });
+
+    console.log('✅ Wallet funding admin email sent');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Wallet funding email failed:', error);
+    return { success: false, error };
   }
 }
