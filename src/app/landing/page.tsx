@@ -296,7 +296,7 @@ export default function Home() {
             </a>{" "}
             |{" "}
             <a
-              href="mailto:orders.feedmeafrica@gmail.com"
+              href="mailto:oyedelejeremiah.ng@gmail.com"
               className="underline">
               support@feedme.com
             </a>

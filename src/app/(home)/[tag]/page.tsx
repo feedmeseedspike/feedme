@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import Pagination from "@components/shared/pagination";
 import ProductSortSelector from "@components/shared/product/product-sort-selector";
@@ -21,8 +22,8 @@ import { createServerComponentClient } from "src/utils/supabase/server";
 const sortOrders = [
   { value: "price-low-to-high", name: "Price: Low to high" },
   { value: "price-high-to-low", name: "Price: High to low" },
-  { value: "newest-arrivals", name: "Newest arrivals" },
-  { value: "best-selling", name: "Best selling" },
+  { value: "newest-arrivals", name: "Newest barrivals" },
+  { value: "best-selling", name: "Best sellingbb" },
 ];
 
 const SPECIAL_TAGS = [
@@ -32,6 +33,7 @@ const SPECIAL_TAGS = [
   "fresh-vegetables",
   "todays-deal",
   "trending",
+  "fresh-seeds-and-nuts",
 ];
 
 export default async function TagPage({
@@ -145,40 +147,21 @@ export default async function TagPage({
   }
 
   if (!isSpecialTag && !promotionData) {
-    return <NotFound />;
+    notFound();
   }
 
   return (
     <main className="min-h-screen">
-      <div className="bg-white py-4">
+      <div className="md:border-b shadow-sm">
+        <div className="bg-white py-4">
+          <Container>
+            <CustomBreadcrumb />
+          </Container>
+        </div>
         <Container>
-          <CustomBreadcrumb />
-        </Container>
-      </div>
-      <Container>
-        {promotionData && (
-          <div
-            className="w-full h-[40vh] relative overflow-hidde my-4"
-            // style={{
-            //   backgroundColor: promotionData.background_color || "#ffffff",
-            // }}
-          >
-            <Image
-              src={promotionData.image_url || "/images/placeholder-banner.jpg"}
-              alt={promotionData.title || "Promotion banner"}
-              width={1000}
-              height={1000}
-              className="object- size-full"
-              priority
-            />
-          </div>
-        )}
-      </Container>
-      <div className="py-2 md:border-b shadow-sm">
-        <Container>
-          <div className="flex justify-between items-center mt-2">
+          <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
-              <h1 className="text-[#1B6013] text-2xl md:text-3xl font-bold">
+              <h1 className="text-[#1B6013] text-2xl md:text-3xl !leading-5 font-bold">
                 {pageTitle}
               </h1>
             </div>
@@ -192,6 +175,22 @@ export default async function TagPage({
           </div>
         </Container>
       </div>
+      <Container>
+        {promotionData && (
+          <div
+            className="w-full h-[40vh] relative overflow-hidden my-4"
+          >
+            <Image
+              src={promotionData.image_url || "/images/placeholder-banner.jpg"}
+              alt={promotionData.title || "Promotion banner"}
+              width={1000}
+              height={1000}
+              className="object-cover size-full"
+              priority
+            />
+          </div>
+        )}
+      </Container>
       <Container className="py-8">
         {productsToDisplay.length === 0 ? (
           <p className="text-center text-gray-500">

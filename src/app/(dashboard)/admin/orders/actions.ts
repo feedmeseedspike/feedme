@@ -2,6 +2,9 @@
 import { createClient } from "@utils/supabase/server";
 import { getUser } from "src/lib/actions/auth.actions";
 import { Database } from "@/utils/database.types";
+import { sendUnifiedNotification } from "src/lib/actions/notifications.actions";
+
+import { BONUS_CONFIG } from "src/lib/deals";
 
 // Update Order Status
 export async function updateOrderStatusAction(orderId: string, newStatus: Database["public"]["Enums"]["order_status_enum"]) {
@@ -9,12 +12,56 @@ export async function updateOrderStatusAction(orderId: string, newStatus: Databa
   if (!user || user.role !== "admin") throw new Error("Not authorized");
   const supabase = await createClient();
   
+  // Fetch order details first for logic
+  const { data: order } = await supabase.from("orders").select("user_id, total_amount, reference").eq("id", orderId).single();
+
   // Update order status
   const { error } = await supabase
     .from("orders")
     .update({ status: newStatus, updated_at: new Date().toISOString() })
     .eq("id", orderId);
   if (error) throw error;
+
+  // --- RETRACTION LOGIC FOR REFUNDS ---
+  if (newStatus === "Cancelled" && order?.user_id) {
+     try {
+        const amount = order.total_amount || 0;
+        
+        // 1. Retract Loyalty Points
+        let pointsToRetract = 0;
+        // Find highest applicable tier
+        const tier = [...BONUS_CONFIG.LOYALTY_TIERS].reverse().find(t => amount >= t.threshold);
+        if (tier) {
+            pointsToRetract = tier.points;
+        }
+
+        if (pointsToRetract > 0) {
+            const { data: profile } = await supabase.from('profiles').select('loyalty_points').eq('user_id', order.user_id).single();
+            if (profile) {
+                 const newPoints = Math.max(0, (profile.loyalty_points || 0) - pointsToRetract);
+                 await supabase.from('profiles').update({ loyalty_points: newPoints }).eq('user_id', order.user_id);
+                 // We could send a notification about retraction here too
+            }
+        }
+     } catch (err) {
+         console.error("Error retracting bonuses:", err);
+     }
+  }
+  
+  // Send in-app and push notification
+  try {
+     if (order?.user_id) {
+       await sendUnifiedNotification({
+         userId: order.user_id,
+         type: "info",
+         title: "Order Update",
+         body: `Your order #${order.reference || orderId.substring(0, 8)} is now ${newStatus}.`,
+         link: `/account/orders/${orderId}`
+       });
+     }
+  } catch (notiError) {
+     console.warn("Status change notification failed:", notiError);
+  }
 
   // Send email notification for status updates (except "order confirmed" which is sent after payment)
   if (newStatus !== "order confirmed") {
@@ -61,16 +108,21 @@ export async function updateOrderStatusAction(orderId: string, newStatus: Databa
 
       if (userEmail) {
         // Send email notification locally (no API call)
-        const { sendStatusUpdateEmail } = await import("@/utils/email/sendStatusUpdateEmail");
-        
-        await sendStatusUpdateEmail({
-            userEmail,
-            orderNumber: order.reference || order.order_id || order.id,
-            customerName: userName,
-            newStatus,
-            itemsOrdered,
-            deliveryAddress: shipping?.street || "Address not available",
-        });
+        const allowedStatuses = ["In transit", "order delivered", "order confirmed", "Cancelled"] as const;
+        type EmailStatus = (typeof allowedStatuses)[number];
+
+        if (allowedStatuses.includes(newStatus as any)) {
+          const { sendStatusUpdateEmail } = await import("@/utils/email/sendStatusUpdateEmail");
+          
+          await sendStatusUpdateEmail({
+              userEmail,
+              orderNumber: order.reference || order.order_id || order.id,
+              customerName: userName,
+              newStatus: newStatus as EmailStatus,
+              itemsOrdered,
+              deliveryAddress: shipping?.street || "Address not available",
+          });
+        }
       }
     } catch (emailError) {
       console.error("Failed to send status update email:", emailError);
@@ -90,6 +142,22 @@ export async function updatePaymentStatusAction(orderId: string, newStatus: Data
     .update({ payment_status: newStatus })
     .eq("id", orderId);
   if (error) throw error;
+  
+  // Send notification for payment status update
+  try {
+    const { data: order } = await supabase.from("orders").select("user_id, reference").eq("id", orderId).single();
+    if (order?.user_id) {
+      await sendUnifiedNotification({
+        userId: order.user_id,
+        type: "info",
+        title: "Payment Update",
+        body: `Payment for order #${order.reference || orderId.substring(0, 8)} is now ${newStatus}.`,
+        link: `/account/orders/${orderId}`
+      });
+    }
+  } catch (notiError) {
+    console.warn("Payment update notification failed:", notiError);
+  }
   return { success: true };
 }
 

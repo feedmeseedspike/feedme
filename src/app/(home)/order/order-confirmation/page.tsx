@@ -459,7 +459,7 @@ export default function OrderConfirmationPage() {
              <button 
                 onClick={() => {
                    navigator.clipboard.writeText(orderId || "");
-                   showToast("Order ID copied");
+                   showToast("Order ID copied", "success");
                 }}
                 className="p-2 hover:bg-gray-50 rounded-full transition-colors text-gray-400"
              >

@@ -19,7 +19,7 @@ export async function POST(req: Request) {
         <div style="background: #f8d7da; color: #842029; border: 1px solid #f5c2c7; border-radius: 6px; padding: 12px 16px; margin: 18px 0;">
           <strong>Reason:</strong> ${reason}
         </div>
-        <p style="font-size: 15px; color: #444;">If you believe this is a mistake or need help, please contact our support team at <a href="mailto:orders.feedmeafrica@gmail.com" style="color: #1B6013; text-decoration: underline;">orders.feedmeafrica@gmail.com</a> or call <b>+2348088282487</b>.</p>
+        <p style="font-size: 15px; color: #444;">If you believe this is a mistake or need help, please contact our support team at <a href="mailto:oyedelejeremiah.ng@gmail.com" style="color: #1B6013; text-decoration: underline;">oyedelejeremiah.ng@gmail.com</a> or call <b>+2348088282487</b>.</p>
         <p style="font-size: 15px; color: #444;">You can try placing your order again at any time.</p>
         <hr style="border: none; border-top: 1px solid #eaeaea; margin: 32px 0 16px 0;" />
         <div style="text-align: center;">

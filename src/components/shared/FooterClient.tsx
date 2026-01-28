@@ -58,6 +58,7 @@ const footerData = [
 ];
 
 const Icons = [
+  { href: "https://play.google.com/store/apps/details?id=com.feedmemobile", icon: <Icon icon="mdi:google-play" /> },
   { href: "https://x.com/Seedspike15427", icon: <TiSocialTwitter /> },
   {
     href: "https://www.facebook.com/profile.php?id=100093243737297&mibextid=ZbWKwL",

@@ -14,7 +14,7 @@ const smtpPortEnv = process.env.SMTP_PORT || process.env.NODEMAILER_PORT;
 const smtpPort = smtpPortEnv ? Number(smtpPortEnv) : undefined;
 const smtpUser = process.env.SMTP_USER || process.env.NODEMAILER_USER;
 const smtpPass = process.env.SMTP_PASS || process.env.NODEMAILER_PASS;
-const smtpSecureEnv = process.env.SMTP_SECURE || process.env.NODEMAILER_SECURE;
+const smtpSecureEnv = process.env.SMTP_SECURE j|| process.env.NODEMAILER_SECURE;
 const smtpSecure = smtpSecureEnv
   ? smtpSecureEnv.toLowerCase() === "true"
   : smtpPort === 465;

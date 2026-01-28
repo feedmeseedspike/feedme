@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "../app/global.css";
 import { ReduxProvider } from "@providers/redux-providers";
+import { EB_Garamond } from "next/font/google";
 import { LocationProvider } from "@components/shared/header/Location";
 import CustomScrollbar from "@components/shared/CustomScrollbar";
 import NextTopLoader from "nextjs-toploader";
@@ -39,6 +40,12 @@ const DealsPopup = dynamic(
     loading: () => null,
   }
 );
+
+const ebGaramond = EB_Garamond({
+  subsets: ["latin"],
+  variable: "--font-eb-garamond",
+  display: "swap",
+});
 
 const proxima = localFont({
   src: [
@@ -229,7 +236,7 @@ export default async function RootLayout({
   };
 
   return (
-    <html lang="en" className={proxima.variable}>
+    <html lang="en" className={`${proxima.variable} ${ebGaramond.variable}`}>
       <head>
         {/* Resource hints for performance */}
         <link rel="preconnect" href="https://www.googletagmanager.com" />

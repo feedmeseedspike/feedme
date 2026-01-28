@@ -9,6 +9,8 @@ export async function createBundleAction(bundleData: {
   description?: string;
   thumbnail: { url: string; public_id?: string } | null;
   productIds: string[];
+  videoUrl?: string;
+  chefName?: string;
 }) {
   const supabase = await createClient();
   
@@ -22,6 +24,8 @@ export async function createBundleAction(bundleData: {
       thumbnail_url: bundleData.thumbnail?.url || null,
       stock_status: 'in_stock',
       published_status: 'published',
+      video_url: bundleData.videoUrl || null,
+      chef_name: bundleData.chefName || null,
     })
     .select()
     .single();
@@ -95,6 +99,8 @@ export async function updateBundleAction(bundleData: {
   description?: string;
   thumbnail: { url: string; public_id?: string } | null;
   productIds: string[];
+  videoUrl?: string;
+  chefName?: string;
 }) {
   const supabase = await createClient();
   
@@ -106,6 +112,8 @@ export async function updateBundleAction(bundleData: {
       price: bundleData.price,
       description: bundleData.description,
       thumbnail_url: bundleData.thumbnail?.url || null,
+      video_url: bundleData.videoUrl || null,
+      chef_name: bundleData.chefName || null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', bundleData.id)

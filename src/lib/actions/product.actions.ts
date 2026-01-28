@@ -2,6 +2,7 @@
 
 import { ProductInterface } from "@/utils/productsiinterface";
 import { createClient } from "../../utils/supabase/server";
+import { sendBroadcastNotification } from "./notifications.actions";
 
 // Removed top-level supabase initialization
 
@@ -333,6 +334,19 @@ export async function addProduct(product: any) {
   if (error) {
     throw error;
   }
+
+  // Notify all users about the new arrival
+  try {
+    await sendBroadcastNotification({
+      type: "info",
+      title: "New Arrival",
+      body: `${product.name} is now available! 🛒`,
+      link: `/product/${data?.[0].slug}`
+    });
+  } catch (err) {
+    console.warn("Broadcast (New Product) failed:", err);
+  }
+
   return data?.[0];
 }
 
@@ -346,6 +360,21 @@ export async function updateProduct(id: string, product: any) {
   if (error) {
     throw error;
   }
+
+  // If price was updated, notify users
+  if (product.price !== undefined) {
+    try {
+      await sendBroadcastNotification({
+        type: "info",
+        title: "Price Alert",
+        body: `The price of ${data?.[0].name} has been updated. Check it out now! 💰`,
+        link: `/product/${data?.[0].slug}`
+      });
+    } catch (err) {
+      console.warn("Broadcast (Price Update) failed:", err);
+    }
+  }
+
   return data?.[0];
 }
 

@@ -125,6 +125,10 @@ export function SupabaseAuthProvider({
               is_staff: user?.is_staff ?? null, // Add this line
               role: user?.role ?? null,
               status: user?.status ?? null,
+              email: authenticatedUser.email ?? null,
+              has_used_new_user_spin: user?.has_used_new_user_spin ?? false,
+              loyalty_points: user?.loyalty_points ?? 0,
+              updated_at: user?.updated_at ?? null,
             });
           } else {
             setUser(userProfile);

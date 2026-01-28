@@ -83,7 +83,16 @@ async function BlackFridayContent({ sort }: { sort: string }) {
       </div>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-5">
         {items.map((item) => {
-          const product = item.products as Tables<"products">;
+          let productData = item.products;
+          
+          if (Array.isArray(productData)) {
+            productData = productData[0];
+          }
+
+          const product = productData as Tables<"products">;
+
+          if (!product || !product.id) return null;
+
           const productWithDeal = {
             ...product,
             price: item.new_price,

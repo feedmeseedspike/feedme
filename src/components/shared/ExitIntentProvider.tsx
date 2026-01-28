@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@/hooks/useUser";
 import NewVisitorModal from "./NewVisitorModal";
+import { usePathname } from "next/navigation";
 
 interface NewVisitorProviderProps {
   children: React.ReactNode;
@@ -11,9 +12,16 @@ interface NewVisitorProviderProps {
 export function NewVisitorProvider({ children }: NewVisitorProviderProps) {
   const { user, isLoading } = useUser();
   const [showModal, setShowModal] = useState(false);
+  const pathname = usePathname();
   
-  // Only show to non-authenticated users
-  const shouldShowModal = !isLoading && !user;
+  // Check if we are on an auth page
+  const isAuthPage = pathname?.startsWith('/login') || 
+                     pathname?.startsWith('/register') || 
+                     pathname?.startsWith('/forgot-password') ||
+                     pathname?.includes('/auth/');
+
+  // Only show to non-authenticated users who are NOT on auth pages
+  const shouldShowModal = !isLoading && !user && !isAuthPage;
 
   useEffect(() => {
     if (!shouldShowModal) return;
@@ -25,6 +33,8 @@ export function NewVisitorProvider({ children }: NewVisitorProviderProps) {
       const sessionShown = sessionStorage.getItem('feedme_modal_session');
       const justSignedUp = new URLSearchParams(window.location.search).get('justSignedUp');
       
+      if (hasShown || sessionShown || justSignedUp) return;
+
       // Check if dismissed recently (within 24 hours)
       let recentlyDismissed = false;
       if (dismissed) {
@@ -33,6 +43,8 @@ export function NewVisitorProvider({ children }: NewVisitorProviderProps) {
         const hoursSinceDismissed = (now - dismissedTime) / (1000 * 60 * 60);
         recentlyDismissed = hoursSinceDismissed < 24;
       }
+      
+      if (recentlyDismissed) return;
       
       // Mark session to prevent showing again in same session
       sessionStorage.setItem('feedme_modal_session', 'true');

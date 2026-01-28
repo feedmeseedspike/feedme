@@ -2,15 +2,25 @@ import admin from "firebase-admin";
 
 let firebaseAdmin: typeof admin;
 
-if (
-  process.env.FIREBASE_PROJECT_ID &&
-  process.env.FIREBASE_PRIVATE_KEY &&
-  process.env.FIREBASE_CLIENT_EMAIL
-) {
+const projectId = process.env.PROJECT_ID || process.env.FIREBASE_PROJECT_ID;
+const privateKey = process.env.PRIVATE_KEY || process.env.FIREBASE_PRIVATE_KEY;
+const clientEmail = process.env.CLIENT_EMAIL || process.env.FIREBASE_CLIENT_EMAIL;
+
+console.log("Firebase Admin Check:", { 
+  projectId: !!projectId, 
+  privateKey: !!privateKey, 
+  clientEmail: !!clientEmail 
+});
+
+if (projectId && privateKey && clientEmail) {
   const serviceAccount = {
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    projectId,
+    privateKey: privateKey
+      .replace(/\\n/g, "\n") // Fix escaped newlines
+      .replace(/"/g, "")    // Remove any accidental wrapping quotes
+      .replace(/^(?!-----BEGIN)/, "-----BEGIN PRIVATE KEY-----\n") // Ensure header
+      .replace(/(?!-----END PRIVATE KEY-----)$/, "\n-----END PRIVATE KEY-----\n"), // Ensure footer
+    clientEmail,
   };
 
   if (!admin.apps.length) {

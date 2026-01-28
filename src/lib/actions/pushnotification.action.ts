@@ -11,12 +11,10 @@ export async function sendPushNotification(
   try {
     const supabase = await createClient();
     // Fetch all FCM tokens for the user (web and mobile)
-    console.log({ userId });
     const { data: tokens, error: tokenError } = await supabase
       .from("fcm_tokens")
       .select("fcm_token, device_type")
       .eq("user_id", userId);
-    console.log({ tokens });
 
     if (tokenError || !tokens || tokens.length === 0) {
       console.error("No FCM tokens found for user:", userId);
@@ -32,7 +30,6 @@ export async function sendPushNotification(
     try {
       // Use sendToDevice for multiple tokens
       const response = await admin.messaging().sendEachForMulticast(message);
-      console.log("Push notification sent:", response);
 
       // Log failed tokens (e.g., expired or invalid)
       if (response.failureCount > 0) {
@@ -49,10 +46,7 @@ export async function sendPushNotification(
               supabase
                 .from("fcm_tokens")
                 .delete()
-                .eq("fcm_token", tokens[idx].fcm_token)
-                .then(() =>
-                  console.log(`Deleted invalid token: ${tokens[idx].fcm_token}`)
-                );
+                .eq("fcm_token", tokens[idx].fcm_token);
             }
           }
         });
@@ -78,7 +72,7 @@ export async function getToken(
       device_type: type,
     });
   } catch (error: any) {
-    console.log(error);
+    // Silently fail or log to error monitoring
   }
 }
 
@@ -90,15 +84,12 @@ export async function checkToken(userId: string, type: "web" | "mobile") {
       .from("fcm_tokens")
       .select("fcm_token, device_type, user_id")
       .eq("user_id", userId);
-    console.log({ tokens }, { tokenError });
     const first = !tokens
       ? []
       : tokens
           .filter((it: any) => it.user_id === userId)
           .filter((its: any) => its.device_type === type);
 
-    // Log all tokens for debugging
-    console.log("FCM Tokens:", first);
     if (first.length === 0) {
       console.warn(`No FCM tokens found for user ${userId} on ${type} device`);
       return true;

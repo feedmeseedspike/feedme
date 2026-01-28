@@ -11,6 +11,7 @@ import { Skeleton } from "@components/ui/skeleton";
 import { Suspense } from "react";
 import ProductSliderSkeleton from "@components/shared/product/product-slider-skeleton";
 import BundleSlider from "@components/shared/bundles/bundle-slider";
+import FreshSeedsSlider from "@components/shared/home/FreshSeedsSlider";
 import FeaturedOffers from "@components/shared/home/FeaturedOffers";
 import Riverbitee from "@components/shared/home/Riverbitee";
 import CustomerReviews from "@components/shared/home/CustomerReviews";
@@ -168,6 +169,18 @@ export default async function Home() {
       },
     }),
     queryClient.prefetchQuery({
+      queryKey: ["products", { tag: "fresh-seeds-and-nuts", limit: 10 }],
+      queryFn: async () => {
+        const { data, error } = await getProductsByTagQuery(
+          supabase,
+          "fresh-seeds-and-nuts",
+          10
+        ).select("*");
+        if (error) throw error;
+        return data;
+      },
+    }),
+    queryClient.prefetchQuery({
       queryKey: ["sideBanners"],
       queryFn: async () => {
         const { data, error } = await supabase
@@ -294,21 +307,7 @@ export default async function Home() {
           <Container>
             <Banner />
 
-            {/* SPIN TO WIN - TEMPORARILY DISABLED */}
-            {/* <Link href="/spin-to-win" className="block w-full mt-6 mb-2">
-              <div className="rounded-xl overflow-hidden relative h-20 md:h-24 bg-gradient-to-r from-[#1B6013] to-[#F0800F] flex items-center justify-between px-6 md:px-12 shadow-lg group hover:shadow-xl transition-all">
-                <div className="flex items-center gap-4">
-                  <span className="text-3xl md:text-4xl animate-bounce">🎡</span>
-                  <div>
-                    <h3 className="text-white font-bold text-lg md:text-2xl">Daily Spin & Win</h3>
-                    <p className="text-white/90 text-xs md:text-sm">Win up to ₦1,000 Wallet Cash & Free Items!</p>
-                  </div>
-                </div>
-                <div className="bg-white text-[#1B6013] px-4 py-2 rounded-lg font-bold text-sm group-hover:scale-105 transition-transform">
-                    Play Now
-                </div>
-              </div>
-            </Link> */}
+
 
             <Suspense
               fallback={
@@ -401,6 +400,10 @@ export default async function Home() {
                   tag="fresh-vegetables"
                   limit={10}
                 />
+              </Suspense>
+
+              <Suspense fallback={<ProductSliderSkeleton />}>
+                 <FreshSeedsSlider />
               </Suspense>
             </div>
           </Container>

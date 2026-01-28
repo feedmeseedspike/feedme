@@ -1,14 +1,11 @@
 "use server";
 import { createClient } from "@utils/supabase/server";
 import { getUser } from "src/lib/actions/auth.actions";
-import { Tables } from "src/utils/database.types";
+import { Tables, TablesInsert } from "src/utils/database.types";
 
 // Add Address
 export async function addAddressAction(
-  addressData: Omit<
-    Tables<"addresses">,
-    "id" | "user_id" | "created_at" | "updated_at"
-  >
+  addressData: TablesInsert<"addresses">
 ) {
   console.log("Adding address:", addressData);
   const user = await getUser();

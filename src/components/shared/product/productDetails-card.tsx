@@ -82,8 +82,9 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
     // Tanstack Query for Favorites
     const { data: favorites, isLoading: isLoadingFavorites } =
       useQuery(getFavoritesQuery());
+    const productId = product.id || (product as any)._id;
     const isFavorited =
-      product.id && favorites ? favorites.includes(product.id) : false;
+      productId && favorites ? favorites.includes(productId) : false;
 
     // Use mutations for adding/removing favorites
     const addFavoriteMutation = useAddFavoriteMutation();
@@ -443,7 +444,12 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
         e.preventDefault();
         e.stopPropagation();
 
-        if (!product.id) return;
+        const productId = product.id || (product as any)._id;
+        
+        if (!productId) {
+          console.error("No product ID found for favorite toggle", product);
+          return;
+        }
 
         if (!user) {
           showToast("Please log in to add favorites", "error");
@@ -455,10 +461,10 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
 
         try {
           if (isFavorited) {
-            await removeFavoriteMutation.mutateAsync(product.id);
+            await removeFavoriteMutation.mutateAsync(productId);
             showToast(`${product.name} removed from favorites`, "info");
           } else {
-            await addFavoriteMutation.mutateAsync(product.id);
+            await addFavoriteMutation.mutateAsync(productId);
             showToast(`${product.name} added to favorites`, "success");
           }
         } catch (error: any) {
@@ -477,6 +483,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       },
       [
         product.id,
+        (product as any)._id,
         product.name,
         user,
         showToast,

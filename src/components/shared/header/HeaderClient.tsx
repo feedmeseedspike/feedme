@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { Icon } from "@iconify/react";
 import Image from "next/image";
 import {
   User,
@@ -30,13 +31,48 @@ import {
 import { Button } from "@components/ui/button";
 import FlyoutLink from "./FlyoutLink";
 import UserDropdownContent from "./UserDropdownContent";
+import { NotificationsPopover } from "../notifications/NotificationsPopover";
 import { useUser } from "src/hooks/useUser";
+import { signOutUser } from "src/lib/actions/auth.actions";
+import SpinNotification from "./SpinNotification";
+import { createClient } from "@utils/supabase/client";
+import { useToast } from "src/hooks/useToast";
 
 const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
   const { user, isLoading: isUserLoading } = useUser();
+  const { showToast } = useToast();
   const [openAccountSheet, setOpenAccountSheet] = useState(false);
   const [openMobileSheet, setOpenMobileSheet] = useState(false);
   const [isCategoriesLoading] = useState(false);
+
+  // --- REALTIME DELIVERY NOTIFICATION ---
+  useEffect(() => {
+    if (!user) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`orders-user-${user.user_id}`)
+      .on(
+        "postgres_changes",
+        { 
+          event: "UPDATE", 
+          schema: "public", 
+          table: "orders", 
+          filter: `user_id=eq.${user.user_id}` 
+        },
+        (payload: any) => {
+          const newOrder = payload.new as any;
+          // Check if status changed to delivered
+          if (newOrder.status === 'order delivered') {
+             showToast("See you, Your order has been delivered! 🚚", "success");
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, showToast]);
 
   if (isUserLoading) {
     return null;
@@ -90,7 +126,7 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                             alt="logo"
                             width={100}
                             height={32}
-                            className="w-[6rem] cursor-pointer"
+                            className="w-20 cursor-pointer"
                             priority={true}
                           />
                         </Link>
@@ -178,26 +214,18 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                               </div>
                             </div>
 
-                            {/* Today's Deals & Rewards */}
                             <div className="pb-2">
-                              <p className="uppercase text-xs text-white/70 px-2 mb-1">
-                                Deals & Rewards
-                              </p>
-                              <Link
-                                href="/todays-deal"
-                                className="block py-2 hover:bg-white/10 rounded text-lg px-2 transition-colors"
+                              {/* Play Store Link */}
+                              <a
+                                href="https://play.google.com/store/apps/details?id=com.feedmemobile"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block py-2 hover:bg-white/10 rounded text-lg px-2 text-[#3BCCFF] font-bold transition-colors flex items-center gap-2"
                                 onClick={() => setOpenMobileSheet(false)}
                               >
-                                Shop Today&apos;s Deals
-                              </Link>
-                              {/* SPIN TO WIN - TEMPORARILY DISABLED */}
-                              {/* <Link
-                                href="/spin-to-win"
-                                className="block py-2 hover:bg-white/10 rounded text-lg px-2 text-[#F0800F] font-bold transition-colors flex items-center gap-2"
-                                onClick={() => setOpenMobileSheet(false)}
-                              >
-                                <span>🎡</span> Spin & Win
-                              </Link> */}
+                                <Icon icon="mdi:google-play" className="w-6 h-6" />
+                                <span>Get the App</span>
+                              </a>
                             </div>
                           </div>
                         )}
@@ -205,7 +233,7 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                     </div>
 
                     {/* Mobile Auth Footer */}
-                    {!isLoggedIn && (
+                    {!isLoggedIn ? (
                       <div className="bg-[#1B6013] pb-4 pt-2">
                         <div className="flex flex-col gap-2 px-2">
                           <Link
@@ -222,6 +250,24 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                           </Link>
                         </div>
                       </div>
+                    ) : (
+                      <div className="bg-[#1B6013] pb-4 pt-2">
+                        <div className="flex flex-col gap-2 px-2">
+                          <button
+                            onClick={async () => {
+                              try {
+                                setOpenMobileSheet(false);
+                                await signOutUser();
+                              } catch (error) {
+                                console.error("Logout failed:", error);
+                              }
+                            }}
+                            className="block w-full text-center bg-red-500/20 text-red-100 hover:bg-red-500/30 py-3 rounded transition-colors flex items-center justify-center gap-2"
+                          >
+                            Sign Out
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </SheetContent>
                 </Sheet>
@@ -229,15 +275,15 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                 {/* Desktop Logo */}
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <Link href="/">
-                      <Image
-                        src="/logo.png"
-                        alt="logo"
-                        width={148}
-                        height={32}
-                        className="w-[6rem] md:w-[9rem] cursor-pointer"
-                      />
-                    </Link>
+                        <Link href="/">
+                          <Image
+                            src="/logo.png"
+                            alt="logo"
+                            width={148}
+                            height={32}
+                            className="w-20 md:w-28 cursor-pointer"
+                          />
+                        </Link>
 
                     {/* Hiring Badge */}
                     {hasActiveJobs && (
@@ -262,13 +308,25 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
               </div>
 
               {/* Desktop Search */}
-              <div className="hidden md:block flex-1 md:max-w-[55rem pl-8">
+              <div className="hidden md:block flex-1 md:max-w-[55rem] pl-8">
                 <Search />
               </div>
             </nav>
 
             {/* Cart and User Actions */}
             <div className="md:pl-6 flex items-center gap-3">
+              {isLoggedIn && <NotificationsPopover userId={user?.user_id} />}
+              <div className="hidden lg:flex items-center">
+                 <a 
+                   href="https://play.google.com/store/apps/details?id=com.feedmemobile" 
+                   target="_blank" 
+                   rel="noopener noreferrer" 
+                   className="text-white hover:text-[#3BCCFF] transition-colors p-2"
+                   title="Download on Play Store"
+                 >
+                    <Icon icon="mdi:google-play" className="w-6 h-6" />
+                 </a>
+              </div>
               <Cart />
 
               {/* Desktop User Dropdown */}

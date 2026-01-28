@@ -1,5 +1,5 @@
 import { createClient } from "@utils/supabase/client";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { formatError, formatNaira } from "src/lib/utils";
 import { Database } from "src/utils/database.types";
 
@@ -32,4 +32,23 @@ export const useVoucherValidationMutation = () => {
       // Optionally invalidate queries that depend on voucher status if needed
     },
   });
-}; 
+};
+
+export const useUserVouchersQuery = (userId: string) => {
+  const supabase = createClient();
+  return useQuery({
+    queryKey: ["vouchers", "user", userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vouchers")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!userId,
+  });
+};

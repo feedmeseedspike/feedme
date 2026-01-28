@@ -191,6 +191,7 @@ export default function PrizesClient({ initialPrizes, productsList }: { initialP
                         <TableHead>Type</TableHead>
                         <TableHead>Value</TableHead>
                         <TableHead>Prob</TableHead>
+                        <TableHead>New User?</TableHead>
                         <TableHead>Code</TableHead>
                         <TableHead>Actions</TableHead>
                     </TableRow>
@@ -219,6 +220,11 @@ export default function PrizesClient({ initialPrizes, productsList }: { initialP
                                 ) : prize.value}
                             </TableCell>
                             <TableCell>{prize.probability}</TableCell>
+                            <TableCell>
+                                {prize.for_new_users_only ? (
+                                    <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-[10px] font-bold uppercase">YES</span>
+                                ) : '-'}
+                            </TableCell>
                             <TableCell>{prize.code || '-'}</TableCell>
                             <TableCell>
                                 <div className="flex gap-2">
@@ -343,6 +349,18 @@ export default function PrizesClient({ initialPrizes, productsList }: { initialP
                       <div>
                           <Label>Code</Label>
                           <Input value={formData.code || ''} placeholder="Auto-generated if empty" onChange={e => setFormData({...formData, code: e.target.value})} />
+                      </div>
+
+                      <div>
+                          <Label className="flex items-center gap-2 cursor-pointer">
+                              <input 
+                                type="checkbox" 
+                                checked={formData.for_new_users_only || false} 
+                                onChange={e => setFormData({...formData, for_new_users_only: e.target.checked})} 
+                                className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                              />
+                              <span className="font-semibold text-sm">For New Users Only (100% Probability for 0-order users)</span>
+                          </Label>
                       </div>
 
                       <div>

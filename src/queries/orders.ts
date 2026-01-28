@@ -25,6 +25,7 @@ interface AddPurchaseBody {
   local_government: string;
   voucherId?: string | null;
   paymentMethod: string;
+  note?: string;
 }
 
 export async function fetchOrders({
@@ -150,7 +151,7 @@ export async function fetchOrderById(orderId: string) {
   }
 
   if (offerIds.length > 0) {
-    const { data } = await supabase.from("offers").select("id, title").in("id", offerIds);
+    const { data } = await supabase.from("offers").select("id, title, image_url").in("id", offerIds);
     offers = data || [];
   }
 
@@ -244,7 +245,7 @@ export async function fetchUserOrders(
            if (item.offer_id) {
              const { data: o } = await supabase
                .from("offers")
-               .select("title")
+               .select("title, image_url")
                .eq("id", item.offer_id)
                .single();
              offer = o;
@@ -308,6 +309,7 @@ export async function addPurchase(body: AddPurchaseBody) {
       payment_status: body.paymentMethod === 'wallet' ? 'Paid' : 'Pending',
       voucher_id: body.voucherId,
       reference: reference, // Add reference
+      note: body.note,
     }).select().single();
 
     if (orderError) throw orderError;

@@ -11,6 +11,7 @@ import {
   TiSocialLinkedin,
 } from "react-icons/ti";
 import { SlSocialInstagram } from "react-icons/sl";
+import { FaGooglePlay } from "react-icons/fa";
 
 type CategoryListItem = {
   id: string;
@@ -38,6 +39,11 @@ export default async function Headertags() {
       
     if (fetchError) throw fetchError;
     categories = (data || []) as CategoryListItem[];
+    // Filter out Spin Wheel category IF it exists (as per user request)
+    categories = categories.filter(c => 
+        !c.title.toLowerCase().includes("spin") && 
+        !c.title.toLowerCase().includes("wheel")
+    );
     // console.log("HeaderTags categories:", categories);
 
     // Fetch products for each category (limit to 2 per category)
@@ -103,7 +109,10 @@ export default async function Headertags() {
               ))}
             </div>
             
-            <div className="ml-auto flex items-center gap-4 pl-4 border-l border-gray-200">
+            <div className="ml-auto flex items-center gap-2.5 sm:gap-4 pl-2 sm:pl-4 border-l border-gray-200">
+               <a href="https://play.google.com/store/apps/details?id=com.feedmemobile" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#3BCCFF] transition-colors" title="Download on Play Store">
+                  <FaGooglePlay className="w-4 h-4" />
+               </a>
                <a href="https://x.com/Seedspike15427" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#1DA1F2] transition-colors">
                   <TiSocialTwitter className="w-5 h-5" />
                </a>

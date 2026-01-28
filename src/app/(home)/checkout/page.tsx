@@ -9,6 +9,7 @@ import CustomBreadcrumb from "@components/shared/breadcrumb";
 import { getAddressesForCurrentUser } from "@/app/(dashboard)/account/addresses/actions";
 import { getWalletBalanceServer } from "src/lib/actions/wallet.actions";
 import { createClient } from "@/utils/supabase/server";
+import { Suspense } from "react";
 
 export const metadata: Metadata = {
   title: "Checkout",
@@ -44,12 +45,14 @@ export default async function CheckoutPage() {
           <CustomBreadcrumb />
         </Container>
       </div>
-      <CheckoutForm
-        addresses={addresses || []}
-        walletBalance={walletBalance}
-        user={user}
-        deliveryLocations={deliveryLocations}
-      />
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading checkout...</div>}>
+        <CheckoutForm
+          addresses={addresses || []}
+          walletBalance={walletBalance}
+          user={user}
+          deliveryLocations={deliveryLocations}
+        />
+      </Suspense>
     </>
   );
 }

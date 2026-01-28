@@ -495,9 +495,9 @@ const CheckoutForm = ({
     [items]
   );
 
-  const dealsDiscount = useMemo(() => calculateCartDiscount(subtotal, items, isFirstOrder), [subtotal, items, isFirstOrder]);
+  const dealsDiscount = useMemo(() => calculateCartDiscount(subtotal, items, isFirstOrder, isAuthenticated), [subtotal, items, isFirstOrder, isAuthenticated]);
   const dealMessages = useMemo(() => getDealMessages(subtotal, items, isFirstOrder, isAuthenticated), [subtotal, items, isFirstOrder, isAuthenticated]);
-  const appliedDiscountLabel = useMemo(() => getAppliedDiscountLabel(subtotal, items, isFirstOrder), [subtotal, items, isFirstOrder]);
+  const appliedDiscountLabel = useMemo(() => getAppliedDiscountLabel(subtotal, items, isFirstOrder, isAuthenticated), [subtotal, items, isFirstOrder, isAuthenticated]);
 
   // Free delivery logic: Per Doc V1.0, 50k+ spend awards free delivery on the NEXT order.
   // We only give 0 cost if a specific "Free Delivery" voucher is applied or if it's a special system override.

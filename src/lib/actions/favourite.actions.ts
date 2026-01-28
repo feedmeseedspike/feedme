@@ -18,6 +18,15 @@ export type FavoritesSuccess = {
 export type FavoritesFailure = { success: false; data: null; error: string };
 
 export async function addToFavorite(productId: string): Promise<{ success: true } | { success: false; error: string }> {
+  // Simple UUID validation
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(productId)) {
+    console.error("Invalid product ID for favorites:", productId);
+    return { 
+      success: false, 
+      error: "Invalid product ID" 
+    };
+  }
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -25,6 +34,21 @@ export async function addToFavorite(productId: string): Promise<{ success: true 
     return { 
       success: false, 
       error: "You must be logged in to add favorites" 
+    };
+  }
+
+  // Verify product existence
+  const { data: productExists, error: productCheckError } = await supabase
+    .from('products')
+    .select('id')
+    .eq('id', productId)
+    .single();
+
+  if (productCheckError || !productExists) {
+    console.error("Product verification failed:", productId, productCheckError);
+    return {
+      success: false,
+      error: "Product not found or invalid"
     };
   }
 
@@ -47,6 +71,7 @@ export async function addToFavorite(productId: string): Promise<{ success: true 
 
     return { success: true };
   } catch (error: any) {
+    console.error("addToFavorite error details:", error);
     return { 
       success: false, 
       error: error.message || "Failed to add to favorites" 
@@ -55,6 +80,15 @@ export async function addToFavorite(productId: string): Promise<{ success: true 
 }
 
 export async function removeFromFavorite(productId: string): Promise<{ success: true } | { success: false; error: string }> {
+  // Simple UUID validation
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(productId)) {
+     console.error("Invalid product ID for favorites removal:", productId);
+    return { 
+      success: false, 
+      error: "Invalid product ID" 
+    };
+  }
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -84,6 +118,10 @@ export async function removeFromFavorite(productId: string): Promise<{ success: 
 }
 
 export async function isProductFavorited(productId: string) {
+  // Simple UUID validation
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(productId)) return false;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 

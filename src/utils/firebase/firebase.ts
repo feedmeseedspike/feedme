@@ -11,6 +11,14 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-console.log('app is => ',{app})
-export const messaging =
-  typeof window !== "undefined" ? getMessaging(app) : null;
+
+export const messaging = (() => {
+  try {
+    if (typeof window !== "undefined") {
+      return getMessaging(app);
+    }
+  } catch (error) {
+    console.error("Firebase Messaging not supported in this browser:", error);
+  }
+  return null;
+})();

@@ -61,6 +61,7 @@ export default function CustomersTable({ data }: { data: any[] }) {
             <TableHead className="min-w-[250px] text-xs font-semibold uppercase tracking-wider text-gray-500">Customer</TableHead>
             <TableHead className="w-[200px] text-xs font-semibold uppercase tracking-wider text-gray-500">Contact</TableHead>
             <TableHead className="w-[120px] text-xs font-semibold uppercase tracking-wider text-gray-500">Spent</TableHead>
+            <TableHead className="w-[120px] text-xs font-semibold uppercase tracking-wider text-gray-500">Wallet</TableHead>
             <TableHead className="w-[100px] text-xs font-semibold uppercase tracking-wider text-gray-500">Orders</TableHead>
             <TableHead className="w-[150px] text-xs font-semibold uppercase tracking-wider text-gray-500">Joined</TableHead>
             <TableHead className="w-[80px] text-xs font-semibold uppercase tracking-wider text-gray-500 text-center">Staff</TableHead>
@@ -79,6 +80,8 @@ export default function CustomersTable({ data }: { data: any[] }) {
                 is_staff = false,
                 totalOrders = 0,
                 totalAmountSpent = 0,
+                wallet_balance = 0,
+                loyalty_points = 0,
               } = customer;
               const staffValue =
                 localStaff[user_id] !== undefined
@@ -151,6 +154,12 @@ export default function CustomersTable({ data }: { data: any[] }) {
                   </TableCell>
                   <TableCell className="font-medium text-sm text-gray-900">
                     {formatNaira(totalAmountSpent)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                       <span className="font-bold text-sm text-[#1B6013]">{formatNaira(wallet_balance)}</span>
+                       <span className="text-[10px] text-gray-400 font-medium">{loyalty_points || 0} pts</span>
+                    </div>
                   </TableCell>
                   <TableCell className="text-sm text-gray-600 text-center">
                     {totalOrders}

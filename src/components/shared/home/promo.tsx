@@ -179,12 +179,14 @@ const Promo = () => {
                   )}
               </div>
 
-              <Link
-                href={`/${promo.tag}`}
-                className="text-[#1B6013] relative z-10 rounded-lg px-6 py-3 bg-white font-semibold mt-12 inline-block"
-              >
-                Shop Now
-              </Link>
+              {promo.tag && promo.tag.trim() !== "" && (
+                <Link
+                  href={`/${promo.tag}`}
+                  className="text-[#1B6013] relative z-10 rounded-lg px-6 py-3 bg-white font-semibold mt-12 inline-block hover:bg-gray-100 transition-colors"
+                >
+                  Shop Now
+                </Link>
+              )}
 
               <Image
                 className="absolute bottom-0 w-full"

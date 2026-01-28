@@ -34,6 +34,8 @@ export interface Customer {
   avatar_url: string | null; // Added based on Tables<'users'>
   role: string | null; // Added based on Tables<'users'>
   status: string | null; // Added based on Tables<'users'>
+  loyalty_points: number | null;
+  has_used_new_user_spin: boolean | null;
 
   // Include the related addresses, which should be an array
   addresses: Array<{ phone: string | null; city: string | null }> | null; // Define structure of related addresses

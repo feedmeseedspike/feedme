@@ -17,7 +17,15 @@ import {
   Mail,
   Phone,
   MapPin,
+  Wallet,
+  Gift,
+  Ticket,
+  ArrowUpRight,
+  ArrowDownLeft
 } from "lucide-react";
+import { formatNaira } from "../../../../../lib/utils";
+import { useWalletBalanceQuery, useTransactionsQuery } from "../../../../../queries/wallet";
+import { useUserVouchersQuery } from "../../../../../queries/vouchers";
 
 import {
   Table,
@@ -70,6 +78,9 @@ const progressOptions = [
   "order confirmed",
   "Cancelled",
 ];
+
+import { CartPrizesList, SpinEligibilityStatus } from "../components/SpinStatusHelpers";
+
 
 export default function CustomerDetailsPage() {
   const params = useParams();
@@ -145,6 +156,12 @@ export default function CustomerDetailsPage() {
     isLoading: isOrdersLoading,
     error: ordersError,
   } = useCustomerOrders(customerId);
+
+  // --- NEW: WALLET & REWARDS DATA ---
+  const { data: walletBalance, isLoading: isWalletLoading } = useWalletBalanceQuery(customerId);
+  const { data: vouchers, isLoading: isVouchersLoading } = useUserVouchersQuery(customerId);
+  const { data: transactionsData, isLoading: isTransactionsLoading } = useTransactionsQuery(customerId, 1, 5);
+  const transactions = transactionsData?.data || [];
 
   const { showToast } = useToast();
   const queryClient = useQueryClient();
@@ -361,7 +378,187 @@ export default function CustomerDetailsPage() {
         </CardContent>
       </Card>
 
-      {/* Orders Section */}
+      {/* Wallet & Rewards Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        {/* Wallet Balance Card */}
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-[#1B6013] to-[#2a8b1f] text-white">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2 opacity-90">
+              <Wallet className="w-4 h-4" />
+              Wallet Balance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isWalletLoading ? (
+              <div className="h-10 w-32 bg-white/20 animate-pulse rounded"></div>
+            ) : (
+              <div className="text-3xl font-black">{formatNaira(walletBalance || 0)}</div>
+            )}
+            <p className="text-xs mt-2 opacity-70 italic">Available for making purchases</p>
+          </CardContent>
+        </Card>
+
+        {/* Loyalty Points Card */}
+        <Card className="border-0 shadow-lg bg-white">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+              <Gift className="w-4 h-4 text-[#f7a838]" />
+              Loyalty Points
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-black text-gray-900">{customer?.loyalty_points || 0} Points</div>
+            <p className="text-xs mt-2 text-gray-400">Earned from completed orders</p>
+          </CardContent>
+        </Card>
+
+        {/* Active Vouchers Card */}
+        <Card className="border-0 shadow-lg bg-white">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+              <Ticket className="w-4 h-4 text-blue-500" />
+              Active Vouchers
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isVouchersLoading ? (
+              <div className="h-10 w-24 bg-gray-100 animate-pulse rounded"></div>
+            ) : (
+              <div className="text-3xl font-black text-gray-900">{vouchers?.length || 0} Active</div>
+            )}
+            {vouchers && vouchers.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {vouchers.slice(0, 2).map((v: any) => (
+                   <span key={v.id} className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold border border-blue-100">
+                      {v.code}
+                   </span>
+                ))}
+                {vouchers.length > 2 && <span className="text-[10px] text-gray-400">+{vouchers.length - 2} more</span>}
+              </div>
+            )}
+            {(!vouchers || vouchers.length === 0) && <p className="text-xs mt-2 text-gray-400">No active vouchers found</p>}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Spin & Bonus Status Section */}
+      <div className="grid grid-cols-1 mb-8">
+        <Card className="border-0 shadow-lg bg-indigo-50 border-indigo-100">
+           <CardHeader className="pb-2">
+             <CardTitle className="text-lg font-bold flex items-center gap-2 text-indigo-900">
+               <Gift className="w-5 h-5 text-indigo-600 animate-pulse" />
+               Spin & Bonus Status
+             </CardTitle>
+           </CardHeader>
+           <CardContent>
+             <div className="flex flex-col md:flex-row gap-6">
+                <div className="flex-1">
+                   <h4 className="text-sm font-bold text-gray-700 mb-2">Pending Prizes in Cart</h4>
+                   <CartPrizesList customerId={customerId} />
+                </div>
+                <div className="flex-1 border-l pl-6 border-indigo-200">
+                   <h4 className="text-sm font-bold text-gray-700 mb-2">Spin Eligibility</h4>
+                   <p className="text-xs text-gray-600 mb-2">
+                     Logic: Users spin after every completed order. 
+                   </p>
+                   {/* Checks based on recent delivered orders */}
+                   <SpinEligibilityStatus customerId={customerId} />
+                </div>
+             </div>
+           </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div>
+           <Card className="border-0 shadow-lg h-full">
+             <CardHeader>
+               <CardTitle className="text-lg font-bold flex items-center gap-2">
+                 <Wallet className="w-5 h-5 text-[#1B6013]" />
+                 Recent Wallet Transactions
+               </CardTitle>
+             </CardHeader>
+             <CardContent>
+                <div className="space-y-4">
+                   {isTransactionsLoading ? (
+                      Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="h-12 bg-gray-50 rounded-lg animate-pulse" />
+                      ))
+                   ) : transactions.length > 0 ? (
+                      transactions.map((tx: any) => (
+                        <div key={tx.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
+                           <div className="flex items-center gap-3">
+                              <div className={cn(
+                                "p-2 rounded-lg",
+                                tx.type === 'wallet_funding' || tx.description?.includes('Credit') || tx.amount > 0 
+                                  ? "bg-green-100 text-green-600" 
+                                  : "bg-red-100 text-red-600"
+                              )}>
+                                 {tx.type === 'wallet_funding' || tx.description?.includes('Credit') || tx.amount > 0 
+                                   ? <ArrowUpRight className="w-4 h-4" /> 
+                                   : <ArrowDownLeft className="w-4 h-4" />
+                                 }
+                              </div>
+                              <div>
+                                 <p className="text-sm font-bold text-gray-800 line-clamp-1">{tx.description || tx.type.replace('_', ' ')}</p>
+                                 <p className="text-[10px] text-gray-500">{format(new Date(tx.created_at), "MMM d, yyyy")}</p>
+                              </div>
+                           </div>
+                           <div className={cn(
+                             "text-sm font-black text-right",
+                             tx.type === 'wallet_funding' || tx.description?.includes('Credit') || tx.amount > 0 
+                               ? "text-green-600" 
+                               : "text-red-600"
+                           )}>
+                              {tx.type === 'wallet_funding' || tx.description?.includes('Credit') || tx.amount > 0 ? "+" : "-"}
+                              {formatNaira(Math.abs(tx.amount))}
+                           </div>
+                        </div>
+                      ))
+                   ) : (
+                      <p className="text-center py-8 text-gray-400 text-sm">No transaction history found</p>
+                   )}
+                </div>
+                {transactions.length > 0 && (
+                   <Button variant="ghost" size="sm" className="w-full mt-4 text-[#1B6013] font-bold" disabled>
+                      View All Transactions
+                   </Button>
+                )}
+             </CardContent>
+           </Card>
+        </div>
+
+        <div>
+           {/* Address & Extra Details Card */}
+           <Card className="border-0 shadow-lg h-full">
+             <CardHeader>
+               <CardTitle className="text-lg font-bold flex items-center gap-2">
+                 <MapPin className="w-5 h-5 text-[#1B6013]" />
+                 Saved Addresses
+               </CardTitle>
+             </CardHeader>
+             <CardContent>
+                <div className="space-y-4">
+                   {customer?.addresses && customer.addresses.length > 0 ? (
+                      customer.addresses.map((addr: any, i: number) => (
+                        <div key={i} className="p-3 rounded-xl border border-gray-100 bg-gray-50">
+                           <p className="text-sm font-bold text-gray-900">{addr.label || `Address ${i+1}`}</p>
+                           <p className="text-xs text-gray-500 mt-1">{addr.street}</p>
+                           <p className="text-xs text-gray-500">{addr.city}, {addr.state}</p>
+                           <div className="flex items-center gap-2 mt-2">
+                              <Phone className="w-3 h-3 text-gray-400" />
+                              <span className="text-[10px] font-medium text-gray-600">{addr.phone}</span>
+                           </div>
+                        </div>
+                      ))
+                   ) : (
+                      <p className="text-center py-8 text-gray-400 text-sm">No addresses saved</p>
+                   )}
+                </div>
+             </CardContent>
+           </Card>
+        </div>
+      </div>
       <div className="">
         <Separator className="my-4 mb-8" />
         <div className="flex justify-between items-center mb-4">

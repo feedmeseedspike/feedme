@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { motion, useAnimation, AnimatePresence, useMotionValue } from "framer-motion";
+import { motion, useAnimation, AnimatePresence, useMotionValue, animate } from "framer-motion";
 import { spinTheWheel } from "src/lib/actions/spin.actions";
 import { cn } from "src/lib/utils";
-import { Star, Volume2, VolumeX, X, Trophy } from "lucide-react";
+import { Star, Volume2, VolumeX, X, Trophy, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { SPIN_PRIZES_CONFIG } from "src/lib/deals"; 
+import NextImage from "next/image";
 import confetti from "canvas-confetti";
 
 // --- Sound Synthesizer ---
@@ -59,22 +60,14 @@ const useSound = () => {
 };
 
 // --- Standalone Visual Component to prevent re-renders ---
-const WheelVisualRender = ({ isFullscreen, activeLight, controls, rotation, prizes }: any) => (
+const WheelVisualRender = ({ isFullscreen, activeLight, controls, rotation, prizes, pointerControls }: any) => (
     <motion.div 
-        layoutId="wheel-visual-core"
         className={cn(
              "relative flex items-center justify-center font-['Quicksand']",
-             isFullscreen ? "w-[85vmin] h-[85vmin] max-w-[600px] max-h-[600px]" : "w-[340px] h-[340px] md:w-[480px] md:h-[480px]"
+             "w-[min(90vw,75vh,600px)] h-[min(90vw,75vh,600px)] pointer-events-auto"
         )}
+        onClick={(e) => e.stopPropagation()}
     >
-        {/* Pointer (Solid Orange Pin to match reference color #f7a838) */}
-        <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-40 w-16 h-20 drop-shadow-xl filter" style={{ transformOrigin: "top center" }}>
-            <svg viewBox="0 0 100 120" className="w-full h-full fill-[#f7a838] stroke-white stroke-[4px]">
-                 <path d="M50 0 C20 0 0 20 0 50 C0 80 50 120 50 120 C50 120 100 80 100 50 C100 20 80 0 50 0 Z" />
-                 <circle cx="50" cy="50" r="15" className="fill-white" />
-            </svg>
-        </div>
-
         {/* The Disc Container (Reference Golden Rim #f7a838) */}
         <motion.div 
             className="w-full h-full rounded-full overflow-visible shadow-2xl bg-white relative"
@@ -83,20 +76,36 @@ const WheelVisualRender = ({ isFullscreen, activeLight, controls, rotation, priz
                 boxShadow: "0 0 0 2px #f7a838 inset, 0 10px 20px rgba(0,0,0,0.3)"
             }}
         >
-             {/* Lights Wrapper */}
+             {/* Pointer anchored to the rim of the disc */}
+             <motion.div 
+                className="absolute top-[-48px] left-1/2 -translate-x-1/2 z-40 w-10 h-14 drop-shadow-xl filter -ml-5" 
+                style={{ transformOrigin: "bottom center" }}
+                animate={{ rotate: pointerControls?.rotate || 0 }}
+                transition={{ type: 'spring', stiffness: 1000, damping: 20 }}
+             >
+                <svg viewBox="0 0 100 120" className="w-full h-full fill-[#f7a838] stroke-[#1B6013] stroke-[4px]">
+                     <path d="M50 120 C50 120 100 80 100 50 C100 20 80 0 50 0 C20 0 0 20 0 50 C0 80 50 120 50 120 Z" />
+                     <circle cx="50" cy="50" r="15" className="fill-white" />
+                </svg>
+             </motion.div>
+
+             {/* Distinct Flashing Circular Lights - Centered on the 10px rim */}
              <div className="absolute -inset-[5px] z-30 pointer-events-none rounded-full">
-                {Array.from({ length: 12 }).map((_, i) => {
-                     const isActive = i === activeLight || i === (activeLight + 6) % 12; 
+                {Array.from({ length: 16 }).map((_, i) => {
+                     const isActive = i === activeLight;
+                     
                      return (
                          <div 
                             key={i}
-                            className="absolute top-0 left-1/2 -translate-x-1/2 h-full w-full"
-                            style={{ transform: `rotate(${i * 30}deg)` }}
+                            className="absolute top-0 left-0 w-full h-full"
+                            style={{ transform: `rotate(${i * 22.5}deg)` }}
                          >
                              <div 
                                 className={cn(
-                                    "w-3 h-3 md:w-3.5 md:h-3.5 rounded-full shadow-sm absolute top-0 transition-all duration-300",
-                                    isActive ? "bg-yellow-200 shadow-[0_0_10px_#fde047] scale-125" : "bg-white/50"
+                                    "w-3 h-3 rounded-full absolute top-0 left-1/2 -translate-x-1/2 transition-all duration-200",
+                                    isActive 
+                                        ? "bg-white shadow-[0_0_15px_#fff,0_0_8px_#fde047] scale-125 z-20" 
+                                        : "bg-white/30"
                                 )} 
                              />
                          </div>
@@ -107,22 +116,23 @@ const WheelVisualRender = ({ isFullscreen, activeLight, controls, rotation, priz
             <div className="w-full h-full rounded-full overflow-hidden relative z-10">
                 <motion.ul 
                     className="w-full h-full relative"
-                    animate={controls}
                     style={{ rotate: rotation }}
                 >
                     {prizes.map((prize: any, i: number) => {
                         const imgSrc = prize.image;
                         const idx = i + 1;
                         const colors = ['#1B6013', '#FFFFFF', '#F97316', '#FFFFFF'];
-                        // Auto-color enforced: Ignore prize.color
                         const bgColor = colors[i % colors.length];
                         const isWhite = bgColor === '#FFFFFF' || bgColor?.toLowerCase() === '#ffffff';
                         const textColor = isWhite ? '#1B6013' : '#FFFFFF';
 
+                        // Stabilized font sizes
+                        const fontSize = prizes.length > 8 ? '0.65rem' : '0.85rem';
+
                         return (
                             <li 
                                 key={i}
-                                className="absolute top-0 left-0 w-full h-full flex items-center justify-start pl-[50px]"
+                                className="absolute top-0 left-0 w-full h-full flex items-center justify-start pl-[15px] md:pl-[30px]"
                                 style={{
                                     transform: `rotate(calc(360deg / ${prizes.length} * (${idx} - 1)))`,
                                     transformOrigin: "center right", 
@@ -134,22 +144,26 @@ const WheelVisualRender = ({ isFullscreen, activeLight, controls, rotation, priz
                                     marginTop: `calc(-1 * (2 * 3.14159 * 50%) / ${prizes.length} / 2)`,
                                 }}
                             >
-                                <div className="flex items-center gap-1 md:gap-2 transform rotate-90 md:rotate-0 origin-center max-w-[80%]">
+                                <div className="flex items-center gap-2 max-w-[85%] pr-4">
                                     {imgSrc && (
-                                        <div className="w-6 h-6 md:w-10 md:h-10 flex-shrink-0 bg-white rounded-full p-0.5 shadow-sm">
-                                            <img src={imgSrc} alt="" className="w-full h-full object-contain rounded-full" />
+                                        <div className="w-7 h-7 md:w-10 md:h-10 flex-shrink-0 bg-white rounded-full p-1 shadow-sm relative overflow-hidden">
+                                            <NextImage src={imgSrc} alt="" fill className="object-contain" />
                                         </div>
                                     )}
-                                    <div className="flex flex-col leading-none">
+                                    <div className="flex flex-col leading-none text-left drop-shadow-sm">
                                         <span 
-                                            className="font-bold text-[0.55rem] md:text-sm uppercase tracking-tight font-['Quicksand'] break-words whitespace-normal text-left line-clamp-2"
-                                            style={{ color: textColor }}
+                                            className="font-bold uppercase tracking-tight font-['Quicksand'] line-clamp-2"
+                                            style={{ 
+                                                color: textColor, 
+                                                fontSize,
+                                                textShadow: isWhite ? 'none' : '0 1px 2px rgba(0,0,0,0.2)'
+                                            }}
                                         >
                                             {prize.label}
                                         </span>
                                         {prize.sub && (
                                             <span 
-                                                className="text-[0.45rem] md:text-xs opacity-80 font-['Source Sans Pro']"
+                                                className="text-[0.45rem] md:text-xs opacity-70 font-bold uppercase"
                                                 style={{ color: textColor }}
                                             >
                                                 {prize.sub}
@@ -162,9 +176,9 @@ const WheelVisualRender = ({ isFullscreen, activeLight, controls, rotation, priz
                     })}
                 </motion.ul>
 
-                {/* Center Hub (Sun/Star) */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 w-16 h-16 md:w-24 md:h-24 bg-white rounded-full shadow-lg flex items-center justify-center border-[4px] border-[#f7a838]">
-                        <Star className="w-10 h-10 text-[#f7a838] fill-[#f7a838]" />
+                {/* Center Hub (Sun/Star) - Properly Centered */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 w-16 h-16 md:w-24 md:h-24 bg-white rounded-full shadow-xl flex items-center justify-center border-[6px] border-[#f7a838]">
+                        <Star className="w-10 h-10 md:w-14 md:h-14 text-[#f7a838] fill-[#f7a838]" />
                 </div>
             </div>
         </motion.div>
@@ -172,7 +186,6 @@ const WheelVisualRender = ({ isFullscreen, activeLight, controls, rotation, priz
 );
 
 export default function SpinWheel({ prizes = SPIN_PRIZES_CONFIG }: { prizes?: any[] }) {
-  const [viewMode, setViewMode] = useState<'inline' | 'fullscreen'>('inline');
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<{ message: string; prize?: any } | null>(null);
   const controls = useAnimation();
@@ -181,6 +194,8 @@ export default function SpinWheel({ prizes = SPIN_PRIZES_CONFIG }: { prizes?: an
   const { initAudio, playTick, playWin, muted, setMuted } = useSound();
   const lastTickRef = useRef(0);
   const [activeLight, setActiveLight] = useState(0);
+  const [pointerControls, setPointerControls] = useState({ rotate: 0 });
+  const [celebratingPrize, setCelebratingPrize] = useState<any>(null);
 
   const prizeMap = useMemo(() => {
      const map: Record<string, number[]> = {};
@@ -193,36 +208,28 @@ export default function SpinWheel({ prizes = SPIN_PRIZES_CONFIG }: { prizes?: an
 
   // Chasing Lights Animation
   useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveLight((prev) => (prev + 1) % 12);
-    }, 100);
-    return () => clearInterval(interval);
-  }, []);
+    let interval: NodeJS.Timeout;
+    const updateLights = () => {
+      setActiveLight((prev) => (prev + 1) % 16);
+      let delay = spinning ? 60 : 150;
+      interval = setTimeout(updateLights, delay);
+    };
+    updateLights();
+    return () => clearTimeout(interval);
+  }, [spinning]);
 
-  // Lock Scroll in Fullscreen
+  // Sound and Pointer Flick Tracking
   useEffect(() => {
-      if (viewMode === 'fullscreen') {
-          document.body.style.overflow = 'hidden';
-          document.documentElement.style.overflow = 'hidden'; 
-      } else {
-          document.body.style.overflow = '';
-          document.documentElement.style.overflow = '';
-      }
-      return () => { 
-          document.body.style.overflow = ''; 
-          document.documentElement.style.overflow = '';
-      };
-  }, [viewMode]);
-
-  // Sound Tracking
-  useEffect(() => {
+     const segmentAngle = 360 / prizes.length;
      const unsubscribe = rotation.on("change", (latest) => {
-         const segmentAngle = 360 / prizes.length;
          const normalizedRotation = latest % 360;
          const currentSegment = Math.floor(normalizedRotation / segmentAngle);
+         
          if (currentSegment !== lastTickRef.current) {
              playTick();
              lastTickRef.current = currentSegment;
+             setPointerControls({ rotate: -15 });
+             setTimeout(() => setPointerControls({ rotate: 0 }), 50);
          }
      });
      return () => unsubscribe();
@@ -231,7 +238,7 @@ export default function SpinWheel({ prizes = SPIN_PRIZES_CONFIG }: { prizes?: an
   const fireConfetti = () => {
       const duration = 3000;
       const animationEnd = Date.now() + duration;
-      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 60 };
+      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 300 };
       const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
 
       const interval: any = setInterval(function() {
@@ -250,257 +257,255 @@ export default function SpinWheel({ prizes = SPIN_PRIZES_CONFIG }: { prizes?: an
     if (spinning) return;
     initAudio(); 
     
-    setViewMode('fullscreen');
     setSpinning(true);
     setResult(null);
+    setCelebratingPrize(null);
 
-    // 1. Immediate Feedback
-    controls.start({ 
-        rotate: currentRotation + 360 * 30, 
-        transition: { duration: 20, ease: "linear" } 
+    // 1. Start continuous cruise
+    const cruise = animate(rotation, rotation.get() + 3600, {
+        duration: 20,
+        ease: "linear",
+        repeat: Infinity
     });
 
     try {
+        console.log("Requesting spin result from server...");
         const response = await spinTheWheel();
-        
+        console.log("Server response:", response);
+
         if (!response || !response.success || !response.prize) {
-            controls.stop();
-            setResult({ message: response?.error || "Error spinning." });
+            console.error("Spin failed:", response?.error || "Unknown error");
+            cruise.stop();
+            setResult({ message: response?.error || "Error." });
             setSpinning(false);
-            return; 
+            return;
         }
 
-        // 3. Logic: Calculate smooth landing
+        // Stop cruise and prepare for final stop
+        cruise.stop();
+
+        // Calculate Precise Landing
         const prizeId = response.prize.id;
-        let possibleIndices: number[] = [];
+        const targetIndex = prizes.findIndex(p => p.id === prizeId);
+        console.log("Target Prize ID:", prizeId, "at Index:", targetIndex);
+
+        const segmentAngle = 360 / prizes.length;
+        const baseTarget = 90 - (Math.max(0, targetIndex) * segmentAngle);
         
-        // Robust ID Matching
-        prizes.forEach((p, idx) => {
-            if (p.id === prizeId) possibleIndices.push(idx);
+        const currentPos = rotation.get();
+        const currentNormalized = ((currentPos % 360) + 360) % 360;
+        
+        let extraRotation = baseTarget - currentNormalized;
+        if (extraRotation <= 0) extraRotation += 360;
+        
+        const finalTarget = currentPos + extraRotation + (360 * 7);
+        console.log("Starting slow-down animation. Target rotation:", finalTarget);
+
+        // 2. The Grand Slow Down
+        await animate(rotation, finalTarget, {
+            duration: 9,
+            ease: [0.1, 0, 0, 1] 
         });
 
-        if (possibleIndices.length === 0) {
-            console.warn("Prize ID not found in local map. Defaulting to 0.", prizeId, prizes);
-            possibleIndices = [0]; 
-        }
+        console.log("Wheel stopped. Showing results modal...");
 
-        const targetIndex = possibleIndices[Math.floor(Math.random() * possibleIndices.length)];
-        const totalSegments = prizes.length;
-        const segmentAngle = 360 / totalSegments;
-
-        // Pointer is at TOP (12 o'clock).
-        // Item 0 is positioned at 'left: 0', width: 50%, origin: 'center right'.
-        // This means Item 0 starts at 9 o'clock (270 deg) relative to circle center? 
-        // Or if standard CSS 0deg is 3 o'clock, then:
-        // Div at left:0 is the left semi-circle.
-        // It points Left.
-        // To get from Left (9 o'clock) to Top (12 o'clock), we rotate +90 deg.
-        // Current Logic: Rotation rotates the whole UL container.
-        
-        const baseTarget = 90 - (targetIndex * segmentAngle);
-
-        // Add small random jitter within the segment (avoid edges)
-        const safeZone = segmentAngle * 0.8; // 80% of segment width
-        const randomOffset = (Math.random() - 0.5) * safeZone; 
-        
-        const currentReal = rotation.get();
-        // Determine minimum number of extra spins
-        const minDecelerationSpins = 5; 
-        
-        const targetPhase = baseTarget + randomOffset;
-        const currentPhase = currentReal % 360;
-        
-        // Distance to cover to align phases forward
-        let phaseDiff = targetPhase - currentPhase;
-        if (phaseDiff < 0) phaseDiff += 360;
-        
-        // Total rotation
-        const finalRotation = currentReal + phaseDiff + (minDecelerationSpins * 360);
-
-        setCurrentRotation(finalRotation);
-
-        // 4. Decelerate to target
-        await controls.start({
-            rotate: finalRotation,
-            transition: { duration: 4, ease: "circOut" } 
-        });
-
+        // 3. Finalize and Show Result
         if (response.prize.type !== 'none') {
+            console.log("Celebrating prize:", response.prize.label || "No Label");
             playWin();
             fireConfetti(); 
-        } 
-
-        setResult({ message: response.message, prize: response.prize });
-        setSpinning(false);
-
+            const foundPrize = prizes.find(p => p.id === response.prize.id);
+            setCelebratingPrize({ ...foundPrize, ...response.prize });
+        } else {
+            console.log("Landing on 'none' result.");
+            setResult({ message: (response as any).message || "No message.", prize: response.prize });
+        }
+        
     } catch (e) {
-        controls.stop();
+        console.error("Execution error in handleSpin:", e);
         setResult({ message: "Network error." });
+    } finally {
         setSpinning(false);
     }
   };
 
-  const closeFullscreen = () => {
-      setResult(null);
-      setViewMode('inline');
-  };
-
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    // You might want to add a toast here, but simple alert or text change is fine for this context
   };
 
   return (
     <>
         <style jsx global>{`
           @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;600;700&family=Source+Sans+Pro:wght@400;700&display=swap');
-          .font-quicksand { fontFamily: 'Quicksand', sans-serif; }
-          .font-source { fontFamily: 'Source Sans Pro', sans-serif; }
+          .font-quicksand { font-family: 'Quicksand', sans-serif; }
+          .font-source { font-family: 'Source Sans Pro', sans-serif; }
+          @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+          }
+          .animate-shimmer {
+            animation: shimmer 3s infinite;
+          }
         `}</style>
         
-        {viewMode === 'inline' && (
-            <div className="flex flex-col items-center justify-center w-full relative">
-                <WheelVisualRender isFullscreen={false} activeLight={activeLight} controls={controls} rotation={rotation} prizes={prizes} />
-                
-                <div className="mt-12 z-20">
-                        <button 
-                            onClick={handleSpin} 
-                            className="group relative px-12 py-4 text-white text-xl font-bold uppercase tracking-widest rounded-[0.6em] transition-all hover:scale-105 active:scale-95"
-                            style={{
-                                backgroundColor: 'rgba(60, 109, 121, 0.12)',
-                                border: '4px solid #f7a838',
-                                fontFamily: "'Quicksand', sans-serif",
-                                fontWeight: 700
-                            }}
-                        >
-                            Spin the Wheel
-                        </button>
-                </div>
-            </div>
-        )}
-
-        <AnimatePresence>
-            {viewMode === 'fullscreen' && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden font-sans">
-                    
-                    <motion.div 
-                        layoutId="fullscreen-bg"
-                        className="absolute inset-0 z-0 bg-[#14248a]" 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
+        <div className="flex flex-col items-center justify-center w-full relative min-h-[600px]">
+            <WheelVisualRender isFullscreen={false} activeLight={activeLight} controls={controls} rotation={rotation} prizes={prizes} pointerControls={pointerControls} />
+            
+            <motion.div 
+                className="mt-8 z-20"
+                whileHover={{ scale: spinning ? 1 : 1.05 }}
+                whileTap={{ scale: spinning ? 1 : 0.95 }}
+            >
+                    <button 
+                        type="button"
+                        onClick={handleSpin} 
+                        disabled={spinning}
+                        className={cn(
+                            "group relative px-8 py-4 text-white text-xl font-black uppercase tracking-[0.1em] rounded-2xl transition-all active:scale-95 overflow-hidden",
+                            spinning ? "opacity-50 grayscale cursor-not-allowed" : ""
+                        )}
+                        style={{
+                            background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                            border: '3px solid #fde047',
+                            boxShadow: '0 4px 0 #166534, 0 10px 30px rgba(22, 163, 74, 0.2)'
+                        }}
                     >
-                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-radial-gradient from-[#4338ca]/30 to-transparent blur-3xl"></div>
-                    </motion.div>
+                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:animate-shimmer" />
+                         <span className="relative z-10 flex items-center gap-3">
+                            <motion.div animate={{ rotate: 360 }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }}>
+                                <Star className="w-5 h-5 fill-yellow-300 text-yellow-300" />
+                            </motion.div>
+                             {spinning ? "SPINNING..." : "Spin & Win"}
+                            <motion.div animate={{ rotate: -360 }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }}>
+                                <Star className="w-5 h-5 fill-yellow-300 text-yellow-300" />
+                            </motion.div>
+                         </span>
+                    </button>
+            </motion.div>
 
-                    <div className="relative z-20 flex flex-col items-center justify-center w-full h-full pointer-events-none">
-                         
-                         <button 
-                            onClick={closeFullscreen}
-                            className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors pointer-events-auto z-50 backdrop-blur-md"
-                        >
-                             <X className="w-6 h-6" />
-                        </button>
+        </div>
 
-                         <button 
-                            onClick={(e) => { e.stopPropagation(); setMuted(!muted); }}
-                            className="absolute top-6 left-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors pointer-events-auto z-50 backdrop-blur-md"
-                        >
-                             {muted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
-                        </button>
+        {/* Results & Celebration Overlays - MOVED OUTSIDE TRANSFORMED CONTAINER */}
+        <AnimatePresence>
+            {celebratingPrize && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[201] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+                    onClick={(e) => { e.stopPropagation(); setCelebratingPrize(null); }}
+                >
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="relative max-w-sm w-full bg-white rounded-[2rem] shadow-2xl border border-white/50 overflow-hidden"
+                    >
+                        <div className="absolute top-0 left-0 w-full h-40 bg-gradient-to-b from-green-50/80 to-transparent -z-10" />
 
-                         <div className="pointer-events-auto relative">
-                             <WheelVisualRender isFullscreen={true} activeLight={activeLight} controls={controls} rotation={rotation} prizes={prizes} />
-                         </div>
-                        
-                        <AnimatePresence>
-                            {result && (
-                                <motion.div 
-                                    initial={{ scale: 0, opacity: 0 }}
+                        <div className="relative pt-12 pb-8 px-6 flex flex-col items-center text-center">
+                            <div className="relative mb-6">
+                                <div className="absolute inset-0 bg-green-400/20 blur-2xl rounded-full scale-150" />
+                                <motion.div
+                                    initial={{ scale: 0.5, opacity: 0 }}
                                     animate={{ scale: 1, opacity: 1 }}
-                                    exit={{ scale: 0.9, opacity: 0 }}
-                                    className="absolute inset-0 flex items-center justify-center pointer-events-auto z-50"
+                                    transition={{ type: "spring", delay: 0.1 }}
+                                    className="relative w-40 h-40 bg-white rounded-[2rem] shadow-xl flex items-center justify-center p-4 border border-slate-50"
                                 >
-                                    <div 
-                                        className="bg-white p-8 rounded-[2rem] shadow-2xl text-center max-w-sm relative mx-4"
-                                        style={{ border: "6px solid #f7a838" }}
-                                    >
-                                        <div 
-                                            className="absolute -top-10 left-1/2 -translate-x-1/2 w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-md"
-                                            style={{ border: "6px solid #f7a838" }}
-                                        >
-                                            {(!result.prize || result.prize.type === 'none') ? <span className="text-4xl">😢</span> : <Trophy className="w-10 h-10 text-[#f7a838]" />}
+                                    {celebratingPrize.image ? (
+                                        <div className="relative w-full h-full">
+                                            <NextImage 
+                                                src={celebratingPrize.image} 
+                                                alt={celebratingPrize.label} 
+                                                fill
+                                                className="object-contain drop-shadow-md" 
+                                            />
                                         </div>
-                                        
-                                        <h2 
-                                            className="text-3xl font-black text-slate-800 mt-8 mb-2 uppercase tracking-tight"
-                                            style={{ fontFamily: "'Quicksand', sans-serif" }}
-                                        >
-                                            {(!result.prize || result.prize.type === 'none') ? 'Oh No!' : 'You Won!'}
-                                        </h2>
-                                        <p 
-                                            className="text-slate-600 mb-6 text-base leading-tight font-medium"
-                                            style={{ fontFamily: "'Source Sans Pro', sans-serif" }}
-                                        >
-                                            {result.message}
-                                        </p>
-
-                                        {result.prize?.data?.code && (
-                                            <div className="bg-slate-100 p-3 rounded-lg border border-dashed border-slate-300 mb-6 flex items-center justify-between">
-                                                <code className="text-sm font-bold text-slate-700 tracking-wider">
-                                                    {result.prize.data.code}
-                                                </code>
-                                                <button 
-                                                    onClick={() => copyToClipboard(result.prize?.data?.code || '')}
-                                                    className="text-xs bg-white border border-slate-200 px-2 py-1 rounded hover:bg-slate-50 uppercase font-bold text-slate-500"
-                                                >
-                                                    Copy
-                                                </button>
-                                            </div>
-                                        )}
-                                        
-                                        <div className="flex flex-col gap-3">
-                                            {(!result.prize || result.prize.type === 'none') ? (
-                                                <button 
-                                                    onClick={closeFullscreen}
-                                                    className="w-full text-white py-4 rounded-xl font-bold uppercase tracking-wider shadow-lg transition-all hover:bg-opacity-90"
-                                                    style={{ 
-                                                        background: "linear-gradient(to right, #94a3b8, #64748b)",
-                                                        fontFamily: "'Quicksand', sans-serif"
-                                                    }}
-                                                >
-                                                    Try Again
-                                                </button>
-                                            ) : (
-                                                <>
-                                                    <Link
-                                                        href={result.prize?.data?.code ? `/checkout?apply_voucher=${result.prize.data.code}` : '/account/wallet'}
-                                                        className="w-full text-white py-4 rounded-xl font-bold uppercase tracking-wider shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
-                                                        style={{ 
-                                                            background: "linear-gradient(to right, #f7a838, #ea580c)",
-                                                            fontFamily: "'Quicksand', sans-serif"
-                                                        }}
-                                                    >
-                                                        {result.prize?.type === 'wallet_cash' ? 'Check Wallet' : 'Checkout Now'}
-                                                    </Link>
-                                                     <Link
-                                                        href="/account/rewards"
-                                                        className="w-full text-slate-500 py-3 rounded-xl font-bold uppercase text-sm hover:bg-slate-50 transition-all block"
-                                                    >
-                                                        View My Rewards
-                                                    </Link>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
+                                    ) : (
+                                        <Trophy className="w-20 h-20 text-yellow-500" />
+                                    )}
                                 </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-                </div>
+                                <div className="absolute -top-3 -right-3 bg-yellow-400 text-yellow-900 w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-lg border-2 border-white transform rotate-12">
+                                    🎉
+                                </div>
+                            </div>
+
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                            >
+                                <h3 className="text-3xl font-black text-slate-900 tracking-tight mb-2 uppercase font-quicksand">
+                                    You Won!
+                                </h3>
+                                <p className="text-slate-500 font-medium text-sm px-4 leading-relaxed mb-6 font-source">
+                                    Congratulations! You&apos;ve unlocked <strong className="text-slate-900">{celebratingPrize.label}</strong>. 
+                                    {celebratingPrize.type === 'wallet_cash' ? ' It has been added to your wallet.' : ' Check rewards to claim.'}
+                                </p>
+                            </motion.div>
+
+                            <div className="w-full flex flex-col gap-3">
+                                <Link
+                                    href={
+                                        celebratingPrize.type === 'item' ? '/checkout' :
+                                        celebratingPrize.type === 'wallet_cash' ? '/account/wallet' :
+                                        celebratingPrize.type === 'loyalty_points' ? '/account/rewards' :
+                                        '/'
+                                    }
+                                    className="w-full py-4 rounded-xl bg-gradient-to-r from-[#1B6013] to-[#15803d] text-white font-bold text-sm shadow-xl hover:shadow-green-900/20 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 relative overflow-hidden group uppercase tracking-widest text-xs"
+                                >
+                                    View Rewards <ArrowRight className="w-4 h-4" />
+                                </Link>
+                                
+                                <button 
+                                    onClick={() => setCelebratingPrize(null)} 
+                                    className="w-full py-3 rounded-xl text-slate-400 font-bold text-[10px] uppercase hover:bg-slate-50 transition-colors tracking-widest"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+
+            {result && (
+                <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[201] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
+                    onClick={(e) => { e.stopPropagation(); setResult(null); }}
+                >
+                    <motion.div 
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="bg-white p-8 rounded-[2rem] shadow-2xl text-center max-w-sm relative mx-4"
+                        style={{ border: "6px solid #f7a838" }}
+                    >
+                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-md border-[6px] border-[#f7a838]">
+                            <span className="text-4xl">😢</span>
+                        </div>
+                        
+                        <h2 className="text-3xl font-black text-slate-800 mt-8 mb-2 uppercase tracking-tight font-quicksand">
+                            Oh No!
+                        </h2>
+                        <p className="text-slate-600 mb-6 text-base leading-tight font-medium font-source">
+                            {result.message}
+                        </p>
+                        
+                        <button 
+                            onClick={() => setResult(null)}
+                            className="w-full text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl transition-all active:scale-95 bg-gradient-to-r from-[#f7a838] to-[#ea580c] border-b-4 border-[#9a3412]"
+                        >
+                            Try Again
+                        </button>
+                    </motion.div>
+                </motion.div>
             )}
         </AnimatePresence>
     </>
   );
 }
-

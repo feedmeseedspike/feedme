@@ -51,13 +51,6 @@ const UserDropdownContent: React.FC<UserDropdownContentProps> = ({ user }) => (
       >
         <Wallet className="mr-2 h-4 w-4" /> Wallet
       </Link>
-      {/* SPIN TO WIN - TEMPORARILY DISABLED */}
-      {/* <Link
-        href="/spin-to-win"
-        className="flex items-center gap-2 p-2 hover:bg-purple-50 text-purple-700 font-medium rounded transition-colors"
-      >
-        <div className="mr-2 h-4 w-4 flex items-center justify-center text-lg">🎡</div> Spin & Win
-      </Link> */}
       {user && (user as any).role === "admin" && (
         <Link
           href="/admin/overview"

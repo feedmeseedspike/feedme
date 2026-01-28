@@ -17,6 +17,7 @@ export type SpinPrizeRow = {
   code?: string;
   product_id?: string;
   is_active: boolean;
+  for_new_users_only?: boolean;
   product?: {
       id: string;
       name: string;

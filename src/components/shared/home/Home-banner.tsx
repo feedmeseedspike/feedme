@@ -9,6 +9,7 @@ import { createClient } from "@utils/supabase/client";
 import { Tables } from "src/utils/database.types";
 import { Skeleton } from "@components/ui/skeleton";
 import { HomeCarousel } from "@/components/shared/home/Home-carousel";
+import { toSlug } from "src/lib/utils";
 
 type Banner = Tables<"banners">;
 
@@ -47,20 +48,22 @@ const Banner = () => {
   });
 
   return (
-    <section className="pt-4 pb-5 md:pt-10 md:pb-10 lg:pb-20 w-full">
-      <div className="md:flex items-stretch gap-2 md:gap-4 w-full h-full">
-        <div className="basis-[896px]">
+    <section className="pt-4 pb-5 md:pt-6 md:pb-6 lg:pb-12 w-full">
+      <div className="flex flex-col lg:flex-row items-stretch gap-4 md:gap-6 w-full">
+        {/* Main Carousel Area */}
+        <div className="w-full lg:w-[68%] xl:w-[70%]">
           <HomeCarousel />
         </div>
 
-        <div className="md:basis-[444px] w-full flex flex-row md:flex-col gap-2 mt-3 md:mt-0 md:gap-4">
+        {/* Side Banners Area */}
+        <div className="w-full lg:w-[32%] xl:w-[30%] flex flex-row lg:flex-col gap-3 md:gap-4">
           {isLoadingSideBanners ? (
             Array(2)
               .fill(0)
               .map((_, i) => (
                 <Skeleton
                   key={i}
-                  className="w-1/2 md:w-full md:h-1/2 bg-gray-200"
+                  className="w-1/2 lg:w-full aspect-[21/9] lg:aspect-auto lg:h-[220px] rounded-2xl bg-gray-200"
                 />
               ))
           ) : sideBanners && sideBanners.length > 0 ? (
@@ -71,40 +74,54 @@ const Banner = () => {
                   banner.active && (
                     <div
                       key={banner.id!}
-                      className="w-1/2 md:w-full md:max-w-[445px] aspect-[35/15] h-1/2 md:h-full"
+                      className="w-1/2 lg:w-full h-auto aspect-[35/15] lg:flex-1 overflow-hidden"
                     >
-                      {(banner as any).link_url &&
-                      (banner as any).link_url.trim() !== "" ? (
-                        <Link
-                          href={(banner as any).link_url}
-                          className="block h-full w-full hover:opacity-90 transition-opacity"
-                        >
-                          <Image
-                            src={banner.image_url}
-                            alt={`${banner.tag} banner`}
-                            sizes="(max-width: 768px) 50vw, 445px"
-                            width={445}
-                            height={700}
-                            loading="lazy"
-                            className="h-full w-full object-contain"
-                          />
-                        </Link>
-                      ) : (
-                        <Image
-                          src={banner.image_url}
-                          alt={`${banner.tag} banner`}
-                          sizes="(max-width: 768px) 50vw, 445px"
-                          width={445}
-                          height={700}
-                          loading="lazy"
-                          className="h-full w-full object-contain"
-                        />
-                      )}
+                      {(() => {
+                        const b = banner as any;
+                        const hasLink = (b.link_url && b.link_url.trim() !== "") || 
+                                        (b.bundle_id && b.bundles?.name) || 
+                                        (b.tag && b.tag.trim() !== "");
+                        
+                        let href = b.link_url || "/";
+                        if (!b.link_url) {
+                          if (b.bundle_id && b.bundles?.name) {
+                            href = `/bundles/${toSlug(b.bundles.name)}`;
+                          } else if (b.tag) {
+                            href = `/${b.tag}`;
+                          }
+                        }
+
+                        const ImageContent = (
+                          <div className="relative w-full h-full">
+                            <Image
+                              src={banner.image_url || "https://placehold.co/600x400/png"}
+                              alt={`${banner.tag} banner`}
+                              fill
+                              sizes="(max-width: 768px) 50vw, (max-width: 1024px) 30vw, 450px"
+                              loading="lazy"
+                              className="object-cover"
+                            />
+                          </div>
+                        );
+
+                        if (hasLink) {
+                          return (
+                            <Link
+                              href={href}
+                              className="block h-full w-full hover:opacity-95 transition-opacity"
+                            >
+                              {ImageContent}
+                            </Link>
+                          );
+                        }
+
+                        return ImageContent;
+                      })()}
                     </div>
                   )
               )
           ) : (
-            <p>No side banners available.</p>
+            <p className="text-gray-400 text-sm">No side banners available.</p>
           )}
         </div>
       </div>

@@ -1,12 +1,12 @@
 import Footer from "@components/shared/footer";
 import Header from "@components/shared/header";
 import Headertags from "@components/shared/header/Headertags";
-import Image from "next/image";
 import React from "react";
+import NotFoundUI from "./not-found-ui";
 
 export const metadata = {
   title: {
-    absolute: "Not Found",
+    absolute: "Page Not Found",
   },
   robots: {
     index: false,
@@ -16,22 +16,16 @@ export const metadata = {
 
 const NotFound = () => {
   return (
-    <>
+    <div className="bg-[#F2F0E9] min-h-screen flex flex-col">
       <Header />
-      <div className="hidden md:block border-b py-2">
+      <div className="hidden md:block border-b border-[#D1D1D1] py-2">
         <Headertags />
       </div>
-      <section className="flex justify-center items-center bg-white">
-        <Image
-          src="/404.gif"
-          alt="not found"
-          height={600}
-          width={800}
-          className="max-w-full"
-        />
-      </section>
+      
+      <NotFoundUI />
+
       <Footer />
-    </>
+    </div>
   );
 };
 export default NotFound;

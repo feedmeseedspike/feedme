@@ -35,6 +35,7 @@ interface CustomersClientProps {
   initialStatus: string;
   initialStartDate: string;
   initialEndDate: string;
+  initialWalletFilter: string;
   initialSortBy: string;
   initialSortOrder: string;
 }
@@ -49,6 +50,7 @@ export default function CustomersClient({
   initialStatus,
   initialStartDate,
   initialEndDate,
+  initialWalletFilter,
   initialSortBy,
   initialSortOrder,
 }: CustomersClientProps) {
@@ -63,6 +65,7 @@ export default function CustomersClient({
   const [status, setStatus] = useState(initialStatus);
   const [startDate, setStartDate] = useState(initialStartDate);
   const [endDate, setEndDate] = useState(initialEndDate);
+  const [walletFilter, setWalletFilter] = useState(initialWalletFilter);
 
   // Sync state with props when they change (e.g. navigation)
   useEffect(() => {
@@ -84,6 +87,10 @@ export default function CustomersClient({
   useEffect(() => {
      setEndDate(initialEndDate);
   }, [initialEndDate]);
+
+  useEffect(() => {
+    setWalletFilter(initialWalletFilter);
+  }, [initialWalletFilter]);
 
   const createQueryString = useCallback(
     (name: string, value: string) => {
@@ -131,6 +138,11 @@ export default function CustomersClient({
      router.push(pathname + "?" + createQueryString(type, val));
   };
 
+  const handleWalletChange = (val: string) => {
+    setWalletFilter(val);
+    router.push(pathname + "?" + createQueryString("walletFilter", val === "all" ? "" : val));
+  };
+
   const handlePageChange = (page: number) => {
     router.push(pathname + "?" + createQueryString("page", page.toString()));
   };
@@ -143,6 +155,7 @@ export default function CustomersClient({
     setStatus("");
     setStartDate("");
     setEndDate("");
+    setWalletFilter("");
     router.push(pathname);
   };
 
@@ -157,6 +170,7 @@ export default function CustomersClient({
       if (status && status !== "all") params.append("status", status);
       if (startDate) params.append("startDate", startDate);
       if (endDate) params.append("endDate", endDate);
+      if (walletFilter && walletFilter !== "all") params.append("walletFilter", walletFilter);
       
       const response = await fetch(`/api/admin/customers/export?${params.toString()}`);
       
@@ -252,6 +266,20 @@ export default function CustomersClient({
                         <SelectItem value="active">Active</SelectItem>
                         <SelectItem value="inactive">Inactive</SelectItem>
                         <SelectItem value="banned">Banned</SelectItem>
+                    </SelectContent>
+                 </Select>
+              </div>
+
+              <div className="w-[180px] space-y-1">
+                 <label className="text-xs font-medium text-gray-500 ml-1">Wallet Balance</label>
+                 <Select value={walletFilter || "all"} onValueChange={handleWalletChange}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="All" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="has_balance">Has Balance</SelectItem>
+                        <SelectItem value="no_balance">Empty Wallet</SelectItem>
                     </SelectContent>
                  </Select>
               </div>
