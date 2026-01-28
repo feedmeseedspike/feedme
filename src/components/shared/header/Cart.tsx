@@ -15,6 +15,7 @@ import {
   SheetTrigger,
 } from "@components/ui/sheet";
 import { ArrowLeft, Trash2Icon } from "lucide-react";
+import { Icon } from "@iconify/react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
@@ -41,6 +42,8 @@ import { useToast } from "src/hooks/useToast";
 import { useVoucherValidationMutation } from "src/queries/vouchers";
 import { createClient as createSupabaseClient } from "src/utils/supabase/client";
 import { Tables } from "@utils/database.types";
+import { getCustomerOrdersAction } from "src/lib/actions/user.action";
+import { getDealMessages, BONUS_CONFIG, calculateCartDiscount, getAppliedDiscountLabel } from "src/lib/deals";
 
 // Explicitly define ProductOption here to resolve 'Cannot find name' errors
 interface ProductOption {
@@ -86,9 +89,9 @@ const CartProductGroupDisplay = React.memo(
       "Product";
 
     return (
-      <div key={productId} className="flex flex-col gap-6">
-        <div className="flex items-center gap-2">
-          <p className="h6-bold text-lg">{groupName}</p>
+      <div key={productId} className="flex flex-col gap-4">
+        <div className="flex items-center gap-2 px-1">
+          <p className="font-bold text-base text-gray-900 tracking-tight">{groupName}</p>
         </div>
         {Object.entries(productGroup.options).map(
           ([optionKey, item]: [string, CartItem]) => (
@@ -152,11 +155,11 @@ const CartItemDisplay = React.memo(
 
     return (
       <React.Fragment>
-        <div className="flex items-center gap-4 sm:gap-6 overflow-y-visible py-2">
-          <div>
+        <div className="flex items-center gap-4 sm:gap-5 overflow-y-visible py-2 hover:bg-gray-50/80 transition-all duration-300 rounded-2xl px-3 -mx-3 group/item">
+          <div className="flex-shrink-0">
             <Image
-              width={64}
-              height={64}
+              width={56}
+              height={56}
               src={
                 productOption?.image ||
                 item.products?.images?.[0] ||
@@ -166,7 +169,7 @@ const CartItemDisplay = React.memo(
                 "/placeholder.png"
               }
               alt={productName}
-              className="h-[80px] w-[80px] rounded-[8px] bg-gray-50 border border-black/5 object-cover"
+              className="h-[56px] w-[56px] rounded-[14px] bg-gray-50 border border-black/5 object-cover shadow-sm group-hover/item:shadow-md transition-shadow"
             />
           </div>
           <div className="flex flex-col gap-[6px] w-full">
@@ -189,21 +192,22 @@ const CartItemDisplay = React.memo(
             </div>
             <div className="flex justify-between items-center">
               <p className="text-[#101828] font-bold">
-                {formatNaira(
-                  (() => {
-                    if (item.offer_id && item.offers) {
-                      return item.offers.price_per_slot || item.price || 0;
-                    } else if (
-                      isProductOption(item.option) &&
-                      item.option.price !== undefined &&
-                      item.option.price !== null
-                    ) {
-                      return item.option.price;
-                    } else {
-                      return item.price || 0;
-                    }
-                  })()
-                )}{" "}
+                {(() => {
+                    const price = (() => {
+                      if (item.offer_id && item.offers) {
+                        return item.offers.price_per_slot || item.price || 0;
+                      } else if (
+                        isProductOption(item.option) &&
+                        item.option.price !== undefined &&
+                        item.option.price !== null
+                      ) {
+                        return item.option.price;
+                      } else {
+                        return item.price || 0;
+                      }
+                    })();
+                    return price === 0 ? <span className="text-green-600 font-extrabold">FREE</span> : formatNaira(price);
+                  })()}
               </p>
               <div className="flex items-center gap-2 sm:gap-4">
                 <Button
@@ -218,8 +222,10 @@ const CartItemDisplay = React.memo(
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-[9px] bg-[#1B6013] rounded-[4px] p-3 text-white"
+                  className={`size-[9px] bg-[#1B6013] rounded-[4px] p-3 text-white ${item.price === 0 ? "opacity-30" : ""}`}
                   onClick={() => handleQuantityChange(item as CartItem, true)}
+                  disabled={item.price === 0}
+                  title={item.price === 0 ? "Cannot add more of a free prize item" : "Add one"}
                 >
                   <AiOutlinePlus />
                 </Button>
@@ -312,6 +318,18 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
 
   const [open, setOpen] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(0);
+  const [isFirstOrder, setIsFirstOrder] = useState(false);
+
+  useEffect(() => {
+    if (user?.user_id) {
+       getCustomerOrdersAction(user.user_id).then((orders) => {
+          if (orders && orders.length === 0) setIsFirstOrder(true);
+          else setIsFirstOrder(false);
+       });
+    } else {
+       setIsFirstOrder(false);
+    }
+  }, [user]);
 
   // Listen for anonymous cart updates
   useEffect(() => {
@@ -601,6 +619,12 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
 
   const handleRemoveItem = useCallback(
     async (itemToRemove: CartItem) => {
+      // CONFIRMATION FOR PRIZES
+      if (itemToRemove.price === 0) {
+          const confirmed = window.confirm("⚠️ Are you sure you want to remove this FREE prize?\n\nOnce removed, you may lose this reward forever!");
+          if (!confirmed) return;
+      }
+
       try {
         if (user) {
           // Authenticated user - use API
@@ -756,6 +780,11 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
     return anonymousCart.getItemCount();
   }, [items, user, anonymousCart]);
 
+  const dealsDiscount = useMemo(
+    () => calculateCartDiscount(subtotal, items, isFirstOrder, !!user?.user_id),
+    [subtotal, items, isFirstOrder]
+  );
+
   // Check if cart is loading (for authenticated users) or anonymous cart is loading
   const isCartLoading = useMemo(() => {
     if (user) {
@@ -766,8 +795,8 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
   }, [user, isLoading, anonymousCart.isLoading]);
 
   const totalAmount = useMemo(
-    () => subtotal - voucherDiscount,
-    [subtotal, voucherDiscount]
+    () => Math.max(0, subtotal - dealsDiscount - voucherDiscount),
+    [subtotal, dealsDiscount, voucherDiscount]
   ); // Calculate total with discount
 
   // Add a state to track if device is mobile
@@ -886,37 +915,87 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
           )}
         </SheetHeader>
 
-        {/* Free Delivery Progress Bar */}
-        {/* Free Delivery Progress Bar - Minimal Design */}
+        {/* Free Delivery Progress Bar - Brand Aligned Design */}
         {items.length > 0 &&
           (() => {
-            const FREE_SHIPPING_THRESHOLD = 50000;
-            const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
-            const percent = Math.min(
-              100,
-              (subtotal / FREE_SHIPPING_THRESHOLD) * 100
-            );
+            if (!user) {
+                 return (
+                    <div className="mb-2 mt-2 px-1 bg-yellow-50 p-3 rounded-lg border border-yellow-100 flex items-center justify-between">
+                         <div className="flex items-center gap-2">
+                            <Icon icon="solar:lock-keyhole-minimalistic-bold" className="w-4 h-4 text-yellow-600" />
+                            <p className="text-xs font-bold text-yellow-800">Log in to unlock rewards!</p>
+                         </div>
+                         <Button variant="link" size="sm" className="h-auto p-0 text-[#1B6013] font-bold text-xs" onClick={() => router.push('/login')}>
+                            Login
+                         </Button>
+                    </div>
+                 )
+            }
+
+            const spend = subtotal;
+            let target = 0;
+            let rewardName = "";
+            let unlocked = false;
+
+            // Define Milestones
+            const FREE_DELIV = BONUS_CONFIG?.SUBSEQUENT_FREE_DELIVERY?.min_spend || 50000;
+            const CASHBACK = BONUS_CONFIG?.CASHBACK_THRESHOLD?.spend || 100000;
+            const LOYALTY_1 = BONUS_CONFIG?.LOYALTY_TIERS?.[0]?.threshold || 200000;
+
+             if (spend < FREE_DELIV) {
+                target = FREE_DELIV;
+                rewardName = "Free Delivery";
+             } else if (spend < CASHBACK) {
+                target = CASHBACK;
+                rewardName = "₦2,000 Cash Back";
+             } else if (spend < LOYALTY_1) {
+                target = LOYALTY_1;
+                rewardName = "1 Loyalty Point";
+             } else {
+                 const nextTier = BONUS_CONFIG.LOYALTY_TIERS.find(t => t.threshold > spend);
+                 if (nextTier) {
+                     target = nextTier.threshold;
+                     rewardName = `${nextTier.points} Loyalty Points`;
+                 } else {
+                     unlocked = true;
+                     rewardName = "Max Rewards Unlocked!";
+                     target = spend;
+                 }
+             }
+
+            const remaining = Math.max(0, target - spend);
+            const percent = unlocked ? 100 : Math.min(100, (spend / target) * 100);
+
             return (
-              <div className="mb-2 px-1">
-                <div className="flex items-center justify-between mb-2 text-xs">
-                  {subtotal >= FREE_SHIPPING_THRESHOLD ? (
-                    <span className="font-medium text-green-700">
-                     You&apos;ve unlocked <b>Free Delivery</b>
+              <div className="mb-2 mt-2 px-1 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[10px] uppercase font-bold tracking-widest text-[#1B6013]">{unlocked ? "Legendary Status" : "Next Reward"}</h4>
+                  <div className="flex items-center gap-2 bg-[#1B6013]/5 px-3 py-1.5 rounded-full border border-[#1B6013]/10">
+                    <span className="text-[10px] font-bold text-[#1B6013] uppercase tracking-wider">
+                      {unlocked ? "All Unlocked" : rewardName}
                     </span>
-                  ) : (
-                    <span className="text-gray-600">
-                      Add <span className="font-semibold text-primary">{formatNaira(remaining)}</span> for <span className="font-semibold text-black">Free Delivery</span>
-                    </span>
-                  )}
-                  <span className="text-gray-400 text-[10px]">{Math.round(percent)}%</span>
+                  </div>
                 </div>
-                <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+
+                <div className="min-h-[1.5rem] flex items-center justify-between gap-4">
+                   {unlocked ? (
+                      <p className="text-[13px] font-bold text-[#1B6013] flex items-center gap-1.5">
+                        <Icon icon="solar:star-rainbow-bold-duotone" className="w-4 h-4" />
+                        You&apos;ve unlocked everything!
+                      </p>
+                   ) : (
+                    <p className="text-[12px] font-medium text-gray-500 leading-tight">
+                      Add <span className="font-bold text-gray-900">{formatNaira(remaining)}</span> to win <span className="text-[#1B6013] font-bold">{rewardName}</span>!
+                    </p>
+                   )}
+                  <span className="text-[10px] font-black text-[#1B6013] tabular-nums bg-[#1B6013]/5 px-2 py-1 rounded-lg">
+                    {Math.round(percent)}%
+                  </span>
+                </div>
+                
+                <div className="relative w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
                   <div
-                    className={`h-full transition-all duration-500 ease-out ${
-                      subtotal >= FREE_SHIPPING_THRESHOLD
-                        ? "bg-green-600"
-                        : "bg-primary"
-                    }`}
+                    className="absolute top-0 left-0 h-full bg-[#1B6013] transition-all duration-700 ease-out shadow-[0_0_10px_rgba(27,96,19,0.3)]"
                     style={{ width: `${percent}%` }}
                   />
                 </div>
@@ -924,16 +1003,19 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
             );
           })()}
 
-        <div className="flex grow flex-col space-y-5 overflow-y-auto pt-1">
-          {isLoading && <p>Loading cart...</p>}
-          {isError && <p>Error loading cart: {error?.error}</p>}
+        <div className="flex grow flex-col space-y-10 overflow-y-auto px-1 pt-4 custom-scrollbar">
+          {isLoading && <p className="text-center py-8 text-gray-400">Loading cart...</p>}
+          {isError && <p className="text-center py-8 text-red-400">Error loading cart: {error?.error}</p>}
 
           {!isLoading &&
           !isError &&
           items.length === 0 &&
           totalQuantity === 0 ? (
-            <div className="text-center text-gray-500 mt-10">
-              <p className="text-lg font-semibold">Your cart is empty.</p>
+            <div className="text-center text-gray-500 mt-20 space-y-4">
+               <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                 <Icon icon="solar:cart-cross-linear" className="w-8 h-8 text-gray-300" />
+               </div>
+              <p className="text-base font-bold text-gray-900">Your cart is empty.</p>
               <p className="text-sm text-gray-400">
                 Start adding items to your cart!
               </p>
@@ -963,6 +1045,12 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
                 <p>Subtotal</p>
                 <p>{formatNaira(subtotal)}</p>
               </div>
+              {dealsDiscount > 0 && (
+                <div className="text-sm font-bold text-[#1B6013] flex justify-between mt-1">
+                   <p>{getAppliedDiscountLabel(subtotal, items, isFirstOrder, !!user?.user_id)}</p>
+                   <p>-{formatNaira(dealsDiscount)}</p>
+                </div>
+              )}
               {/* Voucher Section */}
               <div className="flex w-full items-center pt-[10px] gap-3">
                 <Input

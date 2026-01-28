@@ -27,16 +27,17 @@ interface Review {
   thumbnailUrl?: string;
   verified: boolean;
   date?: string;
-  linkPreference?: {
+  linkPreferences?: {
     type: "product" | "bundle" | "offer";
     slot?: number;
-  };
-  fallbackRelatedItem?: {
+    identifier?: string; // slug for product, name for bundle, title for offer
+  }[];
+  fallbackRelatedItems?: {
     name: string;
     href: string;
     type: "product" | "bundle" | "offer";
     image?: string;
-  };
+  }[];
 }
 
 type ProductRow = Tables<"products">;
@@ -67,16 +68,24 @@ const defaultReviews: Review[] = [
 
     verified: true,
     date: "2025-11-22",
-    linkPreference: {
-      type: "product",
-      slot: 0,
-    },
-    fallbackRelatedItem: {
-      name: "Fresh Vegetables Bundle",
-      href: "/bundles/fresh-vegetables",
-      type: "bundle",
-      image: "/images/review-thumb-1.jpg",
-    },
+    linkPreferences: [
+      { type: "product", slot: 0 },
+      { type: "bundle", slot: 0 }
+    ],
+    fallbackRelatedItems: [
+      {
+        name: "Fresh Vegetables Bundle",
+        href: "/bundles/fresh-vegetables",
+        type: "bundle",
+        image: "/images/review-thumb-1.jpg",
+      },
+      {
+        name: "Tomatoes",
+        href: "/product/tomato-jos",
+        type: "product",
+        image: "/images/tomatoes.jpeg", // Hypothetical
+      }
+    ],
   },
   {
     id: "2",
@@ -88,16 +97,16 @@ const defaultReviews: Review[] = [
 
     verified: true,
     date: "2025-11-15",
-    linkPreference: {
-      type: "offer",
-      slot: 0,
-    },
-    fallbackRelatedItem: {
-      name: "Premium Fruits Collection",
-      href: "/offers/premium-fruits",
-      type: "offer",
-      image: "/images/review-thumb-2.jpg",
-    },
+    linkPreferences: [
+      { type: "product", identifier: "spring-onion" }
+    ],
+    fallbackRelatedItems: [
+      {
+        name: "Spring Onion",
+        href: "/product/spring-onion",
+        type: "product",
+      },
+    ],
   },
   {
     id: "3",
@@ -109,16 +118,19 @@ const defaultReviews: Review[] = [
 
     verified: true,
     date: "2025-11-19",
-    linkPreference: {
-      type: "product",
-      slot: 1,
-    },
-    fallbackRelatedItem: {
-      name: "Organic Produce Box",
-      href: "/products/organic-produce-box",
-      type: "product",
-      image: "/images/review-thumb-3.jpg",
-    },
+    linkPreferences: [
+      { type: "product", slot: 1 },
+      { type: "product", slot: 2 },
+      { type: "bundle", slot: 1 }
+    ],
+    fallbackRelatedItems: [
+      {
+        name: "Organic Produce Box",
+        href: "/products/organic-produce-box",
+        type: "product",
+        image: "/images/review-thumb-3.jpg",
+      },
+    ],
   },
   {
     id: "4",
@@ -130,16 +142,201 @@ const defaultReviews: Review[] = [
 
     verified: true,
     date: "2025-11-10",
-    linkPreference: {
-      type: "bundle",
-      slot: 0,
-    },
-    fallbackRelatedItem: {
-      name: "Seasonal Fruits Pack",
-      href: "/bundles/seasonal-fruits",
-      type: "bundle",
-      image: "/images/review-thumb-4.jpg",
-    },
+    linkPreferences: [
+      { type: "bundle", slot: 0 }
+    ],
+    fallbackRelatedItems: [
+      {
+        name: "Seasonal Fruits Pack",
+        href: "/bundles/seasonal-fruits",
+        type: "bundle",
+        image: "/images/review-thumb-4.jpg",
+      },
+    ],
+  },
+  // Duplicates for seamless looping
+  {
+    id: "1-dup",
+    customerName: "Sarah Johnson",
+    rating: 5,
+    description:
+      "Absolutely love the fresh produce! The quality is amazing and delivery was super fast. Highly recommend!",
+    videoUrl: "/customerReviews/video1.mp4",
+
+    verified: true,
+    date: "2025-11-22",
+    linkPreferences: [
+      { type: "product", slot: 0 },
+      { type: "bundle", slot: 0 }
+    ],
+    fallbackRelatedItems: [
+      {
+        name: "Fresh Vegetables Bundle",
+        href: "/bundles/fresh-vegetables",
+        type: "bundle",
+        image: "/images/review-thumb-1.jpg",
+      },
+    ],
+  },
+  {
+    id: "2-dup",
+    customerName: "Adigun Zainab",
+    rating: 5,
+    description:
+      "Best grocery delivery service I've used. Everything arrived fresh and on time. Will definitely order again!",
+    videoUrl: "/customerReviews/video2.mp4",
+
+    verified: true,
+    date: "2025-11-15",
+    linkPreferences: [
+      { type: "offer", slot: 0 }
+    ],
+    fallbackRelatedItems: [
+      {
+        name: "Premium Fruits Collection",
+        href: "/offers/premium-fruits",
+        type: "offer",
+        image: "/images/review-thumb-2.jpg",
+      },
+    ],
+  },
+  {
+    id: "3-dup",
+    customerName: "Amina Okafor",
+    rating: 5,
+    description:
+      "The quality exceeded my expectations. Fresh, organic, and delivered right to my doorstep. Amazing service!",
+    videoUrl: "/customerReviews/video3.mp4",
+
+    verified: true,
+    date: "2025-11-19",
+    linkPreferences: [
+      { type: "product", slot: 1 },
+      { type: "product", slot: 2 },
+      { type: "bundle", slot: 1 }
+    ],
+    fallbackRelatedItems: [
+      {
+        name: "Organic Produce Box",
+        href: "/products/organic-produce-box",
+        type: "product",
+        image: "/images/review-thumb-3.jpg",
+      },
+    ],
+  },
+  {
+    id: "4-dup",
+    customerName: "Blessing Okonkwo",
+    rating: 5,
+    description:
+      "Fast delivery and excellent customer service. The tomatoes were so fresh, tasted like they were just picked!",
+    videoUrl: "/customerReviews/video4.mp4",
+
+    verified: true,
+    date: "2025-11-10",
+    linkPreferences: [
+      { type: "bundle", slot: 0 }
+    ],
+    fallbackRelatedItems: [
+      {
+        name: "Seasonal Fruits Pack",
+        href: "/bundles/seasonal-fruits",
+        type: "bundle",
+        image: "/images/review-thumb-4.jpg",
+      },
+    ],
+  },
+  // Second set of duplicates for extra buffer
+  {
+    id: "1-dup-2",
+    customerName: "Sarah Johnson",
+    rating: 5,
+    description:
+      "Absolutely love the fresh produce! The quality is amazing and delivery was super fast. Highly recommend!",
+    videoUrl: "/customerReviews/video1.mp4",
+
+    verified: true,
+    date: "2025-11-22",
+    linkPreferences: [
+      { type: "product", slot: 0 },
+      { type: "bundle", slot: 0 }
+    ],
+    fallbackRelatedItems: [
+      {
+        name: "Fresh Vegetables Bundle",
+        href: "/bundles/fresh-vegetables",
+        type: "bundle",
+        image: "/images/review-thumb-1.jpg",
+      },
+    ],
+  },
+  {
+    id: "2-dup-2",
+    customerName: "Adigun Zainab",
+    rating: 5,
+    description:
+      "Best grocery delivery service I've used. Everything arrived fresh and on time. Will definitely order again!",
+    videoUrl: "/customerReviews/video2.mp4",
+
+    verified: true,
+    date: "2025-11-15",
+    linkPreferences: [
+      { type: "offer", slot: 0 }
+    ],
+    fallbackRelatedItems: [
+      {
+        name: "Premium Fruits Collection",
+        href: "/offers/premium-fruits",
+        type: "offer",
+        image: "/images/review-thumb-2.jpg",
+      },
+    ],
+  },
+  {
+    id: "3-dup-2",
+    customerName: "Amina Okafor",
+    rating: 5,
+    description:
+      "The quality exceeded my expectations. Fresh, organic, and delivered right to my doorstep. Amazing service!",
+    videoUrl: "/customerReviews/video3.mp4",
+
+    verified: true,
+    date: "2025-11-19",
+    linkPreferences: [
+      { type: "product", slot: 1 },
+      { type: "product", slot: 2 },
+      { type: "bundle", slot: 1 }
+    ],
+    fallbackRelatedItems: [
+      {
+        name: "Organic Produce Box",
+        href: "/products/organic-produce-box",
+        type: "product",
+        image: "/images/review-thumb-3.jpg",
+      },
+    ],
+  },
+  {
+    id: "4-dup-2",
+    customerName: "Blessing Okonkwo",
+    rating: 5,
+    description:
+      "Fast delivery and excellent customer service. The tomatoes were so fresh, tasted like they were just picked!",
+    videoUrl: "/customerReviews/video4.mp4",
+
+    verified: true,
+    date: "2025-11-10",
+    linkPreferences: [
+      { type: "bundle", slot: 0 }
+    ],
+    fallbackRelatedItems: [
+      {
+        name: "Seasonal Fruits Pack",
+        href: "/bundles/seasonal-fruits",
+        type: "bundle",
+        image: "/images/review-thumb-4.jpg",
+      },
+    ],
   },
 ];
 
@@ -147,8 +344,9 @@ export default function CustomerReviews({
   reviews = defaultReviews,
 }: CustomerReviewsProps) {
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
-  const [selectedLinkedItem, setSelectedLinkedItem] =
-    useState<ResolvedLinkedItem | null>(null);
+  const [selectedLinkedItems, setSelectedLinkedItems] =
+    useState<ResolvedLinkedItem[]>([]);
+  const [showAllProducts, setShowAllProducts] = useState(false);
   const [generatedThumbnails, setGeneratedThumbnails] = useState<
     Record<string, string>
   >({});
@@ -192,38 +390,84 @@ export default function CustomerReviews({
   useEffect(() => {
     let isMounted = true;
     const supabase = createClient();
+    
+    // Extract required identifiers from reviews
+    const neededProducts = new Set<string>();
+    const neededBundles = new Set<string>();
+    const neededOffers = new Set<string>();
+
+    reviews.forEach(review => {
+        review.linkPreferences?.forEach(pref => {
+            if (pref.identifier) {
+                if (pref.type === "product") neededProducts.add(pref.identifier);
+                if (pref.type === "bundle") neededBundles.add(pref.identifier);
+                if (pref.type === "offer") neededOffers.add(pref.identifier);
+            }
+        });
+    });
+
     const fetchLinkedEntities = async () => {
       try {
-        const [productsResult, bundlesResult, offersResult] = await Promise.all(
-          [
-            supabase
-              .from("products")
-              .select("id,name,slug,images,price,is_published")
-              .eq("is_published", true)
-              .order("num_sales", { ascending: false })
-              .limit(8),
-            supabase
-              .from("bundles")
-              .select(
-                "id,name,price,thumbnail_url,published_status,stock_status"
-              )
-              .eq("published_status", "published")
-              .order("created_at", { ascending: false })
-              .limit(6),
-            supabase
-              .from("offers")
-              .select("id,title,image_url,price_per_slot,status")
-              .order("created_at", { ascending: false })
-              .limit(6),
-          ]
-        );
+        // Prepare queries
+        const productQuery = supabase
+            .from("products")
+            .select("id,name,slug,images,price,is_published,num_sales")
+            .eq("is_published", true);
+
+        const bundleQuery = supabase
+            .from("bundles")
+            .select("id,name,price,thumbnail_url,published_status,stock_status,created_at")
+            .eq("published_status", "published");
+
+        const offerQuery = supabase
+            .from("offers")
+            .select("id,title,image_url,price_per_slot,status,created_at");
+
+        // Execute parallel requests for Top Items AND Specific Items
+        const [
+            topProducts, 
+            specificProducts,
+            topBundles, 
+            specificBundles, 
+            topOffers,
+            specificOffers
+        ] = await Promise.all([
+            // Top 8 Products
+            productQuery.range(0, 7).order("num_sales", { ascending: false }),
+            // Specific Products (if any)
+            neededProducts.size > 0 
+                ? supabase.from("products").select("id,name,slug,images,price,is_published").in("slug", Array.from(neededProducts))
+                : Promise.resolve({ data: [] }),
+            
+            // Top 6 Bundles
+            bundleQuery.range(0, 5).order("created_at", { ascending: false }),
+            // Specific Bundles
+            neededBundles.size > 0
+                ? supabase.from("bundles").select("id,name,price,thumbnail_url,published_status,stock_status").in("name", Array.from(neededBundles))
+                : Promise.resolve({ data: [] }),
+
+            // Top 6 Offers
+            offerQuery.range(0, 5).order("created_at", { ascending: false }),
+            // Specific Offers
+            neededOffers.size > 0
+                ? supabase.from("offers").select("id,title,image_url,price_per_slot,status").in("title", Array.from(neededOffers))
+                : Promise.resolve({ data: [] }),
+        ]);
 
         if (!isMounted) return;
 
+        // Merge and Deduplicate
+        const merge = <T extends { id: string }>(arr1: T[] | null, arr2: T[] | null) => {
+            const map = new Map<string, T>();
+            arr1?.forEach(i => map.set(i.id, i));
+            arr2?.forEach(i => map.set(i.id, i));
+            return Array.from(map.values());
+        };
+
         setLinkedCollections({
-          products: productsResult.data ?? [],
-          bundles: bundlesResult.data ?? [],
-          offers: offersResult.data ?? [],
+          products: merge(topProducts.data, specificProducts.data) as ProductRow[],
+          bundles: merge(topBundles.data, specificBundles.data) as BundleRow[],
+          offers: merge(topOffers.data, specificOffers.data) as OfferRow[],
         });
       } catch (error) {
         console.error("Failed to load showcase links for reviews", error);
@@ -235,7 +479,7 @@ export default function CustomerReviews({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [reviews]);
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }).map((_, i) => (
@@ -250,8 +494,8 @@ export default function CustomerReviews({
     ));
   };
 
-  const resolveLinkedItem = useCallback(
-    (review: Review): ResolvedLinkedItem | null => {
+  const resolveLinkedItems = useCallback(
+    (review: Review): ResolvedLinkedItem[] => {
       const pickFromList = <T,>(list: T[], slot = 0): T | null => {
         if (!list || list.length === 0) return null;
         const normalizedSlot =
@@ -259,65 +503,91 @@ export default function CustomerReviews({
         return list[normalizedSlot];
       };
 
-      if (review.linkPreference) {
-        const { type, slot = 0 } = review.linkPreference;
-        if (type === "product") {
-          const product = pickFromList(linkedCollections.products, slot);
-          if (product) {
-            return {
-              type,
-              name: product.name,
-              href: `/product/${product.slug}`,
-              image: Array.isArray(product.images)
-                ? ((product.images[0] as string | undefined) ?? null)
-                : null,
-              price: product.price,
-            };
+      const resolvedItems: ResolvedLinkedItem[] = [];
+
+      if (review.linkPreferences) {
+        review.linkPreferences.forEach(({ type, slot, identifier }) => {
+          if (type === "product") {
+            let product;
+            if (identifier) {
+                product = linkedCollections.products.find(p => p.slug === identifier);
+            } else if (typeof slot === 'number') {
+                product = pickFromList(linkedCollections.products, slot);
+            }
+            
+            if (product) {
+              resolvedItems.push({
+                type,
+                name: product.name,
+                href: `/product/${product.slug}`,
+                image: Array.isArray(product.images)
+                  ? ((product.images[0] as string | undefined) ?? null)
+                  : null,
+                price: product.price,
+              });
+            }
           }
-        }
-        if (type === "bundle") {
-          const bundle = pickFromList(linkedCollections.bundles, slot);
-          if (bundle) {
-            return {
-              type,
-              name: bundle.name,
-              href: `/bundles/${toSlug(bundle.name)}`,
-              image: bundle.thumbnail_url,
-              price: bundle.price,
-            };
+          if (type === "bundle") {
+            let bundle;
+            if (identifier) {
+                bundle = linkedCollections.bundles.find(b => b.name === identifier);
+            } else if (typeof slot === 'number') {
+                bundle = pickFromList(linkedCollections.bundles, slot);
+            }
+
+            if (bundle) {
+              resolvedItems.push({
+                type,
+                name: bundle.name,
+                href: `/bundles/${toSlug(bundle.name)}`,
+                image: bundle.thumbnail_url,
+                price: bundle.price,
+              });
+            }
           }
-        }
-        if (type === "offer") {
-          const offer = pickFromList(linkedCollections.offers, slot);
-          if (offer) {
-            return {
-              type,
-              name: offer.title,
-              href: `/offers/${toSlug(offer.title)}`,
-              image: offer.image_url,
-              price: offer.price_per_slot,
-            };
+          if (type === "offer") {
+            let offer;
+            if (identifier) {
+                offer = linkedCollections.offers.find(o => o.title === identifier);
+            } else if (typeof slot === 'number') {
+                offer = pickFromList(linkedCollections.offers, slot);
+            }
+
+            if (offer) {
+              resolvedItems.push({
+                type,
+                name: offer.title,
+                href: `/offers/${toSlug(offer.title)}`,
+                image: offer.image_url,
+                price: offer.price_per_slot,
+              });
+            }
           }
-        }
+        });
       }
 
-      if (review.fallbackRelatedItem) {
-        return {
-          type: review.fallbackRelatedItem.type,
-          name: review.fallbackRelatedItem.name,
-          href: review.fallbackRelatedItem.href,
-          image: review.fallbackRelatedItem.image,
-          price: null,
-          isFallback: true,
-        };
+      if (review.fallbackRelatedItems) {
+        review.fallbackRelatedItems.forEach((item) => {
+            resolvedItems.push({
+                type: item.type,
+                name: item.name,
+                href: item.href,
+                image: item.image,
+                price: null,
+                isFallback: true,
+            });
+        });
       }
 
-      return null;
+      return resolvedItems;
     },
     [linkedCollections]
   );
 
-  const closeReview = useCallback(() => setSelectedReview(null), []);
+  const closeReview = useCallback(() => {
+    setSelectedReview(null);
+    setShowAllProducts(false);
+  }, []);
 
   const getInitials = (name: string) =>
     name
@@ -401,11 +671,11 @@ export default function CustomerReviews({
 
   useEffect(() => {
     if (!selectedReview) {
-      setSelectedLinkedItem(null);
+      setSelectedLinkedItems([]);
       return;
     }
-    setSelectedLinkedItem(resolveLinkedItem(selectedReview));
-  }, [selectedReview, resolveLinkedItem]);
+    setSelectedLinkedItems(resolveLinkedItems(selectedReview));
+  }, [selectedReview, resolveLinkedItems]);
 
   return (
     <>
@@ -431,9 +701,11 @@ export default function CustomerReviews({
 
         <div className="w-full relative z-10">
           <Carousel opts={carouselOpts} isScale={true} className="w-full">
-            <SliderContainer className="pl-4 md:pl-8 lg:pl-12 py-10">
+            <SliderContainer className="py-10">
               {reviews.map((review, index) => {
-                const resolvedLinkedItem = resolveLinkedItem(review);
+                const resolvedLinkedItems = resolveLinkedItems(review);
+                // For the card view, just picking the first one as a thumbnail if available
+                const firstLinkedItem = resolvedLinkedItems[0];
                 return (
                   <Slider
                     key={review.id}
@@ -483,7 +755,8 @@ export default function CustomerReviews({
                           const thumbnailSrc =
                             review.thumbnailUrl ||
                             generatedThumbnails[review.id];
-                          const resolvedItem = resolveLinkedItem(review);
+                          const resolvedItems = resolveLinkedItems(review);
+                          const firstItem = resolvedItems[0];
                           
                           if (thumbnailSrc) {
                             return (
@@ -499,12 +772,12 @@ export default function CustomerReviews({
                             );
                           }
                           
-                          if (resolvedItem?.image) {
+                          if (firstItem?.image) {
                             return (
                               <div className="relative w-full h-full">
                                 <Image
-                                  src={resolvedItem.image}
-                                  alt={resolvedItem.name}
+                                  src={firstItem.image}
+                                  alt={firstItem.name}
                                   fill
                                   className="object-cover transition-transform duration-700 group-hover/card:scale-105"
                                 />
@@ -656,43 +929,96 @@ export default function CustomerReviews({
                         </blockquote>
 
                         {/* Linked Product/Bundle */}
-                        {selectedLinkedItem && (
+                        {selectedLinkedItems.length > 0 && (
                             <div className="mt-auto pt-8 border-t border-gray-100">
-                                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">
-                                    Featured in this review
-                                </p>
-                                <Link 
-                                    href={selectedLinkedItem.href}
-                                    className="group flex items-center gap-4 p-3 rounded-2xl border border-gray-100 hover:border-[#1B6013]/30 hover:bg-[#1B6013]/5 transition-all duration-300"
-                                >
-                                    <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
-                                        {selectedLinkedItem.image ? (
-                                            <Image
-                                                src={selectedLinkedItem.image}
-                                                alt={selectedLinkedItem.name}
-                                                fill
-                                                className="object-cover"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                                <ImageIcon className="w-6 h-6" />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="flex-1">
-                                        <h4 className="font-semibold text-gray-900 group-hover:text-[#1B6013] transition-colors line-clamp-1">
-                                            {selectedLinkedItem.name}
-                                        </h4>
-                                        {selectedLinkedItem.price && (
-                                            <p className="text-sm text-gray-500 mt-1">
-                                                {formatNaira(selectedLinkedItem.price)}
+                                <div className="flex items-center justify-between mb-4">
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                                        Featured in this review
+                                    </p>
+                                </div>
+                                
+                                {!showAllProducts ? (
+                                    <div 
+                                        onClick={() => setShowAllProducts(true)}
+                                        className="cursor-pointer group/stack flex items-center gap-3 p-2 hover:bg-gray-50 rounded-xl transition-colors"
+                                    >
+                                        <div className="flex -space-x-4 pl-2">
+                                            {selectedLinkedItems.slice(0, 4).map((item, i) => (
+                                                <div 
+                                                    key={i} 
+                                                    className="relative w-14 h-14 rounded-full border-2 border-white ring-1 ring-gray-100 overflow-hidden shadow-sm transition-transform duration-300 group-hover/stack:translate-x-1"
+                                                    style={{ zIndex: 10 - i }}
+                                                >
+                                                    {item.image ? (
+                                                        <Image
+                                                            src={item.image}
+                                                            alt={item.name}
+                                                            fill
+                                                            className="object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                                                            <ImageIcon className="w-4 h-4 text-gray-400" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            {selectedLinkedItems.length > 4 && (
+                                                <div 
+                                                    className="relative w-14 h-14 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center z-0"
+                                                >
+                                                    <span className="text-xs font-semibold text-gray-500">
+                                                        +{selectedLinkedItems.length - 4}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-900 group-hover/stack:text-[#1B6013] transition-colors">
+                                                View {selectedLinkedItems.length} Product{selectedLinkedItems.length > 1 ? 's' : ''}
                                             </p>
-                                        )}
+                                            <p className="text-xs text-gray-500">Tap to see details</p>
+                                        </div>
                                     </div>
-                                    <div className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center group-hover:bg-[#1B6013] group-hover:border-[#1B6013] transition-colors">
-                                        <Play className="w-3 h-3 text-gray-400 group-hover:text-white fill-current" />
+                                ) : (
+                                    <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                                        {selectedLinkedItems.map((item, i) => (
+                                            <Link 
+                                                key={i}
+                                                href={item.href}
+                                                className="group flex items-center gap-4 p-3 rounded-2xl border border-gray-100 hover:border-[#1B6013]/30 hover:bg-[#1B6013]/5 transition-all duration-300"
+                                            >
+                                                <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+                                                    {item.image ? (
+                                                        <Image
+                                                            src={item.image}
+                                                            alt={item.name}
+                                                            fill
+                                                            className="object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                            <ImageIcon className="w-6 h-6" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h4 className="font-semibold text-gray-900 group-hover:text-[#1B6013] transition-colors line-clamp-1">
+                                                        {item.name}
+                                                    </h4>
+                                                    {item.price && (
+                                                        <p className="text-sm text-gray-500 mt-1">
+                                                            {formatNaira(item.price)}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <div className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center group-hover:bg-[#1B6013] group-hover:border-[#1B6013] transition-colors">
+                                                    <Play className="w-3 h-3 text-gray-400 group-hover:text-white fill-current" />
+                                                </div>
+                                            </Link>
+                                        ))}
                                     </div>
-                                </Link>
+                                )}
                             </div>
                         )}
                     </div>

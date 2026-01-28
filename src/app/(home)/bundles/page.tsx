@@ -22,17 +22,16 @@ export default async function BundlesPage() {
 
     return (
       <main className="min-h-screen">
-        <div className="bg-white py-4">
+        <div className="md:border-b shadow-sm">
+          <div className="bg-white py-4">
+            <Container>
+              <CustomBreadcrumb />
+            </Container>
+          </div>
           <Container>
-            <CustomBreadcrumb />
-          </Container>
-        </div>
-        
-        <div className="py-2 md:border-b shadow-sm">
-          <Container>
-            <div className="flex justify-between items-center mt-2">
+            <div className="flex justify-between items-center py-4">
               <div className="flex items-center">
-                <h1 className="text-[#1B6013] text-2xl md:text-3xl font-bold">
+                <h1 className="text-[#1B6013] text-2xl md:text-3xl !leading-5 font-bold">
                   Our Bundles
                 </h1>
               </div>

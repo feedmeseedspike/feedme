@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { supabase } from "src/lib/supabaseClient";
-import axios from "axios";
-import admin from "@/utils/firebase/admin";
-import { DEFAULT_DECEMBER_DEALS } from "src/lib/deals";
+import { sendUnifiedNotification } from "src/lib/actions/notifications.actions";
 
 export async function POST(request: Request) {
   try {
@@ -51,12 +49,30 @@ export async function POST(request: Request) {
 
       // Send push notification if user exists
       if (metadata.user_id) {
-        await sendPushNotification(
-          metadata.user_id,
-          metadata.type,
-          amount,
-          metadata
-        );
+        let title = "Payment Successful";
+        let body = `Your transaction for N${amount / 100} was successful.`;
+        let link = "/account/wallet";
+        
+        if (metadata.type === "wallet_funding") {
+          title = "Wallet Funded";
+          body = `Your wallet has been funded with N${amount / 100}.`;
+        } else if (metadata.type === "direct_payment") {
+          title = "Order Confirmed";
+          body = `Your order #${metadata.orderId} for N${amount / 100} has been confirmed!`;
+          link = `/order/order-confirmation?id=${metadata.orderId}`;
+        }
+
+        try {
+          await sendUnifiedNotification({
+            userId: metadata.user_id,
+            type: "info",
+            title,
+            body,
+            link
+          });
+        } catch (err) {
+          console.warn("Webhook notification failed:", err);
+        }
       }
     }
 
@@ -87,6 +103,19 @@ async function handleWalletFunding(metadata: any, amount: number) {
     .eq("id", metadata.wallet_id);
 
   if (walletError) throw walletError;
+
+  // Send admin email notification
+  try {
+      const { sendWalletFundingEmail } = await import("@/utils/email/sendOrderEmail");
+      await sendWalletFundingEmail({
+          adminEmail: "oyedelejeremiah.ng@gmail.com",
+          userName: metadata.customerName || "Customer",
+          userEmail: metadata.email || "N/A",
+          amount: amount / 100,
+      });
+  } catch (err) {
+      console.error("Failed to send wallet funding email to admin:", err);
+  }
 }
 
 async function handleDirectPayment(
@@ -127,77 +156,24 @@ async function handleDirectPayment(
 
   if (orderError) throw orderError;
 
-  // --- CASHBACK LOGIC (Jolly 10% Off) ---
-  // Only for authenticated users
+  // --- REWARDS LOGIC (Shared Action) ---
+  let bonusInfo: any = null;
   if (metadata.user_id) {
-      const subtotal = Number(metadata.subtotal || 0); // Assuming Naira
-      const jollyDeal = DEFAULT_DECEMBER_DEALS.JOLLY_CASHBACK;
-      
-      if (subtotal >= jollyDeal.min_spend) {
-          try {
-              const cashbackAmount = subtotal * jollyDeal.percentage;
-              console.log(`Applying Jolly Cashback: ₦${cashbackAmount} for order ${metadata.orderId}`);
-
-              // 1. Get Wallet
-              let { data: wallet, error: walletError } = await supabase
-                  .from("wallets")
-                  .select("*")
-                  .eq("user_id", metadata.user_id)
-                  .single();
-
-              if (!wallet && !walletError) {
-                  // Create wallet if not exists
-                  const { data: newWallet, error: createError } = await supabase
-                      .from("wallets")
-                      .insert({ user_id: metadata.user_id, balance: 0, currency: "NGN" })
-                      .select()
-                      .single();
-                  if (!createError) wallet = newWallet;
-              }
-
-              if (wallet) {
-                  // 2. Credit Wallet
-                  const newBalance = (wallet.balance || 0) + cashbackAmount;
-                  const { error: updateError } = await supabase
-                      .from("wallets")
-                      .update({ balance: newBalance })
-                      .eq("id", wallet.id);
-
-                  if (updateError) {
-                      console.error("Failed to credit cashback to wallet:", updateError);
-                  } else {
-                      console.log(`Cashback credited successfully. New Balance: ${newBalance}`);
-                      
-                      // 3. Insert Transaction Record for History Visibility
-                      const { error: txInsertError } = await supabase
-                        .from("transactions")
-                        .insert({
-                             user_id: metadata.user_id,
-                             amount: cashbackAmount,
-                             description: "Cashback Reward: Jolly 10%",
-                             reference: `cb_${metadata.orderId}_${Date.now()}`,
-                             payment_status: "Paid",
-                             type: "wallet_funding", // Using wallet_funding to ensure it shows as credit
-                             created_at: new Date().toISOString()
-                        });
-
-                      if (txInsertError) {
-                          console.error("Failed to insert cashback transaction record:", txInsertError);
-                      }
-
-                      // Optional: Send Cashback Notification?
-                      await sendPushNotification(
-                          metadata.user_id, 
-                          "wallet_funding", 
-                          cashbackAmount * 100, 
-                          { ...metadata, type: 'cashback_reward' } 
-                      );
-                  }
-              }
-          } catch (err) {
-              console.error("Error processing cashback:", err);
-          }
-      }
+    try {
+        const { processOrderRewards } = await import("src/lib/actions/rewards.actions");
+        const rewardsResult = await processOrderRewards(
+            metadata.user_id,
+            metadata.orderId,
+            amount / 100, // Convert Kobo to Naira
+            metadata.itemsOrdered || []
+        );
+        
+        if (rewardsResult.success) {
+            bonusInfo = rewardsResult.rewards;
+        }
+    } catch (e) {
+        console.error("Failed to process rewards in webhook:", e);
+    }
   }
 
     // Send order confirmation emails
@@ -206,7 +182,7 @@ async function handleDirectPayment(
         const { sendOrderConfirmationEmails } = await import("@/utils/email/sendOrderEmail");
 
         await sendOrderConfirmationEmails({
-            adminEmail: "orders.feedmeafrica@gmail.com",
+            adminEmail: "oyedelejeremiah.ng@gmail.com",
             userEmail: metadata.email,
             adminOrderProps: {
                 orderNumber: metadata.orderId,
@@ -215,6 +191,9 @@ async function handleDirectPayment(
                 itemsOrdered: metadata.itemsOrdered,
                 deliveryAddress: metadata.deliveryAddress,
                 localGovernment: metadata.localGovernment,
+                orderNote: metadata.orderNote,
+                paymentMethod: 'PAYSTACK',
+                rewards: bonusInfo,
             },
             userOrderProps: {
                 orderNumber: metadata.orderId,
@@ -234,78 +213,4 @@ async function handleDirectPayment(
     } catch (err: any) {
         console.error("Failed to send confirmation email via helper:", err.message);
     }
-}
-
-async function sendPushNotification(
-  userId: string,
-  paymentType: string,
-  amount: number,
-  metadata: any
-) {
-  try {
-    // Fetch all FCM tokens for the user (web and mobile)
-    const { data: tokens, error: tokenError } = await supabase
-      .from("fcm_tokens")
-      .select("fcm_token, device_type")
-      .eq("user_id", userId);
-
-    console.log({ tokenError, tokens });
-
-    if (tokenError || !tokens || tokens.length === 0) {
-      console.error("No FCM tokens found for user:", userId);
-      return;
-    }
-
-    // Prepare notification message based on payment type
-    let title: string, body: string;
-    if (paymentType === "wallet_funding") {
-      title = "Wallet Funded";
-      body = `Your wallet has been funded with N${amount / 100}.`;
-    } else if (paymentType === "direct_payment") {
-      title = "Order Confirmed";
-      body = `Your order #${metadata.orderId} for N${amount / 100} has been confirmed!`;
-    } else {
-      return; // Skip if payment type is unrecognized
-    }
-
-    // Send notification to all user devices
-    const message = {
-      notification: { title, body },
-      tokens: tokens.map((token) => token.fcm_token), // Multi-device support
-    };
-
-    try {
-      // Use sendToDevice for multiple tokens
-      const response = await admin.messaging().sendEachForMulticast(message);
-      console.log("Push notification sent:", response);
-
-      // Log failed tokens (e.g., expired or invalid)
-      if (response.failureCount > 0) {
-        response.responses.forEach((resp: any, idx: any) => {
-          if (!resp.success) {
-            console.error(
-              `Failed to send to token ${tokens[idx].fcm_token}:`,
-              resp.error.message
-            );
-            // Optionally delete invalid tokens
-            if (
-              resp.error.code === "messaging/registration-token-not-registered"
-            ) {
-              supabase
-                .from("fcm_tokens")
-                .delete()
-                .eq("fcm_token", tokens[idx].fcm_token)
-                .then(() =>
-                  console.log(`Deleted invalid token: ${tokens[idx].fcm_token}`)
-                );
-            }
-          }
-        });
-      }
-    } catch (err: any) {
-      console.error("Error sending push notification:", err.message);
-    }
-  } catch (err: any) {
-    console.error("Error in sendPushNotification:", err.message);
-  }
 }

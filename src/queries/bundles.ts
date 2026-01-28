@@ -12,6 +12,7 @@ interface FetchBundlesParams {
   sortOrder?: 'asc' | 'desc';
   stockStatus?: Tables<'bundles'>['stock_status'][];
   publishedStatus?: Tables<'bundles'>['published_status'][];
+  type?: string; 
 }
 
 export async function fetchBundles({
@@ -22,6 +23,7 @@ export async function fetchBundles({
   sortOrder = 'asc',
   stockStatus = [],
   publishedStatus = [],
+  type,
 }: FetchBundlesParams): Promise<{ data: Tables<'bundles'>[] | null; count: number | null }> {
   const supabase = createClient();
 
@@ -40,6 +42,10 @@ export async function fetchBundles({
     query = query.in('published_status', publishedStatus);
   }
 
+  if (type) {
+    query = query.eq('type', type);
+  }
+
   // Apply sorting
   query = query.order(sortBy, { ascending: sortOrder === 'asc' });
 
@@ -55,6 +61,12 @@ export async function fetchBundles({
   }
 
   return { data, count };
+}
+
+export async function fetchRecipes(params: Omit<FetchBundlesParams, 'type'>) {
+    // Attempt to fetch by type if the column exists, otherwise we'll rely on the error handling in the UI
+    // In a real environment, we'd check column existence or use a safer query builder
+    return fetchBundles({ ...params, type: 'recipe' });
 }
 
 interface CreateBundleData {

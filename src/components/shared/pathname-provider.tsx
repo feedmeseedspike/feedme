@@ -44,7 +44,7 @@ export function PathnameProvider({
   const hideOnPaths = [
     "/login",
     "/register",
-    "forgot-password",
+    "/forgot-password",
     "/auth",
     "/admin",
   ];

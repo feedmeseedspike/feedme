@@ -147,23 +147,28 @@ const Slider = React.forwardRef<
 
   const isSelected = isScale ? isInView : slideIndex === selectedIndex;
 
-  const { style, ...restProps } = props;
+  const { children, style, ...restProps } = props;
 
   return (
     <div
       ref={ref}
-      className={cn(
-        "transition-all duration-300 ease-out",
-        isScale && isSelected
-          ? "scale-100 opacity-100"
-          : isScale
-            ? "scale-90 opacity-75"
-            : "",
-        className
-      )}
+      className={cn(className)}
       style={{ flexShrink: 0, ...style }}
       {...restProps}
-    />
+    >
+      <div
+        className={cn(
+          "h-full w-full transition-all duration-500 ease-out",
+          isScale && isSelected
+            ? "scale-100 opacity-100"
+            : isScale
+              ? "scale-90 opacity-75"
+              : ""
+        )}
+      >
+        {children}
+      </div>
+    </div>
   );
 });
 Slider.displayName = "Slider";

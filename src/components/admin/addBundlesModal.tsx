@@ -32,10 +32,10 @@ const BundleSchema = z.object({
   name: z.string().min(1, "Name is required"),
   products: z.array(z.string()).min(1, "At least one product is required"),
   price: z.coerce.number().min(0, "Price must be a positive number"),
-  stock_status: z.enum(["in_stock", "out_of_stock"], {
+  stock_status: z.enum(["in_stock", "out_of_stock", "discontinued"], {
     errorMap: () => ({ message: "Invalid stock status" }),
   }),
-  published_status: z.enum(["published", "archived"], {
+  published_status: z.enum(["published", "draft", "archived"], {
     errorMap: () => ({ message: "Invalid published status" }),
   }),
   thumbnail_file: z.instanceof(FileList).optional(),

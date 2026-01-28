@@ -473,6 +473,27 @@ export default function OrdersClient({
     });
   };
 
+  // --- REALTIME SUBSCRIPTION FOR NEW ORDERS ---
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel("orders-admin-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "orders" },
+        (payload: any) => {
+          console.log("New order received!", payload);
+          showToast(`New Order Received!`, "success"); // Simplified message as reference usually triggers later via trigger or stays raw
+          queryClient.invalidateQueries({ queryKey: ["orders"] }); // Refresh list
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient, showToast]);
+
   const totalPages = Math.ceil((data?.count || 0) / itemsPerPage);
 
 

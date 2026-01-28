@@ -9,9 +9,14 @@ export default async function Header() {
   const supabase = await createClient();
 
   // Fetch categories
-  const { data: categories, error: categoriesError } = await supabase
+  const { data: rawCategories, error: categoriesError } = await supabase
     .from("categories")
     .select("*");
+
+  const categories = (rawCategories || []).filter(c => 
+    !c.title.toLowerCase().includes("spin") && 
+    !c.title.toLowerCase().includes("wheel")
+  );
 
   // Fetch active jobs for hiring badge
   let hasActiveJobs = false;

@@ -21,7 +21,7 @@ export default async function AdminLayout({
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "is_staff, role, display_name, avatar_url, birthday, created_at, favorite_fruit, status, user_id"
+      "is_staff, role, display_name, avatar_url, birthday, created_at, favorite_fruit, status, user_id, has_used_new_user_spin, loyalty_points, updated_at"
     )
     .eq("user_id", userData.user.id)
     .single();

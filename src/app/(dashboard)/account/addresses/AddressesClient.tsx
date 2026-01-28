@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Tables } from "src/utils/database.types";
+import { Tables, TablesInsert } from "src/utils/database.types";
 import {
   UserAddressSchema,
   UserAddress,
@@ -119,10 +119,7 @@ export default function AddressesClient({
           }
           setEditingAddress(null);
         } else {
-          const addressData: Omit<
-            Tables<"addresses">,
-            "id" | "user_id" | "created_at" | "updated_at"
-          > = {
+          const addressData: TablesInsert<"addresses"> = {
             label: values.label || "",
             street: values.street || "",
             city: values.city || "",
@@ -130,6 +127,7 @@ export default function AddressesClient({
             zip: values.zip || "",
             country: values.country || "",
             phone: values.phone || "",
+            is_default: false,
           };
           const newAddress = await addAddressAction(addressData);
           if (newAddress) {

@@ -75,6 +75,10 @@ module.exports = {
 			fontFamily: {
 				proxima: [
 					'var(--font-proxima)'
+				],
+				serif: [
+					'var(--font-eb-garamond)',
+					'serif'
 				]
 			},
 			keyframes: {

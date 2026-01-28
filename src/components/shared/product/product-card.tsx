@@ -5,7 +5,7 @@ import Link from "next/link";
 import React, { useMemo } from "react";
 
 import { IProductInput } from "src/types";
-import { formatNaira } from "src/lib/utils";
+import { formatNaira, cn } from "src/lib/utils";
 import AddToCart from "@components/shared/product/add-to-cart";
 
 interface ImageJSON {
@@ -17,11 +17,13 @@ const ProductCard = ({
   hideBorder = false,
   hideDetails = false,
   hideAddToCart = false,
+  className,
 }: {
   product: IProductInput;
   hideDetails?: boolean;
   hideBorder?: boolean;
   hideAddToCart?: boolean;
+  className?: string;
 }) => {
   // console.log(product);
   // Handle both old array format and new object format for options
@@ -145,7 +147,7 @@ const ProductCard = ({
   );
 
   return (
-    <div className="flex flex-col mb-4 md:pb-8 gap-2">
+    <div className={cn("flex flex-col mb-4 md:pb-8 gap-2", className)}>
       <ProductImage />
       {!hideDetails && (
         <>

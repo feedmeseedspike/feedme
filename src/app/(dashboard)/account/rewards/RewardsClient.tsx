@@ -36,11 +36,12 @@ export default function RewardsClient({ vouchers }: { vouchers: Voucher[] }) {
           Participate in promotions to earn special rewards and discounts!
         </p>
         {/* SPIN TO WIN - TEMPORARILY DISABLED */}
-        {/* <Link href="/spin-to-win">
-          <Button className="bg-[#f7a838] hover:bg-[#e0962d] text-white">
-            Go Spin & Win
-          </Button>
-        </Link> */}
+        <Button 
+          onClick={() => window.dispatchEvent(new Event("trigger-spin-wheel"))}
+          className="bg-[#f7a838] hover:bg-[#e0962d] text-white"
+        >
+          Go Spin & Win
+        </Button>
       </div>
     );
   }

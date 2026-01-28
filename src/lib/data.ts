@@ -13,6 +13,10 @@ export const headerMenus =  [
     name: 'Bundles',
     href: '/bundles',
   },
+  // {
+  //   name: 'Recipes',
+  //   href: '/recipes',
+  // },
   {
     name: 'Special Offers',
     href: '/offers',

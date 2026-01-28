@@ -53,7 +53,7 @@ export async function POST(req: Request) {
 
         <div style="text-align: center; margin-top: 24px;">
           <p style="color: #666; font-size: 14px; margin-bottom: 8px;">Questions about your application?</p>
-          <a href="mailto:orders.feedmeafrica@gmail.com" style="color: #1B6013; text-decoration: none; font-weight: bold;">orders.feedmeafrica@gmail.com</a>
+          <a href="mailto:oyedelejeremiah.ng@gmail.com" style="color: #1B6013; text-decoration: none; font-weight: bold;">oyedelejeremiah.ng@gmail.com</a>
         </div>
 
         <hr style="border: none; border-top: 1px solid #eaeaea; margin: 24px 0;" />

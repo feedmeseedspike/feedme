@@ -30,6 +30,8 @@ import { RichTextEditor } from "@components/ui/rich-text-editor";
 const EditBundleSchema = z.object({
   name: z.string().min(1, "Bundle name is required"),
   price: z.coerce.number().min(0, "Price must be a positive number"),
+  videoUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  chefName: z.string().optional(),
   bundle_image: z.instanceof(FileList).optional(),
 });
 
@@ -68,6 +70,8 @@ export default function EditBundleClient({
     reset({
       name: initialBundle.name || "",
       price: initialBundle.price || 0,
+      videoUrl: initialBundle.video_url || "",
+      chefName: initialBundle.chef_name || "",
     });
     setDescription(initialBundle.description || "");
     const products = Array.isArray(initialBundle.products) ? initialBundle.products : [];
@@ -82,6 +86,8 @@ export default function EditBundleClient({
     description?: string;
     imageFile?: File;
     productIds: string[];
+    videoUrl?: string;
+    chefName?: string;
   }) => {
     let thumbnail = null;
     
@@ -104,6 +110,8 @@ export default function EditBundleClient({
       description: data.description,
       thumbnail,
       productIds: data.productIds,
+      videoUrl: data.videoUrl,
+      chefName: data.chefName,
     });
   };
 
@@ -190,6 +198,8 @@ export default function EditBundleClient({
         description: description,
         imageFile: data.bundle_image?.[0],
         productIds: productIds,
+        videoUrl: data.videoUrl,
+        chefName: data.chefName,
       };
       
       console.log('Updating bundle with data:', updateData);
@@ -247,6 +257,29 @@ export default function EditBundleClient({
                   {errors.price.message}
                 </p>
               )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="video-url">Social Video URL (Optional)</Label>
+                <Input
+                  id="video-url"
+                  placeholder="e.g. https://x.com/..."
+                  {...register("videoUrl")}
+                />
+                {errors.videoUrl && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.videoUrl.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="chef-name">Creator / Chef Name (Optional)</Label>
+                <Input
+                  id="chef-name"
+                  placeholder="e.g. Chef Tolu"
+                  {...register("chefName")}
+                />
+              </div>
             </div>
             <div>
               <RichTextEditor

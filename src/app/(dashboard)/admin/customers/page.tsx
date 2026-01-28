@@ -16,6 +16,7 @@ export default async function CustomersPage({
   const status = searchParams.status || "";
   const startDate = searchParams.startDate || "";
   const endDate = searchParams.endDate || "";
+  const walletFilter = searchParams.walletFilter || "";
   const sortBy = searchParams.sortBy || "created_at";
   const sortOrder = searchParams.sortOrder || "desc";
 
@@ -29,6 +30,7 @@ export default async function CustomersPage({
       status,
       startDate,
       endDate,
+      walletFilter,
     });
 
   return (
@@ -43,6 +45,7 @@ export default async function CustomersPage({
         initialStatus={status}
         initialStartDate={startDate}
         initialEndDate={endDate}
+        initialWalletFilter={walletFilter}
         initialSortBy={sortBy}
         initialSortOrder={sortOrder}
       />

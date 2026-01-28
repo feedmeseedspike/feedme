@@ -14,8 +14,21 @@ import { redirect } from "next/navigation";
 import { createClient } from "@utils/supabase/server";
 import ProfileDropdown from "@components/shared/account/profile-dropdown";
 
+import RewardProgress from "@components/shared/account/RewardProgress";
+
 const Dashboard = async ({ children }: { children: React.ReactNode }) => {
+  const supabase = await createClient();
   const userDataRaw = await getUser();
+
+  // Fetch total spend (Confirmed/Delivered orders)
+  const { data: orders } = await supabase
+    .from("orders")
+    .select("total_amount")
+    .eq("user_id", userDataRaw?.user_id || "")
+    .in("status", ["order delivered", "order confirmed", "in transit"]); 
+    
+  const totalSpent = orders?.reduce((acc, order) => acc + (order.total_amount || 0), 0) || 0;
+
 
   if (!userDataRaw) {
     redirect("/login?callbackUrl=/account/profile");
@@ -57,7 +70,13 @@ const Dashboard = async ({ children }: { children: React.ReactNode }) => {
             <AppSidebar user={userData} />
           </div>
           <ProfileDropdown user={userData} />
-          <main className="w-full md:px-4">{children}</main>
+          <main className="w-full md:px-4">
+            <RewardProgress 
+              userName={userData.display_name.split(' ')[0]} 
+              totalSpent={totalSpent} 
+            />
+            {children}
+          </main>
         </Container>
         <Footer />
       </div>

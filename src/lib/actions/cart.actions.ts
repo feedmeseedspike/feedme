@@ -191,7 +191,41 @@ export async function updateCartItems(
   try {
     const cartId = await getUserCartId(user.id);
 
-    // Ensure all items have the correct structure for the RPC function
+    // SECURITY: Fetch current cart items to validate sensitive updates
+    const { data: currentCartItems } = await supabase
+      .from("cart_items")
+      .select("product_id, bundle_id, offer_id, option, price, black_friday_item_id")
+      .eq("cart_id", cartId);
+
+    // Validate checks
+    for (const item of items) {
+        // Find matching item in DB
+        const match = currentCartItems?.find(dbItem => {
+             const sameProduct = (item.product_id ?? null) === (dbItem.product_id ?? null);
+             const sameBundle = (item.bundle_id ?? null) === (dbItem.bundle_id ?? null);
+             const sameOffer = (item.offer_id ?? null) === (dbItem.offer_id ?? null);
+             const sameBF = (item.black_friday_item_id ?? null) === (dbItem.black_friday_item_id ?? null);
+             
+             const itemOpt = JSON.stringify(item.option || null);
+             const dbOpt = JSON.stringify(dbItem.option || null);
+             
+             return sameProduct && sameBundle && sameOffer && sameBF && (itemOpt === dbOpt);
+        });
+
+        // Check 1: Existing free item quantity increase
+        if (match && match.price === 0 && item.quantity > 1) {
+             throw new Error("You cannot increase the quantity of a free prize item.");
+        }
+        
+        // Check 2: New item attempting to be free with >1 qty (if creating via update - though usually create is addToCart)
+        // If match is not found, update_cart_items often inserts. 
+        // We shouldn't allow inserting 2 free items at once if we can help it.
+        if (!match && item.price === 0 && item.quantity > 1) {
+             throw new Error("Free prize items are limited to 1.");
+        }
+    }
+
+    // Ensure all products have the correct structure for the RPC function
     // The RPC expects JSONB, so we need to ensure proper serialization
     const serializedItems = items.map((item) => ({
       product_id: item.product_id || null,
@@ -234,7 +268,8 @@ export async function addToCart(
   selectedOption?: Tables<"products">["options"] | null,
   bundleId?: string | null,
   offerId?: string | null,
-  blackFridayItemId?: string | null
+  blackFridayItemId?: string | null,
+  customPrice?: number | null
 ): Promise<AddToCartSuccess | AddToCartFailure> {
   const supabase = await createClient();
   const {
@@ -406,7 +441,7 @@ export async function addToCart(
 
       const { data: existingItems, error: fetchError } = await supabase
         .from("cart_items")
-        .select("id, quantity, option, black_friday_item_id")
+        .select("id, quantity, option, black_friday_item_id, price")
         .eq("cart_id", cartId)
         .eq("product_id", productId)
         .is("bundle_id", null);
@@ -443,11 +478,17 @@ export async function addToCart(
       }
 
       const itemPrice =
+        customPrice !== undefined && customPrice !== null ? customPrice :
         blackFridayItem?.new_price ??
         (selectedOption as unknown as ProductOption | null)?.price ??
         productData.price;
 
       if (existingItem) {
+        // SECURITY CHECK: Do not allow modifying a Free Prize item via AddToCart
+        if (existingItem.price === 0) {
+            throw new Error("You have this item as a free prize. You cannot add more to it.");
+        }
+
         const { error: updateError } = await supabase
           .from("cart_items")
           .update({
@@ -557,16 +598,21 @@ export async function updateCartItemQuantity(
 
     const cartId = await getUserCartId(user.id);
 
-    // Get the cart item to check if it's an offer
+    // Get the cart item to check if it's an offer or prize
     const { data: cartItem, error: fetchError } = await supabase
       .from("cart_items")
-      .select("offer_id")
+      .select("offer_id, price") 
       .eq("id", cartItemId)
       .eq("cart_id", cartId)
       .single();
 
     if (fetchError) throw fetchError;
     if (!cartItem) throw new Error("Cart item not found");
+
+    // VALIDATION: Prize Items (Price 0) cannot be increased
+    if (cartItem.price === 0 && quantity > 1) {
+        throw new Error("You cannot increase the quantity of a free prize item.");
+    }
 
     // If this is an offer, validate availability
     if (cartItem.offer_id) {

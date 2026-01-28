@@ -3,7 +3,7 @@ import nodemailer from "nodemailer";
 // Hardcoded SMTP Settings
 const smtpHost = "smtp.gmail.com";
 const smtpPort = 587; // Changed to 587 to avoid ETIMEDOUT on 465
-const smtpUser = "orders.feedmeafrica@gmail.com";
+const smtpUser = "oyedelejeremiah.ng@gmail.com";
 const smtpPass = "cyma apwl rnam vdip"; // App Password
 const smtpSecure = false; // Must be false for port 587 (STARTTLS)
 const defaultFrom = smtpUser;
@@ -14,7 +14,7 @@ const smtpPortEnv = process.env.SMTP_PORT || process.env.NODEMAILER_PORT;
 const smtpPort = smtpPortEnv ? Number(smtpPortEnv) : undefined;
 const smtpUser = process.env.SMTP_USER || process.env.NODEMAILER_USER;
 const smtpPass = process.env.SMTP_PASS || process.env.NODEMAILER_PASS;
-const smtpSecureEnv = process.env.SMTP_SECURE || process.env.NODEMAILER_SECURE;
+const smtpSecureEnv = process.env.SMTP_SECURE j|| process.env.NODEMAILER_SECURE;
 const smtpSecure = smtpSecureEnv
   ? smtpSecureEnv.toLowerCase() === "true"
   : smtpPort === 465;

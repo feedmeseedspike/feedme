@@ -24,8 +24,8 @@ export default function RegisterPush({ userId }: RegisterPushProps) {
           : tokens
               .filter((it: any) => it.user_id === userId)
               .filter((its: any) => its.device_type === "web");
-        if (permission === "granted") {
-          const token = await getToken(messaging as any, {
+        if (permission === "granted" && messaging) {
+          const token = await getToken(messaging, {
             vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY!,
           });
           if (token && first.length === 0) {
@@ -36,10 +36,9 @@ export default function RegisterPush({ userId }: RegisterPushProps) {
             });
             if (error) {
               console.error("Error saving FCM token:", error);
-            } else {
             }
           }
-        } else {
+        } else if (permission !== "granted") {
           console.warn("Notification permission denied");
         }
       } catch (err) {
@@ -49,20 +48,15 @@ export default function RegisterPush({ userId }: RegisterPushProps) {
 
     registerPush();
 
-    const unsubscribe = onMessage(messaging as any, (payload: any) => {
+    if (!messaging) return;
+
+    const unsubscribe = onMessage(messaging, (payload: any) => {
       const { title, body } = payload.notification;
 
-      // Option 1: Show system notification
-      //  if (Notification.permission === "granted") {
       new Notification(title, {
         body,
-        icon: "/Footerlogo.png", // Optional: Add your app’s icon
+        icon: "/icon.png",
       });
-      //  }
-
-      // Option 2: Show in-app notification (e.g., toast)
-      // Example: You can integrate a toast library like react-toastify
-      // toast.info(`${title}: ${body}`);
     });
 
     return () => unsubscribe();

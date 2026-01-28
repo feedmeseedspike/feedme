@@ -147,8 +147,42 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
                 Manage your personal details and preferences.
               </p>
             </div>
-            {/* Simple Incentive Text */}
+          </div>
 
+          {/* Loyalty Progress Section */}
+          <div className="bg-gradient-to-br from-[#1B6013] to-[#2a8b1f] p-8 text-white">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon icon="solar:crown-minimalistic-bold-duotone" className="w-8 h-8 text-yellow-400" />
+                  <h3 className="text-2xl font-bold">Loyalty Level</h3>
+                </div>
+                <p className="text-white/80 text-sm mb-4">
+                  Earn points with every purchase. Higher levels unlock better rewards!
+                </p>
+                <div className="relative h-4 bg-white/20 rounded-full overflow-hidden mb-2">
+                   {/* Progress Logic: Platinum = 10, Gold = 5, Silver = 3, Bronze = 1 */}
+                   <div 
+                    className="absolute inset-y-0 left-0 bg-yellow-400 transition-all duration-1000" 
+                    style={{ width: `${Math.min(((user?.loyalty_points || 0) / 10) * 100, 100)}%` }}
+                   ></div>
+                </div>
+                <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-white/60">
+                    <span>Bronze (1)</span>
+                    <span>Silver (3)</span>
+                    <span>Gold (5)</span>
+                    <span>Platinum (10)</span>
+                </div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 text-center min-w-[140px]">
+                <div className="text-3xl font-black text-yellow-400 mb-1">
+                    {user?.loyalty_points || 0}
+                </div>
+                <div className="text-[10px] uppercase font-bold tracking-widest text-white/80">
+                    Points Earned
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="p-8">

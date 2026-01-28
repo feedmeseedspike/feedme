@@ -56,70 +56,108 @@ export const HomeCarousel = () => {
 
   const [imgIndex, setImgIndex] = useState(0);
   const [hasMounted, setHasMounted] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
     setHasMounted(true);
   }, []);
 
+  // Prepare banners with a clone for infinite loop
+  const bannersWithClone = React.useMemo(() => {
+    if (!carouselBanners || carouselBanners.length === 0) return [];
+    return [...carouselBanners, carouselBanners[0]];
+  }, [carouselBanners]);
+
+  const handleNext = React.useCallback(() => {
+    if (isAnimating) return;
+    setImgIndex((pv) => pv + 1);
+  }, [isAnimating]);
+
   useEffect(() => {
     if (!hasMounted || !carouselBanners || carouselBanners.length === 0) return;
 
     const intervalRef = setInterval(() => {
-      setImgIndex((pv) => {
-        if (pv === (carouselBanners?.length || 0) - 1) {
-          return 0;
-        }
-        return pv + 1;
-      });
+      handleNext();
     }, AUTO_DELAY);
 
     return () => clearInterval(intervalRef);
-  }, [hasMounted, carouselBanners]);
+  }, [hasMounted, carouselBanners, handleNext]);
+
+  const handlePrev = () => {
+    if (isAnimating) return;
+    if (imgIndex === 0) {
+      // Logic for prev loop if needed, but we focus on next loop for auto-slider
+      return;
+    }
+    setImgIndex((pv) => pv - 1);
+  };
+
+  // Reset logic for infinite loop
+  useEffect(() => {
+    if (imgIndex === bannersWithClone.length - 1) {
+      const timer = setTimeout(() => {
+        setIsAnimating(true); // Temporarily disable animating to prevent jump flicker
+        setImgIndex(0);
+      }, 500); // Wait for transition to finish (matches SPRING_OPTIONS duration roughly)
+      return () => clearTimeout(timer);
+    }
+  }, [imgIndex, bannersWithClone.length]);
 
   const onDragEnd = (event: any, info: { offset: { x: number } }) => {
     if (!carouselBanners) return;
     const { x } = info.offset;
-    if (x < -DRAG_BUFFER && imgIndex < (carouselBanners?.length || 0) - 1) {
-      setImgIndex((pv) => pv + 1);
+    if (x < -DRAG_BUFFER && imgIndex < bannersWithClone.length - 2) {
+      handleNext();
     } else if (x > DRAG_BUFFER && imgIndex > 0) {
-      setImgIndex((pv) => pv - 1);
+      handlePrev();
     }
   };
 
-  useEffect(() => {
-    // Reset index if banners change or become empty
-    if (!carouselBanners || (carouselBanners?.length || 0) <= imgIndex) {
-      setImgIndex(0);
-    }
-  }, [carouselBanners, imgIndex]);
-
   if (!hasMounted || isLoadingCarousel)
-    return <Skeleton className="w-full h-64 md:h-96 bg-gray-200" />;
+    return <Skeleton className="w-full h-64 md:h-[450px] bg-gray-200" />;
+  
   if (!carouselBanners || carouselBanners.length === 0)
-    return <p>No carousel banners available.</p>;
+    return null;
+
+  const realIndex = imgIndex % carouselBanners.length;
 
   return (
-    <div className="relative bg-white w-full overflow-hidden">
+    <div className="relative bg-white w-full overflow-hidden group pb-2">
       <motion.div
-        key={imgIndex}
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
         style={{
-          width: `${carouselBanners.length * 100}%`,
+          width: `${bannersWithClone.length * 100}%`,
           display: "flex",
         }}
         animate={{
-          transform: `translateX(-${imgIndex * (100 / carouselBanners.length)}%)`,
+          x: `-${imgIndex * (100 / bannersWithClone.length)}%`,
         }}
-        transition={SPRING_OPTIONS}
+        transition={imgIndex === 0 && isAnimating ? { duration: 0 } : SPRING_OPTIONS}
+        onAnimationComplete={() => setIsAnimating(false)}
         onDragEnd={onDragEnd}
-        className=" size-full"
+        className="h-full"
       >
-        <Images carouselBanners={carouselBanners} imgIndex={imgIndex} />
+        <Images carouselBanners={bannersWithClone} imgIndex={imgIndex} />
       </motion.div>
 
+      {/* Navigation Arrows (Visible on hover) */}
+      <button 
+        onClick={handlePrev}
+        className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-md flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 disabled:hidden"
+        disabled={imgIndex === 0}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#1B6013]"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <button 
+        onClick={handleNext}
+        className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-md flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#1B6013]"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
+
       <Dots
-        imgIndex={imgIndex}
+        imgIndex={realIndex}
         setImgIndex={setImgIndex}
         totalDots={carouselBanners.length}
       />
@@ -139,9 +177,19 @@ const Images = ({
       {carouselBanners
         .filter((banner) => !!banner.id)
         .map((banner, idx) => {
-          const linkHref = banner.bundle_id && banner.bundles?.name
-            ? `/bundles/${toSlug(banner.bundles.name)}`
-            : `/${banner.tag}`;
+          const b = banner as any;
+          const hasLink = (b.link_url && b.link_url.trim() !== "") || 
+                          (b.bundle_id && b.bundles?.name) || 
+                          (b.tag && b.tag.trim() !== "");
+          
+          let linkHref = b.link_url || "/";
+          if (!b.link_url) {
+            if (b.bundle_id && b.bundles?.name) {
+              linkHref = `/bundles/${toSlug(b.bundles.name)}`;
+            } else if (b.tag) {
+              linkHref = `/${b.tag}`;
+            }
+          }
 
           const altText = banner.bundle_id
             ? `${banner.bundles?.name || "Bundle"} banner`
@@ -150,31 +198,43 @@ const Images = ({
           const imageUrl = banner.bundle_id
             ? banner.bundles?.thumbnail_url ||
               "https://placehold.co/1200x600/png"
-            : banner.image_url;
+            : banner.image_url || "https://placehold.co/1200x600/png";
+
+          const ImageContent = (
+            <motion.div
+              transition={SPRING_OPTIONS}
+              className="w-full h-full"
+            >
+              <Image
+                src={imageUrl}
+                alt={altText}
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 1200px"
+                priority={idx === imgIndex}
+                className=" w-full h-full"
+              />
+            </motion.div>
+          );
+
+          if (hasLink) {
+            return (
+              <Link
+                href={linkHref}
+                key={banner.id!}
+                className="relative w-full max-w-[1200px] aspect-[70/35] md:aspect-[70/30] overflow-hidden hover:opacity-90 transition-opacity"
+              >
+                {ImageContent}
+              </Link>
+            );
+          }
 
           return (
-            <Link
-              href={linkHref}
+            <div
               key={banner.id!}
-              className="relative w-full max-w-[1200px] aspect-[70/35] md:aspect-[70/30] overflow-hidden hover:opacity-90 transition-opacity"
+              className="relative w-full max-w-[1200px] aspect-[70/35] md:aspect-[70/30] overflow-hidden"
             >
-              <motion.div
-                // animate={{
-                //   scale: imgIndex === idx ? 0.95 : 0.85,
-                // }}
-                transition={SPRING_OPTIONS}
-                className="w-full h-full"
-              >
-                <Image
-                  src={imageUrl}
-                  alt={altText}
-                  fill
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 1200px"
-                  priority={idx === imgIndex}
-                  className=" w-full h-full"
-                />
-              </motion.div>
-            </Link>
+              {ImageContent}
+            </div>
           );
         })}
     </>

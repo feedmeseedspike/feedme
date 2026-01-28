@@ -3,7 +3,9 @@
 import { createClient } from "@utils/supabase/server";
 import { OrderData } from "src/utils/types"; // Corrected import path based on previous fix
 import { revalidatePath } from "next/cache";
-import { calculatePotentialCashBack } from "src/lib/deals";
+import { BONUS_CONFIG, calculatePotentialCashBack } from "src/lib/deals";
+import { createVoucher } from "./voucher.actions";
+import { sendUnifiedNotification } from "./notifications.actions";
 
 export async function processWalletPayment(orderData: OrderData) {
   const supabase = await createClient(); // Await the client creation
@@ -108,6 +110,7 @@ export async function processWalletPayment(orderData: OrderData) {
         payment_method: orderData.paymentMethod, // 'wallet'
         payment_status: "Paid", 
         reference: reference,
+        note: orderData.note,
       })
       .select()
       .single();
@@ -146,8 +149,8 @@ export async function processWalletPayment(orderData: OrderData) {
       reference: `WALLET-${orderResult.id}`,
     });
 
-    // --- Process Post-Order Rewards (Cashback) ---
-    // Fetch product details to check for item-specific deals (like Combos)
+    // --- Process Post-Order Rewards (Cashback, Voucher, Points, Referral) ---
+    // Fetch product details for item-specific deals logic (passed to rewards processor)
     const productIds = orderData.cartItems.map((i: any) => i.productId).filter(Boolean);
     let dealItems: any[] = [];
     
@@ -165,54 +168,39 @@ export async function processWalletPayment(orderData: OrderData) {
         }));
     }
 
-    const cashbackAmount = calculatePotentialCashBack(orderData.totalAmountPaid, dealItems);
-    
-    if (cashbackAmount > 0) {
-        // Call the internal creditWallet we just added
-        await creditWallet(
-            userId, 
-            cashbackAmount, 
-            "Cash Back: December Deals Reward", 
-            `CASHBACK-${orderResult.id}`
-        );
-    }
+    // Call Shared Rewards Logic
+    const { processOrderRewards } = await import("./rewards.actions");
+    const rewardsResult = await processOrderRewards(
+      userId,
+      orderResult.id,
+      orderData.totalAmountPaid,
+      dealItems
+    );
 
-    // --- Referral Cashback Logic (Deal 13) ---
-    // Check if this user was referred
-    const { data: referral } = await supabase
-        .from('referrals')
-        .select('referrer_id, id, status')
-        .eq('referred_user_id', userId)
-        .eq('status', 'qualified') // Assuming 'qualified' means they signed up correctly
-        .single();
-
-    if (referral && referral.referrer_id) {
-         // Check if this is the first order (or just check if discount given? Prompt says 'when they place their first order')
-         // We can check if we already gave a reward for this referral ID? 
-         // Or strictly count orders.
-         const { count } = await supabase
-            .from('orders')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', userId);
-        
-         // If count is 1 (this is the first order just inserted), award referrer
-         if (count === 1) {
-             const referrerBonus = orderData.totalAmountPaid * 0.10;
-             await creditWallet(
-                 referral.referrer_id,
-                 referrerBonus,
-                 `Referral Bonus: 10% from ${userData.user.email}'s first order`,
-                 `REF-BONUS-${referral.id}`
-             );
-             // Update referral status to 'rewarded' or similar if needed, or rely on transaction log
-         }
-    }
+    const rewards = rewardsResult.success ? rewardsResult.rewards : { cashback: 0, freeDeliveryBonus: false, pointsAwarded: 0 };
 
     // Revalidate cache for relevant pages (e.g., wallet balance, order history)
     revalidatePath("/account/wallet");
     revalidatePath("/account/orders");
+    revalidatePath("/account/profile"); // Points update
 
-    return { success: true, data: { orderId: orderResult.id, reference: reference } };
+    // Send order confirmation notification
+    await sendUnifiedNotification({
+      userId,
+      type: 'info',
+      title: 'Order Confirmed',
+      body: `Your order #${orderResult.id} for ${orderData.totalAmountPaid} has been confirmed.`,
+      link: `/order/order-confirmation?id=${orderResult.id}`
+    });
+
+    return { 
+      success: true, 
+      data: { 
+        orderId: orderResult.id, 
+        reference: reference,
+        rewards: rewards 
+      } 
+    };
 
   } catch (error: any) {
     // Basic rollback mechanism: if order creation/items failed, try to refund the wallet
@@ -292,6 +280,19 @@ export async function creditWallet(
   if (txError) {
       console.error("Failed to insert credit transaction:", txError);
       // We don't rollback the balance update here for simplicity but in prod we should using a transaction
+  }
+
+  // Send notification for wallet credit
+  try {
+     await sendUnifiedNotification({
+       userId,
+       type: "info",
+       title: "Wallet Credited",
+       body: `Your wallet has been credited with N${amount}. ${description}`,
+       link: "/account/wallet"
+     });
+  } catch (err) {
+     console.warn("Wallet credit notification failed:", err);
   }
 
   revalidatePath("/account/wallet");

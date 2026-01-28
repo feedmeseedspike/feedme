@@ -42,14 +42,16 @@ interface FetchCustomersParams {
   status?: string;
   startDate?: string;
   endDate?: string;
+  walletFilter?: string;
 }
 
 export interface FetchedCustomerData extends Tables<'profiles'> {
     id: string;
-    email?: string | null;
+    email: string | null;
     addresses: Array<{ phone: string | null; city: string | null }> | null; 
     totalOrders: number;
     totalAmountSpent: number;
+    wallet_balance: number;
 }
 
 export async function fetchCustomers({
@@ -60,6 +62,7 @@ export async function fetchCustomers({
   status = '',
   startDate,
   endDate,
+  walletFilter = '',
 }: FetchCustomersParams): Promise<{ data: FetchedCustomerData[] | null; count: number | null }> {
   const supabase = createClient();
 
@@ -69,6 +72,19 @@ export async function fetchCustomers({
   if (search) {
     // Search in display_name
     profilesQuery = profilesQuery.ilike('display_name', `%${search}%`);
+  }
+
+  // Wallet Filtering logic
+  if (walletFilter) {
+    if (walletFilter === 'has_balance') {
+      const { data: fundedWallets } = await supabase.from('wallets').select('user_id').gt('balance', 0);
+      const fundedUserIds = (fundedWallets || []).map((w: any) => w.user_id).filter((id: string) => !!id);
+      profilesQuery = profilesQuery.in('user_id', fundedUserIds);
+    } else if (walletFilter === 'no_balance') {
+      const { data: fundedWallets } = await supabase.from('wallets').select('user_id').gt('balance', 0);
+      const fundedUserIds = (fundedWallets || []).map((w: any) => w.user_id).filter((id: string) => !!id);
+      profilesQuery = profilesQuery.not('user_id', 'in', `(${fundedUserIds.join(',')})`);
+    }
   }
   
   if (role) {
@@ -151,7 +167,22 @@ export async function fetchCustomers({
     }
   }
 
-  // 5. Merge all data
+  // 5. Fetch wallet balances for relevant user_ids
+  let walletsByUserId: Record<string, number> = {};
+  if (userIds.length > 0) {
+    const { data: wallets, error: walletsError } = await supabase
+      .from('wallets')
+      .select('user_id, balance')
+      .in('user_id', userIds);
+      
+    if (!walletsError && wallets) {
+      wallets.forEach((w: any) => {
+        if (w.user_id) walletsByUserId[w.user_id] = w.balance || 0;
+      });
+    }
+  }
+
+  // 6. Merge all data
   const merged: FetchedCustomerData[] = (profiles as any[]).map(profile => {
     const userId = profile.user_id || profile.id;
     return {
@@ -160,6 +191,7 @@ export async function fetchCustomers({
       addresses: userId ? (addressesByUserId[userId] || []) : [],
       totalOrders: ordersByUserId[userId]?.totalOrders || 0,
       totalAmountSpent: ordersByUserId[userId]?.totalAmountSpent || 0,
+      wallet_balance: walletsByUserId[userId] || 0,
     };
   });
 

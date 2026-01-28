@@ -12,11 +12,9 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status") || "";
     const startDate = searchParams.get("startDate") || undefined;
     const endDate = searchParams.get("endDate") || undefined;
+    const walletFilter = searchParams.get("walletFilter") || "";
 
     // Fetch ALL customers matching the criteria
-    // We use a high itemsPerPage to get everything (within reason).
-    // If you have massive data, efficient streaming or batching would be better,
-    // but for now this is a robust improvement over client-side current page only.
     const { data: customers } = await fetchCustomers({
       page: 1,
       itemsPerPage: 100000, 
@@ -25,6 +23,7 @@ export async function GET(req: NextRequest) {
       status,
       startDate,
       endDate,
+      walletFilter,
     });
 
     if (!customers || customers.length === 0) {
@@ -39,6 +38,7 @@ export async function GET(req: NextRequest) {
       "City",
       "Total Orders",
       "Total Spent",
+      "Wallet Balance",
       "Role",
       "Joined At"
     ];
@@ -59,6 +59,7 @@ export async function GET(req: NextRequest) {
            cleanString(city),
            c.totalOrders,
            c.totalAmountSpent,
+           c.wallet_balance || 0,
            c.is_staff ? "Staff" : (c.role || "Buyer"),
            c.created_at
          ].join(",");

@@ -49,8 +49,8 @@ export async function createVoucher(params: CreateVoucherParams): Promise<Create
         valid_from: params.validFrom || null,
         valid_to: params.validTo || null,
         is_active: true,
-        // name: params.name, // Temporarily disabled due to schema cache issue
-        // description: params.description || null,
+        name: params.name, 
+        description: params.description || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         // Assuming 'user_id' in vouchers table to link to a specific user if needed

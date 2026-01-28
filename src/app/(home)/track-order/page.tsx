@@ -128,24 +128,28 @@ export default function TrackOrderPage() {
             <p className="text-gray-500 text-lg max-w-lg mx-auto">Enter your Order ID (e.g. ORD-123456) to verify the status of your shipment in real-time.</p>
           </div>
 
-          <div className="bg-white p-2 rounded-2xl shadow-xl shadow-green-900/5 max-w-xl mx-auto mb-16 border border-gray-100 flex items-center gap-2 transition-all focus-within:ring-2 focus-within:ring-green-500/20 focus-within:border-green-500/50">
-            <div className="pl-4 text-gray-400">
-                <Search size={22} strokeWidth={1.5} />
+          <div className="relative max-w-lg mx-auto mb-16">
+            <div className="relative group">
+              <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1B6013] transition-colors pointer-events-none">
+                  <Search size={20} strokeWidth={2} />
+              </div>
+              <Input 
+                  placeholder="Enter Order ID" 
+                  value={orderId}
+                  onChange={(e) => setOrderId(e.target.value)}
+                  className="w-full pl-12 pr-32 h-14 bg-white border border-gray-200 rounded-full shadow-sm text-base placeholder:text-gray-400 focus-visible:ring-1 focus-visible:ring-[#1B6013] focus-visible:border-[#1B6013] transition-all hover:border-gray-300"
+                  onKeyDown={(e) => e.key === "Enter" && handleTrack(orderId, true)}
+              />
+              <div className="absolute right-1.5 top-1.5 bottom-1.5">
+                  <Button 
+                      onClick={() => handleTrack(orderId, true)} 
+                      disabled={isLoading || !orderId}
+                      className="h-full rounded-full px-6 bg-[#1B6013] hover:bg-[#154d0f] text-white font-medium text-sm transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                      {isLoading ? <Loader2 className="animate-spin" size={18} /> : "Track"}
+                  </Button>
+              </div>
             </div>
-            <Input 
-                placeholder="Enter Your Order ID..." 
-                value={orderId}
-                onChange={(e) => setOrderId(e.target.value)}
-                className="border-none shadow-none focus-visible:ring-0 h-14 text-lg bg-transparent placeholder:text-gray-300 text-gray-900"
-                onKeyDown={(e) => e.key === "Enter" && handleTrack(orderId, true)}
-            />
-            <Button 
-                onClick={() => handleTrack(orderId, true)} 
-                disabled={isLoading || !orderId}
-                className="h-12 px-8 rounded-xl bg-[#1B6013] hover:bg-[#154d0f] text-white font-medium text-base shadow-lg shadow-green-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
-            >
-                {isLoading ? <Loader2 className="animate-spin" size={20} /> : "Track Order"}
-            </Button>
           </div>
 
           <AnimatePresence mode="wait">

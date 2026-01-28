@@ -170,6 +170,7 @@ export default function WalletClient({
         email: user.email,
         amount: parseFloat(fundingAmount),
         type: "wallet_funding",
+        customerName: user.display_name,
       });
       if (res.data.authorization_url) {
         const paymentUrl = res.data.authorization_url;

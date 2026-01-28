@@ -88,6 +88,8 @@ export const POST = async (request: Request) => {
           type: "wallet_funding",
           user_id,
           wallet_id: wallet.id,
+          email: email,
+          customerName: customerName || email,
         };
       } else if (type === "direct_payment") {
         callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL!}/order/order-confirmation?orderId=${orderId}`;
@@ -157,20 +159,7 @@ export const POST = async (request: Request) => {
         console.log("Anonymous payment initialized. Skipping 'transactions' table insert (requires user_id). Order state will be managed via orders table.");
       }
 
-      // Update order with Paystack reference for direct payments
-      if (type === "direct_payment") {
-        const { error: orderUpdateError } = await supabase
-          .from("orders")
-          .update({ reference: orderId })
-          .eq("order_id", orderId);
 
-        if (orderUpdateError) {
-          console.error(
-            "Failed to update order with Paystack reference:",
-            orderUpdateError
-          );
-        }
-      }
 
       return NextResponse.json({
         access_code: transactionData.data.access_code,

@@ -1,5 +1,6 @@
 import { createClient } from "@utils/supabase/server";
 import RewardsClient from "./RewardsClient";
+import RewardsOverview from "./RewardsOverview";
 
 export default async function RewardsPage() {
   const supabase = await createClient();
@@ -10,16 +11,21 @@ export default async function RewardsPage() {
     return <div>Please log in to view rewards.</div>;
   }
 
+  // Fetch Profile for Loyalty Points
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('loyalty_points')
+    .eq('user_id', user.id)
+    .single();
+
   // Fetch active vouchers for this user
-  const { data: vouchers, error } = await supabase
+  const { data: vouchers } = await supabase
     .from('vouchers')
     .select('*')
     .eq('user_id', user.id)
     .eq('is_active', true)
     .order('created_at', { ascending: false });
 
-  // Filter out used ones manually if needed, though API checks usage table.
-  // Ideally, we join with voucher_usages, but for now let's just list the vouchers.
   const { data: usages } = await supabase
       .from('voucher_usages')
       .select('voucher_id')
@@ -33,9 +39,23 @@ export default async function RewardsPage() {
   })) || [];
 
   return (
-    <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-6 font-quicksand">My Rewards</h1>
-      <RewardsClient vouchers={availableVouchers} />
+    <div className="container mx-auto py-12 px-6">
+      <div className="mb-12">
+        <h1 className="text-4xl font-black mb-2 font-quicksand text-gray-900 leading-tight">Member Perks</h1>
+        <p className="text-gray-500 text-sm">Track your loyalty points and active order bonuses.</p>
+      </div>
+
+      <div className="space-y-16">
+        <RewardsOverview loyaltyPoints={profile?.loyalty_points || 0} />
+
+        <div className="space-y-6">
+            <h4 className="text-xs font-black uppercase tracking-widest text-[#1B6013] mb-2 flex items-center gap-2">
+                <div className="w-6 h-1 bg-[#1B6013] rounded-full" />
+                Active Order Bonuses
+            </h4>
+            <RewardsClient vouchers={availableVouchers} />
+        </div>
+      </div>
     </div>
   );
 }

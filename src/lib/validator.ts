@@ -309,6 +309,7 @@ export const UserProfileSchema = z.object({
 // ======================
 export const UserAddressSchema = z.object({
   label: z.string().optional(),
+  fullName: z.string().optional(),
   street: z.string().min(1, "Street address is required"),
   city: z.string().min(1, "City is required"),
   state: z.string().min(1, "State is required"),
