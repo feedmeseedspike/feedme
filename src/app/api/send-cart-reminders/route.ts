@@ -86,7 +86,6 @@ export async function POST(request: Request) {
 
       if (nextStage > 3 || !shouldSend) continue;
 
-      // ─── Get user email ───────────────────────────────────────
       const { data: userData, error: userError } =
         await supabaseAdmin.auth.admin.getUserById(cart.user_id);
 
