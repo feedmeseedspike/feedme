@@ -23,8 +23,8 @@ export default function SpinNotification() {
         .from("orders")
         .select("id")
         .eq("user_id", user.user_id)
-        .in("payment_status", ["Paid"])
-        .in("status", ["Confirmed", "Processing", "order delivered"])
+        .in("payment_status", ["Paid", "paid"])
+        .in("status", ["Confirmed", "order confirmed", "Processing", "order delivered"])
         .order("created_at", { ascending: false })
         .limit(1);
         

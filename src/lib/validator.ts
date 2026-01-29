@@ -131,7 +131,7 @@ export const ShippingAddressSchema = z.object({
   street: z.string().trim().min(5, "Street address must be at least 5 characters"),
   location: z.string().trim().min(1, "Please select a location"),
   phone: z.string().regex(/^(?\d{8,15})$/, "Please enter a valid phone number"),
-  email: z.string().email("Please enter a valid email address").optional().or(z.literal("")),
+  email: z.union([z.string().email("Please enter a valid email address"), z.literal(""), z.undefined()]).optional(),
 });
 
 // ======================
@@ -316,6 +316,7 @@ export const UserAddressSchema = z.object({
   zip: z.string().min(1, "Zip code is required"),
   country: z.string().min(1, "Country is required"),
   phone: z.string().min(1, "Phone number is required"),
+  email: z.string().email().optional().or(z.literal("")),
 });
 
 export type UserAddress = z.infer<typeof UserAddressSchema>;

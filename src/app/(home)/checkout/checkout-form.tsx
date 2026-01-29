@@ -14,6 +14,7 @@ import { Separator } from "@components/ui/separator";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useState, useTransition, useMemo, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useSupabaseUser } from "@components/supabase-auth-provider";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Select,
@@ -215,6 +216,7 @@ const shippingAddressDefaultValues =
         street: "10, Yemisi Street",
         location: "Badagry",
         phone: "08144602273",
+        email: "",
       }
     : {
         fullName: "",
@@ -246,11 +248,13 @@ interface CheckoutFormProps {
 const CheckoutForm = ({
   addresses,
   walletBalance,
-  user,
+  user: initialUser,
   deliveryLocations,
 }: CheckoutFormProps) => {
+  const supabaseUser = useSupabaseUser();
+  const user = supabaseUser || initialUser;
+
   // console.log("CheckoutForm: User:", user);
-  // console.log("CheckoutForm: addresses:", addresses);
   const router = useRouter();
   const dispatch = useDispatch();
   const { data: cartItems, isLoading, isError, error } = useCartQuery();
@@ -846,12 +850,7 @@ const CheckoutForm = ({
 
           console.log("DEBUG: Submission Details", { email, formLocation, paymentMethod: selectedPaymentMethod });
 
-          if (!email) {
-            console.error("DEBUG: Email missing");
-            showToast("Email is required.", "error");
-            setIsSubmitting(false);
-            return;
-          }
+          // Email check removed to allow optional emails
           const orderData = {
             userId: user?.user_id || null,
             cartItems: (items || []).map((item) => ({
@@ -915,7 +914,7 @@ const CheckoutForm = ({
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                      adminEmail: "oyedelejeremiah.ng@gmail.com",
+                      adminEmail: "orders.feedmeafrica@gmail.com",
                       userEmail: user.email,
                       adminOrderProps: {
                         orderNumber: result.data.reference || result.data.orderId,
@@ -1831,7 +1830,7 @@ const CheckoutForm = ({
                     </div>
                     
                     <div className="pb-6 border-b border-slate-200/60">
-                        <BonusProgressBar subtotal={subtotal} />
+                        <BonusProgressBar subtotal={subtotal} isFirstOrder={isFirstOrder} isAuthenticated={isAuthenticated} />
                     </div>
 
                     <div className="space-y-4 max-h-[350px] overflow-y-auto pr-4 custom-scrollbar -mx-2 px-2">

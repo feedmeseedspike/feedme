@@ -123,7 +123,7 @@ export async function sendStatusUpdateEmail({
         ${newStatus !== "Cancelled" ? `
           <div style="text-align: center; margin-top: 24px;">
             <p style="color: #666; font-size: 14px; margin-bottom: 8px;">Need help? Contact us:</p>
-            <a href="mailto:oyedelejeremiah.ng@gmail.com" style="color: #1B6013; text-decoration: none; font-weight: bold;">oyedelejeremiah.ng@gmail.com</a>
+            <a href="mailto:orders.feedmeafrica@gmail.com" style="color: #1B6013; text-decoration: none; font-weight: bold;">orders.feedmeafrica@gmail.com</a>
           </div>
         ` : ''}
         

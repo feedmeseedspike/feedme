@@ -314,7 +314,7 @@ export default function PriceUpdateEmail(props: PriceUpdateEmailProps) {
                 You are receiving price alerts from FeedMe. To adjust your
                 notifications click{" "}
                 <Link
-                  href="mailto:oyedelejeremiah.ng@gmail.com?subject=Price Update Preferences"
+                  href="mailto:orders.feedmeafrica@gmail.com?subject=Price Update Preferences"
                   className="text-[#1B6013]"
                 >
                   here

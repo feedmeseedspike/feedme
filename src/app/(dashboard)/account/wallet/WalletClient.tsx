@@ -126,9 +126,9 @@ const TransactionItem = ({ tx }: { tx: Tables<"transactions"> }) => (
       <span
         className={cn(
           "text-[10px] uppercase tracking-wider font-semibold",
-          tx.payment_status === "Paid"
+          tx.payment_status === "Paid" || tx.payment_status === "paid"
             ? "text-emerald-600"
-            : tx.payment_status === "Pending"
+            : tx.payment_status === "Pending" || tx.payment_status === "pending"
             ? "text-amber-600"
             : "text-gray-400"
         )}

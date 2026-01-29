@@ -72,7 +72,7 @@ interface OrderDetailModalProps {
 }
 
 const ORDER_STATUSES = ["order confirmed", "In transit", "order delivered", "Cancelled"];
-const PAYMENT_STATUSES = ["Pending", "Paid", "Cancelled"];
+const PAYMENT_STATUSES = ["Pending", "Paid", "paid", "Cancelled"];
 
 export default function OrderDetailModal({ isOpen, onClose, order }: OrderDetailModalProps) {
   const { showToast } = useToast();

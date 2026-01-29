@@ -117,7 +117,7 @@ export default function FreshSeedsSlider() {
             {products.map((product) => (
               <CarouselItem key={product.id} className="pl-4 ">
                 <div className="h-full">
-                  <ProductCard product={product} hideBorder className="bg-white hover:bg-white transition-colors duration-300 shadow-sm hover:shadow-md border border-[#E8F5E9]/50" />
+                  <ProductCard product={product} hideBorder className="bg-white p-3 rounded-xl hover:bg-white transition-colors duration-300 shadow-sm hover:shadow-md border border-[#E8F5E9]/50" />
                 </div>
               </CarouselItem>
             ))}

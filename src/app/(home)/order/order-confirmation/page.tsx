@@ -140,7 +140,7 @@ export default function OrderConfirmationPage() {
         };
         setRewardSummary(rewards);
 
-        if (data.payment_status === "Paid") {
+        if (data.payment_status === "Paid" || data.payment_status === "paid") {
            setSpinNotifVisible(true);
            
            // Automatically trigger the wheel
@@ -155,9 +155,9 @@ export default function OrderConfirmationPage() {
         setLoading(false);
 
         // Check if we should stop polling
-        const isTerminalState = ["Paid", "Failed", "Declined", "Cancelled"].includes(data.payment_status);
+        const isTerminalState = ["Paid", "paid", "Failed", "failed", "Declined", "Cancelled"].includes(data.payment_status);
         if (isTerminalState) {
-            if (data.payment_status === "Paid") {
+            if (data.payment_status === "Paid" || data.payment_status === "paid") {
                if (!showConfetti) setShowConfetti(true);
                if (!localStorage.getItem(`toast_shown_${id}`)) {
                 showToast("Order confirmed!", "success");
@@ -259,11 +259,11 @@ export default function OrderConfirmationPage() {
   // Payment status logic (Restored from original)
   let paymentStatusLabel = "Unknown";
   let paymentStatusColor = "bg-gray-400 text-white";
-  if (order.payment_status === "Paid") {
+  if (order.payment_status === "Paid" || order.payment_status === "paid") {
     paymentStatusLabel = "Paid";
     paymentStatusColor = "bg-green-600 text-white";
   } else if (
-    ["Pending", "Processing", "Awaiting Payment"].includes(order.payment_status)
+    ["Pending", "pending", "Processing", "Awaiting Payment"].includes(order.payment_status)
   ) {
     paymentStatusLabel = "Pending";
     paymentStatusColor = "bg-yellow-500 text-white";

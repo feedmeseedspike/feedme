@@ -25,7 +25,7 @@ export async function spinTheWheel() {
     .select("*", { count: 'exact', head: true })
     .eq("user_id", user.id)
     .in("payment_status", ["Paid"]) 
-    .in("status", ["Confirmed", "Processing", "order delivered"]);
+    .in("status", ["Confirmed", "order confirmed", "Processing", "order delivered"]);
 
   if (countError) {
       console.error("Spin Eligibility Check Failed:", countError);
@@ -198,7 +198,7 @@ export async function spinTheWheel() {
 
             // Notify Admin
             try {
-                const adminEmail = "oyedelejeremiah.ng@gmail.com"; 
+                const adminEmail = "orders.feedmeafrica@gmail.com"; 
                 await sendMail({
                     to: adminEmail,
                     subject: `🎰 SPIN WIN: ${selectedPrize.label} won by ${user.email}`,
