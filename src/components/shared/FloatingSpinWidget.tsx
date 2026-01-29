@@ -65,8 +65,8 @@ export default function FloatingSpinWidget() {
           .from("orders")
           .select("*", { count: 'exact', head: true })
           .eq("user_id", user.user_id)
-          .in("payment_status", ["Paid"])
-          .in("status", ["Confirmed", "Processing", "order delivered"]);
+          .in("payment_status", ["Paid", "paid"])
+          .in("status", ["Confirmed", "order confirmed", "Processing", "order delivered"]);
 
         // Check if user has already used their welcome spin
         const { data: profile } = await supabase

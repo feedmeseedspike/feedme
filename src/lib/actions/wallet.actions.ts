@@ -143,7 +143,7 @@ export async function processWalletPayment(orderData: OrderData) {
       user_id: userId,
       order_id: orderResult.id,
       amount: amountToDeduct,
-      payment_status: "successful",
+      payment_status: "paid",
       payment_gateway: "wallet",
       transaction_id: `WALLET-${orderResult.id}`,
       reference: `WALLET-${orderResult.id}`,

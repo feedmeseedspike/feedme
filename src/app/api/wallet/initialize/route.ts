@@ -12,7 +12,7 @@ export const POST = async (request: Request) => {
 
     try {
       const {
-        email,
+        email: requestEmail,
         amount,
         type,
         orderId,
@@ -27,6 +27,8 @@ export const POST = async (request: Request) => {
         serviceCharge,
         subtotal
       } = await request.json();
+
+      const email = requestEmail || user?.email;
 
       // Validate common fields
       if (!email || !amount || !type) {

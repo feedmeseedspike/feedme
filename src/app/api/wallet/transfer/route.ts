@@ -117,7 +117,7 @@ export const POST = authMiddleware(
         transaction_id: transferData.data.reference,
         amount,
         currency: "NGN",
-        payment_status: "successful",
+        payment_status: "paid",
         reference: transferData.data.reference,
       });
       if (txError) throw txError;

@@ -13,7 +13,8 @@ export const POST = async (request: Request) => {
     const authUserId = user?.id;
 
     try {
-      const { email, amount, orderDetails } = await request.json();
+      const { email: requestEmail, amount, orderDetails } = await request.json();
+      const email = requestEmail || user?.email;
 
       if (!email || !amount || !orderDetails) {
         return NextResponse.json(

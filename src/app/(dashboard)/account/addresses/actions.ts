@@ -11,9 +11,11 @@ export async function addAddressAction(
   const user = await getUser();
   if (!user) throw new Error("Not authenticated");
   const supabase = await createClient();
+  // Strip email if present since it's not in the database schema
+  const { email, ...cleanAddressData } = addressData as any;
   const { data, error } = await supabase
     .from("addresses")
-    .insert([{ ...addressData, user_id: user.user_id }])
+    .insert([{ ...cleanAddressData, user_id: user.user_id }])
     .select()
     .single();
   if (error) throw error;
@@ -28,9 +30,11 @@ export async function updateAddressAction(
   const user = await getUser();
   if (!user) throw new Error("Not authenticated");
   const supabase = await createClient();
+  // Strip email if present
+  const { email, ...cleanUpdates } = updates as any;
   const { data, error } = await supabase
     .from("addresses")
-    .update(updates)
+    .update(cleanUpdates)
     .eq("id", id)
     .eq("user_id", user.user_id)
     .select()

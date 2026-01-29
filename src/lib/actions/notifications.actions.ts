@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "src/utils/supabase/server";
+import { createClient, createServiceRoleClient } from "src/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { sendPushNotification } from "./pushnotification.action";
 
@@ -25,7 +25,7 @@ export async function createNotification({
   link,
   expiresAt,
 }: CreateNotificationParams) {
-  const supabase = await createClient();
+  const supabase = createServiceRoleClient(); // Use service role to bypass RLS
 
   // If expiresAt is not provided, default to 1 month from now
   const expiry = expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();

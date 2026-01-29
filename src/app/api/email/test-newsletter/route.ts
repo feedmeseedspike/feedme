@@ -281,7 +281,7 @@ export async function POST(request: Request) {
     // Send test email
     await transporter.sendMail({
       from: `"FeedMe" <${process.env.NODEMAILER_USER}>`,
-      to: "oyedelejeremiah.ng@gmail.com",
+      to: "orders.feedmeafrica@gmail.com",
       subject: `[TEST] ${subject}`,
       html: htmlContent,
       text: textContent

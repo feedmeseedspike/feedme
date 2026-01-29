@@ -33,7 +33,7 @@ export default function PriceUpdateAdminPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
 
-  const [testEmail, setTestEmail] = useState("oyedelejeremiah.ng@gmail.com");
+  const [testEmail, setTestEmail] = useState("orders.feedmeafrica@gmail.com");
   const [sendingTest, setSendingTest] = useState(false);
   const [sendingAll, setSendingAll] = useState(false);
   const [syncing, setSyncing] = useState(false);

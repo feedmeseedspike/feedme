@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       // Update transaction status (if record exists)
       const { data: transaction, error: txError } = await supabase
         .from("transactions")
-        .update({ payment_status: "successful" })
+        .update({ payment_status: "paid" })
         .eq("reference", reference)
         .eq("user_id", metadata.user_id)
         .select()
@@ -108,7 +108,7 @@ async function handleWalletFunding(metadata: any, amount: number) {
   try {
       const { sendWalletFundingEmail } = await import("@/utils/email/sendOrderEmail");
       await sendWalletFundingEmail({
-          adminEmail: "oyedelejeremiah.ng@gmail.com",
+          adminEmail: "orders.feedmeafrica@gmail.com",
           userName: metadata.customerName || "Customer",
           userEmail: metadata.email || "N/A",
           amount: amount / 100,
@@ -128,11 +128,10 @@ async function handleDirectPayment(
     .from("orders")
     .select("payment_status")
     .eq("order_id", metadata.orderId)
-    .single();
+    .maybeSingle();
 
   if (fetchError) {
       console.error("Error fetching order for idempotency check:", fetchError);
-      // Proceed with caution, or throw? If we can't read, update might fail anyway.
   } else if (existingOrder && existingOrder.payment_status === "Paid") {
       console.log(`Order ${metadata.orderId} is already Paid. Skipping processing.`);
       return;
@@ -182,7 +181,7 @@ async function handleDirectPayment(
         const { sendOrderConfirmationEmails } = await import("@/utils/email/sendOrderEmail");
 
         await sendOrderConfirmationEmails({
-            adminEmail: "oyedelejeremiah.ng@gmail.com",
+            adminEmail: "orders.feedmeafrica@gmail.com",
             userEmail: metadata.email,
             adminOrderProps: {
                 orderNumber: metadata.orderId,

@@ -6,7 +6,7 @@ interface ITransaction extends Document {
   transactionId: string;
   amount: number;
   currency: string;
-  paymentStatus: "pending" | "successful" | "failed";
+  paymentStatus: "pending" | "paid" | "failed";
   paymentGateway: string;
   reference: string;
   createdAt: Date;
@@ -22,7 +22,7 @@ const transactionSchema = new Schema<ITransaction>(
     currency: { type: String, default: "NGN" },
     paymentStatus: {
       type: String,
-      enum: ["pending", "successful", "failed"],
+      enum: ["pending", "paid", "failed"],
       default: "pending",
     },
     paymentGateway: { type: String, default: "paystack" },

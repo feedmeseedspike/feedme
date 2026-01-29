@@ -30,7 +30,7 @@ export const POST = authMiddleware(
       // Verify transaction belongs to user
       const { data: transaction, error: txError } = await supabase
         .from("transactions")
-        .update({ payment_status: status })
+        .update({ payment_status: "paid" })
         .eq("reference", reference)
         .eq("user_id", user_id)
         .select()
