@@ -128,10 +128,10 @@ export const OrderItemSchema = z.object({
 
 export const ShippingAddressSchema = z.object({
   fullName: z.string().trim().min(2, "Full name must be at least 2 characters"),
-  street: z.string().trim().min(5, "Street address must be at least 5 characters"),
+  street: z.string().trim().min(3, "Street address must be at least 3 characters"),
   location: z.string().trim().min(1, "Please select a location"),
-  phone: z.string().regex(/^(?\d{8,15})$/, "Please enter a valid phone number"),
-  email: z.union([z.string().email("Please enter a valid email address"), z.literal(""), z.undefined()]).optional(),
+  phone: z.string().trim().min(7, "Phone number is too short").max(20, "Phone number is too long"),
+  email: z.string().trim().email("Please enter a valid email address").min(1, "Email is required"),
 });
 
 // ======================

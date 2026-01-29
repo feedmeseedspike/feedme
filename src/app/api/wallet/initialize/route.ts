@@ -28,19 +28,20 @@ export const POST = async (request: Request) => {
         subtotal
       } = await request.json();
 
-      const email = requestEmail || user?.email;
+      const emailFromAuth = user?.email;
+      const finalEmail = requestEmail || emailFromAuth;
 
       // Validate common fields
-      if (!email || !amount || !type) {
+      if (!finalEmail || amount === undefined || amount === null || !type) {
         return NextResponse.json(
-          { message: "Missing required fields: email, amount, and type" },
+          { message: `Missing required fields: ${!finalEmail ? 'Email is required.' : ''} ${amount === undefined ? 'Amount is required.' : ''} ${!type ? 'Payment type is required.' : ''}`.trim() },
           { status: 400 }
         );
       }
 
-      if (typeof amount !== "number" || amount <= 0) {
+      if (typeof amount !== "number" || (amount <= 0 && type === "wallet_funding")) {
         return NextResponse.json(
-          { message: "Amount must be a positive number" },
+          { message: "Amount must be a positive number for wallet funding" },
           { status: 400 }
         );
       }
@@ -90,8 +91,8 @@ export const POST = async (request: Request) => {
           type: "wallet_funding",
           user_id,
           wallet_id: wallet.id,
-          email: email,
-          customerName: customerName || email,
+          email: finalEmail,
+          customerName: customerName || finalEmail,
         };
       } else if (type === "direct_payment") {
         callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL!}/order/order-confirmation?orderId=${orderId}`;
@@ -100,7 +101,7 @@ export const POST = async (request: Request) => {
           user_id: user_id, // Can be null for anonymous
           orderId,
           // Additional data for webhook processing
-          email: email,
+          email: finalEmail,
           amount: amount,
           autoAppliedReferralVoucher: autoAppliedReferralVoucher || false,
           customerName: customerName || "",
@@ -122,9 +123,20 @@ export const POST = async (request: Request) => {
         );
       }
 
+      // Handle free orders (Amount = 0)
+      if (type === "direct_payment" && amount === 0) {
+        return NextResponse.json({
+          success: true,
+          message: "Free order processed successfully",
+          reference: orderId,
+          type: type,
+          is_free: true
+        });
+      }
+
       // Initialize Paystack transaction
       const transactionData = await paystack.initializeTransaction({
-        email,
+        email: finalEmail,
         amount,
         callback_url: callbackUrl,
         metadata,

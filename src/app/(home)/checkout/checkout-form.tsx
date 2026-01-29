@@ -416,15 +416,15 @@ const CheckoutForm = ({
   // When selectedAddressId changes, update the form values
   useEffect(() => {
     if (selectedAddress) {
+      const currentValues = shippingAddressForm.getValues();
       shippingAddressForm.reset({
-        fullName: user?.display_name || selectedAddress.label || "",
-        street: selectedAddress.street,
-        location: selectedAddress.city,
-        phone: selectedAddress.phone,
-        email: user?.email || "",
+        fullName: selectedAddress.label || user?.display_name || currentValues.fullName || "",
+        street: selectedAddress.street || currentValues.street || "",
+        location: selectedAddress.city || currentValues.location || "",
+        phone: selectedAddress.phone || currentValues.phone || "",
+        email: currentValues.email || user?.email || "",
       });
     } else if (user?.email) {
-      // If no selected address but we have user email (and no address selected yet), ensure email field is set if empty
       const currentEmail = shippingAddressForm.getValues("email");
       if (!currentEmail) {
         shippingAddressForm.setValue("email", user.email);
@@ -1100,6 +1100,14 @@ const CheckoutForm = ({
               
               setIsSubmitting(false);
               return; // Stop further execution
+            } else if (response.data.is_free || response.data.success) {
+               // Order is free or already succeeded
+               showToast("Order placed successfully!", "success");
+               localStorage.setItem("triggerSpin", "true");
+               localStorage.setItem("lastOrderId", orderResult.data.orderId);
+               router.push(`/order/order-confirmation?orderId=${orderResult.data.orderId}`);
+               setIsSubmitting(false);
+               return;
             } else {
               showToast(
                 response.data.message ||
@@ -1368,7 +1376,7 @@ const CheckoutForm = ({
                                   name="fullName"
                                   render={({ field }) => (
                                     <FormItem>
-                                      <FormLabel>Full Name</FormLabel>
+                                      <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
                                       <FormControl>
                                         <Input
                                           placeholder="Enter full name"
@@ -1380,18 +1388,18 @@ const CheckoutForm = ({
                                     </FormItem>
                                   )}
                                 />
-                                <FormField
+                                  <FormField
                                   control={shippingAddressForm.control}
                                   name="email"
                                   render={({ field }) => (
                                     <FormItem>
-                                      <FormLabel>Email Address</FormLabel>
+                                      <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
                                       <FormControl>
                                         <Input
                                           placeholder="Enter email address"
                                           {...field}
-                                          className="rounded-xl bg-gray-50 border-gray-200"
-                                          // disabled={!!user?.email} 
+                                          required
+                                          className="rounded-xl bg-gray-50 border-gray-200 focus:ring-green-500"
                                         />
                                       </FormControl>
                                       <FormMessage />
@@ -1403,7 +1411,7 @@ const CheckoutForm = ({
                                   name="street"
                                   render={({ field }) => (
                                     <FormItem>
-                                      <FormLabel>Address</FormLabel>
+                                      <FormLabel>Address <span className="text-red-500">*</span></FormLabel>
                                       <FormControl>
                                         <Input
                                           placeholder="Enter street address"
@@ -1420,7 +1428,7 @@ const CheckoutForm = ({
                                   name="location"
                                   render={({ field }) => (
                                     <FormItem>
-                                      <FormLabel>Location</FormLabel>
+                                      <FormLabel>Location <span className="text-red-500">*</span></FormLabel>
                                       <Select
                                         value={field.value}
                                         onValueChange={field.onChange}
@@ -1450,7 +1458,7 @@ const CheckoutForm = ({
                                   name="phone"
                                   render={({ field }) => (
                                     <FormItem>
-                                      <FormLabel>Phone Number</FormLabel>
+                                      <FormLabel>Phone Number <span className="text-red-500">*</span></FormLabel>
                                       <FormControl>
                                         <Input
                                           placeholder="Enter phone number"
@@ -1572,7 +1580,7 @@ const CheckoutForm = ({
                                 name="fullName"
                                 render={({ field }) => (
                                     <FormItem>
-                                    <FormLabel>Full Name</FormLabel>
+                                     <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
                                     <FormControl>
                                         <Input
                                         placeholder="Enter full name"
@@ -1590,13 +1598,14 @@ const CheckoutForm = ({
                                 name="email"
                                 render={({ field }) => (
                                     <FormItem>
-                                    <FormLabel>Email Address</FormLabel>
+                                    <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
                                     <FormControl>
                                         <Input
                                         placeholder="Enter email address"
                                         {...field}
+                                        required
                                         disabled={isAddingAddress || !!user?.email}
-                                        className="rounded-xl bg-gray-50 border-gray-200"
+                                        className="rounded-xl bg-gray-50 border-gray-200 focus:ring-green-500"
                                         />
                                     </FormControl>
                                     <FormMessage />
@@ -1609,7 +1618,7 @@ const CheckoutForm = ({
                               name="street"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Address</FormLabel>
+                                   <FormLabel>Address <span className="text-red-500">*</span></FormLabel>
                                   <FormControl>
                                     <Input
                                       placeholder="Enter street address"
@@ -1628,7 +1637,7 @@ const CheckoutForm = ({
                                 name="location"
                                 render={({ field }) => (
                                     <FormItem>
-                                    <FormLabel>Location</FormLabel>
+                                     <FormLabel>Location <span className="text-red-500">*</span></FormLabel>
                                     <Select
                                         value={field.value}
                                         onValueChange={field.onChange}
@@ -1659,7 +1668,7 @@ const CheckoutForm = ({
                                 name="phone"
                                 render={({ field }) => (
                                     <FormItem>
-                                    <FormLabel>Phone Number</FormLabel>
+                                     <FormLabel>Phone Number <span className="text-red-500">*</span></FormLabel>
                                     <FormControl>
                                         <Input
                                         placeholder="Enter phone number"
@@ -2014,8 +2023,13 @@ function Footer({
       // Corresponds to Shipping Information
       const isFormValid = await shippingAddressForm.trigger();
       if (!isFormValid) {
+        const errors = shippingAddressForm.formState.errors;
+        const errorMessages = Object.values(errors)
+          .map((err: any) => err.message)
+          .filter(Boolean);
+        
         showToast(
-          "Please fill out all required shipping fields correctly.",
+          errorMessages[0] || "Please fill out all required shipping fields correctly.",
           "error"
         );
         return;

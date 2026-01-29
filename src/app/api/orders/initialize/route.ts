@@ -16,14 +16,23 @@ export const POST = async (request: Request) => {
 
     try {
       const { email: requestEmail, amount, orderDetails } = await request.json();
-      const email = requestEmail || user?.email;
-
-      if (!email || !amount || !orderDetails) {
+      if (amount === undefined || amount === null || !orderDetails) {
         return NextResponse.json(
-          { message: "Missing required fields" },
+          { message: "Missing required fields: amount and orderDetails are required." },
           { status: 400 }
         );
       }
+      
+      const emailFromAuth = user?.email;
+      const finalEmail = requestEmail || emailFromAuth || orderDetails.shippingAddress?.email;
+
+      if (!finalEmail) {
+        return NextResponse.json(
+          { message: "An email address is required to process your order." },
+          { status: 400 }
+        );
+      }
+      
       
       const userIdToUse = authUserId || orderDetails.userId || null;
       
