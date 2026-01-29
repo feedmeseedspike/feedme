@@ -3,15 +3,33 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@components/ui/button';
+import { Separator } from '@components/ui/separator';
 import { X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useUser } from 'src/hooks/useUser';
 
 export default function DealsPopup() {
+  const [orderCount, setOrderCount] = useState<number | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const { user } = useUser();
+  const [isFirstOrder, setIsFirstOrder] = useState(true);
+
+  // Fetch order history to determine first-time status
+  useEffect(() => {
+    if (user?.user_id) {
+        import('src/lib/actions/user.action').then(({ getCustomerOrdersAction }) => {
+            getCustomerOrdersAction(user.user_id).then((orders) => {
+                const count = orders?.length || 0;
+                setOrderCount(count);
+                setIsFirstOrder(count === 0);
+            });
+        });
+    } else {
+        setIsFirstOrder(true);
+    }
+  }, [user]);
 
   useEffect(() => {
     // 1. Route Check: Don't show on auth or admin pages as requested
@@ -51,11 +69,6 @@ export default function DealsPopup() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             className="relative w-full max-w-sm md:max-w-md bg-[#1B6013] rounded-3xl shadow-2xl overflow-hidden pointer-events-auto border border-[#A3E635]/30"
-            style={{
-                backgroundImage: "url('/jolly_modal_bg.png')",
-                backgroundSize: 'cover',
-                backgroundPosition: 'center'
-            }}
           >
              {/* Dark overlay for readability */}
              <div className="absolute inset-0 bg-gradient-to-b from-[#1B6013]/80 to-[#0e330a]/95" />
@@ -75,22 +88,38 @@ export default function DealsPopup() {
                     className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-white/10 backdrop-blur-md mb-6 border border-[#A3E635]/50 shadow-[0_0_20px_rgba(163,230,53,0.3)] overflow-hidden"
                 >
                     <img 
-                      src="/cashback_icon.png" 
-                      alt="Cashback" 
-                      className="w-full h-full object-cover"
+                      src={isFirstOrder ? "/cashback_icon.png" : "https://cdn-icons-png.flaticon.com/512/1152/1152912.png"} 
+                      alt="Rewards" 
+                      className="w-full h-full object-cover p-4"
                     />
                 </motion.div>
 
-                <h2 className="text-3xl font-bold mb-2 tracking-tight font-serif text-[#A3E635] drop-shadow-md">
-                   {user ? "Earn while you shop" : "Sign up & Earn!"}
+                <h2 className={`text-3xl font-bold mb-2 tracking-tight font-serif text-[#A3E635] drop-shadow-md`}>
+                   {isFirstOrder ? (user ? "Welcome Bonus!" : "Sign up & Earn!") : "Unlock Rewards!"}
                 </h2>
                 
                 <div className="my-8 p-6 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 shadow-inner">
-                    <div className="text-5xl font-bold mb-2 text-white drop-shadow-md">10%</div>
-                    <div className="text-xl font-bold text-[#A3E635] uppercase tracking-wide mb-1">Jolly Cash Back</div>
-                    <p className="text-white/80 text-sm font-medium">
-                        {user ? "On all orders above ₦25,000" : "Create an account to get 10% back on orders above ₦25,000"}
-                    </p>
+                    {isFirstOrder ? (
+                        <>
+                            <div className="text-5xl font-black mb-2 text-white drop-shadow-md">10% OFF</div>
+                            <div className="text-xl font-bold text-[#A3E635] uppercase tracking-wide mb-1">First Order Discount</div>
+                            <p className="text-white/80 text-sm font-medium">
+                                On all orders above ₦25,000
+                            </p>
+                        </>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-center gap-3">
+                                <span className="w-2 h-2 rounded-full bg-[#A3E635]" />
+                                <span className="text-sm font-bold uppercase tracking-widest">Free Delivery at ₦50,000</span>
+                            </div>
+                            <Separator className="bg-white/10" />
+                            <div className="flex items-center justify-center gap-3">
+                                <span className="w-2 h-2 rounded-full bg-[#A3E635]" />
+                                <span className="text-sm font-bold uppercase tracking-widest">₦2,000 Cashback at ₦100,000</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <Link href={user ? "/" : "/register"} onClick={handleClose} className="block w-full pointer-events-auto">
