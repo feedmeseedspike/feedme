@@ -11,9 +11,10 @@ import { createClient } from "src/utils/supabase/client";
 
 export default function FloatingSpinWidget() {
   const [isOpen, setIsOpen] = useState(false);
-  const [prizes, setPrizes] = useState<any[]>(SPIN_PRIZES_CONFIG);
+  const [prizes, setPrizes] = useState<any[]>([]);
   const [isEligible, setIsEligible] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPrizesLoading, setIsPrizesLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const { user } = useUser();
@@ -145,10 +146,16 @@ export default function FloatingSpinWidget() {
              }
           }
 
-          setPrizes(final.filter(Boolean) as any[]);
+          if (final.length > 0) setPrizes(final);
+          else setPrizes(SPIN_PRIZES_CONFIG);
+        } else {
+          setPrizes(SPIN_PRIZES_CONFIG);
         }
       } catch (error) {
         console.error("Failed to load prizes:", error);
+        setPrizes(SPIN_PRIZES_CONFIG);
+      } finally {
+        setIsPrizesLoading(false);
       }
     }
 
@@ -189,7 +196,7 @@ export default function FloatingSpinWidget() {
     <>
       {/* Floating Prize Widget - Positioned above WhatsApp */}
       <AnimatePresence>
-        {(!isOpen && isEligible && !isLoading) && (
+        {(!isOpen && isEligible && !isLoading && !isPrizesLoading && prizes.length > 0) && (
           <motion.div
             initial={{ x: 100, opacity: 0 }}
             animate={{ 
