@@ -88,7 +88,9 @@ export async function spinTheWheel() {
           value: p.value,
           image: p.image_url || ((p as any).product?.images?.[0]),
           color: { bg: p.color_bg, text: p.color_text },
-          sub: p.sub_label
+          sub: p.sub_label,
+          product_option: p.product_option || null,
+          min_orders_required: p.min_orders_required || 0
       }));
   } else {
       prizes = SPIN_PRIZES_CONFIG;
@@ -97,34 +99,29 @@ export async function spinTheWheel() {
   // 2. Selection Logic
   let selectedPrize: any;
 
-  if (forceTryAgain) {
-      // Force 'Try Again' for returning 0-order users
+  if (isNewUser || forceTryAgain) {
+      // Force 'Try Again' for all users with 0 orders OR returning 0-order users
+      // This ensures they only win after making an actual purchase
       selectedPrize = prizes.find(p => p.type === 'none') || prizes[0];
-  } else if (isNewUser) {
-      // NEW USER LOGIC: 100% probability for "New User Only" prizes
-      const newUserPrizes = prizes.filter(p => p.for_new_users_only === true);
+      console.log(`User ${user.id} Restricted to 'Try Again' (Orders: ${count || 0})`);
       
-      if (newUserPrizes.length > 0) {
-          // If multiple new user prizes exist, pick one randomly among them
-          selectedPrize = newUserPrizes[Math.floor(Math.random() * newUserPrizes.length)];
-      } else {
-          // Fallback if no specific new user prize is configured
-          selectedPrize = prizes.find(p => p.type === 'voucher_percent' && p.value === 10) || prizes[0];
+      // Still update their profile if they use their spin for guest/new user phase
+      if (isNewUser && !profile?.has_used_new_user_spin) {
+          await supabaseAdmin.from('profiles').update({ 
+            has_used_new_user_spin: true,
+            last_spin_at: new Date().toISOString()
+          }).eq('user_id', user.id);
       }
-      
-      // Update profile immediately to prevent double-dipping via rapid clicks
-      // Ensure profile exists or update
-      await supabaseAdmin.from('profiles').update({ 
-        has_used_new_user_spin: true,
-        last_spin_at: new Date().toISOString()
-      }).eq('user_id', user.id);
   } else {
-      // EXISTING USER LOGIC: Regular random probability
-      // We filter OUT the new user prizes to keep the pool clean
-      const regularPrizes = prizes.filter(p => p.for_new_users_only !== true);
+      // EXISTING CUSTOMER LOGIC: Regular random probability
+      // We filter prizes based on order count and requirements
+      const regularPrizes = prizes.filter(p => (p.min_orders_required || 0) <= (count || 0));
+      
       const rand = Math.random();
       let cumulativeProbability = 0;
-      selectedPrize = regularPrizes[regularPrizes.length - 1]; 
+      
+      // Fallback to the first eligible prize if random fails
+      selectedPrize = regularPrizes.length > 0 ? regularPrizes[regularPrizes.length - 1] : prizes[0]; 
 
       for (const prize of regularPrizes) {
         cumulativeProbability += (prize.probability || 0);
@@ -134,7 +131,7 @@ export async function spinTheWheel() {
         }
       }
 
-      // Update last spin time for existing users too
+      // Update last spin time
       await supabaseAdmin.from('profiles').update({ 
         last_spin_at: new Date().toISOString()
       }).eq('user_id', user.id);
@@ -271,8 +268,14 @@ export async function spinTheWheel() {
     else if (selectedPrize.type === 'item') {
         if (selectedPrize.product_id) {
             // Add directly to cart as a free item (price = 0)
-            // We pass a distinct option object so it doesn't merge with regular paid items of the same product
-            await addToCart(selectedPrize.product_id, 1, { _is_prize: true, label: "🏆 Prize: " + selectedPrize.label } as any, null, null, null, 0);
+            // Merge actual product options if defined in the prize configuration
+            const finalOption = {
+                ...(selectedPrize.product_option || {}),
+                _is_prize: true, 
+                label: "🏆 Prize: " + selectedPrize.label 
+            };
+            
+            await addToCart(selectedPrize.product_id, 1, finalOption as any, null, null, null, 0);
             
             resultMessage = `You've unlocked ${selectedPrize.label}! It has been added to your cart.`;
 
