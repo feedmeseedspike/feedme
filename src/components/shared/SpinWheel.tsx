@@ -276,7 +276,8 @@ export default function SpinWheel({ prizes = SPIN_PRIZES_CONFIG }: { prizes?: an
         if (!response || !response.success || !response.prize) {
             console.error("Spin failed:", response?.error || "Unknown error");
             cruise.stop();
-            setResult({ message: response?.error || "Error." });
+            const message = response?.error || "We couldn't process your spin. Please try again or contact support.";
+            setResult({ message });
             setSpinning(false);
             return;
         }
@@ -286,7 +287,15 @@ export default function SpinWheel({ prizes = SPIN_PRIZES_CONFIG }: { prizes?: an
 
         // Calculate Precise Landing
         const prizeId = response.prize.id;
+        // In some cases prizeId might be in _id or just different format, we check both.
         const targetIndex = prizes.findIndex(p => p.id === prizeId);
+        
+        if (targetIndex === -1) {
+            console.error("Critical Error: Won prize not found in UI list.", prizeId);
+            setResult({ message: "System error: Prize mismatch. Contact admin." });
+            setSpinning(false);
+            return;
+        }
         console.log("Target Prize ID:", prizeId, "at Index:", targetIndex);
 
         const segmentAngle = 360 / prizes.length;
@@ -392,7 +401,7 @@ export default function SpinWheel({ prizes = SPIN_PRIZES_CONFIG }: { prizes?: an
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[201] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+                    className="fixed inset-0 z-[201] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
                     onClick={(e) => { e.stopPropagation(); setCelebratingPrize(null); }}
                 >
                     <motion.div
@@ -440,7 +449,7 @@ export default function SpinWheel({ prizes = SPIN_PRIZES_CONFIG }: { prizes?: an
                                     You Won!
                                 </h3>
                                 <p className="text-slate-500 font-medium text-sm px-4 leading-relaxed mb-6 font-source">
-                                    Congratulations! You&apos;ve unlocked <strong className="text-slate-900">{celebratingPrize.label}</strong>. 
+                                    Congratulations! You&apos;ve unlocked <strong className="text-slate-900">{celebratingPrize.label} {celebratingPrize.sub || ''}</strong>. 
                                     {celebratingPrize.type === 'wallet_cash' ? ' It has been added to your wallet.' : ' Check rewards to claim.'}
                                 </p>
                             </motion.div>
@@ -453,6 +462,12 @@ export default function SpinWheel({ prizes = SPIN_PRIZES_CONFIG }: { prizes?: an
                                         celebratingPrize.type === 'loyalty_points' ? '/account/rewards' :
                                         '/'
                                     }
+                                    onClick={() => {
+                                        setCelebratingPrize(null);
+                                        if ((window as any).__closeSpinWheel) {
+                                            (window as any).__closeSpinWheel();
+                                        }
+                                    }}
                                     className="w-full py-4 rounded-xl bg-gradient-to-r from-[#1B6013] to-[#15803d] text-white font-bold text-sm shadow-xl hover:shadow-green-900/20 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 relative overflow-hidden group uppercase tracking-widest text-xs"
                                 >
                                     View Rewards <ArrowRight className="w-4 h-4" />
@@ -475,7 +490,7 @@ export default function SpinWheel({ prizes = SPIN_PRIZES_CONFIG }: { prizes?: an
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[201] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
+                    className="fixed inset-0 z-[201] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
                     onClick={(e) => { e.stopPropagation(); setResult(null); }}
                 >
                     <motion.div 

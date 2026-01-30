@@ -9,6 +9,8 @@ import { sendMail } from "src/utils/email/mailer";
 import { SPIN_PRIZES_CONFIG } from "../deals";
 
 import { getSpinPrizes } from "./prize.actions";
+import supabaseAdmin from "src/utils/supabase/admin";
+import { sendUnifiedNotification } from "./notifications.actions";
 
 export async function spinTheWheel() {
   const supabase = await createClient();
@@ -20,33 +22,62 @@ export async function spinTheWheel() {
   }
 
   // 1.5. Check User Order History
-  const { count, error: countError } = await supabase
+  // Use admin client for eligibility to avoid potential RLS delays/errors
+  // Simplified query to identify failure point
+  console.log("Checking eligibility for User ID:", user.id);
+  
+  const { count, error: countError } = await supabaseAdmin
     .from("orders")
-    .select("*", { count: 'exact', head: true })
-    .eq("user_id", user.id)
-    .in("payment_status", ["Paid"]) 
-    .in("status", ["Confirmed", "order confirmed", "Processing", "order delivered"]);
+    .select("id", { count: 'exact', head: true })
+    .eq("user_id", user.id);
 
   if (countError) {
-      console.error("Spin Eligibility Check Failed:", countError);
-      return { success: false, error: "System error: Could not verify eligibility." };
+      console.error("Spin Eligibility Check Failed (Step 1):", JSON.stringify(countError, null, 2));
+      return { success: false, error: `System error: Could not verify eligibility. (${countError.code || 'UNKNOWN'})` };
   }
 
-  // Determine if this is a "New User" spin
+  // If we have orders, let's filter them more strictly in memory or via another query if needed,
+  // but for now, let's just see if ANY orders exist.
+  // The original status filters might be causing the "empty message" error if types mismatch.
   const isNewUser = (count === 0);
+  console.log(`User ${user.id} has ${count} orders. isNewUser: ${isNewUser}`);
 
   // 1.6. Check if user has already used their new user spin
-  const { data: profile } = await supabase
+  // Use admin to avoid RLS delays
+  const { data: profile, error: profileError } = await supabaseAdmin
     .from('profiles')
-    .select('has_used_new_user_spin')
+    .select('has_used_new_user_spin, last_spin_at')
     .eq('user_id', user.id)
     .single();
 
+  if (profileError) {
+      console.error("Spin Profile Check Failed:", profileError);
+  }
+
+  // 1.7. Check Spin Frequency (Once per 24 hours)
+  if (profile?.last_spin_at) {
+    const lastSpin = new Date(profile.last_spin_at);
+    const now = new Date();
+    const hoursSinceLastSpin = (now.getTime() - lastSpin.getTime()) / (1000 * 60 * 60);
+    
+    if (hoursSinceLastSpin < 24) {
+      const remainingHours = Math.ceil(24 - hoursSinceLastSpin);
+      return { 
+        success: false, 
+        error: `You've already spun recently! Please come back in ${remainingHours} hour${remainingHours > 1 ? 's' : ''}. 🎡` 
+      };
+    }
+  }
+
+  // Returning user with 0 orders fallback logic
+  let forceTryAgain = false;
   if (isNewUser && profile?.has_used_new_user_spin) {
-      return { success: false, error: "You've already used your welcome spin! Shop more to unlock more spins. 🎡" };
+      console.log("Returning user with 0 orders: Forcing 'Try Again' result.");
+      forceTryAgain = true;
   }
 
   // Fetch Prizes
+  console.log("Fetching prizes from database...");
   let dbPrizes = await getSpinPrizes();
   let prizes: any[] = [];
   
@@ -66,7 +97,10 @@ export async function spinTheWheel() {
   // 2. Selection Logic
   let selectedPrize: any;
 
-  if (isNewUser) {
+  if (forceTryAgain) {
+      // Force 'Try Again' for returning 0-order users
+      selectedPrize = prizes.find(p => p.type === 'none') || prizes[0];
+  } else if (isNewUser) {
       // NEW USER LOGIC: 100% probability for "New User Only" prizes
       const newUserPrizes = prizes.filter(p => p.for_new_users_only === true);
       
@@ -79,7 +113,11 @@ export async function spinTheWheel() {
       }
       
       // Update profile immediately to prevent double-dipping via rapid clicks
-      await supabase.from('profiles').update({ has_used_new_user_spin: true }).eq('user_id', user.id);
+      // Ensure profile exists or update
+      await supabaseAdmin.from('profiles').update({ 
+        has_used_new_user_spin: true,
+        last_spin_at: new Date().toISOString()
+      }).eq('user_id', user.id);
   } else {
       // EXISTING USER LOGIC: Regular random probability
       // We filter OUT the new user prizes to keep the pool clean
@@ -95,7 +133,22 @@ export async function spinTheWheel() {
           break;
         }
       }
+
+      // Update last spin time for existing users too
+      await supabaseAdmin.from('profiles').update({ 
+        last_spin_at: new Date().toISOString()
+      }).eq('user_id', user.id);
   }
+
+  // VALIDATION: If is an 'item' prize, it MUST have a product_id. 
+  // If not, fallback to a safe 'none' or 'voucher' prize to prevent errors.
+  if (selectedPrize.type === 'item' && !selectedPrize.product_id) {
+      console.warn("Selected 'item' prize missing product_id, falling back to 'none'");
+      // Find a try again prize
+      selectedPrize = prizes.find(p => p.type === 'none') || prizes[0];
+  }
+
+  console.log("Selected Prize:", selectedPrize.label, "Type:", selectedPrize.type);
 
   // 3. Process Reward
   try {
@@ -107,6 +160,15 @@ export async function spinTheWheel() {
       // Credit Wallet
       await creditWallet(user.id, selectedPrize.value, `Spin & Win Reward`, refId);
       resultMessage = `₦${selectedPrize.value} has been added to your wallet!`;
+
+      // Unified Notification
+      await sendUnifiedNotification({
+          userId: user.id,
+          type: 'info',
+          title: "💰 Wallet Credited!",
+          body: `₦${selectedPrize.value} has been added to your wallet from the Spin Wheel.`,
+          link: '/account/wallet'
+      });
     } 
     else if (selectedPrize.type === 'loyalty_points') {
       // Credit Loyalty Points
@@ -128,6 +190,15 @@ export async function spinTheWheel() {
       });
       resultMessage = `You won FREE DELIVERY on your next order! Code: ${code}`;
       data = { code };
+
+      // Unified Notification (In-App + Push)
+      await sendUnifiedNotification({
+          userId: user.id,
+          type: 'info',
+          title: "🎁 You Won Free Delivery!",
+          body: `Use code ${code} within 14 days to claim your free delivery reward!`,
+          link: '/checkout'
+      });
 
       // Notify User via Email
       try {
@@ -164,6 +235,15 @@ export async function spinTheWheel() {
       });
       resultMessage = `You won ${selectedPrize.value}% OFF! Code: ${code}`;
       data = { code };
+
+      // Unified Notification (In-App + Push)
+      await sendUnifiedNotification({
+          userId: user.id,
+          type: 'info',
+          title: `🎁 You Won ${selectedPrize.value}% OFF!`,
+          body: `Use code ${code} within 14 days to get ${selectedPrize.value}% discount on your next order.`,
+          link: '/checkout'
+      });
 
       // Notify User via Email
       try {

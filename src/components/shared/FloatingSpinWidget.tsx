@@ -50,38 +50,26 @@ export default function FloatingSpinWidget() {
     }
   }, [isEligible, isLoading]);
 
-  // Check eligibility (user must have at least one delivered order)
+  // Check eligibility (user must have at least one delivered order or be a new user)
   useEffect(() => {
     async function checkEligibility() {
+      // If no user, we can still show a teaser or just hide it.
+      // The USER wants visibility, so let's show it but the spin will require auth.
       if (!user) {
-        setIsEligible(false);
+        setIsEligible(true); // Show as guest teaser
         setIsLoading(false);
         return;
       }
 
       try {
         const supabase = createClient();
-        const { count } = await supabase
-          .from("orders")
-          .select("*", { count: 'exact', head: true })
-          .eq("user_id", user.user_id)
-          .in("payment_status", ["Paid", "paid"])
-          .in("status", ["Confirmed", "order confirmed", "Processing", "order delivered"]);
-
-        // Check if user has already used their welcome spin
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('has_used_new_user_spin')
-          .eq('user_id', user.user_id)
-          .single();
-
-        // Eligible if:
-        // 1. Has paid orders (Existing user logic)
-        // 2. Has 0 orders BUT hasn't used their welcome spin yet (New user logic)
-        setIsEligible((count ?? 0) > 0 || !profile?.has_used_new_user_spin);
+        
+        // We always show the widget for logged in users.
+        // The backend handleSpin action will handle the actual logic and outcomes.
+        setIsEligible(true);
       } catch (error) {
         console.error("Failed to check spin eligibility:", error);
-        setIsEligible(false);
+        setIsEligible(true); // Fallback to show
       } finally {
         setIsLoading(false);
       }
@@ -97,6 +85,8 @@ export default function FloatingSpinWidget() {
       return () => clearTimeout(timer);
     }
   }, [isEligible, isLoading]);
+
+
 
   // Load prizes from database
   useEffect(() => {
@@ -179,7 +169,14 @@ export default function FloatingSpinWidget() {
     };
 
     window.addEventListener('trigger-spin-wheel', handleManualTrigger);
-    return () => window.removeEventListener('trigger-spin-wheel', handleManualTrigger);
+    
+    // Register global close helper for navigation from within SpinWheel
+    (window as any).__closeSpinWheel = () => setIsOpen(false);
+
+    return () => {
+      window.removeEventListener('trigger-spin-wheel', handleManualTrigger);
+      delete (window as any).__closeSpinWheel;
+    };
   }, [user]);
 
   useEffect(() => {
@@ -190,34 +187,49 @@ export default function FloatingSpinWidget() {
 
   return (
     <>
-      {/* Floating Draggable Button - Only show if eligible and NOT open */}
+      {/* Floating Prize Widget - Positioned above WhatsApp */}
       <AnimatePresence>
         {(!isOpen && isEligible && !isLoading) && (
           <motion.div
-            ref={constraintsRef}
-            className="fixed inset-0 pointer-events-none z-[90]"
+            initial={{ x: 100, opacity: 0 }}
+            animate={{ 
+              x: 0, 
+              opacity: 1,
+              y: [0, -6, 0],
+              rotate: [0, -1, 1, 0]
+            }}
+            exit={{ x: 100, opacity: 0 }}
+            transition={{ 
+              x: { type: "spring", stiffness: 260, damping: 20 },
+              y: { duration: 3, repeat: Infinity, ease: "easeInOut" },
+              rotate: { duration: 4, repeat: Infinity, ease: "easeInOut" }
+            }}
+            className="fixed bottom-[150px] md:bottom-[80px] right-4 z-[90]"
           >
             <motion.button
-              drag
-              dragConstraints={constraintsRef}
-              dragElastic={0.1}
-              dragMomentum={false}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              initial={{ x: window.innerWidth - 100, y: window.innerHeight / 2 - 50 }}
-              style={{ x, y }}
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              whileTap={{ scale: 0.9 }}
               onClick={() => setIsOpen(true)}
-              className="pointer-events-auto absolute w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-[#1B6013] to-[#15803d] shadow-2xl flex items-center justify-center cursor-grab active:cursor-grabbing group overflow-hidden"
+              className="relative w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br from-[#1B6013] to-[#15803d] shadow-[0_10px_25px_-5px_rgba(27,96,19,0.4),0_8px_10px_-6px_rgba(27,96,19,0.4)] flex items-center justify-center group overflow-hidden border-2 border-white/20"
             >
+              {/* Golden Glow Effect */}
+              <motion.div
+                className="absolute inset-0 bg-yellow-400/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity"
+                animate={{
+                   scale: [1, 1.2, 1],
+                }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
+
               {/* Pulsing ring animation */}
               <motion.div
-                className="absolute inset-0 rounded-full bg-[#1B6013]"
+                className="absolute inset-0 rounded-2xl bg-[#1B6013]"
                 animate={{
-                  scale: [1, 1.3, 1],
-                  opacity: [0.5, 0, 0.5],
+                  scale: [1, 1.4, 1],
+                  opacity: [0.3, 0, 0.3],
                 }}
                 transition={{
-                  duration: 2,
+                  duration: 2.5,
                   repeat: Infinity,
                   ease: "easeInOut",
                 }}
@@ -227,14 +239,18 @@ export default function FloatingSpinWidget() {
               <AnimatePresence>
                 {showTooltip && (
                   <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.9 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 5, scale: 0.95 }}
-                    className="absolute bottom-full right-0 mb-4 w-48 p-3 bg-[#1B6013] text-white rounded-xl shadow-2xl pointer-events-none"
+                    initial={{ opacity: 0, x: 20, scale: 0.8 }}
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    exit={{ opacity: 0, x: 10, scale: 0.95 }}
+                    className="absolute right-full mr-4 top-1/2 -translate-y-1/2 w-48 p-3 bg-[#1B6013] text-white rounded-2xl shadow-2xl pointer-events-none border border-white/10"
                   >
-                    <div className="absolute bottom-[-6px] right-6 w-3 h-3 bg-[#1B6013] rotate-45" />
-                    <p className="text-[10px] font-black uppercase tracking-widest leading-tight text-center">
-                      New? Spin to win 10% Off your first order! 🎁
+                    <div className="absolute right-[-6px] top-1/2 -translate-y-1/2 w-3 h-3 bg-[#1B6013] rotate-45 border-r border-t border-white/10" />
+                    <p className="text-[10px] font-bold uppercase tracking-widest leading-tight text-center">
+                      {user ? (
+                        <>Spin to win <span className="text-yellow-400">Prizes</span>! 🎁</>
+                      ) : (
+                        <>Sign in to <span className="text-yellow-400">SPIN</span>! 🎡</>
+                      )}
                     </p>
                   </motion.div>
                 )}
@@ -243,25 +259,24 @@ export default function FloatingSpinWidget() {
               {/* Icon Animation */}
               <motion.div
                 animate={{ 
-                    y: [0, -5, 0],
-                    scale: showTooltip ? [1, 1.1, 1] : 1 
+                    rotate: [0, -10, 10, 0],
+                    y: [0, -2, 2, 0]
                 }}
                 transition={{ 
-                    y: { duration: 2, repeat: Infinity, ease: "easeInOut" },
-                    scale: { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
+                    duration: 4, 
+                    repeat: Infinity, 
+                    ease: "easeInOut" 
                 }}
                 className="relative z-10"
               >
-                <Gift className="w-8 h-8 md:w-10 md:h-10 text-white drop-shadow-lg" />
+                <Gift className="w-7 h-7 md:w-8 md:h-8 text-white drop-shadow-lg" />
               </motion.div>
 
               {/* Badge */}
-              <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg border-2 border-white">
-                !
-              </div>
+              <div className="absolute top-2 right-2 w-2 h-2 bg-yellow-400 rounded-full shadow-[0_0_8px_#facc15]" />
 
               {/* Shimmer effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer pointer-events-none" />
             </motion.button>
           </motion.div>
         )}
@@ -274,7 +289,7 @@ export default function FloatingSpinWidget() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md p-4"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-[2px] p-4"
             onClick={() => setIsOpen(false)}
           >
             {/* Transparent Container */}

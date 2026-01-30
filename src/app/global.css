@@ -31,6 +31,15 @@
   }
 }
 
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite linear;
+}
+
 /* Apply this class with JavaScript if you want shadow on scroll */
 .header-scrolled {
   animation: addShadow 0.3s forwards;
