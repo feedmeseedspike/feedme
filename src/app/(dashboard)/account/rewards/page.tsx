@@ -2,13 +2,24 @@ import { createClient } from "@utils/supabase/server";
 import RewardsClient from "./RewardsClient";
 import RewardsOverview from "./RewardsOverview";
 
+import { redirect } from "next/navigation";
+
 export default async function RewardsPage() {
   const supabase = await createClient();
   
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Handle unauthenticated state gracefully to prevent layout crashes
   if (!user) {
-    return <div>Please log in to view rewards.</div>;
+    // We return empty data and handle the redirect in the client component
+    // or simply show an empty state.
+    // The previous server-side redirect might have conflicted with the layout.
+    return (
+        <div className="container mx-auto py-12 px-6">
+             <RewardsClient vouchers={[]} />
+        </div>
+    );
+    // Ideally we could allow RewardsOverview to handle "guest" state too
   }
 
   // Fetch Profile for Loyalty Points

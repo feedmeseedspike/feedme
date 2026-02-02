@@ -131,7 +131,7 @@ export const ShippingAddressSchema = z.object({
   street: z.string().trim().min(3, "Street address must be at least 3 characters"),
   location: z.string().trim().min(1, "Please select a location"),
   phone: z.string().trim().min(7, "Phone number is too short").max(20, "Phone number is too long"),
-  email: z.string().trim().email("Please enter a valid email address").min(1, "Email is required"),
+  email: z.string().trim().email("Please enter a valid email address").optional().or(z.literal("")),
 });
 
 // ======================

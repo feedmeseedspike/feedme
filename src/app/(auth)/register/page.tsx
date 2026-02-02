@@ -83,7 +83,7 @@ export default async function SignUpPage(props: {
 
         <div className="flex flex-col gap-5">
           {/* Google Sign-In Button (client-side) */}
-          <GoogleButton referralCode={referral_code} />
+          <GoogleButton referralCode={referral_code} callbackUrl={callbackUrl} />
           <div className="flex items-center gap-2">
             <span className="bg-[#EEF2FF] h-[2px] w-full"></span>
             <p className="whitespace-nowrap text-xs">

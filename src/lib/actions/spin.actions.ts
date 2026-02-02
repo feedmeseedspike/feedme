@@ -99,42 +99,67 @@ export async function spinTheWheel() {
   // 2. Selection Logic
   let selectedPrize: any;
 
-  if (isNewUser || forceTryAgain) {
-      // Force 'Try Again' for all users with 0 orders OR returning 0-order users
-      // This ensures they only win after making an actual purchase
-      selectedPrize = prizes.find(p => p.type === 'none') || prizes[0];
-      console.log(`User ${user.id} Restricted to 'Try Again' (Orders: ${count || 0})`);
-      
-      // Still update their profile if they use their spin for guest/new user phase
-      if (isNewUser && !profile?.has_used_new_user_spin) {
+  if (isNewUser) {
+      if (profile?.has_used_new_user_spin) {
+          // Returning user with 0 orders: Forced lose
+          selectedPrize = prizes.find(p => p.type === 'none') || prizes[0];
+          console.log(`User ${user.id} (0 orders, returning): Restricted to 'Try Again'`);
+      } else {
+          // First time user: Regular odds
+          const rand = Math.random();
+          let cumulativeProbability = 0;
+          selectedPrize = prizes[0];
+          for (const prize of prizes) {
+            cumulativeProbability += (prize.probability || 0);
+            if (rand <= cumulativeProbability) {
+              selectedPrize = prize;
+              break;
+            }
+          }
+          console.log(`User ${user.id} (0 orders, first spin): Regular selection logic applied.`);
+          
+          // Mark spin as used
           await supabaseAdmin.from('profiles').update({ 
             has_used_new_user_spin: true,
             last_spin_at: new Date().toISOString()
           }).eq('user_id', user.id);
       }
   } else {
-      // EXISTING CUSTOMER LOGIC: Regular random probability
-      // We filter prizes based on order count and requirements
-      const regularPrizes = prizes.filter(p => (p.min_orders_required || 0) <= (count || 0));
+      // EXISTING CUSTOMER LOGIC: Improved odds
+      // 1. Filter eligible prizes
+      const eligiblePrizes = prizes.filter(p => (p.min_orders_required || 0) <= (count || 0));
       
-      const rand = Math.random();
+      // 2. Reduce the probability of 'Try Again' (none) prizes based on order count
+      // This makes it "most likely" they win something
+      // More orders = Higher win probability
+      const reductionFactor = (count || 0) > 2 ? 4 : 2; // Frequent customers get 4x lower 'none' chance
+
+      let weightedPrizes = eligiblePrizes.map(p => {
+          if (p.type === 'none') {
+              return { ...p, adjustedProb: (p.probability || 0) / reductionFactor };
+          }
+          return { ...p, adjustedProb: p.probability || 0 };
+      });
+
+      const totalWeight = weightedPrizes.reduce((sum, p) => sum + p.adjustedProb, 0);
+      const rand = Math.random() * totalWeight;
       let cumulativeProbability = 0;
       
-      // Fallback to the first eligible prize if random fails
-      selectedPrize = regularPrizes.length > 0 ? regularPrizes[regularPrizes.length - 1] : prizes[0]; 
-
-      for (const prize of regularPrizes) {
-        cumulativeProbability += (prize.probability || 0);
-        if (rand <= cumulativeProbability) {
-          selectedPrize = prize;
-          break;
-        }
+      selectedPrize = weightedPrizes[0];
+      for (const prize of weightedPrizes) {
+          cumulativeProbability += prize.adjustedProb;
+          if (rand <= cumulativeProbability) {
+              selectedPrize = prize;
+              break;
+          }
       }
 
       // Update last spin time
       await supabaseAdmin.from('profiles').update({ 
         last_spin_at: new Date().toISOString()
       }).eq('user_id', user.id);
+      
+      console.log(`User ${user.id} (${count} orders): Selection with ${reductionFactor}x improved odds applied.`);
   }
 
   // VALIDATION: If is an 'item' prize, it MUST have a product_id. 
@@ -194,7 +219,7 @@ export async function spinTheWheel() {
           type: 'info',
           title: "🎁 You Won Free Delivery!",
           body: `Use code ${code} within 14 days to claim your free delivery reward!`,
-          link: '/checkout'
+          link: `/checkout?apply_voucher=${code}`
       });
 
       // Notify User via Email
@@ -239,7 +264,7 @@ export async function spinTheWheel() {
           type: 'info',
           title: `🎁 You Won ${selectedPrize.value}% OFF!`,
           body: `Use code ${code} within 14 days to get ${selectedPrize.value}% discount on your next order.`,
-          link: '/checkout'
+          link: `/checkout?apply_voucher=${code}`
       });
 
       // Notify User via Email

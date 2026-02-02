@@ -38,14 +38,14 @@ export default function RewardsOverview({ loyaltyPoints = 0 }) {
   return (
     <div className="space-y-8">
       {/* Loyalty Status Card */}
-      <div className="bg-gradient-to-br from-[#1B6013] to-[#2a8b1f] rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-xl shadow-green-900/10">
+      <div className="bg-gradient-to-br from-[#1B6013] to-[#2a8b1f] rounded-2xl p-8 text-white relative overflow-hidden shadow-sm border border-[#1B6013]">
         <div className="absolute top-0 right-0 p-8 opacity-10">
             <Icon icon="solar:crown-minimalistic-bold-duotone" className="w-40 h-40 rotate-12" />
         </div>
         
         <div className="relative z-10">
             <div className="flex items-center gap-4 mb-8">
-                <div className="w-16 h-16 rounded-3xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-inner">
+                <div className="w-16 h-16 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
                     <Icon icon="solar:star-rainbow-bold-duotone" className="w-8 h-8 text-yellow-400" />
                 </div>
                 <div>
@@ -65,17 +65,17 @@ export default function RewardsOverview({ loyaltyPoints = 0 }) {
                             initial={{ width: 0 }}
                             animate={{ width: `${levelProgress}%` }}
                             transition={{ duration: 1, ease: "easeOut" }}
-                            className="h-full bg-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]"
+                            className="h-full bg-yellow-400"
                         />
                     </div>
                 </div>
                 
                 <div className="flex gap-4">
-                    <div className="flex-1 bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10 text-center">
+                    <div className="flex-1 bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 text-center">
                         <div className="text-2xl font-black mb-1">₦2,000</div>
                         <p className="text-[8px] uppercase font-bold text-white/50 tracking-wider">Per 100k Order</p>
                     </div>
-                    <div className="flex-1 bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10 text-center">
+                    <div className="flex-1 bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 text-center">
                         <div className="text-2xl font-black mb-1">FREE</div>
                         <p className="text-[8px] uppercase font-bold text-white/50 tracking-wider">Spin with Order</p>
                     </div>
@@ -88,14 +88,14 @@ export default function RewardsOverview({ loyaltyPoints = 0 }) {
       <div className="grid grid-cols-1 gap-4">
         <h4 className="text-xs font-black uppercase tracking-widest text-[#1B6013] mb-2 flex items-center gap-2">
             <div className="w-6 h-1 bg-[#1B6013] rounded-full" />
-            V1.0 Rewards Protocol
+            Earning Guide
         </h4>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {MILESTONES.map((m, i) => (
-                <div key={i} className="bg-white border border-gray-100 rounded-3xl p-6 hover:shadow-lg transition-all border-b-4 border-b-gray-50 active:scale-[0.98] group">
+                <div key={i} className="bg-white border border-gray-100 rounded-xl p-6 transition-all border-b-2 border-b-gray-100 active:scale-[0.98] group">
                     <div className="flex items-start justify-between mb-4">
-                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                             m.type === 'gift' ? 'bg-blue-50 text-blue-600' :
                             m.type === 'cashback' ? 'bg-orange-50 text-orange-600' :
                             'bg-purple-50 text-purple-600'

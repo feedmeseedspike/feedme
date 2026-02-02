@@ -19,11 +19,24 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
   const [viewsCount, setViewsCount] = useState(post.views_count);
   const { user } = useUser();
   const { showToast } = useToast();
-
-  // State for guest ID
   const [guestId, setGuestId] = useState<string | null>(null);
 
-  // Initialize guest ID on mount
+  // Increment views on mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetch(`/api/blog/posts/${post.slug}/views`, { method: "POST" })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.views_count) {
+            setViewsCount(data.views_count);
+          }
+        })
+        .catch(err => console.error("Failed to increment views:", err));
+    }, 5000); // Wait 5 seconds to count as a real view
+
+    return () => clearTimeout(timer);
+  }, [post.slug]);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       let storedGuestId = localStorage.getItem('feedme_guest_like_id');
@@ -37,18 +50,17 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
 
 
 
-  // Initialize like state for logged-in user OR guest
   useEffect(() => {
-    // Need at least one ID to check
     const idToCheck = user?.user_id || guestId;
     if (!idToCheck) return;
 
     const controller = new AbortController();
     
-    // Build query string
-    let query = `/api/blog/posts/${post.slug}/like?`;
-    if (user?.user_id) query += `userId=${encodeURIComponent(user.user_id)}`;
-    else if (guestId) query += `guestId=${encodeURIComponent(guestId)}`;
+    const params = new URLSearchParams();
+    if (user?.user_id) params.set('userId', user.user_id);
+    if (guestId) params.set('guestId', guestId);
+
+    const query = `/api/blog/posts/${post.slug}/like?${params.toString()}`;
 
     fetch(query, {
         method: "GET",
@@ -95,14 +107,13 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
        return;
     }
 
-    // Optimistic toggle
     const nextLiked = !isLiked;
     setIsLiked(nextLiked);
     setLikesCount((prev) => prev + (nextLiked ? 1 : -1));
     try {
       const body: any = {};
       if (currentUserId) body.userId = currentUserId;
-      else body.guestId = currentGuestId;
+      if (currentGuestId) body.guestId = currentGuestId;
 
       const res = await fetch(`/api/blog/posts/${post.slug}/like`, {
         method: "POST",
@@ -137,7 +148,7 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
             <span
               className="inline-block px-3 py-1 text-[10px] font-bold tracking-[0.2em] uppercase text-[#1B6013] border border-[#1B6013]/20"
             >
-              {post.blog_categories.name}
+              {Array.isArray(post.blog_categories) ? (post.blog_categories as any)[0]?.name : (post.blog_categories as any).name}
             </span>
           </div>
         )}
@@ -180,9 +191,12 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
             
             {/* Sharp Foreground Image - Fully visible, "floating" feel */}
             <div className="absolute inset-0 flex items-center justify-center p-8">
-               <img
-                  src={`${post.featured_image}?v=${Date.now()}`}
+               <Image
+                  src={post.featured_image}
                   alt={post.featured_image_alt || post.title}
+                  width={1200}
+                  height={800}
+                  priority
                   className="w-auto h-full max-h-full object-contain drop-shadow-2xl rounded-sm transform transition-transform duration-700 group-hover:scale-[1.02]"
                 />
             </div>

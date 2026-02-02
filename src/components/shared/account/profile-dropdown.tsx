@@ -24,6 +24,7 @@ import {
   Grid,
   ClipboardList,
   Bell,
+  Gift,
 } from "lucide-react"; 
 import LogoutButton from "@components/shared/header/LogoutButton";
 import { UserData } from "src/types";
@@ -70,6 +71,12 @@ export default function ProfileDropdown({ user }: ProfileDropdownProps) {
               url: "/account/referral",
               icon: Bell,
               description: "Referral from friends",
+            },
+            {
+              title: "My Rewards",
+              url: "/account/rewards",
+              icon: Gift,
+              description: "Spin & Win Prizes",
             }
           ],
           secondary: [

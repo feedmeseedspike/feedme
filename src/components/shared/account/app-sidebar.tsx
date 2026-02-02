@@ -100,6 +100,12 @@ export default function AppSidebar({ user }: AppSidebarProps) {
     ],
     secondary: [
       {
+        title: "Notifications",
+        url: "/account/notifications",
+        icon: Bell,
+        description: "Your recent alerts",
+      },
+      {
         title: "Browsing History",
         url: "/browsing-history",
         icon: History,
