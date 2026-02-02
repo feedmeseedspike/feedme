@@ -2,6 +2,7 @@
 
 import { createClient, createServiceRoleClient } from "../../utils/supabase/server";
 import slugify from "slugify";
+import { sendBroadcastNotification } from "./notifications.actions";
 
 // Types
 export interface BlogPost {
@@ -77,6 +78,10 @@ export interface BlogComment {
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
   updated_at: string;
+  user?: {
+    display_name: string;
+    avatar_url: string;
+  };
 }
 
 // Blog Posts Actions
@@ -250,16 +255,6 @@ export async function incrementBlogPostViews(postId: string) {
   
   if (error) {
     console.error('Error incrementing views:', error);
-    // Fallback if RPC fails or doesn't exist
-    const { error: updateError } = await supabase.rpc('increment_views', { quote_id: postId }); // Try legacy name if exists? No, let's just use raw update if needed but RPC is safer for concurrency.
-    
-    if (error.message.includes('function') && error.message.includes('does not exist')) {
-        // Fallback: direct update logic (less concurrent safe but works)
-       await supabase.from('blog_posts').update({ 
-         views_count:  0 // This won't work easily without fetching first. 
-         // Let's assume RPC is the way. 
-       }).eq('id', postId);
-    }
   }
 }
 
@@ -274,10 +269,16 @@ export async function createBlogPost(postData: Partial<BlogPost>) {
   const wordCount = postData.content ? postData.content.replace(/<[^>]*>/g, '').split(' ').length : 0;
   const reading_time = Math.ceil(wordCount / 200);
   
+  // Strip relational fields
+  const fieldsToStrip = ['blog_categories', 'blog_post_tags', 'blog_recipe_products', 'blog_tags', 'product'];
+  const cleanedPayload = Object.fromEntries(
+    Object.entries(postData).filter(([key]) => !fieldsToStrip.includes(key))
+  );
+
   const { data, error } = await supabase
     .from("blog_posts")
     .insert([{
-      ...postData,
+      ...cleanedPayload,
       slug,
       reading_time,
       published_at: postData.status === 'published' ? new Date().toISOString() : null,
@@ -286,6 +287,16 @@ export async function createBlogPost(postData: Partial<BlogPost>) {
     .single();
   
   if (error) throw error;
+
+  if (postData.status === 'published' && data) {
+    sendBroadcastNotification({
+      type: "info",
+      title: "New Blog Post!",
+      body: `Check out our latest post: ${data.title}`,
+      link: `/blog/${data.slug}`
+    }).catch(err => console.error("Auto-broadcast failed:", err));
+  }
+
   return data as BlogPost;
 }
 
@@ -317,10 +328,11 @@ export async function updateBlogPost(postId: string, postData: Partial<BlogPost>
     
   }
   
-  // Clean up the data - remove empty strings and null values that might cause issues
+  // Clean up the data - remove relational fields and empty values
+  const fieldsToStrip = ['blog_categories', 'blog_post_tags', 'blog_recipe_products', 'product'];
   const cleanedData = Object.fromEntries(
     Object.entries(postData).filter(([key, value]) => {
-      // Keep non-null, non-undefined values, and non-empty strings
+      if (fieldsToStrip.includes(key)) return false;
       if (value === null || value === undefined) return false;
       if (typeof value === 'string' && value.trim() === '') return false;
       if (Array.isArray(value) && value.length === 0) return false;
@@ -330,10 +342,10 @@ export async function updateBlogPost(postId: string, postData: Partial<BlogPost>
   
   
   
-  // First verify the post exists with this ID
+  // First verify the post exists with this ID and get its current status
   const { data: existingCheck, error: checkError } = await supabase
     .from("blog_posts")
-    .select("id, title, slug")
+    .select("id, title, slug, status")
     .eq("id", postId)
     .single();
   
@@ -361,8 +373,19 @@ export async function updateBlogPost(postId: string, postData: Partial<BlogPost>
     throw new Error("Blog post not found or could not be updated");
   }
   
+  const updatedPost = data[0] as BlogPost;
+
+  // Trigger Broadcast if status changed to published
+  if (postData.status === 'published' && existingCheck.status !== 'published') {
+     sendBroadcastNotification({
+        type: "info",
+        title: "New Blog Post!",
+        body: `We just published: ${updatedPost.title}`,
+        link: `/blog/${updatedPost.slug}`
+     }).catch(err => console.error("Auto-broadcast failed:", err));
+  }
   
-  return data[0] as BlogPost;
+  return updatedPost;
 }
 
 export async function deleteBlogPost(postId: string) {
@@ -453,39 +476,45 @@ export async function toggleBlogPostLike(postId: string, userId?: string, guestI
   
   if (!userId && !guestId) throw new Error("Must provide either userId or guestId");
 
-  // Construct query based on what ID we have
-  let query = supabase
-    .from("blog_post_likes")
-    .select("id")
-    .eq("post_id", postId);
-    
-  if (userId) {
+  let query = supabase.from("blog_post_likes").select("id, user_id, guest_id").eq("post_id", postId);
+  
+  if (userId && guestId) {
+    query = query.or(`user_id.eq.${userId},guest_id.eq.${guestId}`);
+  } else if (userId) {
     query = query.eq("user_id", userId);
   } else {
     query = query.eq("guest_id", guestId!);
   }
 
-  const { data: existingLike } = await query.single();
+  const { data: existingLikes } = await query.order('user_id', { ascending: false }); // User-linked likes first
+  const existingLike = existingLikes?.[0];
   
   if (existingLike) {
-    // Unlike - remove the like
-    let deleteQuery = supabase
+    // IF we are logged in BUT the like we found is ONLY a guest like
+    // We update it to be a User Like instead of deleting it (Migration)
+    if (userId && !existingLike.user_id) {
+        const { error: updateError } = await supabase
+            .from("blog_post_likes")
+            .update({ user_id: userId })
+            .eq("id", existingLike.id);
+            
+        if (!updateError) return { liked: true, migrated: true };
+    }
+
+    // Otherwise, standard Unlike (Toggle Off)
+    const { error } = await supabase
       .from("blog_post_likes")
       .delete()
-      .eq("post_id", postId);
+      .eq("id", existingLike.id);
       
-    if (userId) {
-        deleteQuery = deleteQuery.eq("user_id", userId);
-    } else {
-        deleteQuery = deleteQuery.eq("guest_id", guestId!);
-    }
-    
-    const { error } = await deleteQuery;
-    
     if (error) throw error;
+
+    const adminSupabase = createServiceRoleClient();
+    await adminSupabase.rpc('decrement_blog_post_likes', { post_id: postId });
+
     return { liked: false };
   } else {
-    // Like - add the like
+    // Toggle On - Create new Like
     const insertData: any = { post_id: postId };
     if (userId) insertData.user_id = userId;
     if (guestId) insertData.guest_id = guestId;
@@ -495,6 +524,10 @@ export async function toggleBlogPostLike(postId: string, userId?: string, guestI
       .insert([insertData]);
     
     if (error) throw error;
+
+    const adminSupabase = createServiceRoleClient();
+    await adminSupabase.rpc('increment_blog_post_likes', { post_id: postId });
+
     return { liked: true };
   }
 }
@@ -509,13 +542,19 @@ export async function checkBlogPostLike(postId: string, userId?: string, guestId
     .select("id")
     .eq("post_id", postId);
     
-  if (userId) {
-     query = query.eq("user_id", userId);
+  if (userId && guestId) {
+    query = query.or(`user_id.eq.${userId},guest_id.eq.${guestId}`);
+  } else if (userId) {
+    query = query.eq("user_id", userId);
   } else {
-     query = query.eq("guest_id", guestId!);
+    query = query.eq("guest_id", guestId!);
   }
 
-  const { data } = await query.single();
+  const { data, error } = await query.maybeSingle();
+  
+  if (error && error.code !== 'PGRST116') {
+    console.error("Error checking like status:", error);
+  }
   
   return { liked: !!data };
 }
@@ -528,13 +567,16 @@ export async function getBlogPostComments(postId: string) {
     .from("blog_comments")
     .select(`
       *,
-      user:auth.users(email, user_metadata)
+      user:profiles(display_name, avatar_url)
     `)
     .eq("post_id", postId)
     .eq("status", "approved")
     .order("created_at", { ascending: true });
   
-  if (error) throw error;
+  if (error) {
+    console.error("Error fetching comments:", error);
+    return [];
+  }
   return data;
 }
 

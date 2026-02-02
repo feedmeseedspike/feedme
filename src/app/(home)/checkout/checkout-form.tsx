@@ -30,19 +30,19 @@ import { Textarea } from "@components/ui/textarea";
 import { setShippingAddress } from "src/store/features/cartSlice";
 import { RootState } from "src/store";
 import Image from "next/image";
-import { formatNaira } from "src/lib/utils";
-import { useAddPurchaseMutation } from "src/queries/orders";
-import { useVoucherValidationMutation } from "src/queries/vouchers";
+import { formatNaira, cn } from "src/lib/utils";
+
+import { useVoucherValidationMutation, useUserVouchersQuery } from "src/queries/vouchers";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { Badge } from "@components/ui/badge";
 import { Truck, Leaf, Check, Pencil, Trash2, Loader2, ArrowLeft, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Icon } from "@iconify/react";
 import Link from "next/link";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getUserAddresses } from "src/queries/addresses";
+import { useQuery } from "@tanstack/react-query";
+
 import { UserAddress, AddressWithId } from "src/lib/validator";
-import { useWalletBalanceQuery } from "src/queries/wallet";
+
 import { processWalletPayment } from "src/lib/actions/wallet.actions";
 import { Label } from "@components/ui/label";
 import { useToast } from "src/hooks/useToast";
@@ -80,6 +80,7 @@ import { createClient as createSupabaseClient } from "src/utils/supabase/client"
 import { calculateCartDiscount, getDealMessages, getAppliedDiscountLabel, BONUS_CONFIG } from "src/lib/deals";
 import { getCustomerOrdersAction } from "src/lib/actions/user.action";
 import BonusProgressBar from "@components/shared/BonusProgressBar";
+import { Database } from "src/utils/database.types";
 
 interface GroupedCartItem {
   product?: CartItem["products"];
@@ -257,7 +258,7 @@ const CheckoutForm = ({
   // console.log("CheckoutForm: User:", user);
   const router = useRouter();
   const dispatch = useDispatch();
-  const { data: cartItems, isLoading, isError, error } = useCartQuery();
+  const { data: cartItems } = useCartQuery();
   const anonymousCart = useAnonymousCart();
   const [enrichedAnonItems, setEnrichedAnonItems] = useState<CartItem[]>([]);
 
@@ -344,7 +345,7 @@ const CheckoutForm = ({
     }
   }, [user, anonymousCart.items]);
 
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [voucherCode, setVoucherCode] = useState("");
   const [voucherDiscount, setVoucherDiscount] = useState(0);
@@ -357,16 +358,16 @@ const CheckoutForm = ({
     useState<boolean>(false);
   const [orderNote, setOrderNote] = useState("");
 
-  const { mutateAsync: addPurchaseMutation } = useAddPurchaseMutation();
+
   const { mutateAsync: validateVoucherMutation } =
     useVoucherValidationMutation();
   const clearCartMutation = useClearCartMutation();
   const { mutateAsync: removeAuthItem } = useRemoveFromCartMutation();
 
   const { showToast } = useToast();
-  const queryClient = useQueryClient();
 
-  const { data: referralStatusData, isLoading: isLoadingReferralStatus } =
+
+  const { isLoading: isLoadingReferralStatus } =
     useQuery({
       queryKey: ["referralStatus", user?.user_id],
       queryFn: async () => {
@@ -380,6 +381,8 @@ const CheckoutForm = ({
       enabled: !!user?.user_id,
     });
 
+  const { data: userVouchers } = useUserVouchersQuery(user?.user_id);
+
   const shippingAddressForm = useForm<ShippingAddress>({
     resolver: zodResolver(ShippingAddressSchema),
     defaultValues: shippingAddressDefaultValues,
@@ -388,8 +391,7 @@ const CheckoutForm = ({
 
   const [userAddresses, setUserAddresses] =
     useState<AddressWithId[]>(addresses);
-  const isLoadingAddresses = false;
-  const isLoadingWalletBalance = false;
+
 
   // New state for modal and address selection
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
@@ -435,6 +437,7 @@ const CheckoutForm = ({
     selectedAddress,
     shippingAddressForm,
     user?.display_name,
+    user?.email,
   ]);
 
   const isAuthenticated = !!user;
@@ -701,7 +704,29 @@ const CheckoutForm = ({
       if (voucherFromUrl && !isVoucherValid && subtotal > 0) {
           autoApplyUrlVoucher();
       }
-  }, [voucherFromUrl, subtotal, isVoucherValid, validateVoucherMutation, startTransition, showToast, voucherValidationAttempted]);
+  }, [voucherFromUrl, subtotal, isVoucherValid, validateVoucherMutation, startTransition, showToast, voucherValidationAttempted, voucherCode]);
+
+  // Auto-apply Free Delivery if user has one and no voucher is applied
+  useEffect(() => {
+    if (userVouchers && userVouchers.length > 0 && !isVoucherValid && subtotal > 0 && !voucherFromUrl) {
+      const freeDeliveryVoucher = userVouchers.find((v: Database["public"]["Tables"]["vouchers"]["Row"]) => v.code.includes("FREE-DELIV"));
+      if (freeDeliveryVoucher) {
+        startTransition(async () => {
+           const result = await validateVoucherMutation({
+             code: freeDeliveryVoucher.code,
+             totalAmount: subtotal,
+           });
+           if (result.success && result.data) {
+             setVoucherCode(freeDeliveryVoucher.code);
+             setIsVoucherValid(true);
+             setVoucherId(result.data.id);
+             setVoucherDiscount(result.data.discountValue);
+             showToast("Free Delivery reward automatically applied!", "success");
+           }
+        });
+      }
+    }
+  }, [userVouchers, isVoucherValid, subtotal, voucherFromUrl, validateVoucherMutation, startTransition, showToast]);
 
   const groupedItems = useMemo(() => {
     return items.reduce(
@@ -764,8 +789,10 @@ const CheckoutForm = ({
     showToast("Shipping address saved successfully!", "success");
   };
 
-  const handleVoucherValidation = async () => {
-    if (!voucherCode) {
+  const handleVoucherValidation = async (externalCode?: string) => {
+    const codeToValidate = externalCode || voucherCode;
+    
+    if (!codeToValidate) {
       showToast("Please enter a voucher code.", "error");
       return;
     }
@@ -773,13 +800,14 @@ const CheckoutForm = ({
     startTransition(async () => {
       try {
         const result = await validateVoucherMutation({
-          code: voucherCode,
+          code: codeToValidate,
           totalAmount: subtotal,
         });
         if (result.success && result.data) {
           const { id, discountType, discountValue } = result.data;
           setIsVoucherValid(true);
           setVoucherId(id);
+          setVoucherCode(codeToValidate); // Sync state if it was external
           const calculatedDiscount =
             discountType === "percentage"
               ? (discountValue / 100) * totalAmount
@@ -787,7 +815,7 @@ const CheckoutForm = ({
           const discount = Math.min(calculatedDiscount, subtotal);
           setVoucherDiscount(discount);
           // Persist voucher in localStorage
-          localStorage.setItem("voucherCode", voucherCode);
+          localStorage.setItem("voucherCode", codeToValidate);
           localStorage.setItem("voucherDiscount", discount.toString());
           showToast("Voucher applied successfully!", "success");
         } else {
@@ -829,6 +857,18 @@ const CheckoutForm = ({
     try {
       setIsSubmitting(true);
       const isFormValid = await shippingAddressForm.trigger();
+
+      // Manual check for guest email
+      if (!user && !shippingAddressForm.getValues("email")) {
+        showToast("Email is required for guest checkout.", "error");
+        shippingAddressForm.setError("email", { 
+           type: "manual", 
+           message: "Email is required for guest checkout" 
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       if (!isFormValid) {
         showToast("Please fill out all required fields correctly.", "error");
         setIsSubmitting(false);
@@ -1388,24 +1428,27 @@ const CheckoutForm = ({
                                     </FormItem>
                                   )}
                                 />
-                                  <FormField
-                                  control={shippingAddressForm.control}
-                                  name="email"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          placeholder="Enter email address"
-                                          {...field}
-                                          required
-                                          className="rounded-xl bg-gray-50 border-gray-200 focus:ring-green-500"
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
+                                  {/* Only show email field for guest users */}
+                                  {!user?.email && (
+                                    <FormField
+                                      control={shippingAddressForm.control}
+                                      name="email"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
+                                          <FormControl>
+                                            <Input
+                                              placeholder="Enter email address"
+                                              {...field}
+                                              required
+                                              className="rounded-xl bg-gray-50 border-gray-200 focus:ring-green-500"
+                                            />
+                                          </FormControl>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
                                   )}
-                                />
                                 <FormField
                                   control={shippingAddressForm.control}
                                   name="street"
@@ -1574,7 +1617,7 @@ const CheckoutForm = ({
                             )}
                             className="space-y-4"
                           >
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 gap-4">
                                 <FormField
                                 control={shippingAddressForm.control}
                                 name="fullName"
@@ -1593,25 +1636,28 @@ const CheckoutForm = ({
                                     </FormItem>
                                 )}
                                 />
-                                <FormField
-                                control={shippingAddressForm.control}
-                                name="email"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
-                                    <FormControl>
-                                        <Input
-                                        placeholder="Enter email address"
-                                        {...field}
-                                        required
-                                        disabled={isAddingAddress || !!user?.email}
-                                        className="rounded-xl bg-gray-50 border-gray-200 focus:ring-green-500"
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
+                                {/* Only show email field for guest users */}
+                                {!user?.email && (
+                                  <FormField
+                                  control={shippingAddressForm.control}
+                                  name="email"
+                                  render={({ field }) => (
+                                      <FormItem>
+                                      <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
+                                      <FormControl>
+                                          <Input
+                                          placeholder="Enter email address"
+                                          {...field}
+                                          required
+                                          disabled={isAddingAddress}
+                                          className="rounded-xl bg-gray-50 border-gray-200 focus:ring-green-500"
+                                          />
+                                      </FormControl>
+                                      <FormMessage />
+                                      </FormItem>
+                                  )}
+                                  />
                                 )}
-                                />
                             </div>
                             <FormField
                               control={shippingAddressForm.control}
@@ -1823,6 +1869,7 @@ const CheckoutForm = ({
                   setIsSubmitting={setIsSubmitting}
                   handleOrderSubmission={handleOrderSubmission}
                   items={items}
+                  user={user}
                 />
               </Stepper>
             </div>
@@ -1906,6 +1953,54 @@ const CheckoutForm = ({
                       </div>
                     </div>
 
+                    {/* Available Vouchers Section */}
+                    {isAuthenticated && (userVouchers && userVouchers.length > 0) && (
+                      <div className="pt-6 border-t border-slate-200/60 pb-2 animate-in fade-in slide-in-from-top-2 duration-500">
+                         <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                           <Icon icon="solar:gift-bold" className="w-3 h-3 text-[#1B6013]" />
+                           Your Available Rewards
+                         </h4>
+                         <div className="flex flex-col gap-2">
+                           {userVouchers.map((voucher: Database["public"]["Tables"]["vouchers"]["Row"]) => (
+                             <button
+                               key={voucher.id}
+                               type="button"
+                               disabled={isVoucherValid && voucherCode === voucher.code}
+                               onClick={() => {
+                                 handleVoucherValidation(voucher.code);
+                               }}
+                               className={cn(
+                                 "flex items-center justify-between p-3 rounded-x border transition-all text-left group/v",
+                                 isVoucherValid && voucherCode === voucher.code
+                                   ? "bg-[#1B6013]/5 border-[#1B6013] opacity-80"
+                                   : "bg-white border-slate-100 hover:border-[#1B6013]/30 hover:shadow-sm"
+                               )}
+                             >
+                               <div className="flex items-center gap-3">
+                                 <div className={cn(
+                                   "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                                   voucher.code.includes("FREE-DELIV") ? "bg-orange-50 text-orange-500" : "bg-green-50 text-[#1B6013]"
+                                 )}>
+                                   <Icon icon={voucher.code.includes("FREE-DELIV") ? "solar:delivery-bold" : "solar:ticket-bold"} className="w-4 h-4" />
+                                 </div>
+                                 <div className="min-w-0">
+                                   <p className="text-xs font-bold text-slate-900 truncate">{voucher.name}</p>
+                                   <p className="text-[9px] font-black text-[#1B6013] uppercase tracking-tighter truncate">{voucher.code}</p>
+                                 </div>
+                               </div>
+                               {isVoucherValid && voucherCode === voucher.code ? (
+                                 <Check className="w-4 h-4 text-[#1B6013] shrink-0" />
+                               ) : (
+                                 <div className="text-[9px] font-bold text-slate-400 opacity-0 group-hover/v:opacity-100 transition-opacity uppercase">
+                                   Apply
+                                 </div>
+                               )}
+                             </button>
+                           ))}
+                         </div>
+                      </div>
+                    )}
+
                      <div className="pt-4 border-t border-slate-200/60">
                         <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Voucher Code</h4>
                         <div className="flex gap-2">
@@ -1920,7 +2015,7 @@ const CheckoutForm = ({
                              disabled={isReferralVoucher || isSubmitting}
                            />
                            <Button 
-                               onClick={handleVoucherValidation}
+                               onClick={() => handleVoucherValidation()}
                                disabled={!voucherCode || isSubmitting}
                                className="h-11 px-6 rounded-lg font-bold text-[10px] uppercase tracking-widest bg-slate-900 text-white hover:bg-black transition-all border-0 shadow-none"
                            >
@@ -2006,6 +2101,7 @@ interface FooterProps {
   setIsSubmitting: React.Dispatch<React.SetStateAction<boolean>>;
   handleOrderSubmission: () => Promise<void>;
   items: CartItem[];
+  user: any;
 }
 
 function Footer({
@@ -2015,6 +2111,7 @@ function Footer({
   setIsSubmitting,
   handleOrderSubmission,
   items,
+  user,
 }: FooterProps) {
   const { nextStep, prevStep, isLastStep, activeStep } = useStepper();
 
@@ -2022,6 +2119,17 @@ function Footer({
     if (activeStep === 0) {
       // Corresponds to Shipping Information
       const isFormValid = await shippingAddressForm.trigger();
+
+      // Manual check for guest email
+      if (!user && !shippingAddressForm.getValues("email")) {
+         shippingAddressForm.setError("email", { 
+             type: "manual", 
+             message: "Email is required for guest checkout" 
+         });
+         showToast("Email is required for guest checkout", "error");
+         return;
+      }
+
       if (!isFormValid) {
         const errors = shippingAddressForm.formState.errors;
         const errorMessages = Object.values(errors)

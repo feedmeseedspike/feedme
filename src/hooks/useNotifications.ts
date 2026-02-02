@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { createClient } from "src/utils/supabase/client";
+import { useSupabaseBrowser } from "src/utils/supabase/client";
 import { dismissNotificationAction } from "src/lib/actions/notifications.actions";
 import { useToast } from "./useToast";
 
@@ -22,7 +22,7 @@ export interface Notification {
 export function useNotifications(userId: string | undefined) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const supabase = createClient();
+  const supabase = useSupabaseBrowser();
   const { showToast } = useToast();
 
   // Fetch initial notifications
@@ -36,21 +36,35 @@ export function useNotifications(userId: string | undefined) {
     setIsLoading(true);
     const now = new Date().toISOString();
 
-    const { data, error } = await supabase
-      .from("notifications")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("dismissed", false)
-      .gt("expires_at", now)
-      .order("created_at", { ascending: false })
-      .limit(20);
+    try {
+      // Create a promise that rejects after 10 seconds
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Request timed out")), 10000)
+      );
 
-    if (error) {
-      console.error("Error fetching notifications:", error);
-    } else {
-      setNotifications(data || []);
+      // Specific query promise
+      const queryPromise = supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("dismissed", false)
+        .gt("expires_at", now)
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      // Race condition
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
+
+      if (error) {
+        console.error("Error fetching notifications:", error);
+      } else {
+        setNotifications(data || []);
+      }
+    } catch (err) {
+      console.error("Notification fetch error/timeout:", err);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, [userId, supabase]);
 
   useEffect(() => {
@@ -77,9 +91,7 @@ export function useNotifications(userId: string | undefined) {
           if (!newNotification.dismissed) {
              setNotifications((prev) => [newNotification, ...prev]);
              
-             // native browser notification (Supabase-driven)
              if ("Notification" in window && Notification.permission === "granted") {
-                // Play notification sound
                 const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
                 audio.play().catch(e => console.log("Sound play blocked until user interaction"));
 
@@ -94,7 +106,6 @@ export function useNotifications(userId: string | undefined) {
                   }
                 };
 
-                // Try Service Worker first
                 if ("serviceWorker" in navigator) {
                   navigator.serviceWorker.ready.then((registration) => {
                     registration.showNotification(title, options);

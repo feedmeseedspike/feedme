@@ -132,7 +132,7 @@ const WheelVisualRender = ({ isFullscreen, activeLight, controls, rotation, priz
                         return (
                             <li 
                                 key={i}
-                                className="absolute top-0 left-0 w-full h-full flex items-center justify-start pl-[15px] md:pl-[30px]"
+                                className="absolute top-0 left-0 w-full h-full flex items-center justify-start pl-[15px] md:pl-[20px]"
                                 style={{
                                     transform: `rotate(calc(360deg / ${prizes.length} * (${idx} - 1)))`,
                                     transformOrigin: "center right", 

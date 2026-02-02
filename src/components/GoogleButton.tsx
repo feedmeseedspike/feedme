@@ -4,13 +4,15 @@ import { signinWithGoogle } from "@utils/google-action";
 
 export default function GoogleButton({
   referralCode,
+  callbackUrl,
 }: {
   referralCode?: string;
+  callbackUrl?: string;
 }) {
   return (
     <button
       type="button"
-      onClick={() => signinWithGoogle(referralCode)}
+      onClick={() => signinWithGoogle(callbackUrl, referralCode)}
       className="rounded-lg w-full py-3 flex justify-center ring-1 ring-zinc-500 shadow-sm"
     >
       <p className="flex gap-2 items-end">

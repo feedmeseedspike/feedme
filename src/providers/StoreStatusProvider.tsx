@@ -66,11 +66,14 @@ export function StoreStatusProvider({
   children: React.ReactNode; 
   settings: StoreSettings | null; 
 }) {
-  const [status, setStatus] = useState(checkStoreStatus(settings));
+  // Initialize with safe default to prevent hydration mismatch (Server time vs Client time)
+  const [status, setStatus] = useState({ isOpen: true, message: "" });
   const pathname = usePathname();
 
   useEffect(() => {
+    // Perform the actual check on mount
     setStatus(checkStoreStatus(settings));
+
     const interval = setInterval(() => {
       setStatus(checkStoreStatus(settings));
     }, 60000);

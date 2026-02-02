@@ -57,11 +57,18 @@ export default function RewardProgress({ totalSpent = 0, userName }: RewardProgr
       <CardContent className="p-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 relative z-10">
           <div>
-            <h3 className="text-xl font-bold flex items-center gap-2">
-              <Gift className="w-5 h-5 text-yellow-300 animate-pulse" />
-              Hello, {userName}!
-            </h3>
-            <p className="text-sm text-green-100 mt-1 opacity-90 max-w-md">
+            <div className="flex items-center gap-3 mb-1">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <Gift className="w-5 h-5 text-yellow-300 animate-bounce" />
+                Hello, {userName}!
+              </h3>
+              <Link href="/account/rewards">
+                <Button size="sm" variant="outline" className="h-7 px-3 text-[10px] font-black uppercase tracking-widest bg-white/10 border-white/20 text-white hover:bg-white/20 rounded-lg backdrop-blur-sm">
+                   Explore Rewards
+                </Button>
+              </Link>
+            </div>
+            <p className="text-sm text-green-100 opacity-90 max-w-md">
               {isMaxLevel 
                 ? "You've reached the top tier! You're a VIP Legend!" 
                 : `Spend ${formatNaira(toNext)} more to unlock ${nextTier.reward}!`}

@@ -13,6 +13,7 @@ import { useNotifications } from "src/hooks/useNotifications";
 import { cn } from "src/lib/utils";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
+import { dismissAllNotificationsAction } from "src/lib/actions/notifications.actions";
 
 interface NotificationsPopoverProps {
   userId: string | undefined;
@@ -73,7 +74,20 @@ export function NotificationsPopover({ userId }: NotificationsPopoverProps) {
             )}
           </h3>
           {notifications.length > 0 && (
-             <Button variant="ghost" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-gray-900" onClick={() => {/* Mark all as read logic */}}>
+             <Button 
+               variant="ghost" 
+               size="sm" 
+               className="h-8 text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-gray-900" 
+               onClick={async () => {
+                 const result = await dismissAllNotificationsAction();
+                 if (result.success) {
+                   // The useNotifications hook should ideally handle this, 
+                   // but we'll trigger a refresh by calling fetchNotifications if needed.
+                   // Since it's a "Clear All", we can just rely on the real-time sync or manual refresh.
+                   window.location.reload(); // Simple way to refresh state across all listeners
+                 }
+               }}
+             >
                 Clear All
              </Button>
           )}
