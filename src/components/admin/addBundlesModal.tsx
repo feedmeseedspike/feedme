@@ -151,10 +151,7 @@ export default function BundleModal({
   const submitForm = async (data: BundleFormValues) => {
     console.log("submitForm called with data:", data);
     const formData = {
-      name: data.name,
-      price: data.price,
-      stock_status: data.stock_status,
-      published_status: data.published_status,
+      ...data,
       products: selectedProducts,
       thumbnail_file: thumbnailFile,
     };
