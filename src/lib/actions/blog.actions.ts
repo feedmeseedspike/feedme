@@ -60,6 +60,7 @@ export interface BlogRecipeProduct {
   quantity?: string;
   optional?: boolean;
   created_at: string;
+  product?: any; // To support joined product data
 }
 
 export interface BlogTag {
@@ -155,14 +156,39 @@ export async function getBlogPostBySlug(slug: string) {
       *,
       blog_categories(*),
       blog_post_tags(blog_tags(*)),
-      blog_recipe_products(*, product:products(*))
+      blog_recipe_products(*)
     `)
     .eq("slug", slug)
     .eq("status", "published")
     .single();
   
   if (error) throw error;
-  return data as BlogPost;
+  if (!data) return null;
+
+  const post = data as BlogPost;
+
+  // Manual join for products since foreign key relationship might be missing in schema cache
+  if (post.blog_recipe_products && post.blog_recipe_products.length > 0) {
+    const productIds = post.blog_recipe_products
+      .map((rp) => rp.product_id)
+      .filter(Boolean);
+
+    if (productIds.length > 0) {
+      const { data: products } = await supabase
+        .from("products")
+        .select("*")
+        .in("id", productIds);
+
+      if (products) {
+        post.blog_recipe_products = post.blog_recipe_products.map((rp) => ({
+          ...rp,
+          product: products.find((p) => p.id === rp.product_id)
+        }));
+      }
+    }
+  }
+
+  return post;
 }
 
 // Admin version that doesn't filter by status
