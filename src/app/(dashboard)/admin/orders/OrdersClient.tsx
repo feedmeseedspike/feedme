@@ -1067,13 +1067,19 @@ export default function OrdersClient({
                           {item.products?.images?.[0] ? (
                             <img
                               src={item.products.images[0]}
-                              alt={item.products.name || "Item"}
+                              alt="Product"
                               className="w-full h-full object-cover"
                             />
                           ) : item.bundles?.thumbnail_url ? (
                             <img
                               src={item.bundles.thumbnail_url}
-                              alt={item.bundles.name || "Bundle"}
+                              alt="Bundle"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (item as any).offers?.image_url ? (
+                            <img
+                              src={(item as any).offers.image_url}
+                              alt="Offer"
                               className="w-full h-full object-cover"
                             />
                           ) : (
@@ -1084,10 +1090,13 @@ export default function OrdersClient({
                         </div>
                         <div className="flex-1">
                           <h4 className="font-medium text-sm">
-                            {item.products?.name ||
+                            {(item.option as any)?._title ||
+                              item.products?.name ||
                               item.bundles?.name ||
                               item.offers?.title ||
-                              "Order Item"}
+                              (item.option as any)?.label ||
+                              (item.option as any)?.name ||
+                              "Deleted Product"}
                           </h4>
                           <p className="text-xs text-gray-600 mt-1">
                             Quantity: {item.quantity} ×{" "}

@@ -76,7 +76,6 @@ export default function NotificationsPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="h-12 w-12 rounded-2xl bg-[#1B6013]/5 flex items-center justify-center border border-[#1B6013]/10">
@@ -122,8 +121,6 @@ export default function NotificationsPage() {
           </Dialog>
         )}
       </div>
-
-      {/* Content Section */}
       <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden min-h-[500px]">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-40 gap-4">
@@ -199,8 +196,6 @@ export default function NotificationsPage() {
           </div>
         )}
       </div>
-
-      {/* Info Section */}
       <div className="bg-[#1B6013] p-8 rounded-[2rem] text-white flex flex-col md:flex-row items-center gap-8 relative overflow-hidden group">
         <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:scale-125 transition-transform duration-700">
            <Bell className="h-40 w-40" />

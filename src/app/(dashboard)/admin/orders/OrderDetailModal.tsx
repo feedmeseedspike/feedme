@@ -224,13 +224,19 @@ export default function OrderDetailModal({ isOpen, onClose, order }: OrderDetail
                           {item.products?.images?.[0] ? (
                             <img 
                               src={item.products.images[0]} 
-                              alt={item.products.name || item.bundles?.name || "Item"}
+                              alt="Product"
                               className="w-full h-full object-cover"
                             />
                           ) : item.bundles?.image ? (
                             <img 
                               src={item.bundles.image} 
-                              alt={item.bundles.name}
+                              alt="Bundle"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (item as any).offers?.image_url ? (
+                            <img 
+                              src={(item as any).offers.image_url} 
+                              alt="Offer"
                               className="w-full h-full object-cover"
                             />
                           ) : (
@@ -241,7 +247,7 @@ export default function OrderDetailModal({ isOpen, onClose, order }: OrderDetail
                         </div>
                         <div className="flex-1">
                           <h4 className="font-medium text-sm">
-                            {item.products?.name || item.bundles?.name || "Unknown Item"}
+                            {(item.option as any)?._title || item.products?.name || item.bundles?.name || (item as any).offers?.title || (item.option as any)?.label || (item.option as any)?.name || "Deleted Product"}
                           </h4>
                           <div className="text-xs text-gray-600 mt-1">
                             Quantity: {item.quantity} × {formatNaira(item.price)}
@@ -405,7 +411,10 @@ export default function OrderDetailModal({ isOpen, onClose, order }: OrderDetail
                     </div>
                     <div className="flex justify-between">
                       <span>Subtotal:</span>
-                      <span>{formatNaira(order.subtotal || 0)}</span>
+                      <span>{formatNaira(
+                        order.subtotal || 
+                        (order.order_items?.reduce((acc, item) => acc + (item.price * item.quantity), 0) || 0)
+                      )}</span>
                     </div>
                     {order.delivery_fee && (
                       <div className="flex justify-between">
@@ -413,17 +422,17 @@ export default function OrderDetailModal({ isOpen, onClose, order }: OrderDetail
                         <span>{formatNaira(order.delivery_fee)}</span>
                       </div>
                     )}
-                    {order.service_charge && (
-                      <div className="flex justify-between">
-                        <span>Service Charge:</span>
-                        <span>{formatNaira(order.service_charge)}</span>
-                      </div>
-                    )}
-                    {order.voucher_discount && (
-                      <div className="flex justify-between text-green-600">
-                        <span>Discount:</span>
-                        <span>-{formatNaira(order.voucher_discount)}</span>
-                      </div>
+                    {(order.voucher_discount || (order.total_amount && order.order_items)) && (
+                      (() => {
+                        const calculatedSubtotal = order.order_items?.reduce((acc, item) => acc + (item.price * item.quantity), 0) || 0;
+                        const discount = order.voucher_discount ?? Math.max(0, (calculatedSubtotal + (order.delivery_fee || 0)) - (order.total_amount || 0));
+                        return discount > 0 ? (
+                          <div className="flex justify-between text-green-600">
+                            <span>Discount:</span>
+                            <span>-{formatNaira(discount)}</span>
+                          </div>
+                        ) : null;
+                      })()
                     )}
                     <div className="flex justify-between font-bold text-sm pt-2 border-t">
                       <span>Total:</span>

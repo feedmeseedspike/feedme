@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Play, ChefHat, Timer } from "lucide-react";
+import { Play, ChefHat, Timer, ArrowUpRight } from "lucide-react";
 import { formatNaira, toSlug } from "src/lib/utils";
 import { motion } from "framer-motion";
 
@@ -20,9 +20,9 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.5 }}
-        className="group flex flex-col"
+        className="group flex flex-col h-full bg-transparent"
     >
-      <Link href={recipeUrl} className="relative block aspect-square overflow-hidden rounded-3xl bg-gray-50 mb-6">
+      <Link href={recipeUrl} className="relative block aspect-square overflow-hidden rounded-lg bg-gray-100">
         <Image
           src={recipe.social_image_url || recipe.thumbnail_url || "/images/placeholder-recipe.jpg"}
           alt={recipe.name || "Recipe"}
@@ -30,32 +30,31 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
           className="object-cover transition-transform duration-700 group-hover:scale-105"
         />
         
-        {/* Simple Play Icon on Hover */}
-        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center text-[#1B6013] shadow-xl">
-               <Play size={20} className="fill-current ml-1" />
-            </div>
+        {/* Minimal Price Tag */}
+        <div className="absolute bottom-3 right-3 px-3 py-1 bg-white rounded-md shadow-sm">
+           <span className="text-sm font-bold text-gray-900">
+              {formatNaira(recipe.price || 0)}
+           </span>
         </div>
       </Link>
       
-      <div className="space-y-3">
-         <div className="flex items-center justify-between gap-4">
-            <h3 className="text-xl font-bold text-gray-900 group-hover:text-[#1B6013] transition-colors line-clamp-1">
-               {recipe.name}
+      <div className="pt-5 flex flex-col flex-1">
+         <div className="flex-1 space-y-2">
+            <h3 className="text-xl font-bold text-gray-900 group-hover:text-[#F0800F] transition-colors leading-tight uppercase tracking-tight">
+               <Link href={recipeUrl}>
+                  {recipe.name}
+               </Link>
             </h3>
-            <span className="font-black text-[#1B6013] whitespace-nowrap">
-               {formatNaira(recipe.price || 0)}
-            </span>
+            
+            <p className="text-sm text-gray-500 line-clamp-2 font-medium leading-relaxed">
+               Get the exact box and master the viral plate in under 15 minutes.
+            </p>
          </div>
          
-         <div className="flex items-center gap-3 text-xs text-gray-500 font-medium">
-            <span className="flex items-center gap-1.5">
-               <Timer size={14} className="text-gray-400" /> 15 MINS
-            </span>
-            <span className="w-1.5 h-1.5 rounded-full bg-gray-200" />
-            <span className="flex items-center gap-1.5">
-               <ChefHat size={14} className="text-gray-400" /> BY {recipe.chef_name?.toUpperCase() || "FEEDME"}
-            </span>
+         <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-4 text-xs font-bold font-sans tracking-widest text-gray-400 uppercase">
+             <span className="text-[#F0800F]">15 MINS</span>
+             <span className="text-gray-300">•</span>
+             <span>{recipe.chef_name?.split(' ')[0] || "FeedMe"}</span>
          </div>
       </div>
     </motion.div>

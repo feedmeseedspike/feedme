@@ -52,7 +52,7 @@ interface HeaderTagsClientProps {
 const HeaderTagsClient = ({ categories, productsByCategory, error }: HeaderTagsClientProps) => {
   return (
     <FlyoutLink
-      FlyoutContent={() => (
+      FlyoutContent={({ closeFlyout }: { closeFlyout?: () => void }) => (
         <motion.div 
           className="p-3 w-full mx-auto overflow-x-auto"
           initial={{ opacity: 0 }}
@@ -80,7 +80,7 @@ const HeaderTagsClient = ({ categories, productsByCategory, error }: HeaderTagsC
             </motion.div>
           )}
           {!error && categories.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
               {categories.map((category, index) => {
                 const slug = toSlug(category.title);
                 const bgColor = getCategoryColor(category.id, CATEGORY_COLORS);
@@ -105,7 +105,8 @@ const HeaderTagsClient = ({ categories, productsByCategory, error }: HeaderTagsC
                   >
                     <Link
                       href={`/category/${slug}`}
-                      className={`flex items-center gap-3 p-4 rounded-md transition-all duration-300 hover:shadow-lg group relative overflow-hidden ${bgColor}`}
+                      onClick={() => closeFlyout?.()}
+                      className={`flex items-center gap-2 p-2 rounded-xl transition-all duration-300 hover:shadow-xl group relative overflow-hidden ${bgColor} h-full w-full min-h-[85px]`}
                     >
                       {/* Hover gradient overlay */}
                       <motion.div
@@ -123,29 +124,36 @@ const HeaderTagsClient = ({ categories, productsByCategory, error }: HeaderTagsC
                         }}
                       />
                       
-                      {category.thumbnail?.url && (
-                        <motion.div
-                          className="relative"
-                          whileHover={{ 
-                            rotate: [0, -5, 5, 0],
-                            transition: { duration: 0.5 }
-                          }}
-                        >
-                          <Image
-                            src={category.thumbnail.url}
-                            width={60}
-                            height={60}
-                            alt={category.title}
-                            className="size-[60px] rounded-lg object-cover transition-transform duration-300 group-hover:scale-110"
-                          />
-                          
-                          {/* Glow effect */}
+                      {/* Uniform Image Container */}
+                      <div className="relative size-[60px] flex-shrink-0 bg-white/40 rounded-xl flex items-center justify-center p-2 shadow-sm group-hover:bg-white/60 transition-colors duration-300 overflow-hidden">
+                        {category.thumbnail?.url ? (
                           <motion.div
-                            className="absolute inset-0 rounded-lg bg-gradient-to-r from-green-400/20 to-blue-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                            initial={false}
-                          />
-                        </motion.div>
-                      )}
+                            className="w-full h-full flex items-center justify-center"
+                            whileHover={{ 
+                              rotate: [0, -8, 8, 0],
+                              transition: { duration: 0.5 }
+                            }}
+                          >
+                            <Image
+                              src={category.thumbnail.url}
+                              width={48}
+                              height={48}
+                              alt={category.title}
+                              className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110"
+                            />
+                            
+                            {/* Glow effect overlay */}
+                            <motion.div
+                              className="absolute inset-0 rounded-xl bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                              initial={false}
+                            />
+                          </motion.div>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-400/60 bg-gray-100/20">
+                            <Menu className="w-6 h-6 opacity-30" />
+                          </div>
+                        )}
+                      </div>
                       
                       <div className="flex-1 relative z-10">
                         <motion.div 

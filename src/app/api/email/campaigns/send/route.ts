@@ -3,7 +3,7 @@ import { render } from "@react-email/render";
 import { sendMail } from "@/utils/email/mailer";
 import NewsletterEmail from "@/utils/email/newsletterEmail";
 import PromotionalEmail from "@/utils/email/promotionalEmail";
-import { createServerComponentClient } from "@utils/supabase/server";
+import { createServiceRoleClient } from "@utils/supabase/server";
 import React from "react";
 
 interface CampaignRequest {
@@ -58,51 +58,88 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = await createServerComponentClient();
+    const supabase = createServiceRoleClient();
     
     // Get recipients list
     let recipientsList: Array<{ email: string; name: string; userId: string }> = [];
 
     if (recipients && recipients.length > 0) {
-      // Send to specific recipients
-      const { data: users, error } = await supabase
+      // Send to specific recipients (e.g., Test Emails)
+      // Try profiles first for display names
+      const { data: profileUsers } = await supabase
         .from('profiles')
-        .select('user_id, display_name, email')
+        .select('user_id, display_name');
+      
+      // Try public users table for emails and names
+      const { data: publicUsers } = await supabase
+        .from('users')
+        .select('id, display_name, email')
         .in('email', recipients);
-      
-      if (error) throw error;
-      
-      recipientsList = users
-        .filter(user => user.email)
-        .map(user => ({
-          email: user.email,
-          name: user.display_name || 'Valued Customer',
-          userId: user.user_id
-        }));
+
+      recipientsList = recipients.map(email => {
+        const uUser = publicUsers?.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+        const pUser = profileUsers?.find((p: any) => p.user_id === uUser?.id);
+        
+        return {
+          email: email,
+          name: pUser?.display_name || uUser?.display_name || 'Valued Customer',
+          userId: pUser?.user_id || uUser?.id || 'guest'
+        };
+      });
     } else {
-      // Send to all users with email preferences enabled
-      const emailType = campaignType === 'newsletter' ? 'newsletter_enabled' : 'promotional_enabled';
+      // Send to all users - Pooling from all available sources for maximum reach
+      const { data: subscribers } = await supabase
+        .from('price_update_subscriptions')
+        .select('email, full_name')
+        .eq('is_active', true);
       
-      const { data: users, error } = await supabase
-        .from('profiles')
-        .select(`
-          user_id,
-          display_name,
-          email,
-          email_preferences!inner(${emailType})
-        `)
-        .eq(`email_preferences.${emailType}`, true)
-        .not('email', 'is', null);
-      
-      if (error) throw error;
-      
-      recipientsList = users
-        .filter(user => user.email)
-        .map(user => ({
-          email: user.email,
-          name: user.display_name || 'Valued Customer',
-          userId: user.user_id
-        }));
+      const { data: publicUsers } = await supabase
+        .from('users')
+        .select('email, display_name');
+
+      const { data: authUsersData } = await supabase.auth.admin.listUsers();
+      const authUsers = authUsersData?.users || [];
+
+      const emailSet = new Map<string, { email: string, name: string, userId: string }>();
+
+      // Priority 1: Auth Users
+      authUsers.forEach(u => {
+        if (u.email) {
+          emailSet.set(u.email.toLowerCase(), {
+            email: u.email.toLowerCase(),
+            name: (u.user_metadata as any)?.display_name || 'Valued Customer',
+            userId: u.id
+          });
+        }
+      });
+
+      // Priority 2: Public Users (might have better display names)
+      (publicUsers || []).forEach((u: any) => {
+        if (u.email) {
+          const email = u.email.toLowerCase();
+          const existing = emailSet.get(email);
+          emailSet.set(email, {
+            email,
+            name: u.display_name || existing?.name || 'Valued Customer',
+            userId: existing?.userId || 'unknown'
+          });
+        }
+      });
+
+      // Priority 3: Explicit Subscriptions
+      (subscribers || []).forEach((s: any) => {
+        if (s.email) {
+          const email = s.email.toLowerCase();
+          const existing = emailSet.get(email);
+          emailSet.set(email, {
+            email,
+            name: s.full_name || existing?.name || 'Valued Customer',
+            userId: existing?.userId || 'subscriber'
+          });
+        }
+      });
+
+      recipientsList = Array.from(emailSet.values());
     }
 
     if (recipientsList.length === 0) {
@@ -223,14 +260,44 @@ export async function POST(request: Request) {
               React.createElement(NewsletterEmail, componentProps)
             );
           } else if (campaignType === 'promotional') {
+            // Enrich promotional data with selected products
+            let featuredProducts: any[] = [];
+            const discount = (data as any).discountPercentage || 0;
+
+            try {
+              const selectedProductIds = (data as any).selectedProductIds || [];
+              if (selectedProductIds.length > 0) {
+                const { data: products } = await supabase
+                  .from('products')
+                  .select('name, price, images, slug')
+                  .in('id', selectedProductIds);
+                
+                featuredProducts = (products || []).map((p: any) => {
+                  const original = p.price || 0;
+                  const sale = Math.round(original * (1 - discount / 100));
+                  return {
+                    name: p.name,
+                    originalPrice: `₦${original.toLocaleString()}`,
+                    salePrice: `₦${sale.toLocaleString()}`,
+                    savings: `Save ₦${(original - sale).toLocaleString()}`,
+                    image: p?.images?.[0] || 'https://res.cloudinary.com/ahisi/image/upload/v1731071676/logo_upovep.png',
+                    productUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/product/${p.slug}`,
+                  };
+                });
+              }
+            } catch (e) {
+              console.warn('Promo enrichment failed:', e);
+            }
+
             // Only pass fields PromotionalEmail expects
             const promoProps: any = {
               customerName: recipient.name,
-              discountPercentage: (data as any).discountPercentage,
+              discountPercentage: discount,
               promoCode: (data as any).promoCode,
               expiryDate: (data as any).expiryDate,
               saleTitle: (data as any).saleTitle,
               saleDescription: (data as any).saleDescription,
+              featuredProducts: featuredProducts.length > 0 ? featuredProducts : undefined,
               unsubscribeUrl: personalizedData.unsubscribeUrl,
               preferencesUrl: personalizedData.preferencesUrl,
               shopUrl: personalizedData.shopUrl,

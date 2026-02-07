@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       .limit(limit);
 
     if (captureDate) {
-      // Filter by date range (captureDate is the date, we want events from that day)
+
       const startDate = new Date(captureDate);
       startDate.setHours(0, 0, 0, 0);
       const endDate = new Date(captureDate);
@@ -35,8 +35,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Count unique tracking IDs (each email sent gets a unique tracking_id)
-    // This gives us an estimate of emails sent (may miss emails never opened/clicked)
     const allTrackingIds = new Set(
       events?.map((e) => e.tracking_id).filter(Boolean) || []
     );
@@ -52,7 +50,6 @@ export async function GET(request: NextRequest) {
     const openRate = sentCount > 0 ? (uniqueOpens / sentCount) * 100 : 0;
     const clickRate = sentCount > 0 ? (uniqueClicks / sentCount) * 100 : 0;
 
-    // Group by email to see individual user activity
     const userActivity = new Map<string, { email: string; opens: number; clicks: number; lastActivity: string }>();
     
     events?.forEach((event) => {

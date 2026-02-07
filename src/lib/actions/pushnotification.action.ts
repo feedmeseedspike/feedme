@@ -17,7 +17,7 @@ export async function sendPushNotification(
       .eq("user_id", userId);
 
     if (tokenError || !tokens || tokens.length === 0) {
-      console.error("No FCM tokens found for user:", userId);
+      // console.log("No FCM tokens found for user:", userId);
       return;
     }
 

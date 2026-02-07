@@ -24,6 +24,7 @@ interface AddPurchaseBody {
   deliveryFee: number;
   local_government: string;
   voucherId?: string | null;
+  voucherDiscount?: number;
   paymentMethod: string;
   note?: string;
 }
@@ -305,6 +306,9 @@ export async function addPurchase(body: AddPurchaseBody) {
       payment_method: body.paymentMethod,
       shipping_address: body.shippingAddress,
       total_amount: body.totalAmount,
+      total_amount_paid: body.totalAmountPaid,
+      delivery_fee: body.deliveryFee,
+      local_government: body.local_government,
       status: 'order confirmed',
       payment_status: body.paymentMethod === 'wallet' ? 'Paid' : 'Pending',
       voucher_id: body.voucherId,

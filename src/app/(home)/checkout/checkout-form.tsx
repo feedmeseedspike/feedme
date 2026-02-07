@@ -907,6 +907,7 @@ const CheckoutForm = ({
             deliveryFee: cost,
             local_government: formLocation,
             voucherId: isVoucherValid ? voucherId : null,
+            voucherDiscount: voucherDiscount,
             paymentMethod: selectedPaymentMethod,
             note: orderNote,
           };
@@ -967,6 +968,8 @@ const CheckoutForm = ({
                             item.products?.name ||
                             item.bundles?.name ||
                             item.offers?.title ||
+                            (item as any).title ||
+                            (item.option as any)?._title ||
                             "",
                           price: item.price,
                           quantity: item.quantity,
@@ -998,6 +1001,8 @@ const CheckoutForm = ({
                             item.products?.name ||
                             item.bundles?.name ||
                             item.offers?.title ||
+                            (item as any).title ||
+                            (item.option as any)?._title ||
                             "",
                           price: item.price,
                           quantity: item.quantity,
@@ -1098,7 +1103,17 @@ const CheckoutForm = ({
                 user?.display_name || shippingAddressForm.getValues().fullName,
               customerPhone: shippingAddressForm.getValues().phone,
               itemsOrdered: items.map((item) => ({
-                title: item.products?.name || item.bundles?.name || "",
+                title:
+                  item.products?.name ||
+                  item.bundles?.name ||
+                  item.offers?.title ||
+                  (item.option as any)?._title ||
+                  "",
+                image:
+                   item.products?.images?.[0] ||
+                   item.bundles?.thumbnail_url ||
+                   item.offers?.image_url ||
+                   undefined,
                 price: item.price,
                 quantity: item.quantity,
                 optionName: isProductOption(item.option)

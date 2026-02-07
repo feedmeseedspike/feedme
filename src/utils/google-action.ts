@@ -26,7 +26,7 @@ const getGoogleAction = (provider: Provider) => async (callbackUrl?: string, ref
   })
 
   if(error) {
-    throw error; // Or redirect to an error page
+    throw error;
   }
 
   if (!data.url) {

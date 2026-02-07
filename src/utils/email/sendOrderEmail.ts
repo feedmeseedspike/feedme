@@ -35,7 +35,7 @@ export async function sendOrderConfirmationEmails({
            <p style="margin: 4px 0;"><strong>Payment Method:</strong> ${adminOrderProps.paymentMethod?.toUpperCase() || 'PAYSTACK'}</p>
            ${adminOrderProps.isFirstOrder ? `<p style="margin: 4px 0;"><span style="background: #1B6013; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">FIRST ORDER (10% OFF APPLIED)</span></p>` : ''}
            
-           ${adminOrderProps.rewards ? `
+           ${adminOrderProps.rewards && (adminOrderProps.rewards.cashback > 0 || adminOrderProps.rewards.freeDeliveryBonus || adminOrderProps.rewards.pointsAwarded > 0) ? `
               <div style="margin-top: 10px; border-top: 1px solid #1B601310; pt-8;">
                  <p style="margin: 4px 0; color: #1B6013;"><strong>Rewards Earned:</strong></p>
                  <ul style="margin: 4px 0; padding-left: 20px; font-size: 14px;">
@@ -146,21 +146,38 @@ export async function sendOrderConfirmationEmails({
         <h3 style="color: #1B6013; margin-bottom: 8px;">Order Summary:</h3>
         <div style="background: #f6f6f6; border-radius: 6px; padding: 14px 16px; margin-bottom: 18px;">
           ${userOrderProps.itemsOrdered?.map((item: any) => `
-            <div style="margin: 8px 0; padding: 8px 0; border-bottom: 1px solid #ddd;">
-              <p style="margin: 2px 0;">
-                <strong>${item.title}</strong> - Qty: ${item.quantity} - ₦${item.price?.toLocaleString()}
-              </p>
-              ${item.optionName ? `<p style="margin: 2px 0; font-size: 13px; color: #666;">Variation: ${item.optionName}</p>` : ''}
-              ${item.customizations && Object.keys(item.customizations).length > 0 ? 
-                Object.entries(item.customizations).map(([key, value]: [string, any]) => 
-                  `<p style="margin: 1px 0; font-size: 13px; color: #666;">• ${key.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}: ${value.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}</p>`
-                ).join('') : ''
-              }
+            <div style="margin: 8px 0; padding: 8px 0; border-bottom: 1px solid #ddd; display: flex; align-items: center; gap: 12px;">
+              ${item.image ? `<img src="${item.image}" alt="${item.title}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;" />` : ''}
+              <div>
+                <p style="margin: 2px 0;">
+                  <strong>${item.title}</strong> - Qty: ${item.quantity} - ₦${item.price?.toLocaleString()}
+                </p>
+                ${item.optionName ? `<p style="margin: 2px 0; font-size: 13px; color: #666;">Variation: ${item.optionName}</p>` : ''}
+                ${item.customizations && Object.keys(item.customizations).length > 0 ? 
+                  Object.entries(item.customizations).map(([key, value]: [string, any]) => 
+                    `<p style="margin: 1px 0; font-size: 13px; color: #666;">• ${key.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}: ${value.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}</p>`
+                  ).join('') : ''
+                }
+              </div>
             </div>
           `).join('') || '<p>No items</p>'}
-          <hr style="border: none; border-top: 1px solid #ddd; margin: 12px 0;" />
+           <hr style="border: none; border-top: 1px solid #ddd; margin: 12px 0;" />
+           ${userOrderProps.discount > 0 ? `
+              <p style="margin: 4px 0; color: #B42318;"><strong>Discount:</strong> -₦${userOrderProps.discount?.toLocaleString()}</p>
+          ` : ''}
           <p style="margin: 4px 0;"><strong>Delivery Fee:</strong> ₦${userOrderProps.deliveryFee?.toLocaleString()}</p>
           <p style="margin: 4px 0;"><strong>Total Paid:</strong> ₦${userOrderProps.totalAmountPaid?.toLocaleString()}</p>
+          
+          ${userOrderProps.rewards && (userOrderProps.rewards.cashback > 0 || userOrderProps.rewards.freeDeliveryBonus || userOrderProps.rewards.pointsAwarded > 0) ? `
+              <div style="margin-top: 10px; border-top: 1px solid #1B601320; padding-top: 10px;">
+                 <p style="margin: 4px 0; color: #1B6013;"><strong>Rewards Earned:</strong></p>
+                 <ul style="margin: 4px 0; padding-left: 20px; font-size: 14px; color: #1B6013;">
+                    ${userOrderProps.rewards.cashback > 0 ? `<li>₦${userOrderProps.rewards.cashback} Cashback (Added to Wallet)</li>` : ''}
+                    ${userOrderProps.rewards.freeDeliveryBonus ? `<li>Free Delivery for your NEXT order!</li>` : ''}
+                    ${userOrderProps.rewards.pointsAwarded > 0 ? `<li>+${userOrderProps.rewards.pointsAwarded} Loyalty Points</li>` : ''}
+                 </ul>
+              </div>
+           ` : ''}
         </div>
         
         <p style="font-size: 15px; color: #222;"><strong>Delivery Address:</strong><br>${userOrderProps.deliveryAddress}</p>

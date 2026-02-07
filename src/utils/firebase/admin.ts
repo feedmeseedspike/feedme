@@ -16,10 +16,8 @@ if (projectId && privateKey && clientEmail) {
   const serviceAccount = {
     projectId,
     privateKey: privateKey
-      .replace(/\\n/g, "\n") // Fix escaped newlines
-      .replace(/"/g, "")    // Remove any accidental wrapping quotes
-      .replace(/^(?!-----BEGIN)/, "-----BEGIN PRIVATE KEY-----\n") // Ensure header
-      .replace(/(?!-----END PRIVATE KEY-----)$/, "\n-----END PRIVATE KEY-----\n"), // Ensure footer
+      .replace(/\\n/g, "\n")
+      .replace(/^"|"$/g, ""), // Remove surrounding quotes only
     clientEmail,
   };
 

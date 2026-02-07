@@ -12,9 +12,10 @@ interface UserDropdownContentProps {
     avatar_url?: string | null;
     role?: string | null;
   };
+  closeFlyout?: () => void;
 }
 
-const UserDropdownContent: React.FC<UserDropdownContentProps> = ({ user }) => (
+const UserDropdownContent: React.FC<UserDropdownContentProps> = ({ user, closeFlyout }) => (
   <div className="w-64 bg-white p-4 shadow-xl rounded-xl flex flex-col">
     <div className="mb-4 pb-4 border-b border-gray-200 text-center">
       <Avatar className="mx-auto size-16 mb-2">
@@ -29,24 +30,28 @@ const UserDropdownContent: React.FC<UserDropdownContentProps> = ({ user }) => (
     <div className="flex-1 space-y-2">
       <Link
         href="/account/profile"
+        onClick={() => closeFlyout?.()}
         className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded transition-colors"
       >
         <UserIcon className="mr-2 h-4 w-4" /> Account Settings
       </Link>
       <Link
         href="/account/order"
+        onClick={() => closeFlyout?.()}
         className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded transition-colors"
       >
         <Package className="mr-2 h-4 w-4" /> My Orders
       </Link>
       <Link
         href="/track-order"
+        onClick={() => closeFlyout?.()}
         className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded transition-colors"
       >
         <Truck className="mr-2 h-4 w-4" /> Track Order
       </Link>
       <Link
         href="/account/wallet"
+        onClick={() => closeFlyout?.()}
         className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded transition-colors"
       >
         <Wallet className="mr-2 h-4 w-4" /> Wallet
@@ -54,6 +59,7 @@ const UserDropdownContent: React.FC<UserDropdownContentProps> = ({ user }) => (
       {user && (user as any).role === "admin" && (
         <Link
           href="/admin/overview"
+          onClick={() => closeFlyout?.()}
           className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded transition-colors"
         >
           <Package className="mr-2 h-4 w-4" /> Admin
@@ -61,6 +67,7 @@ const UserDropdownContent: React.FC<UserDropdownContentProps> = ({ user }) => (
       )}
       <Link
         href="/account/favourites"
+        onClick={() => closeFlyout?.()}
         className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded transition-colors"
       >
         <Heart className="mr-2 h-4 w-4" /> Favorites

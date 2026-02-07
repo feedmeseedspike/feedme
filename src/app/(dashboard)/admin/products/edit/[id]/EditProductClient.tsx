@@ -76,7 +76,7 @@ const formSchema = z
     description: z
       .string()
       .min(1, "Description is required")
-      .max(500, "Description cannot exceed 500 characters"),
+      .max(5000, "Description cannot exceed 5000 characters"),
     price: z
       .number({
         invalid_type_error: "Price must be a number",

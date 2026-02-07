@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { useUser } from "src/hooks/useUser";
 import { useToast } from "src/hooks/useToast";
 import ProductLinkParser from "./ProductLinkParser";
+import ProductCard from "@components/shared/product/product-card";
 
 interface BlogPostContentProps {
   post: BlogPost;
@@ -291,10 +292,27 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
             </div>
             )}
 
-        {/* Main Content - Typography Focused */}
         <div className="prose prose-lg prose-stone max-w-none mb-16 prose-p:font-proxima prose-p:font-light prose-p:leading-[2] prose-p:text-stone-600 prose-headings:font-bold prose-headings:text-[#1D2939] prose-img:rounded-none prose-img:shadow-lg prose-a:text-[#1B6013] prose-a:no-underline hover:prose-a:underline prose-blockquote:border-l-[#1B6013] prose-blockquote:bg-[#FAF9F6] prose-blockquote:py-2 prose-blockquote:px-6 prose-blockquote:not-italic prose-blockquote:font-normal">
             <ProductLinkParser content={post.content} />
         </div>
+
+        {/* Shop the Story - Dynamic Product Section */}
+        {post.blog_recipe_products && post.blog_recipe_products.length > 0 && (
+          <div className="mb-20 pt-16 border-t border-stone-100">
+            <h3 className="text-2xl font-bold text-[#1D2939] mb-8">Shop the Essentials</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-8">
+              {post.blog_recipe_products.map((item: any) => (
+                item.product && (
+                  <ProductCard 
+                    key={item.id} 
+                    product={item.product} 
+                    className="!mb-0" 
+                  />
+                )
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Instructions - Numbered Steps */}
         {post.instructions &&

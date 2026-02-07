@@ -88,15 +88,34 @@ export const POST = async (request: Request) => {
         .single();
       if (txError || !order) throw txError;
 
+      // Pre-fetch item names to ensure they are saved permanently in the option field
+      const productIds = (orderDetails.cartItems || []).map((i: any) => i.productId).filter(Boolean);
+      const bundleIds = (orderDetails.cartItems || []).map((i: any) => i.bundleId).filter(Boolean);
+      const offerIds = (orderDetails.cartItems || []).map((i: any) => i.offerId).filter(Boolean);
+
+      const [{ data: products }, { data: bundles }, { data: offers }] = await Promise.all([
+        supabase.from("products").select("id, name").in("id", productIds),
+        supabase.from("bundles").select("id, name").in("id", bundleIds),
+        supabase.from("offers").select("id, title").in("id", offerIds),
+      ]);
+
       // Insert order items
-      const orderItemsToInsert = (orderDetails.cartItems || []).map((item: any) => ({
-        order_id: order.id,
-        product_id: item.productId || null,
-        bundle_id: item.bundleId || null,
-        quantity: item.quantity,
-        price: item.price,
-        option: item.option || null,
-      }));
+      const orderItemsToInsert = (orderDetails.cartItems || []).map((item: any) => {
+        const matchingProduct = products?.find((p) => p.id === item.productId);
+        const matchingBundle = bundles?.find((b) => b.id === item.bundleId);
+        const matchingOffer = offers?.find((o) => o.id === item.offerId);
+        const itemName = matchingProduct?.name || matchingBundle?.name || matchingOffer?.title || "";
+
+        return {
+          order_id: order.id,
+          product_id: item.productId || null,
+          bundle_id: item.bundleId || null,
+          offer_id: item.offerId || null,
+          quantity: item.quantity,
+          price: item.price,
+          option: item.option ? { ...item.option, _title: itemName } : { _title: itemName },
+        };
+      });
       if (orderItemsToInsert.length > 0) {
         const { error: orderItemsError } = await supabase
           .from("order_items")

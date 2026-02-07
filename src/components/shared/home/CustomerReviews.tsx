@@ -57,14 +57,30 @@ interface CustomerReviewsProps {
   reviews?: Review[];
 }
 
+const getYouTubeId = (url: string) => {
+    if (!url) return null;
+    if(url.includes("/shorts/")) {
+        const parts = url.split("/shorts/");
+        return parts[1].split("?")[0];
+    }
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+};
+
+const isYouTubeUrl = (url: string) => {
+    return url.includes("youtube.com") || url.includes("youtu.be");
+};
+
+
 const defaultReviews: Review[] = [
   {
     id: "1",
-    customerName: "Sarah Johnson",
+    customerName: "Aisha Balogun",
     rating: 5,
     description:
       "Absolutely love the fresh produce! The quality is amazing and delivery was super fast. Highly recommend!",
-    videoUrl: "/customerReviews/video1.mp4",
+    videoUrl: "https://youtube.com/shorts/-gGo7JhBMhg?si=G7p7jYa4hxP6Tm9e",
 
     verified: true,
     date: "2025-11-22",
@@ -93,7 +109,7 @@ const defaultReviews: Review[] = [
     rating: 5,
     description:
       "Best grocery delivery service I've used. Everything arrived fresh and on time. Will definitely order again!",
-    videoUrl: "/customerReviews/video2.mp4",
+    videoUrl: "https://youtube.com/shorts/fZi6tWt9RM4?si=e6dmvvomx1XQ9KxP",
 
     verified: true,
     date: "2025-11-15",
@@ -114,7 +130,7 @@ const defaultReviews: Review[] = [
     rating: 5,
     description:
       "The quality exceeded my expectations. Fresh, organic, and delivered right to my doorstep. Amazing service!",
-    videoUrl: "/customerReviews/video3.mp4",
+    videoUrl: "https://youtube.com/shorts/RJk8eY-Q6eU?si=ZEmdqM6ErgEudNJI",
 
     verified: true,
     date: "2025-11-19",
@@ -138,7 +154,7 @@ const defaultReviews: Review[] = [
     rating: 5,
     description:
       "Fast delivery and excellent customer service. The tomatoes were so fresh, tasted like they were just picked!",
-    videoUrl: "/customerReviews/video4.mp4",
+    videoUrl: "https://youtube.com/shorts/-gGo7JhBMhg?si=G7p7jYa4hxP6Tm9e",
 
     verified: true,
     date: "2025-11-10",
@@ -161,7 +177,7 @@ const defaultReviews: Review[] = [
     rating: 5,
     description:
       "Absolutely love the fresh produce! The quality is amazing and delivery was super fast. Highly recommend!",
-    videoUrl: "/customerReviews/video1.mp4",
+    videoUrl: "https://youtube.com/shorts/-gGo7JhBMhg?si=G7p7jYa4hxP6Tm9e",
 
     verified: true,
     date: "2025-11-22",
@@ -184,7 +200,7 @@ const defaultReviews: Review[] = [
     rating: 5,
     description:
       "Best grocery delivery service I've used. Everything arrived fresh and on time. Will definitely order again!",
-    videoUrl: "/customerReviews/video2.mp4",
+    videoUrl: "https://youtube.com/shorts/fZi6tWt9RM4?si=e6dmvvomx1XQ9KxP",
 
     verified: true,
     date: "2025-11-15",
@@ -206,7 +222,7 @@ const defaultReviews: Review[] = [
     rating: 5,
     description:
       "The quality exceeded my expectations. Fresh, organic, and delivered right to my doorstep. Amazing service!",
-    videoUrl: "/customerReviews/video3.mp4",
+    videoUrl: "https://youtube.com/shorts/RJk8eY-Q6eU?si=ZEmdqM6ErgEudNJI",
 
     verified: true,
     date: "2025-11-19",
@@ -230,7 +246,7 @@ const defaultReviews: Review[] = [
     rating: 5,
     description:
       "Fast delivery and excellent customer service. The tomatoes were so fresh, tasted like they were just picked!",
-    videoUrl: "/customerReviews/video4.mp4",
+    videoUrl: "https://youtube.com/shorts/-gGo7JhBMhg?si=G7p7jYa4hxP6Tm9e",
 
     verified: true,
     date: "2025-11-10",
@@ -249,11 +265,11 @@ const defaultReviews: Review[] = [
   // Second set of duplicates for extra buffer
   {
     id: "1-dup-2",
-    customerName: "Sarah Johnson",
+    customerName: "Aisha Balogun",
     rating: 5,
     description:
       "Absolutely love the fresh produce! The quality is amazing and delivery was super fast. Highly recommend!",
-    videoUrl: "/customerReviews/video1.mp4",
+    videoUrl: "https://youtube.com/shorts/-gGo7JhBMhg?si=G7p7jYa4hxP6Tm9e",
 
     verified: true,
     date: "2025-11-22",
@@ -276,7 +292,7 @@ const defaultReviews: Review[] = [
     rating: 5,
     description:
       "Best grocery delivery service I've used. Everything arrived fresh and on time. Will definitely order again!",
-    videoUrl: "/customerReviews/video2.mp4",
+    videoUrl: "https://youtube.com/shorts/fZi6tWt9RM4?si=e6dmvvomx1XQ9KxP",
 
     verified: true,
     date: "2025-11-15",
@@ -298,7 +314,7 @@ const defaultReviews: Review[] = [
     rating: 5,
     description:
       "The quality exceeded my expectations. Fresh, organic, and delivered right to my doorstep. Amazing service!",
-    videoUrl: "/customerReviews/video3.mp4",
+    videoUrl: "https://youtube.com/shorts/RJk8eY-Q6eU?si=ZEmdqM6ErgEudNJI",
 
     verified: true,
     date: "2025-11-19",
@@ -322,7 +338,7 @@ const defaultReviews: Review[] = [
     rating: 5,
     description:
       "Fast delivery and excellent customer service. The tomatoes were so fresh, tasted like they were just picked!",
-    videoUrl: "/customerReviews/video4.mp4",
+    videoUrl: "https://youtube.com/shorts/-gGo7JhBMhg?si=G7p7jYa4hxP6Tm9e",
 
     verified: true,
     date: "2025-11-10",
@@ -615,7 +631,8 @@ export default function CustomerReviews({
     let cancelled = false;
 
     reviews.forEach((review) => {
-      if (review.thumbnailUrl || generatedThumbnails[review.id]) return;
+      // Skip if already has thumbnail, is generated, or is a YouTube URL
+      if (review.thumbnailUrl || generatedThumbnails[review.id] || isYouTubeUrl(review.videoUrl)) return;
 
       const video = document.createElement("video");
       video.src = review.videoUrl;
@@ -723,15 +740,39 @@ export default function CustomerReviews({
                       initial={{ opacity: 0, y: 20 }}
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true }}
-                      transition={{ delay: index * 0.1, duration: 0.6 }}
-                      className="relative group/card h-[500px] w-full cursor-pointer rounded-[24px] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 ease-out transform hover:-translate-y-2"
+                      transition={{ delay: index * 0.05, duration: 0.4 }}
+                      className="relative group/card h-[500px] w-full cursor-pointer rounded-[24px] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-300 ease-out transform hover:-translate-y-2"
                       onClick={() => setSelectedReview(review)}
                     >
                       {/* Video/Image Background */}
                       <div className="absolute inset-0 bg-gray-200">
                         {(() => {
                           // Prioritize showing the video itself as the thumbnail/background
+                          // Prioritize showing the video itself as the thumbnail/background
                           if (review.videoUrl) {
+                            if (isYouTubeUrl(review.videoUrl)) {
+                                const videoId = getYouTubeId(review.videoUrl);
+                                const thumbnailUrl = videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : "";
+                                
+                                return (
+                                  <div className="relative w-full h-full bg-black group-hover/card:scale-105 transition-transform duration-700">
+                                    <Image
+                                        src={thumbnailUrl || ""}
+                                        alt={review.customerName}
+                                        fill
+                                        className="object-cover"
+                                    />
+                                    <div className="absolute inset-0 bg-black/20 group-hover/card:bg-black/10 transition-colors duration-500" />
+                                    {/* Play icon overlay for YouTube videos to indicate it's playable */}
+                                    <div className="absolute inset-0 flex items-center justify-center opacity-70 group-hover/card:opacity-100 transition-opacity">
+                                        <div className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
+                                            <Play className="w-5 h-5 text-white fill-white" />
+                                        </div>
+                                    </div>
+                                  </div>
+                                );
+                            }
+
                             return (
                               <div className="relative w-full h-full bg-black">
                                 <video
@@ -888,13 +929,22 @@ export default function CustomerReviews({
 
                 {/* Video Section */}
                 <div className="w-full md:w-[60%] h-[40vh] md:h-full bg-black relative group">
-                    <video
-                        src={selectedReview.videoUrl}
-                        controls
-                        autoPlay
-                        playsInline
-                        className="w-full h-full object-contain"
-                    />
+                    {isYouTubeUrl(selectedReview.videoUrl) ? (
+                        <iframe
+                            src={`https://www.youtube.com/embed/${getYouTubeId(selectedReview.videoUrl)}?autoplay=1&rel=0`}
+                            className="w-full h-full object-contain"
+                            allow="accelerometer; autoplay; clipbosard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                        />
+                    ) : (
+                        <video
+                            src={selectedReview.videoUrl}
+                            controls
+                            autoPlay
+                            playsInline
+                            className="w-full h-full object-contain"
+                        />
+                    )}
                 </div>
 
                 {/* Content Section */}

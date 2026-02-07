@@ -18,6 +18,7 @@ export interface OrderData {
   deliveryFee: number;
   local_government: string;
   voucherId: string | null;
+  voucherDiscount: number;
   paymentMethod: string;
   note?: string;
 }

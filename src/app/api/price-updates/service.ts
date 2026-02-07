@@ -598,6 +598,8 @@ export async function sendPriceUpdateEmails(
     fetchSnapshotCount(captureDate),
   ]);
 
+  console.log(`[PriceUpdateService] Found ${rawEvents.length} events and ${recipientRecords.length} recipients for ${captureDate}`);
+
   const subscribers = recipientRecords.filter((record) => record.email);
 
   if (!subscribers.length) {
@@ -613,6 +615,7 @@ export async function sendPriceUpdateEmails(
   const emailPayload = buildEmailPayload(captureDate, events, totalTracked, topLimit);
   const subject = `${subjectPrefix} – ${captureDate}`;
 
+  console.log(`[PriceUpdateService] Starting send loop for ${subscribers.length} subscribers`);
   let sent = 0;
   for (const subscriber of subscribers) {
     if (!subscriber.email) continue;
@@ -629,15 +632,19 @@ export async function sendPriceUpdateEmails(
     
     // Render email per recipient (for personalized tracking)
     const emailElement = React.createElement(PriceUpdateEmail, emailWithTracking);
+    console.log(`[PriceUpdateService] Rendering email for ${subscriber.email}...`);
     const html = await render(emailElement, { pretty: true });
+    console.log(`[PriceUpdateService] Rendered HTML length: ${html.length}`);
     
     try {
+      console.log(`[PriceUpdateService] Sending mail to ${subscriber.email} via SMTP...`);
       await sendMail({
         to: subscriber.email,
         subject,
         html,
         from: fromAddress,
       });
+      console.log(`[PriceUpdateService] Successfully sent mail to ${subscriber.email}`);
       
       // Log "sent" event for tracking
       try {
@@ -645,6 +652,7 @@ export async function sendPriceUpdateEmails(
           tracking_id: trackingId,
           email: subscriber.email,
           event_type: "sent",
+          capture_date: captureDate, // Added this field
           captured_at: new Date().toISOString(),
         });
       } catch (trackError) {

@@ -158,7 +158,7 @@ const Slider = React.forwardRef<
     >
       <div
         className={cn(
-          "h-full w-full transition-all duration-500 ease-out",
+          "h-full w-full transition-all  ease-out",
           isScale && isSelected
             ? "scale-100 opacity-100"
             : isScale
