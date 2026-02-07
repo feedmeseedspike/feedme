@@ -19,6 +19,8 @@ import Partnerships from "@components/shared/home/Partnerships";
 import TrustFooterHighlight from "@components/shared/home/TrustFooterHighlight";
 import { QueryClient, dehydrate } from "@tanstack/react-query";
 import { ReactQueryHydrate } from "@providers/ReactQueryHydrate";
+import StoreFeatures from "@components/shared/home/StoreFeatures";
+
 
 import { createServerComponentClient } from "src/utils/supabase/server";
 
@@ -306,8 +308,7 @@ export default async function Home() {
         <div className="bg-[#F9FAFB]">
           <Container>
             <Banner />
-
-
+            <StoreFeatures />
 
             <Suspense
               fallback={

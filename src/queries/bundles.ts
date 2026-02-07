@@ -242,10 +242,12 @@ export const fetchBundleByIdWithProducts = async (bundleId: string, supabase?: a
 };
 
 // Function to fetch a single bundle by slug, including its products
-export const fetchBundleBySlugWithProducts = async (bundleSlug: string) => {
-  const supabase = createClient();
+export const fetchBundleBySlugWithProducts = async (bundleSlug: string, supabase?: any) => {
+  if (!supabase) {
+    supabase = createClient();
+  }
   
-  // First, try to get all bundles and find the one that matches the slug
+  // Try to find the bundle. We fetch all to handle the dynamic slug matching accurately
   const { data: allBundles, error: fetchError } = await supabase
     .from('bundles')
     .select('*');
@@ -257,6 +259,7 @@ export const fetchBundleBySlugWithProducts = async (bundleSlug: string) => {
   // Find the bundle whose name, when converted to slug, matches the provided slug
   const matchingBundle = allBundles?.find((bundle: Bundle) => {
     if (!bundle.name) return false;
+    // Use a standard slugify approach consistent with the rest of the app
     const bundleSlug_generated = bundle.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     return bundleSlug_generated === bundleSlug;
   });

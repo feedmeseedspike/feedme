@@ -39,6 +39,16 @@ const BundleSchema = z.object({
     errorMap: () => ({ message: "Invalid published status" }),
   }),
   thumbnail_file: z.instanceof(FileList).optional(),
+  // Recipe-specific fields
+  type: z.enum(["regular", "recipe"]).default("regular"),
+  video_url: z.string().url("Invalid URL").optional().or(z.literal("")),
+  description: z.string().optional(),
+  chef_name: z.string().optional(),
+  prep_time: z.coerce.number().min(0).optional(),
+  cook_time: z.coerce.number().min(0).optional(),
+  servings: z.coerce.number().min(1).optional(),
+  difficulty: z.enum(["easy", "medium", "hard"]).optional(),
+  dietary_tags: z.array(z.string()).optional(),
 });
 
 type BundleFormValues = z.infer<typeof BundleSchema>;
@@ -71,6 +81,9 @@ export default function BundleModal({
 
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [bundleType, setBundleType] = useState<"regular" | "recipe">("regular");
+  const [isFetchingYouTube, setIsFetchingYouTube] = useState(false);
+  const [selectedDietaryTags, setSelectedDietaryTags] = useState<string[]>([]);
 
   const thumbnailFile = watch("thumbnail_file")?.[0];
 
@@ -85,6 +98,43 @@ export default function BundleModal({
       fetchProductsForBundleModal(supabase, { search: searchQuery }),
     enabled: isOpen,
   });
+
+  const handleFetchYouTubeMetadata = async () => {
+    const videoUrl = watch("video_url");
+    
+    if (!videoUrl) {
+      alert("Please enter a YouTube URL first");
+      return;
+    }
+
+    setIsFetchingYouTube(true);
+
+    try {
+      const response = await fetch("/api/youtube/metadata", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: videoUrl }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch metadata");
+      }
+
+      // Auto-populate fields
+      setValue("chef_name", data.metadata.channelTitle);
+      setValue("description", data.metadata.description);
+      
+      // Note: thumbnail will be fetched from YouTube directly using video ID
+      alert(`✅ Metadata fetched!\nChef: ${data.metadata.channelTitle}\nVideo: ${data.metadata.title}`);
+    } catch (error: any) {
+      console.error("YouTube fetch error:", error);
+      alert(`❌ ${error.message}`);
+    } finally {
+      setIsFetchingYouTube(false);
+    }
+  };
 
   const handleProductSelect = (productId: string) => {
     const isSelected = selectedProducts.includes(productId);
@@ -256,6 +306,180 @@ export default function BundleModal({
                 </p>
               )}
             </div>
+
+            {/* Bundle Type Selector */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Bundle Type
+              </label>
+              <Select
+                value={bundleType}
+                onValueChange={(value: "regular" | "recipe") => {
+                  setBundleType(value);
+                  setValue("type", value);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select bundle type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="regular">Regular Bundle</SelectItem>
+                  <SelectItem value="recipe">Recipe Bundle</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Recipe-specific fields (only show when type is "recipe") */}
+            {bundleType === "recipe" && (
+              <>
+                <div className="border-t pt-4 mt-2">
+                  <h3 className="text-sm font-semibold mb-3 text-[#1B6013]">
+                    Recipe Details
+                  </h3>
+
+                  {/* YouTube URL with Fetch Button */}
+                  <div className="mb-3">
+                    <label htmlFor="video_url" className="block text-sm font-medium mb-2">
+                      YouTube Video URL
+                    </label>
+                    <div className="flex gap-2">
+                      <Input
+                        {...register("video_url")}
+                        id="video_url"
+                        placeholder="https://youtube.com/watch?v=..."
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        onClick={handleFetchYouTubeMetadata}
+                        disabled={isFetchingYouTube}
+                        className="bg-[#F0800F] hover:bg-[#F0800F]/90"
+                      >
+                        {isFetchingYouTube ? "Fetching..." : "Auto-Fill"}
+                      </Button>
+                    </div>
+                    {errors.video_url && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.video_url.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Chef Name */}
+                  <div className="mb-3">
+                    <label htmlFor="chef_name" className="block text-sm font-medium mb-2">
+                      Chef/Channel Name
+                    </label>
+                    <Input
+                      {...register("chef_name")}
+                      id="chef_name"
+                      placeholder="Auto-filled from YouTube or enter manually"
+                    />
+                  </div>
+
+                  {/* Description */}
+                  <div className="mb-3">
+                    <label htmlFor="description" className="block text-sm font-medium mb-2">
+                      Description
+                    </label>
+                    <textarea
+                      {...register("description")}
+                      id="description"
+                      rows={3}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-gray-300"
+                      placeholder="Auto-filled from YouTube or enter manually"
+                    />
+                  </div>
+
+                  {/* Time and Servings Row */}
+                  <div className="grid grid-cols-3 gap-3 mb-3">
+                    <div>
+                      <label htmlFor="prep_time" className="block text-sm font-medium mb-2">
+                        Prep Time (min)
+                      </label>
+                      <Input
+                        {...register("prep_time")}
+                        id="prep_time"
+                        type="number"
+                        placeholder="10"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="cook_time" className="block text-sm font-medium mb-2">
+                        Cook Time (min)
+                      </label>
+                      <Input
+                        {...register("cook_time")}
+                        id="cook_time"
+                        type="number"
+                        placeholder="15"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="servings" className="block text-sm font-medium mb-2">
+                        Servings
+                      </label>
+                      <Input
+                        {...register("servings")}
+                        id="servings"
+                        type="number"
+                        placeholder="4"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Difficulty */}
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium mb-2">
+                      Difficulty
+                    </label>
+                    <Select
+                      onValueChange={(value: "easy" | "medium" | "hard") =>
+                        setValue("difficulty", value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select difficulty" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="easy">Easy</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="hard">Hard</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Dietary Tags */}
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium mb-2">
+                      Dietary Tags
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {["Vegan", "Vegetarian", "Gluten-Free", "Dairy-Free", "Keto", "Paleo", "Low-Carb", "High-Protein"].map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => {
+                            const newTags = selectedDietaryTags.includes(tag)
+                              ? selectedDietaryTags.filter((t) => t !== tag)
+                              : [...selectedDietaryTags, tag];
+                            setSelectedDietaryTags(newTags);
+                            setValue("dietary_tags", newTags);
+                          }}
+                          className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                            selectedDietaryTags.includes(tag)
+                              ? "bg-[#1B6013] text-white border-[#1B6013]"
+                              : "bg-white text-gray-700 border-gray-300 hover:border-[#1B6013]"
+                          }`}
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
             <div>
               <label

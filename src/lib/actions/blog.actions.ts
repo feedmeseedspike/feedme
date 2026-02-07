@@ -155,7 +155,7 @@ export async function getBlogPostBySlug(slug: string) {
       *,
       blog_categories(*),
       blog_post_tags(blog_tags(*)),
-      blog_recipe_products(*)
+      blog_recipe_products(*, product:products(*))
     `)
     .eq("slug", slug)
     .eq("status", "published")

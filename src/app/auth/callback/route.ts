@@ -99,8 +99,8 @@ export async function GET(request: NextRequest) {
         }
       }
       
-      // Always redirect existing users to a main authenticated page
-      return NextResponse.redirect(new URL('/account', requestUrl.origin));
+      // Redirect existing users back to where they came from
+      return NextResponse.redirect(new URL(callbackUrl, requestUrl.origin));
     }
 
     // If no existing user or we have a code, proceed with code exchange (for new sign-ins or re-authentication)

@@ -249,8 +249,9 @@ export default function OrderConfirmationPage() {
   }, 0);
 
   const deliveryFee = order.delivery_fee ?? 0;
-  const voucherDiscount = order.voucher_discount ?? 0; 
-  const totalAmountPaid = order.total_amount_paid || (subtotal + deliveryFee - voucherDiscount);
+  const totalAmountPaid = order.total_amount_paid || (subtotal + deliveryFee);
+  // Derive discount if the column is missing/null, to ensure UI adds up
+  const voucherDiscount = order.voucher_discount ?? Math.max(0, (subtotal + deliveryFee) - totalAmountPaid); 
   
 
   // Confetti Logic

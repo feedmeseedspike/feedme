@@ -193,6 +193,7 @@ async function handleDirectPayment(
                 orderNote: metadata.orderNote,
                 paymentMethod: 'PAYSTACK',
                 rewards: bonusInfo,
+                totalAmount: metadata.amount,
             },
             userOrderProps: {
                 orderNumber: metadata.orderId,
@@ -203,7 +204,7 @@ async function handleDirectPayment(
                 deliveryFee: metadata.deliveryFee,
                 serviceCharge: metadata.serviceCharge,
                 totalAmount: metadata.amount,
-                totalAmountPaid: metadata.subtotal,
+                totalAmountPaid: metadata.amount,
                 userid: metadata.user_id,
             },
         });

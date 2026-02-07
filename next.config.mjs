@@ -25,6 +25,12 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: "https",
+        hostname: "img.youtube.com",
+        port: "",
+        pathname: "**/*",
+      },
+      {
+        protocol: "https",
         hostname: "t4.ftcdn.net",
         port: "",
         pathname: "**/*",
@@ -149,8 +155,20 @@ const nextConfig = {
         port: "",
         pathname: "**/*",
       },
+      {
+        protocol: "https",
+        hostname: "img.icons8.com",
+        port: "",
+        pathname: "**/*",
+      },
+      {
+        protocol: "https",
+        hostname: "cdn-icons-png.flaticon.com",
+        port: "",
+        pathname: "**/*",
+      },
     ],
-    domains: ["images.unsplash.com", "images.pexels.com"],
+    domains: ["images.unsplash.com", "images.pexels.com", "img.icons8.com", "cdn-icons-png.flaticon.com"],
   },
   webpack(config) {
     config.module.rules.push({

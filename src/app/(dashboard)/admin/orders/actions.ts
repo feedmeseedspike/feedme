@@ -230,7 +230,7 @@ export async function fetchOrderDetailsAction(orderId: string) {
   }
 
   if (offerIds.length > 0) {
-    const { data } = await supabase.from("offers").select("id, title").in("id", offerIds);
+    const { data } = await supabase.from("offers").select("id, title, image_url").in("id", offerIds);
     offers = data || [];
   }
 

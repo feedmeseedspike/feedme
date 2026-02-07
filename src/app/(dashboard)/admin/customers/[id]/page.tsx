@@ -24,8 +24,13 @@ import {
   ArrowDownLeft
 } from "lucide-react";
 import { formatNaira } from "../../../../../lib/utils";
-import { useWalletBalanceQuery, useTransactionsQuery } from "../../../../../queries/wallet";
-import { useUserVouchersQuery } from "../../../../../queries/vouchers";
+// import { useWalletBalanceQuery, useTransactionsQuery } from "../../../../../queries/wallet"; // Replaced by admin actions
+// import { useUserVouchersQuery } from "../../../../../queries/vouchers"; // Replaced by admin actions
+import {
+  getCustomerWalletBalanceAction,
+  getCustomerTransactionsAction,
+  getCustomerVouchersAction
+} from "@/lib/actions/admin-dashboard.actions";
 
 import {
   Table,
@@ -157,10 +162,21 @@ export default function CustomerDetailsPage() {
     error: ordersError,
   } = useCustomerOrders(customerId);
 
-  // --- NEW: WALLET & REWARDS DATA ---
-  const { data: walletBalance, isLoading: isWalletLoading } = useWalletBalanceQuery(customerId);
-  const { data: vouchers, isLoading: isVouchersLoading } = useUserVouchersQuery(customerId);
-  const { data: transactionsData, isLoading: isTransactionsLoading } = useTransactionsQuery(customerId, 1, 5);
+  // --- NEW: WALLET & REWARDS DATA (Admin Actions) ---
+  const { data: walletBalance, isLoading: isWalletLoading } = useQuery({
+    queryKey: ["admin", "customer", customerId, "wallet-balance"],
+    queryFn: () => getCustomerWalletBalanceAction(customerId)
+  });
+
+  const { data: vouchers, isLoading: isVouchersLoading } = useQuery({
+    queryKey: ["admin", "customer", customerId, "vouchers"],
+    queryFn: () => getCustomerVouchersAction(customerId)
+  });
+
+  const { data: transactionsData, isLoading: isTransactionsLoading } = useQuery({
+    queryKey: ["admin", "customer", customerId, "transactions"],
+    queryFn: () => getCustomerTransactionsAction(customerId, 1, 5)
+  });
   const transactions = transactionsData?.data || [];
 
   const { showToast } = useToast();
@@ -500,7 +516,7 @@ export default function CustomerDetailsPage() {
                                  }
                               </div>
                               <div>
-                                 <p className="text-sm font-bold text-gray-800 line-clamp-1">{tx.description || tx.type.replace('_', ' ')}</p>
+                                 <p className="text-sm font-bold text-gray-800 line-clamp-1">{tx.description || tx.type?.replace('_', ' ') || 'Transaction'}</p>
                                  <p className="text-[10px] text-gray-500">{format(new Date(tx.created_at), "MMM d, yyyy")}</p>
                               </div>
                            </div>

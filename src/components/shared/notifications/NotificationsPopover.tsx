@@ -21,7 +21,7 @@ interface NotificationsPopoverProps {
 
 export function NotificationsPopover({ userId }: NotificationsPopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { notifications, unreadCount, dismissNotification, isLoading } = useNotifications(userId);
+  const { notifications, unreadCount, dismissNotification, isLoading, refresh } = useNotifications(userId);
 
   const getTypeStyles = (type: string) => {
     switch (type) {
@@ -81,10 +81,7 @@ export function NotificationsPopover({ userId }: NotificationsPopoverProps) {
                onClick={async () => {
                  const result = await dismissAllNotificationsAction();
                  if (result.success) {
-                   // The useNotifications hook should ideally handle this, 
-                   // but we'll trigger a refresh by calling fetchNotifications if needed.
-                   // Since it's a "Clear All", we can just rely on the real-time sync or manual refresh.
-                   window.location.reload(); // Simple way to refresh state across all listeners
+                   refresh();
                  }
                }}
              >

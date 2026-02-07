@@ -4,6 +4,7 @@ import { fetchBundleBySlugWithProducts } from "src/queries/bundles";
 import RecipeClient from "./RecipeClient";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
+import { createClient } from "@utils/supabase/server";
 
 interface PageProps {
   params: {
@@ -13,7 +14,8 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   try {
-    const bundle = await fetchBundleBySlugWithProducts(params.slug);
+    const supabase = await createClient();
+    const bundle = await fetchBundleBySlugWithProducts(params.slug, supabase);
     
     if (!bundle) {
       return {
@@ -45,7 +47,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function RecipePage({ params }: PageProps) {
   try {
-    const bundle = await fetchBundleBySlugWithProducts(params.slug);
+    const supabase = await createClient();
+    const bundle = await fetchBundleBySlugWithProducts(params.slug, supabase);
     
     // Pass everything to the client component for the interactive experience
     return <RecipeClient bundle={bundle} />;

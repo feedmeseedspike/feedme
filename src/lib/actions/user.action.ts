@@ -131,21 +131,29 @@ export async function updateUserInfo(currentState: any, formData: FormData) {
 import supabaseAdmin from "../../utils/supabase/admin";
 
 export async function getCustomerByIdAction(customerId: string) {
-  const supabase = await createClient();
+  // Use supabaseAdmin (Service Role) to bypass RLS policies
+  const supabase = supabaseAdmin;
 
   try {
+    let profileData: any = {};
+    
+    // 1. Fetch Profile
     const { data, error } = await supabase
       .from('profiles')
-      .select('*') // Select all fields, adjust if you need a specific subset
-      // Query using the string ID directly
+      .select('*')
       .eq('user_id', customerId)
-      .single(); // Expect a single result
+      .single();
 
     if (error) {
-      throw new Error(error.message); // Throw an error if fetching fails
+      // If profile missing (PGRST116), just continue with empty profile data
+      if (error.code !== 'PGRST116') {
+        console.warn("Error fetching profile:", error.message);
+      }
+    } else {
+        profileData = data;
     }
     
-    // Fetch addresses for this user
+    // 2. Fetch addresses for this user (bypass RLS)
     const { data: addresses, error: addrError } = await supabase
       .from('addresses')
       .select('*')
@@ -155,7 +163,7 @@ export async function getCustomerByIdAction(customerId: string) {
       console.error("Error fetching addresses:", addrError);
     }
 
-    // Fetch Auth User Data (for Email/Name fallback)
+    // 3. Fetch Auth User Data (Fallback)
     let authUser = null;
     try {
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(customerId);
@@ -166,45 +174,55 @@ export async function getCustomerByIdAction(customerId: string) {
       console.error("Error fetching auth user:", e);
     }
 
-    const email = data.email || authUser?.email || null;
-    const displayName = data.display_name || authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || authUser?.user_metadata?.display_name || null;
+    const email = profileData?.email || authUser?.email || null;
+    const displayName = profileData?.display_name || authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || authUser?.user_metadata?.display_name || null;
     
     // Return merged data
     return {
-      ...data,
+      ...profileData,
+      id: profileData?.id || customerId, // Ensure ID is present
+      user_id: customerId,
       email: email,
       display_name: displayName,
       addresses: addresses || []
     };
     
   } catch (error: any) {
-    throw new Error(error.message || "Failed to fetch customer");
+    console.error("getCustomerByIdAction failed:", error);
+    // Return a minimal usable object rather than crashing the UI
+    return {
+        id: customerId,
+        user_id: customerId,
+        display_name: 'Unknown User',
+        email: null,
+        addresses: [],
+        error: error.message
+    }
   }
 }
 
 // Action to fetch orders for a given customer ID
-// Accept customerId as string, assuming it's a UUID
 export async function getCustomerOrdersAction(customerId: string) {
-  const supabase = await createClient();
+  // Use supabaseAdmin to ensure admins can see orders
+  const supabase = supabaseAdmin;
 
   try {
-    // Assuming an 'orders' table with a 'user_id' foreign key (corrected)
     const { data, error } = await supabase
       .from('orders')
-      .select('*') // Select all order fields, adjust if needed
-      // Use the correct column name 'user_id'
-      .eq('user_id', customerId) // Corrected column name
-      .order('created_at', { ascending: false }); // Order by creation date, newest first
+      .select('*')
+      .eq('user_id', customerId)
+      .order('created_at', { ascending: false });
 
     if (error) {
-      throw new Error(error.message || "Failed to fetch customer orders");
+      console.error("Error fetching customer orders:", error);
+      return []; // Return empty array on error
     }
     
-    // data will be an array of order objects (can be empty)
     return data; 
     
   } catch (error: any) {
-    throw new Error(error.message || "Failed to fetch customer orders");
+     console.error("getCustomerOrdersAction exception:", error);
+     return [];
   }
 }
 

@@ -1,34 +1,16 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { createClient } from "@utils/supabase/client";
+// import { createClient } from "@utils/supabase/client"; // Unused now
 import { Loader2, Gift, XCircle, CheckCircle } from "lucide-react";
 import { formatNaira } from "@/lib/utils";
+import { getCustomerCartPrizesAction, getCustomerLastOrderAction } from "@/lib/actions/admin-dashboard.actions";
 
 export function CartPrizesList({ customerId }: { customerId: string }) {
   const { data: cartItems, isLoading } = useQuery({
     queryKey: ["admin", "customer-cart", customerId],
     queryFn: async () => {
-      const supabase = createClient();
-      // 1. Get Cart ID
-      const { data: cart } = await supabase
-        .from("carts")
-        .select("id")
-        .eq("user_id", customerId)
-        .single();
-
-      if (!cart) return [];
-
-      // 2. Get Items
-      const { data: items } = await supabase
-        .from("cart_items")
-        .select(`
-          *,
-          product:products(name, image)
-        `)
-        .eq("cart_id", cart.id);
-        
-      return items || [];
+      return await getCustomerCartPrizesAction(customerId);
     },
   });
 
@@ -62,15 +44,7 @@ export function SpinEligibilityStatus({ customerId }: { customerId: string }) {
     const { data: lastOrder } = useQuery({
         queryKey: ["admin", "last-order", customerId],
         queryFn: async () => {
-            const supabase = createClient();
-            const { data } = await supabase
-                .from("orders")
-                .select("created_at, status, total_amount")
-                .eq("user_id", customerId)
-                .order("created_at", { ascending: false })
-                .limit(1)
-                .single();
-            return data;
+            return await getCustomerLastOrderAction(customerId);
         }
     });
 

@@ -44,6 +44,11 @@ export async function createNotification({
     .single();
 
   if (error) {
+    // error code 23503: foreign key violation (user does not exist)
+    if (error.code === '23503') {
+      // console.warn(`Skipping notification for non-existent user: ${userId}`);
+      return { success: false, error: "User not found" };
+    }
     console.error("Error creating notification:", error);
     return { success: false, error: error.message };
   }
@@ -160,16 +165,19 @@ export async function sendBroadcastNotification({
   const results = [];
 
   // 2. Send to each user
-  // Using Promise.allSettled so one failure doesn't stop the rest
-  await Promise.allSettled(userIds.map(userId => 
-    sendUnifiedNotification({
-      userId,
-      type,
-      title,
-      body,
-      link
-    })
-  ));
+  const BATCH_SIZE = 50;
+  for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
+    const batch = userIds.slice(i, i + BATCH_SIZE);
+    await Promise.allSettled(batch.map(userId => 
+      sendUnifiedNotification({
+        userId,
+        type,
+        title,
+        body,
+        link
+      })
+    ));
+  }
 
   return { success: true, count: userIds.length };
 }

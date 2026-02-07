@@ -107,6 +107,8 @@ export async function processWalletPayment(orderData: OrderData) {
         total_amount_paid: orderData.totalAmountPaid,
         voucher_id: orderData.voucherId || null,
         shipping_address: JSON.stringify(orderData.shippingAddress),
+        delivery_fee: orderData.deliveryFee,
+        local_government: orderData.local_government,
         payment_method: orderData.paymentMethod, // 'wallet'
         payment_status: "Paid", 
         reference: reference,
@@ -119,16 +121,34 @@ export async function processWalletPayment(orderData: OrderData) {
       throw new Error("Failed to create order record.");
     }
 
+    // Pre-fetch item names to ensure they are saved permanently in the option field
+    const productIds = orderData.cartItems.map((i: any) => i.productId).filter(Boolean);
+    const bundleIds = orderData.cartItems.map((i: any) => i.bundleId).filter(Boolean);
+    const offerIds = orderData.cartItems.map((i: any) => i.offerId).filter(Boolean);
+
+    const [{ data: products_info }, { data: bundles_info }, { data: offers_info }] = await Promise.all([
+      supabase.from("products").select("id, name").in("id", productIds),
+      supabase.from("bundles").select("id, name").in("id", bundleIds),
+      supabase.from("offers").select("id, title").in("id", offerIds),
+    ]);
+
     // Insert order items
-    const orderItems = orderData.cartItems.map((item: { productId: string; quantity: number; price?: number | null; option?: any; bundleId?: string; offerId?: string }) => ({
-        order_id: orderResult.id,
-        product_id: item.productId || null,
-        bundle_id: item.bundleId || null,
-        offer_id: item.offerId || null,
-        quantity: item.quantity,
-        price: item.price,
-        option: item.option || null,
-    }));
+    const orderItems = orderData.cartItems.map((item: { productId: string; quantity: number; price?: number | null; option?: any; bundleId?: string; offerId?: string }) => {
+        const matchingProduct = products_info?.find((p) => p.id === item.productId);
+        const matchingBundle = bundles_info?.find((b) => b.id === item.bundleId);
+        const matchingOffer = offers_info?.find((o) => o.id === item.offerId);
+        const itemName = matchingProduct?.name || matchingBundle?.name || matchingOffer?.title || "";
+
+        return {
+          order_id: orderResult.id,
+          product_id: item.productId || null,
+          bundle_id: item.bundleId || null,
+          offer_id: item.offerId || null,
+          quantity: item.quantity,
+          price: item.price,
+          option: item.option ? { ...item.option, _title: itemName } : { _title: itemName },
+        };
+    });
 
     const { error: orderItemsError } = await supabase
         .from('order_items')
@@ -151,7 +171,6 @@ export async function processWalletPayment(orderData: OrderData) {
 
     // --- Process Post-Order Rewards (Cashback, Voucher, Points, Referral) ---
     // Fetch product details for item-specific deals logic (passed to rewards processor)
-    const productIds = orderData.cartItems.map((i: any) => i.productId).filter(Boolean);
     let dealItems: any[] = [];
     
     if (productIds.length > 0) {

@@ -182,21 +182,26 @@ export async function POST(req: NextRequest) {
         // FETCH EXISTING PRODUCT
         const { data: existing } = await supabase
           .from("products")
-          .select("id, options, price, list_price, images")
+          .select("id, options, price, list_price, images, tags")
           .eq("name", p.name)
           .single();
+
+        // Merge existing tags with new generated tags
+        const existingTags = existing?.tags || [];
+        const newTags = tags || [];
+        const mergedTags = Array.from(new Set([...existingTags, ...newTags]));
 
         const updateData: any = {
           price: lowestPrice,
           list_price: highestPrice,
           category_ids: [categoryId, GENERAL_CATEGORY_ID],
-          description: generateDescription(
-            p,
-            lowestPrice,
-            highestPrice,
-            categoryTitle
-          ),
-          tags, // ← NEW: apply tags from imageSaver
+          // description: generateDescription(  <-- REMOVED to prevent overwriting custom descriptions
+          //   p,
+          //   lowestPrice,
+          //   highestPrice,
+          //   categoryTitle
+          // ),
+          tags: mergedTags, // ← UPDATED: preserve existing tags
         };
 
         // ─────────────────────────────────────────────────────────────
