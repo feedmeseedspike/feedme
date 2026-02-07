@@ -23,6 +23,7 @@ import { useCartQuery, useUpdateCartMutation } from "src/queries/cart";
 import RatingForm from "@components/recipes/RatingForm";
 import CommentSection from "@components/recipes/CommentSection";
 import UserPhotosGallery from "@components/recipes/UserPhotosGallery";
+import PhotoUploadModal from "@components/recipes/PhotoUploadModal";
 import BookmarkButton from "@components/recipes/BookmarkButton";
 
 interface RecipeClientProps {
@@ -32,6 +33,7 @@ interface RecipeClientProps {
 export default function RecipeClient({ bundle }: RecipeClientProps) {
   const { showToast } = useToast();
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   
   // Flexible Bundle State
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
@@ -546,8 +548,18 @@ export default function RecipeClient({ bundle }: RecipeClientProps) {
                     See what others made
                  </span>
               </div>
-              <UserPhotosGallery bundleId={bundle.id} />
+              <UserPhotosGallery 
+                  bundleId={bundle.id} 
+                  onUploadClick={() => setIsPhotoModalOpen(true)}
+               />
            </div>
+
+           {/* Photo Upload Modal */}
+           <PhotoUploadModal
+              bundleId={bundle.id}
+              isOpen={isPhotoModalOpen}
+              onClose={() => setIsPhotoModalOpen(false)}
+           />
 
            {/* Comments Section */}
            <div>

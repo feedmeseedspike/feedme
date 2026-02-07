@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Heart, Camera as CameraIcon } from "lucide-react";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
@@ -29,11 +29,7 @@ export default function UserPhotosGallery({
   const [likedPhotos, setLikedPhotos] = useState<Set<string>>(new Set());
   const { showToast } = useToast();
 
-  useEffect(() => {
-    fetchPhotos();
-  }, [bundleId]);
-
-  const fetchPhotos = async () => {
+  const fetchPhotos = useCallback(async () => {
     try {
       const response = await fetch(`/api/recipes/${bundleId}/photos`);
       if (!response.ok) throw new Error("Failed to fetch photos");
@@ -45,7 +41,11 @@ export default function UserPhotosGallery({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [bundleId]);
+
+  useEffect(() => {
+    fetchPhotos();
+  }, [fetchPhotos]);
 
   const handleLikePhoto = async (photoId: string) => {
     try {
