@@ -24,6 +24,5 @@ export function getFreshCategoryTag(categoryTitle: string): string[] | null {
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  console.log(`fresh-${slug}`)
   return slug ? [`fresh-${slug}`] : null;
 }

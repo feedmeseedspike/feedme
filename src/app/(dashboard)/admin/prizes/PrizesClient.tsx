@@ -1,19 +1,47 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { SpinPrizeRow, createSpinPrize, updateSpinPrize, deleteSpinPrize } from "@/lib/actions/prize.actions";
+import { SpinPrizeRow, createSpinPrize, updateSpinPrize, deleteSpinPrize, updatePrizeOrder } from "@/lib/actions/prize.actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Trash2, Edit, Plus, Link as LinkIcon, AlertCircle, Search } from "lucide-react";
+import { Trash2, Edit, Plus, Link as LinkIcon, AlertCircle, Search, GripVertical, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { Reorder, useDragControls } from "framer-motion";
+import { toast } from "sonner";
 
 export default function PrizesClient({ initialPrizes, productsList }: { initialPrizes: SpinPrizeRow[], productsList: any[] }) {
   const [isOpen, setIsOpen] = useState(false);
   const [editingPrize, setEditingPrize] = useState<SpinPrizeRow | null>(null);
   const router = useRouter();
+
+  const [prizes, setPrizes] = useState<SpinPrizeRow[]>(initialPrizes);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
+
+  // Sync with initial prizes if they change (e.g. after refresh)
+  useEffect(() => {
+    setPrizes(initialPrizes);
+  }, [initialPrizes]);
+
+  const hasOrderChanged = useMemo(() => {
+    return JSON.stringify(prizes.map(p => p.id)) !== JSON.stringify(initialPrizes.map(p => p.id));
+  }, [prizes, initialPrizes]);
+
+  const handleSaveOrder = async () => {
+     setIsSavingOrder(true);
+     try {
+         const updates = prizes.map((p, index) => ({ id: p.id, sort_order: index }));
+         await updatePrizeOrder(updates);
+         toast.success("Prize order updated successfully!");
+     } catch (err) {
+         console.error("Failed to update order:", err);
+         toast.error("Failed to update order. Check if sort_order column exists.");
+     } finally {
+         setIsSavingOrder(false);
+     }
+  };
 
   const [formData, setFormData] = useState<Partial<SpinPrizeRow>>({});
   const [productSearch, setProductSearch] = useState("");
@@ -99,8 +127,6 @@ export default function PrizesClient({ initialPrizes, productsList }: { initialP
           if (opt) {
               price = opt.price;
               if (opt.image) img = opt.image;
-              // Sub label holds option name, Label holds Product Name (or we can combine?)
-              // Current logic: Label = Product, Sub = Option
           }
       }
 
@@ -124,14 +150,6 @@ export default function PrizesClient({ initialPrizes, productsList }: { initialP
       const product = productsList.find(p => p.id === productId);
       if (product) {
           setQuantity(1);
-          setFormData(prev => ({
-              ...prev,
-              product_id: productId,
-              sub_label: '', // Reset option
-          }));
-          // Trigger update with new product, qty 1, no option
-          // But I can't call updateFromProduct easily due to closure / state sync issues with setFormData?
-          // I'll set it directly.
           const img = Array.isArray(product.images) ? product.images[0] : product.images;
           setFormData(prev => ({
               ...prev,
@@ -147,8 +165,6 @@ export default function PrizesClient({ initialPrizes, productsList }: { initialP
   
   const handleOptionSelect = (optionName: string) => {
       if (!selectedProduct) return;
-      // Just update sub_label, let effect or explicit call handle price?
-      // I'll explicit call logic
       const opt = selectedProduct.options?.find((o: any) => o.name === optionName);
       if (opt) {
           const price = opt.price;
@@ -167,8 +183,7 @@ export default function PrizesClient({ initialPrizes, productsList }: { initialP
       setQuantity(q);
       
       if (selectedProduct) {
-          // Recalculate value
-          const price = unitPrice || selectedProduct.price; // fallback
+          const price = unitPrice || selectedProduct.price;
           setFormData(prev => ({
               ...prev,
               value: price * q,
@@ -178,63 +193,117 @@ export default function PrizesClient({ initialPrizes, productsList }: { initialP
   };
 
   return (
-      <div>
-          <div className="flex justify-end mb-4">
-              <Button onClick={handleAddNew}><Plus className="w-4 h-4 mr-2"/> Add Prize</Button>
+      <div className="space-y-6">
+          <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-bold text-slate-800">Spin Wheel Prizes</h1>
+                  {hasOrderChanged && (
+                      <Button 
+                        variant="default" 
+                        size="sm" 
+                        className="bg-green-600 hover:bg-green-700 animate-in fade-in slide-in-from-left-2"
+                        onClick={handleSaveOrder}
+                        disabled={isSavingOrder}
+                      >
+                          <Save className="w-4 h-4 mr-2" />
+                          {isSavingOrder ? "Saving..." : "Save New Order"}
+                      </Button>
+                  )}
+              </div>
+              <Button onClick={handleAddNew} className="bg-[#1B6013] hover:bg-[#1B6013]/90">
+                  <Plus className="w-4 h-4 mr-2"/> Add Prize
+              </Button>
           </div>
 
-          <div className="border rounded-md">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <Table>
-                <TableHeader>
+                <TableHeader className="bg-slate-50/50">
                     <TableRow>
+                        <TableHead className="w-10"></TableHead>
                         <TableHead>Label / Product</TableHead>
                         <TableHead>Type</TableHead>
                         <TableHead>Value</TableHead>
                         <TableHead>Prob</TableHead>
                         <TableHead>New User?</TableHead>
                         <TableHead>Code</TableHead>
-                        <TableHead>Actions</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
-                <TableBody>
-                    {initialPrizes.map((prize) => (
-                        <TableRow key={prize.id}>
+                <Reorder.Group 
+                    as="tbody" 
+                    axis="y" 
+                    values={prizes} 
+                    onReorder={setPrizes}
+                    className="divide-y divide-slate-100"
+                >
+                    {prizes.map((prize) => (
+                        <Reorder.Item 
+                            key={prize.id} 
+                            value={prize} 
+                            as="tr"
+                            className="bg-white hover:bg-slate-50/50 transition-colors group cursor-default"
+                        >
+                            <TableCell className="text-slate-400">
+                                <GripVertical className="w-5 h-5 cursor-grab active:cursor-grabbing hover:text-slate-600 transition-colors" />
+                            </TableCell>
                             <TableCell>
-                                <div className="font-medium">
+                                <div className="font-semibold text-slate-700">
                                     {prize.product ? (
-                                        <span className="flex items-center gap-1 text-blue-600">
-                                            <LinkIcon className="w-3 h-3"/> {prize.product.name}
+                                        <span className="flex items-center gap-1.5 text-[#1B6013]">
+                                            <LinkIcon className="w-3.5 h-3.5"/> {prize.product.name}
                                         </span>
                                     ) : (
                                         prize.label
                                     )}
                                 </div>
-                                <span className="text-xs text-muted-foreground">{prize.sub_label || prize.product?.options ? "Option?" : ""}</span>
+                                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                                    {prize.sub_label || (prize.product?.options ? "Selectable Variant" : "Base Product")}
+                                </span>
                             </TableCell>
-                            <TableCell>{prize.type}</TableCell>
                             <TableCell>
+                                <span className="px-2 py-1 rounded-md bg-slate-100 text-slate-600 text-xs font-medium capitalize">
+                                    {prize.type.replace('_', ' ')}
+                                </span>
+                            </TableCell>
+                            <TableCell className="font-medium text-slate-700">
                                 {prize.product ? (
-                                    <span title={`Live Price: ${prize.product.price}`}>
-                                        {prize.product.price} <span className="text-xs text-muted-foreground">(Live)</span>
+                                    <span title={`Live Price: ₦${prize.product.price}`}>
+                                        ₦{prize.product.price.toLocaleString()} <span className="text-[10px] text-slate-400 font-normal">(Live)</span>
                                     </span>
-                                ) : prize.value}
+                                ) : (
+                                    prize.type === 'wallet_cash' ? `₦${prize.value.toLocaleString()}` : prize.value
+                                )}
                             </TableCell>
-                            <TableCell>{prize.probability}</TableCell>
                             <TableCell>
-                                {prize.for_new_users_only ? (
-                                    <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-[10px] font-bold uppercase">YES</span>
-                                ) : '-'}
-                            </TableCell>
-                            <TableCell>{prize.code || '-'}</TableCell>
-                            <TableCell>
-                                <div className="flex gap-2">
-                                    <Button size="icon" variant="ghost" onClick={() => handleEdit(prize)}><Edit className="w-4 h-4"/></Button>
-                                    <Button size="icon" variant="destructive" onClick={() => handleDelete(prize.id)}><Trash2 className="w-4 h-4"/></Button>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                        <div 
+                                            className="h-full bg-blue-500 rounded-full" 
+                                            style={{ width: `${Math.min((prize.probability || 0) * 100, 100)}%` }}
+                                        />
+                                    </div>
+                                    <span className="text-xs text-slate-600">{(prize.probability || 0).toFixed(3)}</span>
                                 </div>
                             </TableCell>
-                        </TableRow>
+                            <TableCell>
+                                {prize.for_new_users_only ? (
+                                    <span className="px-2 py-0.5 bg-green-50 text-green-600 border border-green-100 rounded-full text-[10px] font-bold">YES</span>
+                                ) : '-'}
+                            </TableCell>
+                            <TableCell className="font-mono text-[10px] text-slate-500">{prize.code || '-'}</TableCell>
+                            <TableCell className="text-right">
+                                <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50" onClick={() => handleEdit(prize)}>
+                                        <Edit className="w-4 h-4"/>
+                                    </Button>
+                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(prize.id)}>
+                                        <Trash2 className="w-4 h-4"/>
+                                    </Button>
+                                </div>
+                            </TableCell>
+                        </Reorder.Item>
                     ))}
-                </TableBody>
+                </Reorder.Group>
             </Table>
           </div>
 

@@ -108,43 +108,9 @@ export default function FloatingSpinWidget() {
             product: p.product
           }));
 
-          // Ensure we have at least 2 "Try Again" slots for balance
-          const fails = mappedPrizes.filter(p => p.type === 'none');
-          const rewards = mappedPrizes.filter(p => p.type !== 'none');
-          
-          let failPrizes = [...fails];
-          if (failPrizes.length < 2) {
-             const defaults = SPIN_PRIZES_CONFIG.filter(p => p.type === 'none').map(p => ({
-                id: p.id,
-                label: p.label,
-                value: p.value,
-                type: p.type as any,
-                image: p.image || "",
-                color: p.color,
-                sub: p.sub,
-                probability: p.probability,
-                product: undefined
-             }));
-             failPrizes = [...failPrizes, ...defaults.slice(0, 2 - failPrizes.length)];
-          }
-
-          // Interleave rewards and fails to keep them separate
-          const final: any[] = [];
-          const totalSlots = rewards.length + failPrizes.length;
-          const failInterval = Math.floor(totalSlots / failPrizes.length);
-          
-          let failIdx = 0;
-          let rewardIdx = 0;
-          
-          for (let i = 0; i < totalSlots; i++) {
-             if (i % failInterval === 0 && failIdx < failPrizes.length) {
-                final.push(failPrizes[failIdx++]);
-             } else if (rewardIdx < rewards.length) {
-                final.push(rewards[rewardIdx++]);
-             } else {
-                final.push(failPrizes[failIdx++]);
-             }
-          }
+          // Use all mapped prizes directly. 
+          // Note: Selection logic in the server action handles the probabilities.
+          const final = [...mappedPrizes];
 
           if (final.length > 0) setPrizes(final);
           else setPrizes(SPIN_PRIZES_CONFIG);

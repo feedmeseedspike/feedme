@@ -18,6 +18,7 @@ export type SpinPrizeRow = {
   product_id?: string;
   is_active: boolean;
   for_new_users_only?: boolean;
+  sort_order?: number;
   product_option?: any;
   min_orders_required?: number;
   product?: {
@@ -73,6 +74,7 @@ export async function getSpinPrizes() {
   const { data: prizes, error: currentError } = await supabase
     .from('spin_prizes')
     .select('*')
+    .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
 
   if (currentError) {
@@ -124,7 +126,18 @@ export async function getProductsList() {
 
 export async function createSpinPrize(payload: Partial<SpinPrizeRow>) {
    const supabase = supabaseAdmin; 
-   const cleaned = cleanPayload(payload);
+   
+   // Get current max sort order
+   const { data: maxPrize } = await supabase
+     .from('spin_prizes')
+     .select('sort_order')
+     .order('sort_order', { ascending: false })
+     .limit(1)
+     .single();
+   
+   const nextOrder = (maxPrize?.sort_order ?? -1) + 1;
+   
+   const cleaned = cleanPayload({ ...payload, sort_order: nextOrder });
    
    const { data, error } = await supabase
      .from('spin_prizes')
@@ -164,4 +177,22 @@ export async function deleteSpinPrize(id: string) {
   revalidatePath('/admin/prizes');
   revalidatePath('/spin-to-win');
   return true;
+}
+
+export async function updatePrizeOrder(updates: { id: string, sort_order: number }[]) {
+    const supabase = supabaseAdmin;
+    
+    // Perform individual updates for each prize
+    // In a production app with many rows, you might use a more optimized approach,
+    // but for spin prizes (usually < 20 rows), this is fine.
+    for (const update of updates) {
+        await supabase
+            .from('spin_prizes')
+            .update({ sort_order: update.sort_order })
+            .eq('id', update.id);
+    }
+    
+    revalidatePath('/admin/prizes');
+    revalidatePath('/spin-to-win');
+    return { success: true };
 }

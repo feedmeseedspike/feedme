@@ -13,9 +13,14 @@ export interface Deal {
 // New Bonus Thresholds and Rules (Version 1.0)
 export const BONUS_CONFIG = {
   FIRST_TIME: {
+    min_spend: 0,
+    discount_percent: 5,
+    description: "5% off your first order",
+  },
+  REPEAT_ORDER_CASHBACK: {
     min_spend: 25000,
-    discount_percent: 10,
-    description: "10% off orders above ₦25,000 for first-time visitors",
+    cashback_percent: 10,
+    description: "10% cashback on orders above ₦25,000 for returning members",
   },
   SUBSEQUENT_FREE_DELIVERY: {
     min_spend: 50000,

@@ -25,67 +25,17 @@ export function useAnonymousCart() {
     setIsLoading(false);
   }, [user]);
 
-  // Auto-merge cart when user logs in or handle logout
+  // Auto-merge logic removed from hook to prevent multiple triggers.
+  // Merging is now handled centrally by CartMergeProvider.
   useEffect(() => {
-    const handleUserChange = async () => {
-      // Check for merge scenarios:
-      // 1. User just logged in (transition from null to user)
-      // 2. User is already logged in and we have anonymous items (page refresh)
-      const userJustLoggedIn = !prevUserRef.current && user;
-      const shouldMergeOnRefresh = user && !hasMergedRef.current;
-      
-      if (userJustLoggedIn || shouldMergeOnRefresh) {
-        const anonymousItems = anonymousCart.getItems();
-        
-        if (anonymousItems.length > 0) {
-          // Mark as merged to prevent duplicate merges (but allow login transitions)
-          if (shouldMergeOnRefresh) {
-            hasMergedRef.current = true;
-          }
-          try {
-            // Import addToCart function and add each anonymous item individually
-            const { addToCart } = await import('src/lib/actions/cart.actions');
-            
-            // Add each anonymous item individually
-            for (const anonItem of anonymousItems) {
-              try {
-                await addToCart(
-                  anonItem.product_id || null, 
-                  anonItem.quantity, 
-                  anonItem.option, 
-                  anonItem.bundle_id || null,
-                  anonItem.offer_id || null,
-                  anonItem.black_friday_item_id || null
-                );
-              } catch (error) {
-                // Continue with other items if one fails
-              }
-            }
-            
-            // Clear the anonymous cart after merge
-            anonymousCart.clear();
-            setItems([]);
-            window.dispatchEvent(new Event('anonymousCartUpdated'));
-            
-            // Invalidate cart query to refresh the UI with merged items
-            queryClient.invalidateQueries({ queryKey: cartQueryKey });
-          } catch (error) {
-            // Handle merge error silently
-          }
-        }
-      }
-      // User just logged out (was authenticated, now null)
-      else if (prevUserRef.current && !user) {
-        const freshAnonymousItems = anonymousCart.getItems();
-        setItems(freshAnonymousItems);
-        window.dispatchEvent(new Event('anonymousCartUpdated'));
-      }
-      
-      prevUserRef.current = user;
-    };
-
-    handleUserChange();
-  }, [user, authenticatedCartItems]);
+    if (prevUserRef.current && !user) {
+      // User just logged out, refresh anonymous items
+      const freshAnonymousItems = anonymousCart.getItems();
+      setItems(freshAnonymousItems);
+      window.dispatchEvent(new Event('anonymousCartUpdated'));
+    }
+    prevUserRef.current = user;
+  }, [user]);
 
   // Listen for storage changes (e.g., from other tabs) and custom events
   useEffect(() => {

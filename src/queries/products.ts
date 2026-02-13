@@ -1,6 +1,7 @@
 import { TypedSupabaseClient } from '../utils/types'
 import { Tables } from "@utils/database.types";
 import { createClient } from "@utils/supabase/client";
+import { expandSearchTerms, buildSearchFilter, sortProductsByRelevance } from '@/lib/search-utils';
 
 type OrderItemResult = { product_id: string | null; };
 type OrderIdResult = { order_id: string | null; };
@@ -39,7 +40,9 @@ export async function getAllProducts(client: TypedSupabaseClient, {
 
   // Apply search filter if provided
   if (query && query !== 'all' && query !== '') {
-    queryBuilder = queryBuilder.ilike('name', `%${query}%`);
+    const terms = expandSearchTerms(query);
+    const filter = buildSearchFilter(terms, ['name', 'description', 'brand']);
+    queryBuilder = queryBuilder.or(filter);
   }
 
   // Apply category filter if provided
@@ -149,7 +152,9 @@ export async function getAllProducts(client: TypedSupabaseClient, {
   
   // Apply the same filters to count query
   if (query && query !== 'all' && query !== '') {
-    countQuery = countQuery.ilike('name', `%${query}%`);
+    const terms = expandSearchTerms(query);
+    const filter = buildSearchFilter(terms, ['name', 'description', 'brand']);
+    countQuery = countQuery.or(filter);
   }
   
   if (category && category !== 'all') {
@@ -184,7 +189,7 @@ export async function getAllProducts(client: TypedSupabaseClient, {
   }
 
   return {
-    products: data,
+    products: (query && query !== 'all' && !sort) ? sortProductsByRelevance(data || [], query) : (data || []),
     totalPages: totalCount ? Math.ceil(totalCount / limit) : 0,
     totalProducts: totalCount || 0,
     from: (page - 1) * limit + 1,
@@ -231,7 +236,9 @@ export async function fetchProductsForBundleModal(client: TypedSupabaseClient, {
       .in('in_season', [true, null]); // Only include products that are in season or have no season status
 
     if (search && search.trim() !== '') {
-      queryBuilder = queryBuilder.ilike('name', `%${search.trim()}%`);
+      const terms = expandSearchTerms(search);
+      const filter = buildSearchFilter(terms, ['name', 'description', 'brand']);
+      queryBuilder = queryBuilder.or(filter);
     }
 
     queryBuilder = queryBuilder.limit(50).order('name', { ascending: true });
@@ -276,7 +283,9 @@ export async function getProducts({
 
   // Apply search filter - search across name, description, and brand
   if (search) {
-    query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%,brand.ilike.%${search}%`);
+    const terms = expandSearchTerms(search);
+    const filter = buildSearchFilter(terms, ["name", "description", "brand"]);
+    query = query.or(filter);
   }
 
   // Apply category filter
@@ -320,7 +329,13 @@ export async function getProducts({
 
   if (error) throw error;
 
-  return { data, count };
+  // Apply relevance sorting if search query is provided and no specific sort field is used
+  let finalData = data || [];
+  if (search && (!sortBy || sortBy === "created_at")) {
+    finalData = sortProductsByRelevance(finalData, search);
+  }
+
+  return { data: finalData, count };
 }
 
 export async function getProductById(id: string) {

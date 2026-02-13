@@ -146,7 +146,12 @@ export async function POST(req: NextRequest) {
     );
     console.log(`Loaded ${catMap.size} categories`);
 
+    // ─────────────────────────────────────────────────────────────
+    // TRACK PRODUCTS IN CSV FOR OUT-OF-STOCK DETECTION
+    // ─────────────────────────────────────────────────────────────
+    const productsInCSV = new Set(parsedProducts.map(p => p.name));
     let totalInserted = 0;
+    let totalMarkedOutOfStock = 0;
 
     for (let i = 0; i < parsedProducts.length; i += BATCH_SIZE) {
       const batch = parsedProducts.slice(i, i + BATCH_SIZE);
@@ -182,7 +187,7 @@ export async function POST(req: NextRequest) {
         // FETCH EXISTING PRODUCT
         const { data: existing } = await supabase
           .from("products")
-          .select("id, options, price, list_price, images, tags")
+          .select("id, options, price, list_price, images, tags, stock_status, in_season")
           .eq("name", p.name)
           .single();
 
@@ -195,13 +200,8 @@ export async function POST(req: NextRequest) {
           price: lowestPrice,
           list_price: highestPrice,
           category_ids: [categoryId, GENERAL_CATEGORY_ID],
-          // description: generateDescription(  <-- REMOVED to prevent overwriting custom descriptions
-          //   p,
-          //   lowestPrice,
-          //   highestPrice,
-          //   categoryTitle
-          // ),
-          tags: mergedTags, // ← UPDATED: preserve existing tags
+          stock_status: "in_stock", // ← Mark as in stock since it's in the CSV
+          tags: mergedTags,
         };
 
         // ─────────────────────────────────────────────────────────────
@@ -218,6 +218,7 @@ export async function POST(req: NextRequest) {
                 price: newOpt.price,
                 list_price: newOpt.price,
                 image: optionImg,
+                stockStatus: "In Stock", // ← Mark option as in stock
               };
             }
             return opt;
@@ -251,7 +252,7 @@ export async function POST(req: NextRequest) {
             console.error(`Update failed for ${p.name}:`, error.message);
           } else {
             console.log(
-              `Updated ${p.name}: ${p.options.length} options synced`
+              `Updated ${p.name}: ${p.options.length} options synced, marked IN STOCK`
             );
           }
         }
@@ -277,11 +278,11 @@ export async function POST(req: NextRequest) {
             num_reviews: null,
             num_sales: 0,
             count_in_stock: null,
-            stock_status: "in_stock",
+            stock_status: "in_stock", // ← New products are in stock
             is_published: true,
             vendor_id: null,
             category_ids: [categoryId, GENERAL_CATEGORY_ID],
-            tags, // ← NEW: apply tags
+            tags,
             images: [productMainImg],
             options: p.options.map((o: any) => ({
               name: o.name,
@@ -291,7 +292,7 @@ export async function POST(req: NextRequest) {
               stockStatus: "In Stock",
             })),
             rating_distribution: {},
-            in_season: null,
+            in_season: null, // ← Admin will set this manually
           };
 
           const { error } = await supabase
@@ -309,8 +310,40 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    console.log(`IMPORT COMPLETE: ${totalInserted} products processed`);
-    return NextResponse.json({ success: true, total: totalInserted });
+    // ─────────────────────────────────────────────────────────────
+    // MARK PRODUCTS NOT IN CSV AS OUT OF STOCK
+    // ─────────────────────────────────────────────────────────────
+    console.log("\n🔍 Checking for products missing from CSV...");
+    const { data: allProducts } = await supabase
+      .from("products")
+      .select("id, name, stock_status");
+
+    if (allProducts) {
+      for (const product of allProducts) {
+        if (!productsInCSV.has(product.name) && product.stock_status !== "out_of_stock") {
+          const { error } = await supabase
+            .from("products")
+            .update({ stock_status: "out_of_stock" })
+            .eq("id", product.id);
+
+          if (!error) {
+            console.log(`❌ Marked OUT OF STOCK: "${product.name}"`);
+            totalMarkedOutOfStock++;
+          }
+        }
+      }
+    }
+
+
+    console.log(`\n✅ IMPORT COMPLETE: ${totalInserted} products processed`);
+    console.log(`📦 ${totalMarkedOutOfStock} products marked OUT OF STOCK (not in CSV)`);
+    
+    return NextResponse.json({ 
+      success: true, 
+      total: totalInserted,
+      markedOutOfStock: totalMarkedOutOfStock,
+      message: `Updated ${totalInserted} products. ${totalMarkedOutOfStock} products marked out of stock.`
+    });
   } catch (error: any) {
     console.error("FATAL ERROR:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

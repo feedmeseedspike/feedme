@@ -283,8 +283,6 @@ export default function AIFloatingChat() {
     suggestion: ProductSuggestion,
     index: number
   ) => {
-    console.log("Add to cart clicked:", suggestion); // Debug log
-
     if (!suggestion.product) {
       // Try to find product by name if product object is missing
       try {

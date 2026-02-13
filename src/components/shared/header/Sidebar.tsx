@@ -13,6 +13,7 @@ import { Category } from "../../../types/category";
 import { useState } from "react";
 import Menu from "@components/icons/menu.svg";
 import Link from "next/link";
+import { toSlug } from "@/lib/utils";
 
 type Props = {
   categories: Category[];
@@ -36,7 +37,7 @@ export default function Sidebar({ categories }: Props) {
         <SelectContent>
           {categories.map((category) => (
             <SelectItem key={category.id} value={category.id}>
-              <Link href={`/category/${category.title}`}>{category.title}</Link>
+              <Link href={`/category/${toSlug(category.title)}`}>{category.title}</Link>
             </SelectItem>
           ))}
         </SelectContent>

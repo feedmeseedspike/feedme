@@ -43,6 +43,7 @@ interface FetchCustomersParams {
   startDate?: string;
   endDate?: string;
   walletFilter?: string;
+  supabase?: any;
 }
 
 export interface FetchedCustomerData extends Tables<'profiles'> {
@@ -52,6 +53,7 @@ export interface FetchedCustomerData extends Tables<'profiles'> {
     totalOrders: number;
     totalAmountSpent: number;
     wallet_balance: number;
+    lastOrderAt: string | null;
 }
 
 export async function fetchCustomers({
@@ -63,15 +65,16 @@ export async function fetchCustomers({
   startDate,
   endDate,
   walletFilter = '',
+  supabase: supabaseOverride,
 }: FetchCustomersParams): Promise<{ data: FetchedCustomerData[] | null; count: number | null }> {
-  const supabase = createClient();
+  const supabase = supabaseOverride || createClient();
 
   // 1. Fetch profiles (with count)
   let profilesQuery = supabase.from('profiles').select('*', { count: 'exact' });
   
   if (search) {
-    // Search in display_name
-    profilesQuery = profilesQuery.ilike('display_name', `%${search}%`);
+    // Search in display_name OR email
+    profilesQuery = profilesQuery.or(`display_name.ilike.%${search}%,email.ilike.%${search}%`);
   }
 
   // Wallet Filtering logic
@@ -149,19 +152,27 @@ export async function fetchCustomers({
   }
 
   // 4. Fetch orders for relevant user_ids (for total orders and total amount spent)
-  let ordersByUserId: Record<string, { totalOrders: number; totalAmountSpent: number }> = {};
+  let ordersByUserId: Record<string, { totalOrders: number; totalAmountSpent: number; lastOrderAt: string | null }> = {};
   if (userIds.length > 0) {
     const { data: orders, error: ordersError } = await supabase
       .from('orders')
-      .select('user_id, total_amount')
+      .select('user_id, total_amount, created_at')
       .in('user_id', userIds);
       
     if (!ordersError && orders) {
       userIds.forEach((userId: string) => {
         const userOrders = orders.filter((o: any) => o.user_id === userId);
+        // Find latest order date
+        const latestDate = userOrders.length > 0 
+          ? userOrders.reduce((latest: any, current: any) => {
+              return new Date(current.created_at) > new Date(latest.created_at) ? current : latest;
+            }).created_at 
+          : null;
+
         ordersByUserId[userId] = {
           totalOrders: userOrders.length,
           totalAmountSpent: userOrders.reduce((sum: number, o: any) => sum + (o.total_amount || 0), 0),
+          lastOrderAt: latestDate
         };
       });
     }
@@ -192,6 +203,7 @@ export async function fetchCustomers({
       totalOrders: ordersByUserId[userId]?.totalOrders || 0,
       totalAmountSpent: ordersByUserId[userId]?.totalAmountSpent || 0,
       wallet_balance: walletsByUserId[userId] || 0,
+      lastOrderAt: ordersByUserId[userId]?.lastOrderAt || null,
     };
   });
 

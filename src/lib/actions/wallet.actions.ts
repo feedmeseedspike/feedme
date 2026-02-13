@@ -163,7 +163,7 @@ export async function processWalletPayment(orderData: OrderData) {
       user_id: userId,
       order_id: orderResult.id,
       amount: amountToDeduct,
-      payment_status: "paid",
+      payment_status: "success",
       payment_gateway: "wallet",
       transaction_id: `WALLET-${orderResult.id}`,
       reference: `WALLET-${orderResult.id}`,
@@ -288,7 +288,7 @@ export async function creditWallet(
   const { error: txError } = await supabase.from("transactions").insert({
       user_id: userId,
       amount: amount, // Positive for credit
-      payment_status: "paid", // Confirmed credit
+      payment_status: "success", // Confirmed credit
       payment_gateway: "feedme_system", // Internal system credit
       transaction_id: reference,
       reference: reference, 

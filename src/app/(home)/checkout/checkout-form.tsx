@@ -82,6 +82,8 @@ import { getCustomerOrdersAction } from "src/lib/actions/user.action";
 import BonusProgressBar from "@components/shared/BonusProgressBar";
 import { Database } from "src/utils/database.types";
 
+
+
 interface GroupedCartItem {
   product?: CartItem["products"];
   bundle?: CartItem["bundles"];
@@ -537,7 +539,7 @@ const CheckoutForm = ({
 
   const totalAmount = subtotal; // Keeps track of gross
   const totalAmountPaid =
-    subtotal - dealsDiscount + cost /*+ serviceCharge*/ - voucherDiscount - staffDiscount;
+    subtotal - dealsDiscount + cost /*+ serviceCharge*/ - (isFreeDeliveryVoucher ? 0 : voucherDiscount) - staffDiscount;
 
   const isReferralVoucher = isVoucherValid && voucherCode.startsWith("REF-");
 
@@ -707,26 +709,27 @@ const CheckoutForm = ({
   }, [voucherFromUrl, subtotal, isVoucherValid, validateVoucherMutation, startTransition, showToast, voucherValidationAttempted, voucherCode]);
 
   // Auto-apply Free Delivery if user has one and no voucher is applied
-  useEffect(() => {
-    if (userVouchers && userVouchers.length > 0 && !isVoucherValid && subtotal > 0 && !voucherFromUrl) {
-      const freeDeliveryVoucher = userVouchers.find((v: Database["public"]["Tables"]["vouchers"]["Row"]) => v.code.includes("FREE-DELIV"));
-      if (freeDeliveryVoucher) {
-        startTransition(async () => {
-           const result = await validateVoucherMutation({
-             code: freeDeliveryVoucher.code,
-             totalAmount: subtotal,
-           });
-           if (result.success && result.data) {
-             setVoucherCode(freeDeliveryVoucher.code);
-             setIsVoucherValid(true);
-             setVoucherId(result.data.id);
-             setVoucherDiscount(result.data.discountValue);
-             showToast("Free Delivery reward automatically applied!", "success");
-           }
-        });
-      }
-    }
-  }, [userVouchers, isVoucherValid, subtotal, voucherFromUrl, validateVoucherMutation, startTransition, showToast]);
+  // Auto-apply Free Delivery if user has one and no voucher is applied
+  // useEffect(() => {
+  //   if (userVouchers && userVouchers.length > 0 && !isVoucherValid && subtotal > 0 && !voucherFromUrl) {
+  //     const freeDeliveryVoucher = userVouchers.find((v: Database["public"]["Tables"]["vouchers"]["Row"]) => v.code.includes("FREE-DELIV"));
+  //     if (freeDeliveryVoucher) {
+  //       startTransition(async () => {
+  //          const result = await validateVoucherMutation({
+  //            code: freeDeliveryVoucher.code,
+  //            totalAmount: subtotal,
+  //          });
+  //          if (result.success && result.data) {
+  //            setVoucherCode(freeDeliveryVoucher.code);
+  //            setIsVoucherValid(true);
+  //            setVoucherId(result.data.id);
+  //            setVoucherDiscount(result.data.discountValue);
+  //            // showToast("Free Delivery reward automatically applied!", "success");
+  //          }
+  //       });
+  //     }
+  //   }
+  // }, [userVouchers, isVoucherValid, subtotal, voucherFromUrl, validateVoucherMutation, startTransition, showToast]);
 
   const groupedItems = useMemo(() => {
     return items.reduce(
@@ -777,10 +780,12 @@ const CheckoutForm = ({
     );
     if (selectedAddress) {
       shippingAddressForm.reset({
-        fullName: user?.display_name || "",
+        fullName: user?.display_name || "",     
         street: selectedAddress.street,
         location: selectedAddress.city,
+        // location: selectedAddress.city,
         phone: selectedAddress.phone,
+        // email: selectedAddress.email || user?.email || "",
       });
     }
   };
@@ -888,11 +893,9 @@ const CheckoutForm = ({
           const email = user?.email || formValues.email;
           const formLocation = formValues.location;
 
-          console.log("DEBUG: Submission Details", { email, formLocation, paymentMethod: selectedPaymentMethod });
-
           // Email check removed to allow optional emails
           const orderData = {
-            userId: user?.user_id || null,
+            userId: (user?.user_id || null) as any,
             cartItems: (items || []).map((item) => ({
               productId: item.product_id || "",
               bundleId: item.bundle_id || "",
@@ -956,7 +959,7 @@ const CheckoutForm = ({
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                       adminEmail: "orders.feedmeafrica@gmail.com",
-                      userEmail: user.email,
+                      userEmail: email,
                       adminOrderProps: {
                         orderNumber: result.data.reference || result.data.orderId,
                         customerName:
@@ -1131,7 +1134,6 @@ const CheckoutForm = ({
               orderNote: orderNote,
             });
             if (response.data.authorization_url) {
-              console.log(orderResult.data);
               if (orderResult.data.orderId) {
                 localStorage.setItem("lastOrderId", orderResult.data.orderId);
               }
@@ -1445,25 +1447,25 @@ const CheckoutForm = ({
                                 />
                                   {/* Only show email field for guest users */}
                                   {!user?.email && (
-                                    <FormField
-                                      control={shippingAddressForm.control}
-                                      name="email"
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
-                                          <FormControl>
-                                            <Input
-                                              placeholder="Enter email address"
-                                              {...field}
-                                              required
-                                              className="rounded-xl bg-gray-50 border-gray-200 focus:ring-green-500"
-                                            />
-                                          </FormControl>
-                                          <FormMessage />
-                                        </FormItem>
-                                      )}
-                                    />
-                                  )}
+                                  <FormField
+                                    control={shippingAddressForm.control}
+                                    name="email"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
+                                        <FormControl>
+                                          <Input
+                                            placeholder="Enter email address"
+                                            {...field}
+                                            required
+                                            className="rounded-xl bg-gray-50 border-gray-200 focus:ring-green-500"
+                                          />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
                                 <FormField
                                   control={shippingAddressForm.control}
                                   name="street"
@@ -1592,7 +1594,9 @@ const CheckoutForm = ({
                                       state: "",
                                       zip: "",
                                       country: "",
+                                      // country: "",
                                       phone: values.phone,
+                                      // email: values.email,
                                     });
                                   } else {
                                     // Handle guest/anonymous user - local state only
@@ -1604,7 +1608,10 @@ const CheckoutForm = ({
                                       state: "",
                                       zip: "",
                                       country: "",
+                                      // zip: "",
+                                      // country: "",
                                       phone: values.phone,
+                                      email: values.email,
                                     };
                                   }
 
@@ -1930,10 +1937,10 @@ const CheckoutForm = ({
                         <span className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Delivery Fee</span>
                         <span className="font-bold text-slate-900">
                           {qualifiesForFreeShipping ? (
-                             <span className="text-[#1B6013] flex items-center gap-1 font-black uppercase text-[10px] tracking-wider">
-                                <Icon icon="solar:check-circle-bold" className="w-3.5 h-3.5" />
-                                Complimentary
-                            </span>
+                                <span className="text-[#1B6013] flex items-center gap-1 font-black uppercase text-[10px] tracking-wider">
+                                    <Icon icon="solar:check-circle-bold" className="w-3.5 h-3.5" />
+                                    Free Delivery Reward
+                                </span>
                           ) : formLocation ? (
                             <span className="text-sm font-bold">{formatNaira(cost)}</span>
                           ) : (
@@ -1951,7 +1958,7 @@ const CheckoutForm = ({
                         </div>
                       )}
 
-                       {isVoucherValid && (
+                       {isVoucherValid && !isFreeDeliveryVoucher && (
                         <div className="flex justify-between items-center bg-white p-4 rounded-lg border border-slate-100">
                           <span className="font-bold text-[#1B6013] text-[10px] uppercase tracking-wider">Promo Applied</span>
                           <span className="font-black text-[#1B6013]">-{formatNaira(voucherDiscount)}</span>

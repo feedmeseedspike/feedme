@@ -13,12 +13,9 @@ export function useCartMerge() {
       // Get anonymous cart items
       const anonymousItems = anonymousCart.getItems();
       
-      if (anonymousItems.length === 0) {
-        console.log('No anonymous cart items to merge');
+      if (!anonymousItems || anonymousItems.length === 0) {
         return;
       }
-
-      console.log('Merging anonymous cart items:', anonymousItems);
       
       // Convert authenticated cart items to mutation format
       const authenticatedItemsForMutation: ItemToUpdateMutation[] = authenticatedCartItems.map(item => ({
@@ -38,6 +35,7 @@ export function useCartMerge() {
         const existingItemIndex = mergedItems.findIndex(authItem => 
           authItem.product_id === anonymousItem.product_id &&
           authItem.bundle_id === anonymousItem.bundle_id &&
+          authItem.offer_id === anonymousItem.offer_id &&
           authItem.black_friday_item_id === anonymousItem.black_friday_item_id &&
           JSON.stringify(authItem.option || null) === JSON.stringify(anonymousItem.option || null)
         );
@@ -65,7 +63,7 @@ export function useCartMerge() {
       // Clear the anonymous cart after successful merge
       anonymousCart.clear();
       
-      console.log('Anonymous cart successfully merged and cleared');
+      // Anonymous cart merged successfully
       
       return mergedItems;
     } catch (error) {

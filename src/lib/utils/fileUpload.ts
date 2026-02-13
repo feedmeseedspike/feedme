@@ -36,19 +36,13 @@ export function validateFile(file: File): { valid: boolean; error?: string } {
 
 export async function uploadResume(file: File, candidateName: string): Promise<UploadResult> {
   try {
-    console.log('Starting file upload...', { fileName: file.name, fileSize: file.size, candidateName });
-
     // Validate file first
     const validation = validateFile(file);
     if (!validation.valid) {
-      console.log('File validation failed:', validation.error);
       return { success: false, error: validation.error };
     }
 
-    console.log('File validation passed');
-    console.log('Creating Supabase client...');
     const supabase = createClient();
-    console.log('Supabase client created:', !!supabase);
 
     // Create a unique filename
     const timestamp = Date.now();
@@ -56,8 +50,6 @@ export async function uploadResume(file: File, candidateName: string): Promise<U
     const fileExtension = file.name.split('.').pop();
     const fileName = `${timestamp}_${sanitizedName}_resume.${fileExtension}`;
     const filePath = `resumes/${fileName}`;
-
-    console.log('Uploading to Supabase Storage...', { filePath, bucketName: 'job-applications' });
 
     // Create a timeout promise that rejects after 10 seconds
     const timeoutPromise = new Promise((_, reject) => {
@@ -102,14 +94,10 @@ export async function uploadResume(file: File, candidateName: string): Promise<U
       };
     }
 
-    console.log('Upload successful, getting public URL...', data);
-
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
       .from('job-applications')
       .getPublicUrl(filePath);
-
-    console.log('Upload complete!', { publicUrl });
 
     return {
       success: true,

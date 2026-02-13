@@ -23,7 +23,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
 import LogoutButton from "@components/shared/header/LogoutButton";
 import { useEffect, useState } from "react";
-import { Menu, X, Brain, Tag, FileText, Mail, Briefcase, Gift, Settings, Video } from "lucide-react";
+import { Menu, X, Brain, Tag, FileText, Mail, Briefcase, Gift, Settings, Video, Bell } from "lucide-react";
 import { Button } from "@components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@components/ui/sheet";
 import { getUnviewedOrdersCount } from "src/queries/orders";
@@ -100,6 +100,7 @@ export function AdminSidebar({ user }: AppSidebarProps) {
     { title: "Agents", url: "/admin/agents", icon: User },
     { title: "Customers", url: "/admin/customers", icon: Profile },
     { title: "Promotions", url: "/admin/promotions", icon: Product },
+    { title: "Push Notifications", url: "/admin/notifications", icon: Bell },
     { title: "Spin Prizes", url: "/admin/prizes", icon: Gift },
     { title: "Black Friday", url: "/admin/black-friday", icon: Tag },
     { title: "AI Analytics", url: "/admin/ai-analytics", icon: Brain },
@@ -171,6 +172,11 @@ export function AdminSidebar({ user }: AppSidebarProps) {
                             />
                           ) : item.title === "AI Analytics" ? (
                             <Brain
+                              size={20}
+                              color={isActive ? "white" : "#667085"}
+                            />
+                          ) : item.title === "Push Notifications" ? (
+                            <Bell
                               size={20}
                               color={isActive ? "white" : "#667085"}
                             />

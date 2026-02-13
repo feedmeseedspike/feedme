@@ -126,7 +126,7 @@ export async function sendUnifiedNotification({
   try {
      // We don't want Firebase failures to break the flow or show errors to the user
      // since we are prioritizing Supabase Realtime now.
-     await sendPushNotification(title || "New Notification", body, userId);
+     await sendPushNotification(title || "New Notification", body, userId, link);
   } catch (err) {
      console.warn("Firebase Push (Optional) skipped or failed:", err);
   }
@@ -149,7 +149,7 @@ export async function sendBroadcastNotification({
   body: string;
   link?: string;
 }) {
-  const supabase = await createClient();
+  const supabase = createServiceRoleClient();
   
   // 1. Fetch all user IDs
   const { data: profiles, error } = await supabase

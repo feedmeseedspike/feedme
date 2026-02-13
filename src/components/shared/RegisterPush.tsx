@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { getToken, onMessage } from "firebase/messaging";
-import { messaging } from "@/utils/firebase/firebase";
 import { createClient } from "@/utils/supabase/client";
 
 interface RegisterPushProps {
@@ -11,56 +9,65 @@ interface RegisterPushProps {
 
 export default function RegisterPush({ userId }: RegisterPushProps) {
   const supabase = createClient();
+
   useEffect(() => {
     const registerPush = async () => {
       try {
+        // 1. Request Permission
         const permission = await Notification.requestPermission();
-        const { data: tokens, error: tokenError } = await supabase
-          .from("fcm_tokens" as any)
-          .select("fcm_token, device_type, user_id")
-          .eq("user_id", userId);
-        const first = !tokens
-          ? []
-          : tokens
-              .filter((it: any) => it.user_id === userId)
-              .filter((its: any) => its.device_type === "web");
-        if (permission === "granted" && messaging) {
-          const token = await getToken(messaging, {
-            vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY!,
-          });
-          if (token && first.length === 0) {
-            const { error } = await supabase.from("fcm_tokens" as any).upsert({
-              user_id: userId,
-              fcm_token: token,
-              device_type: "web",
+        if (permission !== "granted") {
+          console.warn("Notification permission not granted:", permission);
+          return;
+        }
+
+        // 2. Register Service Worker & Get Subscription
+        if ("serviceWorker" in navigator) {
+          const registration = await navigator.serviceWorker.ready;
+          
+          // Get or create native push subscription
+          let subscription = await registration.pushManager.getSubscription();
+          
+          if (!subscription) {
+            const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+            if (!vapidKey) {
+              console.error("Missing VAPID key for push registration");
+              return;
+            }
+
+            subscription = await registration.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: vapidKey
             });
-            if (error) {
-              console.error("Error saving FCM token:", error);
+          }
+
+          if (subscription) {
+            // 3. Save to Supabase (using existing fcm_tokens table but storing JSON)
+            const subscriptionJson = JSON.stringify(subscription);
+            
+            const { data: existingToken } = await supabase
+              .from("fcm_tokens" as any)
+              .select("id")
+              .eq("user_id", userId)
+              .eq("fcm_token", subscriptionJson)
+              .maybeSingle();
+
+            if (!existingToken) {
+              console.log("Saving fresh Push Subscription to Supabase");
+              await supabase.from("fcm_tokens" as any).upsert({
+                user_id: userId,
+                fcm_token: subscriptionJson,
+                device_type: "web",
+              });
             }
           }
-        } else if (permission !== "granted") {
-          console.warn("Notification permission denied");
         }
       } catch (err) {
-        console.error("Error registering push:", err);
+        console.error("Error registering native push:", err);
       }
     };
 
     registerPush();
-
-    if (!messaging) return;
-
-    const unsubscribe = onMessage(messaging, (payload: any) => {
-      const { title, body } = payload.notification;
-
-      new Notification(title, {
-        body,
-        icon: "/icon.png",
-      });
-    });
-
-    return () => unsubscribe();
-  }, [userId]);
+  }, [userId, supabase]);
 
   return null;
 }

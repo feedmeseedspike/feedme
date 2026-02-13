@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { supabase } from "src/lib/supabaseClient";
+import supabaseAdmin from "src/utils/supabase/admin"; // Use admin client to bypass RLS
 import { sendUnifiedNotification } from "src/lib/actions/notifications.actions";
 
 export async function POST(request: Request) {
@@ -24,11 +24,10 @@ export async function POST(request: Request) {
       const { reference, amount, metadata } = body.data;
 
       // Update transaction status (if record exists)
-      const { data: transaction, error: txError } = await supabase
+      const { data: transaction, error: txError } = await supabaseAdmin
         .from("transactions")
         .update({ payment_status: "paid" })
         .eq("reference", reference)
-        .eq("user_id", metadata.user_id)
         .select()
         .maybeSingle();
 
@@ -38,11 +37,7 @@ export async function POST(request: Request) {
 
       // Handle based on payment type
       if (metadata.type === "wallet_funding") {
-          if (transaction) {
-               await handleWalletFunding(metadata, amount);
-          } else {
-               console.warn("Wallet funding succeeded but transaction record not found.");
-          }
+          await handleWalletFunding(metadata, amount);
       } else if (metadata.type === "direct_payment") {
           await handleDirectPayment(metadata, amount, reference);
       }
@@ -87,17 +82,16 @@ export async function POST(request: Request) {
 }
 
 async function handleWalletFunding(metadata: any, amount: number) {
-  const { data: wallet, error: fetchError } = await supabase
+  const { data: wallet, error: fetchError } = await supabaseAdmin
     .from("wallets")
     .select("balance")
     .eq("id", metadata.wallet_id)
-    .eq("user_id", metadata.user_id)
     .single();
 
   if (fetchError || !wallet) throw new Error("Wallet not found");
 
   const newBalance = wallet.balance + amount / 100;
-  const { error: walletError } = await supabase
+  const { error: walletError } = await supabaseAdmin
     .from("wallets")
     .update({ balance: newBalance })
     .eq("id", metadata.wallet_id);
@@ -124,10 +118,10 @@ async function handleDirectPayment(
   reference: string
 ) {
   // 1. Idempotency Check: Fetch current order status
-  const { data: existingOrder, error: fetchError } = await supabase
+  const { data: existingOrder, error: fetchError } = await supabaseAdmin
     .from("orders")
     .select("payment_status")
-    .eq("order_id", metadata.orderId)
+    .eq("id", metadata.orderId)
     .maybeSingle();
 
   if (fetchError) {
@@ -138,20 +132,14 @@ async function handleDirectPayment(
   }
 
   // Update order status to paid
-  let query = supabase
+  const { error: orderError } = await supabaseAdmin
     .from("orders")
     .update({
       payment_status: "Paid",
       reference: reference,
       updated_at: new Date().toISOString(),
     })
-    .eq("order_id", metadata.orderId);
-
-  if (metadata.user_id) {
-    query = query.eq("user_id", metadata.user_id);
-  }
-  
-  const { error: orderError } = await query;
+    .eq("id", metadata.orderId);
 
   if (orderError) throw orderError;
 

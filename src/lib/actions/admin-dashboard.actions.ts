@@ -130,3 +130,55 @@ export async function getCustomerVouchersAction(userId: string) {
     return [];
   }
 }
+export async function getCustomerHistoricalPrizesAction(userId: string) {
+  try {
+    const supabase = supabaseAdmin;
+    
+    // Get all order items for this user where price is 0
+    // We join with orders to get the date
+    const { data: prizes, error } = await supabase
+      .from("order_items")
+      .select(`
+        id,
+        price,
+        quantity,
+        product:products(name),
+        order:orders(created_at, status)
+      `)
+      .eq("price", 0)
+      .eq("order.user_id", userId); // This filter might not work directly in Supabase for joined tables like this
+    
+    // Alternative approach if the above filter fails
+    const { data: userOrders } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("user_id", userId);
+    
+    if (!userOrders || userOrders.length === 0) return [];
+    
+    const orderIds = userOrders.map(o => o.id);
+    
+    const { data: historicalPrizes, error: itemsError } = await supabase
+      .from("order_items")
+      .select(`
+        id,
+        price,
+        quantity,
+        product:products(name),
+        order:orders(created_at, status)
+      `)
+      .eq("price", 0)
+      .in("order_id", orderIds)
+      .order('created_at', { referencedTable: 'orders', ascending: false });
+
+    if (itemsError) {
+        console.error("Error fetching historical prizes:", itemsError);
+        return [];
+    }
+
+    return historicalPrizes || [];
+  } catch (error) {
+    console.error("Exception fetching historical prizes:", error);
+    return [];
+  }
+}

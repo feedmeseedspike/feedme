@@ -9,17 +9,14 @@ export function parseFeedMeSheet(
   rows: any[][],
   defaultImage: string
 ): ParsedProduct[] {
-  console.log("Starting parser...");
   if (rows.length < 2) return [];
 
   const headers = rows[1];
-  console.log("Headers:", headers);
 
   const col = (name: string) => {
     const idx = headers.findIndex((h) =>
       h?.toString().toLowerCase().includes(name.toLowerCase())
     );
-    console.log(`Column "${name}" → index: ${idx}`);
     return idx;
   };
 
@@ -34,53 +31,40 @@ export function parseFeedMeSheet(
 
   const products: ParsedProduct[] = [];
   let currentCat = "";
-  let currentItem = ""; // ← TRACK LAST FOOD ITEM
+  let currentItem = ""; // Track last food item
 
   for (let i = 2; i < rows.length; i++) {
     const row = rows[i];
-    const rowNum = i + 1;
 
     const rawCategory = row[catIdx]?.toString().trim();
     let foodItem = row[itemIdx]?.toString().trim();
     const quantity = row[qtyIdx]?.toString().trim();
     const newPriceStr = row[newPriceIdx]?.toString().trim();
 
-    console.log(`Row ${rowNum}:`, {
-      rawCategory,
-      foodItem,
-      quantity,
-      newPriceStr,
-    });
-
-    // UPDATE CATEGORY
+    // Update category
     if (rawCategory) {
       currentCat = rawCategory;
-      console.log(`→ Category: "${currentCat}"`);
     }
 
-    // UPDATE CURRENT ITEM IF NEW FOOD ITEM
+    // Update current item if new food item
     if (foodItem) {
       currentItem = foodItem;
-      console.log(`→ New item: "${currentItem}"`);
     }
 
-    // SKIP ONLY IF NO PRICE
+    // Skip if no price
     if (!newPriceStr) {
-      console.log("→ Skipped: no price");
       continue;
     }
 
     const price = parseFloat(newPriceStr.replace(/[^0-9.]/g, ""));
     if (isNaN(price)) {
-      console.log(`→ Skipped: invalid price "${newPriceStr}"`);
       continue;
     }
 
-    // USE LAST KNOWN ITEM IF BLANK
+    // Use last known item if blank
     if (!foodItem && currentItem) {
       foodItem = currentItem;
     } else if (!foodItem) {
-      console.log("→ Skipped: no food item and no current item");
       continue;
     }
 
@@ -93,13 +77,10 @@ export function parseFeedMeSheet(
     if (!product) {
       product = { categoryTitle: finalCat, name: foodItem, options: [] };
       products.push(product);
-      console.log(`→ NEW: "${foodItem}" → "${finalCat}"`);
     }
 
     product.options.push({ name: quantity || "Unknown", price });
-    console.log(`→ Added: "${quantity}" @ ${price}`);
   }
 
-  console.log(`Parser done. Found ${products.length} unique products`);
   return products;
 }

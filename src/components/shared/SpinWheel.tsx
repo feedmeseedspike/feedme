@@ -190,11 +190,10 @@ export default function SpinWheel({ prizes = SPIN_PRIZES_CONFIG }: { prizes?: an
   const [result, setResult] = useState<{ message: string; prize?: any } | null>(null);
   const controls = useAnimation();
   const rotation = useMotionValue(0); 
-  const [currentRotation, setCurrentRotation] = useState(0);
   const { initAudio, playTick, playWin, muted, setMuted } = useSound();
   const lastTickRef = useRef(0);
   const [activeLight, setActiveLight] = useState(0);
-  const [pointerControls, setPointerControls] = useState({ rotate: 0 });
+  const pointerRotation = useMotionValue(0);
   const [celebratingPrize, setCelebratingPrize] = useState<any>(null);
 
   const prizeMap = useMemo(() => {
@@ -228,12 +227,15 @@ export default function SpinWheel({ prizes = SPIN_PRIZES_CONFIG }: { prizes?: an
          if (currentSegment !== lastTickRef.current) {
              playTick();
              lastTickRef.current = currentSegment;
-             setPointerControls({ rotate: -15 });
-             setTimeout(() => setPointerControls({ rotate: 0 }), 50);
+             
+             // Directly animate pointer without triggering React re-render
+             animate(pointerRotation, -15, { duration: 0.05 }).then(() => {
+                animate(pointerRotation, 0, { duration: 0.05 });
+             });
          }
      });
      return () => unsubscribe();
-  }, [rotation, playTick, prizes.length]);
+  }, [rotation, playTick, prizes.length, pointerRotation]);
 
   const fireConfetti = () => {
       const duration = 3000;
@@ -261,9 +263,9 @@ export default function SpinWheel({ prizes = SPIN_PRIZES_CONFIG }: { prizes?: an
     setResult(null);
     setCelebratingPrize(null);
 
-    // 1. Start continuous cruise
-    const cruise = animate(rotation, rotation.get() + 3600, {
-        duration: 20,
+    // 1. Initial Acceleration to fast cruise
+    const cruise = animate(rotation, rotation.get() + 8000, {
+        duration: 20, // 400 deg/sec (~1.1 revs/sec)
         ease: "linear",
         repeat: Infinity
     });
@@ -287,7 +289,6 @@ export default function SpinWheel({ prizes = SPIN_PRIZES_CONFIG }: { prizes?: an
 
         // Calculate Precise Landing
         const prizeId = response.prize.id;
-        // In some cases prizeId might be in _id or just different format, we check both.
         const targetIndex = prizes.findIndex(p => p.id === prizeId);
         
         if (targetIndex === -1) {
@@ -296,7 +297,6 @@ export default function SpinWheel({ prizes = SPIN_PRIZES_CONFIG }: { prizes?: an
             setSpinning(false);
             return;
         }
-        console.log("Target Prize ID:", prizeId, "at Index:", targetIndex);
 
         const segmentAngle = 360 / prizes.length;
         const baseTarget = 90 - (Math.max(0, targetIndex) * segmentAngle);
@@ -307,13 +307,13 @@ export default function SpinWheel({ prizes = SPIN_PRIZES_CONFIG }: { prizes?: an
         let extraRotation = baseTarget - currentNormalized;
         if (extraRotation <= 0) extraRotation += 360;
         
-        const finalTarget = currentPos + extraRotation + (360 * 7);
-        console.log("Starting slow-down animation. Target rotation:", finalTarget);
+        // Add 4 full rotations for a smooth decelerating effect
+        const finalTarget = currentPos + extraRotation + (360 * 4); 
 
-        // 2. The Grand Slow Down
+        // 2. The Grand Slow Down - Starts at cruise speed, ends at zero
         await animate(rotation, finalTarget, {
-            duration: 9,
-            ease: [0.1, 0, 0, 1] 
+            duration: 5, 
+            ease: [0.15, 0.5, 0, 1] // Custom curve to match initial cruise velocity
         });
 
         console.log("Wheel stopped. Showing results modal...");
@@ -358,7 +358,14 @@ export default function SpinWheel({ prizes = SPIN_PRIZES_CONFIG }: { prizes?: an
         `}</style>
         
         <div className="flex flex-col items-center justify-center w-full relative min-h-[600px]">
-            <WheelVisualRender isFullscreen={false} activeLight={activeLight} controls={controls} rotation={rotation} prizes={prizes} pointerControls={pointerControls} />
+            <WheelVisualRender 
+                isFullscreen={false} 
+                activeLight={activeLight} 
+                controls={controls} 
+                rotation={rotation} 
+                prizes={prizes} 
+                pointerControls={{ rotate: pointerRotation }} 
+            />
             
             <motion.div 
                 className="mt-8 z-20"
@@ -401,60 +408,62 @@ export default function SpinWheel({ prizes = SPIN_PRIZES_CONFIG }: { prizes?: an
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[201] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                    className="fixed inset-0 z-[201] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
                     onClick={(e) => { e.stopPropagation(); setCelebratingPrize(null); }}
                 >
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                        initial={{ scale: 0.8, opacity: 0, y: 50 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
                         onClick={(e) => e.stopPropagation()}
-                        className="relative max-w-sm w-full bg-white rounded-[2rem] shadow-2xl border border-white/50 overflow-hidden"
+                        className="bg-white p-8 pt-16 rounded-[2.5rem] shadow-2xl text-center max-w-sm w-full relative mx-4 flex flex-col items-center"
+                        style={{ border: "6px solid #f7a838" }}
                     >
-                        <div className="absolute top-0 left-0 w-full h-40 bg-gradient-to-b from-green-50/80 to-transparent -z-10" />
+                        {/* Confetti Canvas for extra effect if needed, though global confetti is already fired */}
+                        
+                        {/* Centered Top Icon/Image */}
+                        <div className="absolute -top-14 left-1/2 -translate-x-1/2 w-28 h-28 bg-white rounded-full flex items-center justify-center shadow-[0_8px_30px_rgb(0,0,0,0.12)] border-[6px] border-[#f7a838] overflow-hidden p-4 z-20">
+                             {celebratingPrize.image ? (
+                                <NextImage
+                                    src={celebratingPrize.image}
+                                    alt={celebratingPrize.label}
+                                    width={100}
+                                    height={100}
+                                    className="object-contain w-full h-full drop-shadow-lg"
+                                />
+                             ) : (
+                                <span className="text-6xl filter drop-shadow-md">🏆</span>
+                             )}
+                        </div>
 
-                        <div className="relative pt-12 pb-8 px-6 flex flex-col items-center text-center">
-                            <div className="relative mb-6">
-                                <div className="absolute inset-0 bg-green-400/20 blur-2xl rounded-full scale-150" />
-                                <motion.div
-                                    initial={{ scale: 0.5, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1 }}
-                                    transition={{ type: "spring", delay: 0.1 }}
-                                    className="relative w-40 h-40 bg-white rounded-[2rem] shadow-xl flex items-center justify-center p-4 border border-slate-50"
-                                >
-                                    {celebratingPrize.image ? (
-                                        <div className="relative w-full h-full">
-                                            <NextImage 
-                                                src={celebratingPrize.image} 
-                                                alt={celebratingPrize.label} 
-                                                fill
-                                                className="object-contain drop-shadow-md" 
-                                            />
-                                        </div>
-                                    ) : (
-                                        <Trophy className="w-20 h-20 text-yellow-500" />
-                                    )}
-                                </motion.div>
-                                <div className="absolute -top-3 -right-3 bg-yellow-400 text-yellow-900 w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-lg border-2 border-white transform rotate-12">
-                                    🎉
-                                </div>
-                            </div>
 
-                            <motion.div
+                        <div className="mt-2 w-full">
+                             <motion.h2 
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ delay: 0.1, type: "spring" }}
+                                className="text-4xl font-black text-[#1B6013] mb-3 uppercase tracking-tight font-quicksand drop-shadow-sm"
+                             >
+                                You Won!
+                            </motion.h2>
+                            
+                            <motion.p 
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.2 }}
+                                className="text-slate-600 mb-8 text-base leading-relaxed font-medium font-source px-2"
                             >
-                                <h3 className="text-3xl font-black text-slate-900 tracking-tight mb-2 uppercase font-quicksand">
-                                    You Won!
-                                </h3>
-                                <p className="text-slate-500 font-medium text-sm px-4 leading-relaxed mb-6 font-source">
-                                    Congratulations! You&apos;ve unlocked <strong className="text-slate-900">{celebratingPrize.label} {celebratingPrize.sub || ''}</strong>. 
-                                    {celebratingPrize.type === 'wallet_cash' ? ' It has been added to your wallet.' : ' Check rewards to claim.'}
-                                </p>
-                            </motion.div>
-
-                            <div className="w-full flex flex-col gap-3">
+                                Congratulations! You&apos;ve unlocked <strong className="text-slate-900 bg-green-50 px-2 py-0.5 rounded-md border border-green-100">{celebratingPrize.label} {celebratingPrize.sub || ''}</strong>. 
+                                <br />Check rewards to claim.
+                            </motion.p>
+                            
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.3 }}
+                                className="flex flex-col gap-3 w-full"
+                            >
                                 <Link
                                     href={
                                         celebratingPrize.type === 'item' ? '/checkout' :
@@ -468,18 +477,20 @@ export default function SpinWheel({ prizes = SPIN_PRIZES_CONFIG }: { prizes?: an
                                             (window as any).__closeSpinWheel();
                                         }
                                     }}
-                                    className="w-full py-4 rounded-xl bg-gradient-to-r from-[#1B6013] to-[#15803d] text-white font-bold text-sm shadow-xl hover:shadow-green-900/20 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 relative overflow-hidden group uppercase tracking-widest text-xs"
+                                    className="w-full text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-[0_10px_20px_rgba(27,96,19,0.2)] hover:shadow-[0_15px_25px_rgba(27,96,19,0.3)] transition-all active:scale-95 bg-gradient-to-r from-[#1B6013] to-[#15803d] border-b-4 border-[#0f440b] flex items-center justify-center gap-2 group relative overflow-hidden"
                                 >
-                                    View Rewards <ArrowRight className="w-4 h-4" />
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-150%] group-hover:translate-x-[150%] transition-transform duration-700 ease-in-out" />
+                                    <span>View Rewards</span>
+                                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                                 </Link>
                                 
-                                <button 
-                                    onClick={() => setCelebratingPrize(null)} 
-                                    className="w-full py-3 rounded-xl text-slate-400 font-bold text-[10px] uppercase hover:bg-slate-50 transition-colors tracking-widest"
+                                <button
+                                    onClick={() => setCelebratingPrize(null)}
+                                    className="w-full py-3 rounded-xl text-slate-400 font-bold text-xs uppercase hover:bg-slate-50 hover:text-slate-600 transition-colors tracking-widest"
                                 >
                                     Close
                                 </button>
-                            </div>
+                            </motion.div>
                         </div>
                     </motion.div>
                 </motion.div>

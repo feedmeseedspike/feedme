@@ -49,6 +49,7 @@ export const users = {
     // Create new profile
     const newUser: TablesInsert<'profiles'> = {
       user_id: authUser.id,
+      email: authUser.email,
       display_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || '',
       avatar_url: authUser.user_metadata?.avatar_url || '',
     };
@@ -79,7 +80,7 @@ export const users = {
   },
 };
 
-export async function linkAuthUserToProfile(authUserId: string, _email: string) {
+export async function linkAuthUserToProfile(authUserId: string, email: string) {
   // 1. Find user profile by user_id
   const { data: user, error } = await supabase
     .from('profiles')
@@ -89,10 +90,14 @@ export async function linkAuthUserToProfile(authUserId: string, _email: string) 
 
   if (user) {
     // Profile already exists for this user_id
+    // Update email if it's missing
+    if (!user.email && email) {
+        await supabase.from('profiles').update({ email }).eq('user_id', authUserId);
+    }
     return { returningUser: true };
   } else {
     // Create a new profile if not found
-    const insert: TablesInsert<'profiles'> = { user_id: authUserId };
+    const insert: TablesInsert<'profiles'> = { user_id: authUserId, email };
     await supabase.from('profiles').insert([insert]);
     return { returningUser: false };
   }

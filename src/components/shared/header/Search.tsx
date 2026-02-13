@@ -15,12 +15,17 @@ import { debounce } from "lodash";
 import { FixedSizeList as List } from "react-window";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
+import { Skeleton } from "@components/ui/skeleton";
+import { toSlug, cn } from "@/lib/utils";
 
 const SearchFilter = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [products, setProducts] = useState<
     { id: string; slug: string; name: string; image?: string | null }[]
+  >([]);
+  const [categories, setCategories] = useState<
+    { id: string; title: string, thumbnail?: any }[]
   >([]);
   const [isLoading, setIsLoading] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -32,7 +37,7 @@ const SearchFilter = () => {
     "What are you looking for?",
     "Discover amazing products...",
   ];
-  const SList:any = List
+  const SList: any = List;
 
   // Placeholder animation logic
   useEffect(() => {
@@ -48,6 +53,7 @@ const SearchFilter = () => {
       debounce(async (query: string) => {
         if (!query) {
           setProducts([]);
+          setCategories([]);
           setIsOpen(false);
           setIsLoading(false);
           return;
@@ -59,6 +65,7 @@ const SearchFilter = () => {
           );
           const data = await res.json();
           setProducts(data.products || []);
+          setCategories(data.categories || []);
           setIsOpen(true);
         } catch (error) {
           toast.error("Failed to fetch products");
@@ -111,6 +118,16 @@ const SearchFilter = () => {
     [router, searchTerm]
   );
 
+  const handleCategoryClick = useCallback(
+    (category: { id: string; title: string }) => {
+      setIsOpen(false);
+      setSearchTerm("");
+      const slug = toSlug(category.title);
+      router.push(`/category/${slug}`);
+    },
+    [router]
+  );
+
   const SearchResultItem = useCallback(
     ({ index, style }: { index: number; style: React.CSSProperties }) => {
       const product = products[index];
@@ -118,20 +135,23 @@ const SearchFilter = () => {
         <div
           style={style}
           onClick={() => handleProductClick(product)}
-          className="flex items-center gap-3 px-2 py-1 hover:bg-gray-100 cursor-pointer"
+          className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 cursor-pointer group transition-colors"
         >
           {product.image ? (
-            <Image
-              src={product.image}
-              alt={product.name}
-              width={36}
-              height={36}
-              className="rounded object-cover bg-gray-100"
-            />
+            <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100">
+              <Image
+                src={product.image}
+                alt={product.name}
+                fill
+                className="object-cover group-hover:scale-110 transition-transform duration-300"
+              />
+            </div>
           ) : (
-            <div className="w-9 h-9 rounded bg-gray-200 flex-shrink-0" />
+            <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 text-gray-400 font-bold text-xs">
+              {product.name.charAt(0)}
+            </div>
           )}
-          <span className="truncate">{product.name}</span>
+          <span className="truncate flex-1 font-semibold text-sm text-gray-700">{product.name}</span>
         </div>
       );
     },
@@ -171,21 +191,68 @@ const SearchFilter = () => {
         </form>
       </div>
       {isOpen && (
-        <div className="absolute z-50 w-full mt-2 bg-white border rounded-lg shadow-lg max-h-[400px] overflow-hidden">
+        <div className="absolute z-50 w-full mt-2 bg-white border rounded-xl shadow-2xl max-h-[550px] overflow-hidden flex flex-col">
           {isLoading ? (
-            <div className="p-4 text-center">Loading...</div>
-          ) : products.length > 0 ? (
-            <SList
-              height={Math.min(products.length * 48, 400)}
-              itemCount={products.length}
-              itemSize={48}
-              width="100%"
-            >
-              {SearchResultItem}
-            </SList>
+            <div className="p-3 space-y-3">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3 px-2">
+                  <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+                  <Skeleton className="h-4 w-full rounded" />
+                </div>
+              ))}
+            </div>
+          ) : products.length > 0 || categories.length > 0 ? (
+            <div className="flex flex-col overflow-y-auto py-2 custom-scrollbar">
+              {categories.length > 0 && (
+                <div className={cn("pb-2 mb-2", products.length > 0 && "border-b")}>
+                  <div className="space-y-1">
+                    {categories.map((cat) => (
+                      <div
+                        key={cat.id}
+                        onClick={() => handleCategoryClick(cat)}
+                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 cursor-pointer group transition-colors"
+                      >
+                        {cat.thumbnail?.url ? (
+                          <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100">
+                            <Image
+                              src={cat.thumbnail.url}
+                              alt={cat.title}
+                              fill
+                              className="object-cover group-hover:scale-110 transition-transform duration-300"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0 text-green-700 font-bold text-sm">
+                            {cat.title.charAt(0)}
+                          </div>
+                        )}
+                        <span className="font-bold text-base text-gray-800">{cat.title}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {products.length > 0 && (
+                <div className="flex-1">
+                  <SList
+                    height={Math.min(products.length * 56, 400)}
+                    itemCount={products.length}
+                    itemSize={56}
+                    width="100%"
+                    className="custom-scrollbar"
+                  >
+                    {SearchResultItem}
+                  </SList>
+                </div>
+              )}
+              
+            </div>
           ) : (
-            <div className="p-4 text-center text-gray-500">
-              No products found
+            <div className="p-8 text-center flex flex-col items-center gap-2">
+              <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-1">
+                <SearchX className="w-6 h-6 text-gray-300" />
+              </div>
+              <p className="text-gray-500 font-medium">No results found for &quot;{searchTerm}&quot;</p>
             </div>
           )}
         </div>

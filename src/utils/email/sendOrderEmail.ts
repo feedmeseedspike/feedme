@@ -198,12 +198,16 @@ export async function sendOrderConfirmationEmails({
     console.log('✅ Admin email sent');
 
     // Send to user
-    await sendMail({
-      to: userEmail,
-      subject: `Order Confirmed! Your Fresh Produce is On Its Way`,
-      html: userHtml,
-    });
-    console.log('✅ User email sent');
+    if (userEmail) {
+      await sendMail({
+        to: userEmail,
+        subject: `Order Confirmed! Your Fresh Produce is On Its Way`,
+        html: userHtml,
+      });
+      console.log('✅ User email sent');
+    } else {
+      console.warn('⚠️ No user email provided, skipping confirmation email.');
+    }
 
     return { success: true };
   } catch (error: any) {

@@ -10,7 +10,10 @@ import CustomScrollbar from "@components/shared/CustomScrollbar";
 import NextTopLoader from "nextjs-toploader";
 import { ToastProvider } from "src/hooks/useToast";
 import CartMergeProvider from "@providers/CartMergeProvider";
-import dynamic from "next/dynamic";
+import dynamicImport from "next/dynamic";
+
+export const dynamic = "force-dynamic";
+
 import { SupabaseAuthProvider } from "../components/supabase-auth-provider";
 import { ReactQueryClientProvider } from "@providers/ReactQueryClientProvider";
 import { createServerComponentClient } from "@utils/supabase/server";
@@ -21,13 +24,12 @@ import Script from "next/script";
 import RegisterSW from "../components/register-sw";
 import RegisterPush from "@components/shared/RegisterPush";
 import { NewVisitorProvider } from "@components/shared/ExitIntentProvider";
-import SignupWelcomeProvider from "@components/shared/SignupWelcomeProvider";
 import { getStoreSettings } from "@/lib/actions/settings.actions";
 import { StoreStatusProvider } from "@/providers/StoreStatusProvider";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
-const DynamicReferralBanner = dynamic(
+const DynamicReferralBanner = dynamicImport(
   () => import("@components/shared/ReferralBanner"),
   {
     ssr: false,
@@ -35,7 +37,7 @@ const DynamicReferralBanner = dynamic(
   }
 );
 
-const DealsPopup = dynamic(
+const DealsPopup = dynamicImport(
   () => import("@components/shared/DealsPopup"),
   {
     ssr: false,
@@ -67,10 +69,13 @@ const proxima = localFont({
   preload: true,
 });
 
+export const viewport = {
+  themeColor: "#ff6600",
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://shopfeedme.com/"),
   manifest: "/manifest.json",
-  themeColor: "#ff6600",
   appleWebApp: {
     capable: true,
     title: "FeedMe",
@@ -325,7 +330,6 @@ export default async function RootLayout({
           <ReactQueryClientProvider>
             <ReduxProvider>
               <ToastProvider>
-                <CartMergeProvider>
                   <SupabaseAuthProvider
                     initialSession={session}
                     initialUser={user}>
@@ -344,7 +348,6 @@ export default async function RootLayout({
                       </PathnameProvider>
                     </CustomScrollbar>
                   </SupabaseAuthProvider>
-                </CartMergeProvider>
               </ToastProvider>
             </ReduxProvider>
           </ReactQueryClientProvider>

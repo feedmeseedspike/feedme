@@ -5,24 +5,14 @@ import { useEffect } from "react";
 export default function RegisterSW() {
   useEffect(() => {
     if ("serviceWorker" in navigator) {
-      // Register PWA service worker with a custom scope
+      // Register the main service worker for PWA and Push Notifications
       navigator.serviceWorker
-        .register("/sw.js", { scope: "/pwa/" })
+        .register("/sw.js") // Root scope is required for global push handling
         .then((registration) => {
-          console.log("PWA Service Worker registered:", registration);
+          // Service Worker registered successfully
         })
         .catch((err) => {
-          console.error("PWA Service Worker registration failed:", err);
-        });
-
-      // Register Firebase service worker
-      navigator.serviceWorker
-        .register("/firebase-messaging-sw.js")
-        .then((registration) => {
-          console.log("Firebase Service Worker registered:", registration);
-        })
-        .catch((err) => {
-          console.error("Firebase Service Worker registration failed:", err);
+          console.error("Service Worker registration failed:", err);
         });
     }
   }, []);
