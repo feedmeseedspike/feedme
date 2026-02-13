@@ -2,8 +2,6 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import paystack from "../../../../utils/paystack";
-// import { authMiddleware } from "middleware/auth";
 import { supabase as supabaseAdmin } from "src/lib/supabaseClient";
 import { createClient } from "@/utils/supabase/server";
 import { getRandomOrderNumber } from "@/utils/generator";

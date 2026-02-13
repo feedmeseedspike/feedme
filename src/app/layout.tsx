@@ -26,6 +26,8 @@ import RegisterPush from "@components/shared/RegisterPush";
 import { NewVisitorProvider } from "@components/shared/ExitIntentProvider";
 import { getStoreSettings } from "@/lib/actions/settings.actions";
 import { StoreStatusProvider } from "@/providers/StoreStatusProvider";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const DynamicReferralBanner = dynamicImport(
   () => import("@components/shared/ReferralBanner"),
@@ -312,8 +314,7 @@ export default async function RootLayout({
             src="https://www.googletagmanager.com/ns.html?id=GTM-W8L93RRF"
             height="0"
             width="0"
-            style={{ display: "none", visibility: "hidden" }}
-          ></iframe>
+            style={{ display: "none", visibility: "hidden" }}></iframe>
         </noscript>
         <noscript>
           <img
@@ -331,20 +332,21 @@ export default async function RootLayout({
               <ToastProvider>
                   <SupabaseAuthProvider
                     initialSession={session}
-                    initialUser={user}
-                  >
-                    <CartMergeProvider>
-                      <CustomScrollbar>
-                        <PathnameProvider hasReferralStatus={hasReferralStatus}>
-                            <DealsPopup />
-                            <NewVisitorProvider>
-                              <StoreStatusProvider settings={settings}>
-                                {children}
-                              </StoreStatusProvider>
-                            </NewVisitorProvider>
-                        </PathnameProvider>
-                      </CustomScrollbar>
-                    </CartMergeProvider>
+                    initialUser={user}>
+                    <CustomScrollbar>
+                      <PathnameProvider hasReferralStatus={hasReferralStatus}>
+                        <SignupWelcomeProvider>
+                          <DealsPopup />
+                          <NewVisitorProvider>
+                            <StoreStatusProvider settings={settings}>
+                              {children}
+                              <Analytics />
+                              <SpeedInsights />
+                            </StoreStatusProvider>
+                          </NewVisitorProvider>
+                        </SignupWelcomeProvider>
+                      </PathnameProvider>
+                    </CustomScrollbar>
                   </SupabaseAuthProvider>
               </ToastProvider>
             </ReduxProvider>
