@@ -329,23 +329,23 @@ export default async function RootLayout({
           <ReactQueryClientProvider>
             <ReduxProvider>
               <ToastProvider>
-                  <SupabaseAuthProvider
-                    initialSession={session}
-                    initialUser={user}
-                  >
-                    <CartMergeProvider>
-                      <CustomScrollbar>
-                        <PathnameProvider hasReferralStatus={hasReferralStatus}>
-                            <DealsPopup />
-                            <NewVisitorProvider>
-                              <StoreStatusProvider settings={settings}>
-                                {children}
-                              </StoreStatusProvider>
-                            </NewVisitorProvider>
-                        </PathnameProvider>
-                      </CustomScrollbar>
-                    </CartMergeProvider>
-                  </SupabaseAuthProvider>
+                <SupabaseAuthProvider
+                  initialSession={session}
+                  initialUser={user}
+                >
+                  <CartMergeProvider>
+                    <CustomScrollbar>
+                      <PathnameProvider hasReferralStatus={hasReferralStatus}>
+                        <DealsPopup />
+                        <NewVisitorProvider>
+                          <StoreStatusProvider settings={settings}>
+                            {children}
+                          </StoreStatusProvider>
+                        </NewVisitorProvider>
+                      </PathnameProvider>
+                    </CustomScrollbar>
+                  </CartMergeProvider>
+                </SupabaseAuthProvider>
               </ToastProvider>
             </ReduxProvider>
           </ReactQueryClientProvider>
