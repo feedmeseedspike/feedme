@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getReferredUsers } from '@/queries/referrals';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   try {
     const { data, message } = await getReferredUsers();

@@ -7,6 +7,8 @@ import {
   updateAddressAction,
 } from "@/app/(dashboard)/account/addresses/actions";
 
+export const dynamic = 'force-dynamic';
+
 export const GET = authMiddleware(async () => {
   try {
     const address = await getAddressesForCurrentUser();

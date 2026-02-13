@@ -14,11 +14,16 @@ export async function updateSession(request: NextRequest) {
     {
       cookies: {
         getAll: () => request.cookies.getAll(),
-        setAll: (cookiesToSet:any) => {
-          cookiesToSet.forEach(({ name, value, options }:any) =>
-            request.cookies.set(name, value)
-            response.cookies.set(name, value, options)
-          })
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set(name, value);
+          });
+          response = NextResponse.next({
+            request,
+          });
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
         },
       },
     }
