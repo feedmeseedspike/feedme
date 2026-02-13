@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { sendOrderConfirmationEmails } from "@/utils/email/sendOrderEmail";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const testOrderReference = `ORD-${Math.floor(Math.random() * 1000000)}`;
@@ -36,8 +38,8 @@ export async function GET() {
     const totalPaid = subtotal + deliveryFee - discount;
 
     await sendOrderConfirmationEmails({
-      adminEmail: "oyedelejeremiah.ng@gmail.com",
-      userEmail: "oyedelejeremiah.ng@gmail.com", 
+      adminEmail: "orders.feedmeafrica@gmail.com",
+      userEmail: "orders.feedmeafrica@gmail.com", 
       adminOrderProps: {
         orderNumber: testOrderReference,
         customerName: "Jeremiah Test-User",
@@ -65,7 +67,7 @@ export async function GET() {
 
     return NextResponse.json({ 
       success: true, 
-      message: "Test emails sent to oyedelejeremiah.ng@gmail.com. Please check your inbox (and spam)." 
+      message: "Test emails sent to orders.feedmeafrica@gmail.com. Please check your inbox (and spam)." 
     });
   } catch (error: any) {
     console.error("Test email failed:", error);

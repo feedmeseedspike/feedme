@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getDeliveryLocations } from "@/app/(dashboard)/account/addresses/actions";
 
+export const dynamic = 'force-dynamic';
+
 export const GET = async () => {
   try {
     const address = await getDeliveryLocations();
