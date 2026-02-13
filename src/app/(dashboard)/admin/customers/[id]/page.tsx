@@ -84,7 +84,7 @@ const progressOptions = [
   "Cancelled",
 ];
 
-import { CartPrizesList, SpinEligibilityStatus } from "../components/SpinStatusHelpers";
+import { CartPrizesList, CartItemsList, HistoricalPrizesList, SpinEligibilityStatus } from "../components/SpinStatusHelpers";
 
 
 export default function CustomerDetailsPage() {
@@ -462,22 +462,28 @@ export default function CustomerDetailsPage() {
         <Card className="border-0 shadow-lg bg-indigo-50 border-indigo-100">
            <CardHeader className="pb-2">
              <CardTitle className="text-lg font-bold flex items-center gap-2 text-indigo-900">
-               <Gift className="w-5 h-5 text-indigo-600 animate-pulse" />
-               Spin & Bonus Status
+               <Gift className="w-5 h-5 text-indigo-600" />
+               Spin, Prizes & Cart Status
              </CardTitle>
            </CardHeader>
            <CardContent>
              <div className="flex flex-col md:flex-row gap-6">
                 <div className="flex-1">
-                   <h4 className="text-sm font-bold text-gray-700 mb-2">Pending Prizes in Cart</h4>
-                   <CartPrizesList customerId={customerId} />
+                   <h4 className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                      Current User Cart
+                      <span className="text-[10px] font-normal bg-gray-200 px-2 py-0.5 rounded text-gray-500">Real-time</span>
+                   </h4>
+                   <CartItemsList customerId={customerId} />
+                </div>
+                <div className="flex-1 border-l pl-6 border-indigo-200">
+                   <h4 className="text-sm font-bold text-gray-700 mb-2">Prizes Won (History)</h4>
+                   <HistoricalPrizesList customerId={customerId} />
                 </div>
                 <div className="flex-1 border-l pl-6 border-indigo-200">
                    <h4 className="text-sm font-bold text-gray-700 mb-2">Spin Eligibility</h4>
-                   <p className="text-xs text-gray-600 mb-2">
-                     Logic: Users spin after every completed order. 
+                   <p className="text-xs text-gray-500 mb-4 bg-white/50 p-2 rounded italic">
+                     Check if the user is currently eligible for a spin based on their latest delivered order.
                    </p>
-                   {/* Checks based on recent delivered orders */}
                    <SpinEligibilityStatus customerId={customerId} />
                 </div>
              </div>

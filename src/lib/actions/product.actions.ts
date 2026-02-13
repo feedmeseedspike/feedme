@@ -3,6 +3,7 @@
 import { ProductInterface } from "@/utils/productsiinterface";
 import { createClient } from "../../utils/supabase/server";
 import { sendBroadcastNotification } from "./notifications.actions";
+import { expandSearchTerms, buildSearchFilter, sortProductsByRelevance } from "@/lib/search-utils";
 
 // Removed top-level supabase initialization
 
@@ -388,22 +389,54 @@ export async function deleteProduct(id: string) {
 }
 export async function getProductsBySearch(query: string, limit = 10) {
   const supabase = await createClient();
+  const terms = expandSearchTerms(query);
+  const filter = buildSearchFilter(terms, ["name", "description", "brand"]);
   const { data, error } = await supabase
     .from("products")
     .select("id, slug, name, images")
-    .or(
-      `name.ilike.%${query}%,description.ilike.%${query}%,brand.ilike.%${query}%`
-    )
+    .or(filter)
     .eq("is_published", true)
     .limit(limit);
   if (error) throw error;
+  
+  // Sort by relevance to ensure exact matches come first
+  const sortedData = sortProductsByRelevance(data || [], query);
+  
   // Prefer the first image if available
-  return (data || []).map((p: any) => ({
+  return sortedData.map((p: any) => ({
     id: p.id,
     slug: p.slug,
     name: p.name,
     image: Array.isArray(p.images) ? p.images[0] : p.images || null,
   }));
+}
+
+export async function getCategoriesBySearch(query: string, limit = 5) {
+  const supabase = await createClient();
+  const terms = expandSearchTerms(query);
+  
+  // Build filter for categories (title column)
+  const filters = terms.map(term => `title.ilike.%${term.replace(/[%_]/g, '\\$&')}%`).join(',');
+  
+  const { data, error } = await supabase
+    .from("categories")
+    .select("id, title, thumbnail")
+    .or(filters)
+    .limit(limit);
+    
+  if (error) throw error;
+  
+  // Sort by relevance (manual sort since we have little data usually)
+  const normalizedQuery = query.toLowerCase().trim();
+  return (data || []).sort((a, b) => {
+    const aTitle = a.title.toLowerCase();
+    const bTitle = b.title.toLowerCase();
+    if (aTitle === normalizedQuery) return -1;
+    if (bTitle === normalizedQuery) return 1;
+    if (aTitle.startsWith(normalizedQuery)) return -1;
+    if (bTitle.startsWith(normalizedQuery)) return 1;
+    return 0;
+  });
 }
 
 export async function getProductById(id: string) {

@@ -95,7 +95,6 @@ export async function fetchOrders({
 }
 
 export async function fetchOrderById(orderId: string) {
-  console.log("fetchOrderById START", orderId);
   const supabase = createClient();
   
   // 1. Fetch Order
@@ -126,12 +125,10 @@ export async function fetchOrderById(orderId: string) {
   }
 
   if (!items || items.length === 0) {
-    console.log("fetchOrderById No items found, returning early");
     return { ...order, order_items: [] };
   }
 
   // 3. Collect IDs
-  console.log("fetchOrderById Processing items:", items.length);
   const productIds = [...new Set(items.map((i: any) => i.product_id).filter(Boolean))];
   const bundleIds = [...new Set(items.map((i: any) => i.bundle_id).filter(Boolean))];
   const offerIds = [...new Set(items.map((i: any) => i.offer_id).filter(Boolean))];
@@ -171,7 +168,6 @@ export async function fetchOrderById(orderId: string) {
     voucherData = v;
   }
 
-  console.log("fetchOrderById END success");
   return { ...order, order_items: enrichedItems, vouchers: voucherData };
 }
 
@@ -181,8 +177,6 @@ export async function fetchUserOrders(
   itemsPerPage: number = 5
 ) {
   const supabase = createClient();
-  
-  console.log("Running fetchUserOrders - Manual enrichment version");
   
   // 1. Fetch Orders
   let query = supabase

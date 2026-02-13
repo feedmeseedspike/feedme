@@ -650,9 +650,13 @@ export default function EditProductClient({
           data.stockStatus === "In Stock" ? "in_stock" : "out_of_stock";
       } else {
         productData.price = null;
-        productData.stock_status = null;
+        // Save stock status for products with variations if set
+        productData.stock_status = data.stockStatus
+          ? data.stockStatus === "In Stock"
+            ? "in_stock"
+            : "out_of_stock"
+          : null;
       }
-      console.log("[DEBUG] Submitting product update payload:", productData);
       await updateProductAction(product.id, productData);
       showToast("Product updated successfully!", "success");
       // Force refresh to get latest data from DB
@@ -1195,6 +1199,43 @@ export default function EditProductClient({
             )}
           </motion.div>
 
+          {/* Global Stock Status (for products with variations) */}
+          {form.watch("variation") === "Yes" && (
+            <FormField
+              control={form.control}
+              name="stockStatus"
+              render={({ field }) => (
+                <FormItem className="mb-4 grid grid-cols-1 sm:grid-cols-9 gap-4">
+                  <FormLabel className="text-sm font-medium col-span-2">
+                    Overall Stock Status
+                  </FormLabel>
+                  <FormControl>
+                    <div className="col-span-7">
+                      <ShadSelect
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <SelectTrigger className="w-48 border p-4 rounded-lg">
+                          <SelectValue placeholder="Select Stock Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="In Stock">In Stock</SelectItem>
+                          <SelectItem value="Out of Stock">
+                            Out of Stock
+                          </SelectItem>
+                        </SelectContent>
+                      </ShadSelect>
+                      <p className="text-xs text-gray-500 mt-2">
+                        This sets the overall product stock status. Individual options have their own stock status above.
+                      </p>
+                    </div>
+                  </FormControl>
+                  <FormMessage className="col-span-7 col-start-3" />
+                </FormItem>
+              )}
+            />
+          )}
+
           {/* Product Customizations */}
           <FormField
             control={form.control}
@@ -1494,6 +1535,54 @@ export default function EditProductClient({
                     </label>
                     <span className="text-sm text-gray-700">
                       {field.value ? "Published" : "Draft"}
+                    </span>
+                  </div>
+                </FormControl>
+                <FormMessage className="col-span-7 col-start-3" />
+              </FormItem>
+            )}
+          />
+
+          {/* In Season Toggle */}
+          <FormField
+            control={form.control}
+            name="in_season"
+            render={({ field }) => (
+              <FormItem className="mb-4 grid grid-cols-1 sm:grid-cols-9 gap-4">
+                <FormLabel className="text-sm font-medium col-span-2">
+                  In Season
+                </FormLabel>
+                <FormControl>
+                  <div className="col-span-7 flex items-center space-x-4">
+                    <ShadSelect
+                      onValueChange={(value) => {
+                        if (value === "true") field.onChange(true);
+                        else if (value === "false") field.onChange(false);
+                        else field.onChange(null);
+                      }}
+                      value={
+                        field.value === true
+                          ? "true"
+                          : field.value === false
+                            ? "false"
+                            : "null"
+                      }
+                    >
+                      <SelectTrigger className="w-48 border p-4 rounded-lg">
+                        <SelectValue placeholder="Select Season Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="null">Not Set</SelectItem>
+                        <SelectItem value="true">In Season</SelectItem>
+                        <SelectItem value="false">Out of Season</SelectItem>
+                      </SelectContent>
+                    </ShadSelect>
+                    <span className="text-sm text-gray-500">
+                      {field.value === true
+                        ? "✓ Product is in season"
+                        : field.value === false
+                          ? "✗ Product is out of season"
+                          : "— Season status not set"}
                     </span>
                   </div>
                 </FormControl>

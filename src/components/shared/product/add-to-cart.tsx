@@ -101,12 +101,8 @@ const AddToCart = React.memo(
     const requiresOptionSelection = optionPickerEnabled && !effectiveOption;
 
     useEffect(() => {
-      if (optionPickerEnabled) {
-        setEffectiveOption(null);
-      } else {
-        setEffectiveOption(item.option ?? null);
-      }
-    }, [item.id, item.option, optionPickerEnabled]);
+      setEffectiveOption(item.option ?? null);
+    }, [item.id, item.option]);
 
     useEffect(() => {
       setIsClient(true);
@@ -1208,7 +1204,7 @@ const AddToCart = React.memo(
                     e.stopPropagation();
                     handleQuantityChange(quantity - 1, effectiveOption ?? null);
                   }}
-                  disabled={quantity <= 1 || updateCartMutation.isPending}
+                  disabled={updateCartMutation.isPending}
                   className="bg-[#F5F5F5] disabled:opacity-50 p-2 rounded-full"
                   aria-label={
                     quantity === 1 ? "Remove item" : "Decrease quantity"

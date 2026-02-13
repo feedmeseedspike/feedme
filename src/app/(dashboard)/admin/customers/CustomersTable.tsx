@@ -60,9 +60,9 @@ export default function CustomersTable({ data }: { data: any[] }) {
             <TableHead className="w-[120px] text-xs font-semibold uppercase tracking-wider text-gray-500">ID</TableHead>
             <TableHead className="min-w-[250px] text-xs font-semibold uppercase tracking-wider text-gray-500">Customer</TableHead>
             <TableHead className="w-[200px] text-xs font-semibold uppercase tracking-wider text-gray-500">Contact</TableHead>
-            <TableHead className="w-[120px] text-xs font-semibold uppercase tracking-wider text-gray-500">Spent</TableHead>
-            <TableHead className="w-[120px] text-xs font-semibold uppercase tracking-wider text-gray-500">Wallet</TableHead>
-            <TableHead className="w-[100px] text-xs font-semibold uppercase tracking-wider text-gray-500">Orders</TableHead>
+            <TableHead className="w-[120px] text-xs font-semibold uppercase tracking-wider text-gray-500">Value/Orders</TableHead>
+            <TableHead className="w-[120px] text-xs font-semibold uppercase tracking-wider text-gray-500">Wallet/Pts</TableHead>
+            <TableHead className="w-[150px] text-xs font-semibold uppercase tracking-wider text-gray-500">Last Purchase</TableHead>
             <TableHead className="w-[150px] text-xs font-semibold uppercase tracking-wider text-gray-500">Joined</TableHead>
             <TableHead className="w-[80px] text-xs font-semibold uppercase tracking-wider text-gray-500 text-center">Staff</TableHead>
           </TableRow>
@@ -82,6 +82,7 @@ export default function CustomersTable({ data }: { data: any[] }) {
                 totalAmountSpent = 0,
                 wallet_balance = 0,
                 loyalty_points = 0,
+                lastOrderAt = null,
               } = customer;
               const staffValue =
                 localStaff[user_id] !== undefined
@@ -152,8 +153,11 @@ export default function CustomersTable({ data }: { data: any[] }) {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium text-sm text-gray-900">
-                    {formatNaira(totalAmountSpent)}
+                  <TableCell>
+                    <div className="flex flex-col">
+                       <span className="font-medium text-sm text-gray-900">{formatNaira(totalAmountSpent)}</span>
+                       <span className="text-[10px] text-gray-400 font-medium">{totalOrders} orders</span>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
@@ -161,8 +165,13 @@ export default function CustomersTable({ data }: { data: any[] }) {
                        <span className="text-[10px] text-gray-400 font-medium">{loyalty_points || 0} pts</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm text-gray-600 text-center">
-                    {totalOrders}
+                  <TableCell className="text-sm text-gray-600">
+                    <div className="flex flex-col">
+                        <span className="font-medium">{lastOrderAt ? format(new Date(lastOrderAt), "MMM d, yyyy") : "Never"}</span>
+                        {lastOrderAt && (
+                           <span className="text-[10px] text-gray-400">{format(new Date(lastOrderAt), "h:mm a")}</span>
+                        )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-sm text-gray-500 whitespace-nowrap">
                     {created_at ? format(new Date(created_at), "MMM d, yyyy") : "—"}

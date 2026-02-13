@@ -21,6 +21,34 @@ export async function processOrderRewards(
   };
 
   try {
+    // 0. LOYALTY REWARD (10% Cashback for returning users orders >= 25k)
+    const { count: orderCount } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+    
+    // Returning members (orderCount > 1 because current order is included)
+    if (orderCount && orderCount > 1 && amountPaid >= (BONUS_CONFIG as any).REPEAT_ORDER_CASHBACK.min_spend) {
+        const loyaltyCashback = amountPaid * ((BONUS_CONFIG as any).REPEAT_ORDER_CASHBACK.cashback_percent / 100);
+        const result = await creditWallet(
+            userId,
+            loyaltyCashback,
+            "Repeat Order Reward: 10% Cashback",
+            `REPEAT-CB-${orderId}`
+        );
+        
+        if (result.success) {
+            rewardsSummary.cashback += loyaltyCashback;
+            await sendUnifiedNotification({
+                userId,
+                type: 'info',
+                title: 'Cashback Reward! 🎊',
+                body: `As a returning member, you've earned N${loyaltyCashback.toLocaleString()} cashback on your order. Thank you for shopping with us!`,
+                link: '/account/wallet'
+            });
+        }
+    }
+
     // 1. CASHBACK REWARD (Threshold 100k -> 2k credit)
     // We can use calculatePotentialCashBack or implement directly.
     // calculatePotentialCashBack uses BONUS_CONFIG which is correct.

@@ -149,13 +149,11 @@ export default function BundleModal({
   };
 
   const submitForm = async (data: BundleFormValues) => {
-    console.log("submitForm called with data:", data);
     const formData = {
       ...data,
       products: selectedProducts,
       thumbnail_file: thumbnailFile,
     };
-    console.log("Calling onSubmit with formData:", formData);
     if (onSubmit) await onSubmit(formData);
   };
 
@@ -185,7 +183,6 @@ export default function BundleModal({
         <div className="max-h-[calc(90vh-150px)] overflow-y-auto pr-4">
           <form
             onSubmit={handleSubmit((data) => {
-              console.log("handleSubmit triggered");
               submitForm(data);
             })}
             className="space-y-3"

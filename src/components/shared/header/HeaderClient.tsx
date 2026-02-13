@@ -37,6 +37,7 @@ import { signOutUser } from "src/lib/actions/auth.actions";
 import SpinNotification from "./SpinNotification";
 import { createClient } from "@utils/supabase/client";
 import { useToast } from "src/hooks/useToast";
+import { toSlug } from "@/lib/utils";
 
 const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
   const { user, isLoading: isUserLoading } = useUser();
@@ -160,7 +161,7 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                                 {categories?.map((category: any) => (
                                   <Link
                                     key={category.id}
-                                    href={`/category/${category.tags || category.id}`}
+                                    href={`/category/${toSlug(category.title)}`}
                                     className="block py-2 hover:bg-white/10 rounded text-lg px-2 transition-colors"
                                     onClick={() => setOpenMobileSheet(false)}
                                   >

@@ -139,6 +139,7 @@ export function SupabaseAuthProvider({
 
         if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
           queryClient.invalidateQueries({ queryKey: ["user"] });
+          queryClient.invalidateQueries({ queryKey: ["cart"] });
         }
       }
     );

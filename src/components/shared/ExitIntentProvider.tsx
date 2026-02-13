@@ -35,13 +35,13 @@ export function NewVisitorProvider({ children }: NewVisitorProviderProps) {
       
       if (hasShown || sessionShown || justSignedUp) return;
 
-      // Check if dismissed recently (within 24 hours)
+      // Check if dismissed recently (within 7 days)
       let recentlyDismissed = false;
       if (dismissed) {
         const dismissedTime = parseInt(dismissed);
         const now = Date.now();
         const hoursSinceDismissed = (now - dismissedTime) / (1000 * 60 * 60);
-        recentlyDismissed = hoursSinceDismissed < 24;
+        recentlyDismissed = hoursSinceDismissed < 168; 
       }
       
       if (recentlyDismissed) return;
@@ -49,11 +49,8 @@ export function NewVisitorProvider({ children }: NewVisitorProviderProps) {
       // Mark session to prevent showing again in same session
       sessionStorage.setItem('feedme_modal_session', 'true');
       
-      const timer = setTimeout(() => {
-        setShowModal(true);
-      }, 5000);
-
-      return () => clearTimeout(timer);
+      // Removed automatic timer to reduce annoyance. 
+      // This provider can now be used for exit-intent or manual triggers.
     }
   }, [shouldShowModal]);
 

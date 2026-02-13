@@ -37,9 +37,13 @@ export default function UploadExcel({ onSuccess }: Props) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
+      const outOfStockMsg = data.markedOutOfStock > 0 
+        ? ` ${data.markedOutOfStock} marked out of stock.`
+        : '';
+
       setMessage({
         type: "success",
-        text: `Uploaded! ${data.total} products.`,
+        text: `Uploaded! ${data.total} products updated.${outOfStockMsg}`,
       });
       onSuccess?.(data.total);
     } catch (err: any) {

@@ -86,6 +86,8 @@ const CartProductGroupDisplay = React.memo(
       productGroup.product?.name ||
       productGroup.bundle?.name ||
       productGroup.offer?.title ||
+      // Attempt to find meta name from options if product/bundle/offer name is missing
+      Object.values(productGroup.options)[0]?.meta?.name ||
       "Product";
 
     return (
@@ -127,6 +129,7 @@ const CartItemDisplay = React.memo(
       item.products?.name ||
       item.bundles?.name ||
       item.offers?.title ||
+      item.meta?.name ||
       "Product";
     const productName = baseName;
     const productSlug =
@@ -366,6 +369,24 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
     if (!user && anonymousCart.items && anonymousCart.items.length > 0) {
       const enrichItems = async () => {
         const supabase = createSupabaseClient();
+        
+        // 1. Immediately show items using meta data to avoid empty state
+        const initialItems = anonymousCart.items.map(anonItem => ({
+            ...anonItem,
+            products: null,
+            bundles: null,
+            offers: null,
+            // Keep original data just in case
+            user_id: null,
+            cart_id: null,
+            black_friday_items: null,
+            meta: anonItem.meta
+        } as CartItem));
+        
+        // Set immediate display
+        setEnrichedAnonItems(initialItems);
+
+        // 2. Then fetch fresh data
         const enriched = await Promise.all(
           anonymousCart.items.map(async (anonItem) => {
             let offerData: any = null;
@@ -384,8 +405,8 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
                 }
               } catch (error) {
                 console.error(
-                  `Failed to fetch offer data for ${anonItem.offer_id}:`,
-                  error
+                    `Failed to fetch offer data for ${anonItem.offer_id}:`,
+                    error
                 );
               }
             }
@@ -440,6 +461,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
               bundles: bundleData,
               offers: offerData,
               black_friday_items: null,
+              meta: anonItem.meta
             } as CartItem;
           })
         );
@@ -762,15 +784,23 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
     try {
       if (user) {
         await clearCartMutation.mutateAsync();
+        // Also clear anonymous cart to be safe
+        if (anonymousCart && typeof anonymousCart.clearCart === 'function') {
+          anonymousCart.clearCart();
+        }
       } else {
-        anonymousCart.clearCart();
+        if (anonymousCart && typeof anonymousCart.clearCart === 'function') {
+          anonymousCart.clearCart();
+        }
       }
       localStorage.removeItem("voucherCode");
       localStorage.removeItem("voucherDiscount");
+      showToast("Cart cleared", "info");
     } catch (error: any) {
       console.error("Failed to clear cart:", error);
+      showToast("Failed to clear cart", "error");
     }
-  }, [clearCartMutation, user, anonymousCart]);
+  }, [clearCartMutation, user, anonymousCart, showToast]);
 
   const totalQuantity = useMemo(() => {
     if (user) {

@@ -102,18 +102,10 @@ export default function CredentialsSignUpForm() {
         await applyReferral(String(code), String(userId));
         localStorage.removeItem("referral_code");
       }
-      // Store welcome data in localStorage for home page modal
-      if (result.data?.discountCode && result.data?.discountPercentage) {
-        localStorage.setItem('feedme_new_signup', JSON.stringify({
-          customerName: name,
-          discountCode: result.data.discountCode,
-          discountPercentage: result.data.discountPercentage
-        }));
-      }
       
       showToast("Registration successful!", "success");
       
-      // Redirect to home page where welcome modal will appear
+      // Redirect to home page
       window.location.href = "/";
       return;
     } catch (error: any) {

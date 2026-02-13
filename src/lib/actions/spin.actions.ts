@@ -99,67 +99,85 @@ export async function spinTheWheel() {
   // 2. Selection Logic
   let selectedPrize: any;
 
+  // 2.1. Filter eligible prizes based on order count and user status
+  const eligiblePrizes = prizes.filter(p => {
+    // Check Min Orders Required
+    const minOrders = p.min_orders_required || 0;
+    if (minOrders > (count || 0)) return false;
+
+    // Check New User Only restriction
+    if (p.for_new_users_only && (count || 0) > 0) return false;
+
+    return true;
+  });
+
+  // Fallback to ensuring we have at least one prize (e.g. 'none' types if everything else is filtered)
+  const workingPrizes = eligiblePrizes.length > 0 ? eligiblePrizes : prizes.filter(p => p.type === 'none');
+
   if (isNewUser) {
-      if (profile?.has_used_new_user_spin) {
-          // Returning user with 0 orders: Forced lose
-          selectedPrize = prizes.find(p => p.type === 'none') || prizes[0];
-          console.log(`User ${user.id} (0 orders, returning): Restricted to 'Try Again'`);
-      } else {
-          // First time user: Regular odds
-          const rand = Math.random();
-          let cumulativeProbability = 0;
-          selectedPrize = prizes[0];
-          for (const prize of prizes) {
-            cumulativeProbability += (prize.probability || 0);
-            if (rand <= cumulativeProbability) {
-              selectedPrize = prize;
-              break;
-            }
-          }
-          console.log(`User ${user.id} (0 orders, first spin): Regular selection logic applied.`);
-          
-          // Mark spin as used
-          await supabaseAdmin.from('profiles').update({ 
-            has_used_new_user_spin: true,
-            last_spin_at: new Date().toISOString()
-          }).eq('user_id', user.id);
+    // 0-order users (New Users): Use strict probabilities from DB.
+    // This allows "New User Only" prizes to be won, or "Try Again" based on configured weights.
+    // We treat every spin for a 0-order user as a "fresh" chance governed by the weights, 
+    // rather than forcing a loss if they spun before.
+    
+    const totalWeight = workingPrizes.reduce((sum, p) => sum + (p.probability || 0), 0);
+    const rand = Math.random() * totalWeight;
+    let cumulativeProbability = 0;
+    
+    selectedPrize = workingPrizes[0];
+    for (const prize of workingPrizes) {
+      cumulativeProbability += (prize.probability || 0);
+      if (rand <= cumulativeProbability) {
+        selectedPrize = prize;
+        break;
       }
-  } else {
-      // EXISTING CUSTOMER LOGIC: Improved odds
-      // 1. Filter eligible prizes
-      const eligiblePrizes = prizes.filter(p => (p.min_orders_required || 0) <= (count || 0));
-      
-      // 2. Reduce the probability of 'Try Again' (none) prizes based on order count
-      // This makes it "most likely" they win something
-      // More orders = Higher win probability
-      const reductionFactor = (count || 0) > 2 ? 4 : 2; // Frequent customers get 4x lower 'none' chance
-
-      let weightedPrizes = eligiblePrizes.map(p => {
-          if (p.type === 'none') {
-              return { ...p, adjustedProb: (p.probability || 0) / reductionFactor };
-          }
-          return { ...p, adjustedProb: p.probability || 0 };
-      });
-
-      const totalWeight = weightedPrizes.reduce((sum, p) => sum + p.adjustedProb, 0);
-      const rand = Math.random() * totalWeight;
-      let cumulativeProbability = 0;
-      
-      selectedPrize = weightedPrizes[0];
-      for (const prize of weightedPrizes) {
-          cumulativeProbability += prize.adjustedProb;
-          if (rand <= cumulativeProbability) {
-              selectedPrize = prize;
-              break;
-          }
-      }
-
-      // Update last spin time
+    }
+    console.log(`User ${user.id} (0 orders): Strict probability selection applied. Selected: ${selectedPrize.label}`);
+    
+    // Mark spin as used if it's their first time
+    if (!profile?.has_used_new_user_spin) {
       await supabaseAdmin.from('profiles').update({ 
+        has_used_new_user_spin: true,
         last_spin_at: new Date().toISOString()
       }).eq('user_id', user.id);
-      
-      console.log(`User ${user.id} (${count} orders): Selection with ${reductionFactor}x improved odds applied.`);
+    } else {
+        // Just update last spin time
+        await supabaseAdmin.from('profiles').update({ 
+            last_spin_at: new Date().toISOString()
+          }).eq('user_id', user.id);
+    }
+
+  } else {
+    // EXISTING CUSTOMER LOGIC: Improved odds applied only after first purchase milestone
+    // More orders = Higher win probability
+    const reductionFactor = (count || 0) > 3 ? 4 : (count || 0) > 1 ? 2 : 1; 
+
+    let weightedPrizes = workingPrizes.map(p => {
+      if (p.type === 'none') {
+        return { ...p, adjustedProb: (p.probability || 0) / reductionFactor };
+      }
+      return { ...p, adjustedProb: p.probability || 0 };
+    });
+
+    const totalWeight = weightedPrizes.reduce((sum, p) => sum + p.adjustedProb, 0);
+    const rand = Math.random() * totalWeight;
+    let cumulativeProbability = 0;
+    
+    selectedPrize = weightedPrizes[0];
+    for (const prize of weightedPrizes) {
+      cumulativeProbability += prize.adjustedProb;
+      if (rand <= cumulativeProbability) {
+        selectedPrize = prize;
+        break;
+      }
+    }
+
+    // Update last spin time
+    await supabaseAdmin.from('profiles').update({ 
+      last_spin_at: new Date().toISOString()
+    }).eq('user_id', user.id);
+    
+    console.log(`User ${user.id} (${count} orders): Selection with ${reductionFactor}x improved odds applied.`);
   }
 
   // VALIDATION: If is an 'item' prize, it MUST have a product_id. 

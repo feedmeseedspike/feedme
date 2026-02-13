@@ -83,6 +83,16 @@ export async function registerUser(userData: {
       .from("wallets")
       .insert({ user_id: data.user.id, balance: 0, currency: "NGN" });
 
+    // Create profile for the new user
+    await supabase
+      .from("profiles")
+      .insert({
+        user_id: data.user.id,
+        email: userData.email,
+        display_name: userData.name,
+        avatar_url: userData.avatar_url,
+      });
+
     // Generate welcome discount code
     const welcomeDiscount = createWelcomeDiscount(userData.email, 5, 30);
     
@@ -221,13 +231,11 @@ export async function signinWithOAuth(
     if (error) {
       throw error; // Or redirect to an error page
     }
-    console.log({ data });
     return { success: true, data };
   } catch (err: any) {
-    console.log(err);
     return {
       success: false,
-      data: { message: "OAuth sign-in failed. " + err.message },
+      error: { message: "OAuth sign-in failed. " + err.message },
     };
   }
 }

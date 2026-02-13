@@ -23,7 +23,7 @@ const sortOrders = [
   { value: "price-low-to-high", name: "Price: Low to high" },
   { value: "price-high-to-low", name: "Price: High to low" },
   { value: "newest-arrivals", name: "Newest barrivals" },
-  { value: "best-selling", name: "Best sellingbb" },
+  { value: "best-selling", name: "Best selling" },
 ];
 
 const SPECIAL_TAGS = [
