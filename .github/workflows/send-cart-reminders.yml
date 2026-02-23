@@ -5,7 +5,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: '*/15 * * * *' # run every 15 minutes
+    - cron: '45 15 * * *' # run daily at 15:45 UTC (4:45 PM Nigeria)
   workflow_dispatch: {}
 
 jobs:
