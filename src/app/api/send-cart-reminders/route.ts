@@ -228,9 +228,9 @@ async function handleRequest(request: Request) {
   const resend = new Resend(resendApiKey || "");
   if (!resendApiKey) console.warn("RESEND_API_KEY missing – emails won't send");
 
+  let runId: string | number | null = null;
   try {
     // Record run start in DB (optional table `cron_runs`)
-    let runId: string | number | null = null;
     try {
       const { data: runData, error: runErr } = await supabaseAdmin
         .from("cron_runs")
