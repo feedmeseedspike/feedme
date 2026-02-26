@@ -1,0 +1,33 @@
+name: Cron — Send Cart Reminders
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '45 15 * * *' # run daily at 15:45 UTC (4:45 PM Nigeria)
+  workflow_dispatch: {}
+
+jobs:
+  send_reminders:
+    runs-on: ubuntu-latest
+    env:
+      DEPLOYMENT_URL: ${{ secrets.DEPLOYMENT_URL }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+    steps:
+      - name: Send reminder POST to API
+        run: |
+          set -euo pipefail
+          if [ -z "${DEPLOYMENT_URL:-}" ]; then
+            echo "ERROR: DEPLOYMENT_URL secret is not set"; exit 1
+          fi
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "ERROR: CRON_SECRET secret is not set"; exit 1
+          fi
+          echo "Calling ${DEPLOYMENT_URL}/api/send-cart-reminders"
+          HTTP_STATUS=$(curl -s -o response.txt -w "%{http_code}" -X POST "${DEPLOYMENT_URL}/api/send-cart-reminders" -H "Authorization: Bearer ${CRON_SECRET}" -H "Accept: application/json")
+          echo "HTTP status: $HTTP_STATUS"
+          echo "Response body:"; cat response.txt
+          if [ "$HTTP_STATUS" -ge 400 ]; then
+            echo "Request failed with status $HTTP_STATUS"; exit 1
+          fi
