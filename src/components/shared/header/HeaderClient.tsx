@@ -64,7 +64,25 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
           const newOrder = payload.new as any;
           // Check if status changed to delivered
           if (newOrder.status === 'order delivered') {
-             showToast("See you, Your order has been delivered! 🚚", "success");
+             const message = "See you, Your order has been delivered! 🚚";
+             showToast(message, "success");
+
+             // Trigger System Notification
+             if ("Notification" in window && Notification.permission === "granted") {
+                const title = "Order Delivered! 🎉";
+                const options = {
+                  body: "Your FeedMe order has arrived. Enjoy your meal!",
+                  icon: "/icon.png",
+                  tag: `order-${newOrder.id}`,
+                  data: { link: "/account/orders" }
+                };
+                
+                if ("serviceWorker" in navigator) {
+                  navigator.serviceWorker.ready.then(reg => reg.showNotification(title, options));
+                } else {
+                  new window.Notification(title, options);
+                }
+             }
           }
         }
       )

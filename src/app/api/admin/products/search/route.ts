@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@utils/supabase/server";
 import { toSlug } from "src/lib/utils";

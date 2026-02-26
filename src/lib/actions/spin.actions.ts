@@ -46,7 +46,7 @@ export async function spinTheWheel() {
   // Use admin to avoid RLS delays
   const { data: profile, error: profileError } = await supabaseAdmin
     .from('profiles')
-    .select('has_used_new_user_spin, last_spin_at')
+    .select('has_used_new_user_spin, last_spin_at, display_name')
     .eq('user_id', user.id)
     .single();
 
@@ -97,7 +97,7 @@ export async function spinTheWheel() {
   }
 
   // 2. Selection Logic
-  let selectedPrize: any;
+
 
   // 2.1. Filter eligible prizes based on order count and user status
   const eligiblePrizes = prizes.filter(p => {
@@ -114,17 +114,36 @@ export async function spinTheWheel() {
   // Fallback to ensuring we have at least one prize (e.g. 'none' types if everything else is filtered)
   const workingPrizes = eligiblePrizes.length > 0 ? eligiblePrizes : prizes.filter(p => p.type === 'none');
 
-  if (isNewUser) {
-    // 0-order users (New Users): Use strict probabilities from DB.
-    // This allows "New User Only" prizes to be won, or "Try Again" based on configured weights.
-    // We treat every spin for a 0-order user as a "fresh" chance governed by the weights, 
-    // rather than forcing a loss if they spun before.
+  // 2. Selection Logic
+  let selectedPrize: any;
+
+  // Find a 'none' type prize to use for forcing/fallback
+  const nonePrize = prizes.find(p => p.type === 'none') || workingPrizes[0];
+
+  if (forceTryAgain) {
+    // Returning user with 0 orders: 98% chance to lose, regardless of DB weights
+    selectedPrize = Math.random() < 0.98 ? nonePrize : null;
     
+    if (!selectedPrize) {
+      // Small 2% chance to use DB weights even if returning 0-order, 
+      // or just force 'none' anyway if you want it stricter.
+      const totalWeight = workingPrizes.reduce((sum, p) => sum + (p.probability || 0), 0);
+      const rand = Math.random() * totalWeight;
+      let cumulative = 0;
+      for (const p of workingPrizes) {
+        cumulative += (p.probability || 0);
+        if (rand <= cumulative) { selectedPrize = p; break; }
+      }
+    }
+  } 
+  else {
+    // STANDARD WEIGHTED SELECTION
+    // We strictly use the probabilities set in the database.
+    // Since 'Try Again' is set to 0.9 and others are low, this naturally results in "mostly lose".
     const totalWeight = workingPrizes.reduce((sum, p) => sum + (p.probability || 0), 0);
     const rand = Math.random() * totalWeight;
     let cumulativeProbability = 0;
     
-    selectedPrize = workingPrizes[0];
     for (const prize of workingPrizes) {
       cumulativeProbability += (prize.probability || 0);
       if (rand <= cumulativeProbability) {
@@ -132,53 +151,16 @@ export async function spinTheWheel() {
         break;
       }
     }
-    console.log(`User ${user.id} (0 orders): Strict probability selection applied. Selected: ${selectedPrize.label}`);
     
-    // Mark spin as used if it's their first time
-    if (!profile?.has_used_new_user_spin) {
-      await supabaseAdmin.from('profiles').update({ 
-        has_used_new_user_spin: true,
-        last_spin_at: new Date().toISOString()
-      }).eq('user_id', user.id);
-    } else {
-        // Just update last spin time
-        await supabaseAdmin.from('profiles').update({ 
-            last_spin_at: new Date().toISOString()
-          }).eq('user_id', user.id);
-    }
-
-  } else {
-    // EXISTING CUSTOMER LOGIC: Improved odds applied only after first purchase milestone
-    // More orders = Higher win probability
-    const reductionFactor = (count || 0) > 3 ? 4 : (count || 0) > 1 ? 2 : 1; 
-
-    let weightedPrizes = workingPrizes.map(p => {
-      if (p.type === 'none') {
-        return { ...p, adjustedProb: (p.probability || 0) / reductionFactor };
-      }
-      return { ...p, adjustedProb: p.probability || 0 };
-    });
-
-    const totalWeight = weightedPrizes.reduce((sum, p) => sum + p.adjustedProb, 0);
-    const rand = Math.random() * totalWeight;
-    let cumulativeProbability = 0;
-    
-    selectedPrize = weightedPrizes[0];
-    for (const prize of weightedPrizes) {
-      cumulativeProbability += prize.adjustedProb;
-      if (rand <= cumulativeProbability) {
-        selectedPrize = prize;
-        break;
-      }
-    }
-
-    // Update last spin time
-    await supabaseAdmin.from('profiles').update({ 
-      last_spin_at: new Date().toISOString()
-    }).eq('user_id', user.id);
-    
-    console.log(`User ${user.id} (${count} orders): Selection with ${reductionFactor}x improved odds applied.`);
+    if (!selectedPrize) selectedPrize = nonePrize;
+    console.log(`User ${user.id} (${count} orders): Standard selection applied.`);
   }
+
+  // Update Metadata
+  await supabaseAdmin.from('profiles').update({ 
+    has_used_new_user_spin: true,
+    last_spin_at: new Date().toISOString()
+  }).eq('user_id', user.id);
 
   // VALIDATION: If is an 'item' prize, it MUST have a product_id. 
   // If not, fallback to a safe 'none' or 'voucher' prize to prevent errors.
@@ -325,15 +307,17 @@ export async function spinTheWheel() {
             // Notify Admin
             try {
                 const adminEmail = "orders.feedmeafrica@gmail.com"; 
+                const winnerName = profile?.display_name || user.user_metadata?.full_name || user.user_metadata?.name || "Unknown Name";
                 await sendMail({
                     to: adminEmail,
-                    subject: `🎰 SPIN WIN: ${selectedPrize.label} won by ${user.email}`,
+                    subject: `🎰 SPIN WIN: ${selectedPrize.label} won by ${winnerName} (${user.email})`,
                     html: `
                         <div style="font-family: sans-serif; padding: 20px;">
                             <h2 style="color: #1B6013;">Spin & Win Alert 🎰</h2>
                             <p>A user has won a physical prize!</p>
                             <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                                <p><strong>User:</strong> ${user.email}</p>
+                                <p><strong>Name:</strong> ${winnerName}</p>
+                                <p><strong>Email:</strong> ${user.email}</p>
                                 <p><strong>Prize:</strong> ${selectedPrize.label}</p>
                                 <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
                             </div>

@@ -1,7 +1,7 @@
 "use server";
 
 import { ProductInterface } from "@/utils/productsiinterface";
-import { createClient } from "../../utils/supabase/server";
+import { createClient, createServiceRoleClient } from "../../utils/supabase/server";
 import { sendBroadcastNotification } from "./notifications.actions";
 import { expandSearchTerms, buildSearchFilter, sortProductsByRelevance } from "@/lib/search-utils";
 
@@ -167,7 +167,8 @@ export async function getProductBySlug(slug: string) {
       .from("products")
       .select("*")
       .eq("slug", slug)
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     if (error) {
       throw error;
@@ -380,12 +381,77 @@ export async function updateProduct(id: string, product: any) {
 }
 
 export async function deleteProduct(id: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("products").delete().eq("id", id);
-  if (error) {
-    throw error;
+  const supabase = createServiceRoleClient();
+  
+  try {
+    // 1. Check for order history
+    const { data: orderItem } = await supabase
+      .from('order_items')
+      .select('id')
+      .eq('product_id', id)
+      .limit(1)
+      .maybeSingle();
+
+    if (orderItem) {
+      // If product has order history, we CANNOT delete it due to database integrity
+      // Instead, we archive it (mark as not published)
+      await supabase
+        .from('products')
+        .update({ is_published: false, stock_status: 'out_of_stock' })
+        .eq('id', id);
+      
+      return { 
+        success: true, 
+        message: "Product has order history and cannot be fully deleted. It has been archived and hidden instead.",
+        archived: true 
+      };
+    }
+
+    // 2. Perform cleanup of all related records in other tables
+    const childDeletions = [
+      { table: 'promotion_products', filter: { product_id: id } },
+      { table: 'bundle_products', filter: { product_id: id } },
+      { table: 'black_friday_items', filter: { product_id: id } },
+      { table: 'browsing_history', filter: { product_id: id } },
+      { table: 'cart_items', filter: { product_id: id } },
+      { table: 'spin_prizes', filter: { product_id: id } },
+      { table: 'blog_recipe_products', filter: { product_id: id } },
+      { table: 'product_reviews', filter: { product_id: id } },
+      { table: 'favorites', filter: { product_id: id } },
+      { table: 'product_relations', filter: { source_product_id: id } },
+      { table: 'product_relations', filter: { target_product_id: id } },
+    ];
+
+    // Use Promise.allSettled to ensure we try to delete from all tables even if some fail
+    await Promise.allSettled(childDeletions.map(async (d) => {
+      try {
+        await supabase.from(d.table).delete().match(d.filter);
+      } catch (e) {
+        console.error(`Cleanup failed for ${d.table}:`, e);
+      }
+    }));
+
+    // 3. Finally delete the product itself
+    const { error } = await supabase.from('products').delete().eq('id', id);
+    
+    if (error) {
+      if (error.code === '23503') {
+        // Still has dependencies we missed? Archive it as a fallback
+        await supabase.from('products').update({ is_published: false }).eq('id', id);
+        return { 
+          success: true, 
+          message: "Product is referenced in other records. It has been archived instead of deleted.",
+          archived: true 
+        };
+      }
+      throw error;
+    }
+
+    return { success: true, message: "Product deleted successfully." };
+  } catch (error: any) {
+    console.error("Error in deleteProduct action:", error);
+    throw new Error(error.message || "Failed to delete product");
   }
-  return true;
 }
 export async function getProductsBySearch(query: string, limit = 10) {
   const supabase = await createClient();
@@ -445,7 +511,8 @@ export async function getProductById(id: string) {
     .from("products")
     .select("*")
     .eq("id", id)
-    .single();
+    .limit(1)
+    .maybeSingle();
   if (error) throw error;
   return data;
 }

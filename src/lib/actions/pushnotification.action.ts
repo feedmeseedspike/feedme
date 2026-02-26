@@ -22,7 +22,6 @@ export async function sendPushNotification(
     }
 
     // 2. Invoke the Supabase Edge Function to handle the actual push delivery
-    // Note: 'push-notification' is a common name; adjust if yours is named differently.
     const { data, error: functionError } = await supabase.functions.invoke('push-notification', {
       body: {
         title,

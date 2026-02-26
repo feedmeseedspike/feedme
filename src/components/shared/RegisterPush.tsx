@@ -20,11 +20,10 @@ export default function RegisterPush({ userId }: RegisterPushProps) {
           return;
         }
 
-        // 2. Register Service Worker & Get Subscription
+        // 2. Register Service Worker & Get Native Subscription
         if ("serviceWorker" in navigator) {
           const registration = await navigator.serviceWorker.ready;
           
-          // Get or create native push subscription
           let subscription = await registration.pushManager.getSubscription();
           
           if (!subscription) {
@@ -41,9 +40,9 @@ export default function RegisterPush({ userId }: RegisterPushProps) {
           }
 
           if (subscription) {
-            // 3. Save to Supabase (using existing fcm_tokens table but storing JSON)
             const subscriptionJson = JSON.stringify(subscription);
             
+            // 3. Save to Supabase (using existing fcm_tokens table but storing JSON)
             const { data: existingToken } = await supabase
               .from("fcm_tokens" as any)
               .select("id")
@@ -52,7 +51,6 @@ export default function RegisterPush({ userId }: RegisterPushProps) {
               .maybeSingle();
 
             if (!existingToken) {
-              console.log("Saving fresh Push Subscription to Supabase");
               await supabase.from("fcm_tokens" as any).upsert({
                 user_id: userId,
                 fcm_token: subscriptionJson,

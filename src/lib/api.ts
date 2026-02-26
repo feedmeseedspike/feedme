@@ -159,7 +159,7 @@ export async function countCategories() {
 }
 
 export async function getCategoryById(id: string) {
-  const { data, error } = await supabase.from('categories').select('*').eq('id', id).single();
+  const { data, error } = await supabase.from('categories').select('*').eq('id', id).limit(1).maybeSingle();
   if (error) throw error;
   return data;
 }
@@ -195,13 +195,13 @@ export async function countProducts() {
 }
 
 export async function getProductById(id: string) {
-  const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
+  const { data, error } = await supabase.from('products').select('*').eq('id', id).limit(1).maybeSingle();
   if (error) throw error;
   return data;
 }
 
 export async function getProductBySlug(slug: string) {
-  const { data, error } = await supabase.from('products').select('*').eq('slug', slug).single();
+  const { data, error } = await supabase.from('products').select('*').eq('slug', slug).limit(1).maybeSingle();
   if (error) throw error;
   return data;
 }
@@ -244,7 +244,8 @@ export async function getCustomerById(customerId: string) {
     .select('*')
     .eq('id', customerId)
     .eq('role', 'buyer') // Ensure the user is a buyer
-    .single(); // Expect a single result
+    .limit(1)
+    .maybeSingle(); // Expect a single result
 
   if (error) {
     throw error;

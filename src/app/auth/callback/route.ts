@@ -3,6 +3,8 @@ import { createClient } from '@/utils/supabase/server';
 import { users } from '@/utils/users';
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   try {
     const requestUrl = new URL(request.url);

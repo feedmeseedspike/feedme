@@ -495,16 +495,29 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
     );
 
     const ProductImage = useMemo(() => {
-      const discountPercent = Math.round(
-        100 - (product.price / (product.list_price || product.price)) * 100
-      );
-
       const currentOption =
         selectedOptionData ||
         (sortedOptions.length > 0 ? sortedOptions[0] : null);
 
+      const discountTag = (product as any).tags?.find?.((t: string) => t.toLowerCase().includes("discount"));
+      let discountText = null;
+      
+      if (discountTag) {
+        const matches = discountTag.match(/\d+/);
+        if (matches) {
+          discountText = `${matches[0]}%`;
+        } else {
+          const rawText = discountTag.toLowerCase().replace("discount", "").replace(":", "").trim();
+          discountText = rawText || "SALE";
+        }
+      }
       return (
         <div className="relative">
+          {discountText && (
+            <div className="absolute top-0 left-0 bg-[#F0800F] text-white text-[10px] font-black px-2.5 py-1.5 rounded-br-xl z-20 uppercase tracking-tight pointer-events-none">
+              {discountText} OFF
+            </div>
+          )}
           {/* Like button with animation */}
           <motion.button
             onClick={handleToggleLike}
@@ -787,11 +800,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                 </div>
               )}
 
-              {/* {discountPercent > 0 && (
-                <span className="absolute top-2 left-2 bg-[#1B6013] text-white text-xs font-semibold px-2 py-1 rounded-md z-10">
-                  -{discountPercent}%
-                </span>
-              )} */}
+
             </div>
           </Link>
         </div>
@@ -860,12 +869,12 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           </Link>
           {/* {console.log('Product in_season value:', product.in_season, 'for product:', product.name)} */}
           {product.in_season === true && (
-            <span className="inline-block mt-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded font-semibold">
+            <span className="inline-block mt-1 px-2.5 py-0.5 text-[10px] bg-green-50 text-green-700 rounded-full font-bold border border-green-200">
               In Season
             </span>
           )}
           {product.in_season === false && (
-            <span className="inline-block mt-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded font-semibold">
+            <span className="inline-block mt-1 px-2.5 py-0.5 text-[10px] bg-red-50 text-red-700 rounded-full font-bold border border-red-200">
               Out of Season
             </span>
           )}
@@ -881,9 +890,16 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
 
           <div className="flex flex-col">
             {sortedOptions.length > 0 ? (
-              <span className="font-bold text-md whitespace-nowrap">
-                {priceDisplay}
-              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-bold text-md text-[#1B6013] whitespace-nowrap">
+                  {priceDisplay}
+                </span>
+                {sortedOptions.length === 1 && sortedOptions[0]?.list_price && sortedOptions[0].list_price > sortedOptions[0].price ? (
+                  <span className="line-through text-xs font-semibold text-gray-400 whitespace-nowrap">
+                    {formatNaira(sortedOptions[0].list_price)}
+                  </span>
+                ) : null}
+              </div>
             ) : (
               <ProductPrice
                 isDeal={product.tags?.includes("todays-deal") || false}
@@ -943,9 +959,16 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                 <span className="font-medium text-sm text-[#101828]">
                   {option.name}
                 </span>
-                <span className="text-sm text-[#475467]">
-                  {formatNaira(option.price)}
-                </span>
+                <div className="flex flex-col items-end">
+                  <span className="text-sm text-[#475467]">
+                    {formatNaira(option.price)}
+                  </span>
+                  {option.list_price && option.list_price > option.price ? (
+                    <span className="text-[10px] text-gray-400 font-semibold line-through">
+                      {formatNaira(option.list_price)}
+                    </span>
+                  ) : null}
+                </div>
               </motion.button>
               {isSelected && (
                 <motion.div
@@ -959,9 +982,16 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                       <p className="text-sm font-semibold text-[#0F172A]">
                         {option.name}
                       </p>
-                      <p className="text-xs text-[#475467]">
-                        {formatNaira(option.price)}
-                      </p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-xs font-semibold text-[#1B6013]">
+                          {formatNaira(option.price)}
+                        </p>
+                        {option.list_price && option.list_price > option.price ? (
+                          <span className="line-through text-[10px] font-semibold text-gray-400 whitespace-nowrap">
+                            {formatNaira(option.list_price)}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                     {currentCartItem && currentCartItem.quantity > 0 && (
                       <button
@@ -1055,11 +1085,18 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                   <p className="text-sm font-semibold text-[#0F172A]">
                     {selectedOptionData?.name || sortedOptions[0]?.name}
                   </p>
-                  <p className="text-xs text-[#475467]">
-                    {selectedOptionData
-                      ? formatNaira(selectedOptionData.price)
-                      : ""}
-                  </p>
+                  <div className="flex items-center gap-1.5 flex-wrap mt-[2px]">
+                    <p className="text-xs font-semibold text-[#1B6013]">
+                      {selectedOptionData
+                        ? formatNaira(selectedOptionData.price)
+                        : ""}
+                    </p>
+                    {selectedOptionData?.list_price && selectedOptionData.list_price > selectedOptionData.price ? (
+                      <span className="line-through text-[10px] font-semibold text-gray-400 whitespace-nowrap">
+                        {formatNaira(selectedOptionData.list_price)}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
                 <SheetClose
                   className="text-[#101828] text-xs font-semibold underline underline-offset-4"

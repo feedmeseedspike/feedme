@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { getAllBlogTags } from "@/lib/actions/blog.actions";
 

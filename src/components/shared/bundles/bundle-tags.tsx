@@ -113,8 +113,15 @@ export default function BundleTags({
             >
               <Link
                 href={`/bundles/${bundleSlug}`}
-                className="flex flex-col gap-2 justify-center items-center flex-shrink-0"
+                className="flex flex-col gap-2 justify-center items-center flex-shrink-0 group relative"
               >
+                {/* Discount badge - Outside the scaling container */}
+                {(bundle as any).discount_percentage && (bundle as any).discount_percentage > 0 && (
+                  <div className="absolute top-0 right-0 bg-[#F0800F] text-white px-2 py-1 rounded-bl-xl text-[9px] font-black z-30 uppercase tracking-tight pointer-events-none">
+                    {(bundle as any).discount_percentage}% OFF
+                  </div>
+                )}
+                
                 <motion.div 
                   className="size-[6rem] md:size-[8rem] bg-[#F2F4F7] rounded-[100%] p-3 flex justify-center items-center relative overflow-hidden"
                   whileHover={{ 
@@ -137,13 +144,6 @@ export default function BundleTags({
                     className="absolute inset-0 rounded-full bg-gradient-to-r from-green-400/10 to-blue-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                     initial={false}
                   />
-
-                  {/* Discount badge */}
-                  {(bundle as any).discount_percentage && (bundle as any).discount_percentage > 0 && (
-                    <div className="absolute -top-1 -right-1 bg-red-500 text-white px-1.5 py-0.5 rounded-full text-xs font-medium z-20">
-                      -{(bundle as any).discount_percentage}%
-                    </div>
-                  )}
                   
                   {bundle.thumbnail_url && (
                     <motion.div

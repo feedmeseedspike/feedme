@@ -11,6 +11,7 @@ import {
   DEFAULT_IMAGE,
   getFreshCategoryTag,
 } from "@/lib/image-macher";
+import { similarity } from "@/lib/similarity";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,11 +19,7 @@ const supabase = createClient(
 );
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
-const BATCH_SIZE = 10;
 
-// ──────────────────────────────────────────────────────────────────
-// INTERFACES
-// ──────────────────────────────────────────────────────────────────
 interface Option {
   name: string;
   image: string;
@@ -53,9 +50,6 @@ interface ProductInsert {
   in_season: boolean | null;
 }
 
-// ──────────────────────────────────────────────────────────────────
-// DYNAMIC DESCRIPTION GENERATOR
-// ──────────────────────────────────────────────────────────────────
 function generateDescription(
   p: any,
   lowestPrice: number,
@@ -87,265 +81,211 @@ function generateDescription(
   );
 }
 
-console.log("API route /api/upload-excel is LOADED");
-
 export async function POST(req: NextRequest) {
-  console.log("Upload API called");
-
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
+    const isDryRun = formData.get("dryRun") === "true";
+    const confirmationsRaw = formData.get("confirmations") as string | null;
+    const confirmations = confirmationsRaw ? JSON.parse(confirmationsRaw) : {};
+
     if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
 
     if (file.size > MAX_FILE_SIZE)
       return NextResponse.json({ error: "File too large" }, { status: 400 });
-    if (!file.name.endsWith(".xlsx"))
-      return NextResponse.json({ error: "Only .xlsx" }, { status: 400 });
+    const isXlsx = file.name.endsWith(".xlsx");
+    const isCsv = file.name.endsWith(".csv");
+    if (!isXlsx && !isCsv)
+      return NextResponse.json({ error: "Only .xlsx or .csv files are accepted" }, { status: 400 });
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true });
-    const sheet = workbook.Sheets["FeedMe Updated Prices"];
+
+    // For .xlsx, prefer the named sheet; for .csv, use first sheet
+    let sheet = isXlsx
+      ? workbook.Sheets["FeedMe Updated Prices"]
+      : workbook.Sheets[workbook.SheetNames[0]];
+    // Fallback: if named sheet not found in xlsx, try first sheet
+    if (!sheet && isXlsx) sheet = workbook.Sheets[workbook.SheetNames[0]];
     if (!sheet)
-      return NextResponse.json({ error: "Sheet not found" }, { status: 400 });
+      return NextResponse.json({ error: "Could not read sheet" }, { status: 400 });
 
     const raw: any = XLSX.utils.sheet_to_json(sheet, { header: 1 });
     const parsedProducts = parseFeedMeSheet(raw, DEFAULT_IMAGE);
 
     if (parsedProducts.length === 0)
-      return NextResponse.json({ error: "No data" }, { status: 400 });
+      return NextResponse.json({ error: "No data found in sheet" }, { status: 400 });
 
-    // DEBUG
-    if (parsedProducts.length > 0) {
-      console.log("SAMPLE PARSED PRODUCT:", {
-        categoryTitle: parsedProducts[0].categoryTitle,
-        name: parsedProducts[0].name,
-        optionCount: parsedProducts[0].options.length,
+    // FETCH ALL RELEVANT DATA FROM DB
+    const [{ data: allExistingProducts }, { data: allCats }] = await Promise.all([
+      supabase.from("products").select("id, name, options, price, list_price, images, tags, stock_status, in_season"),
+      supabase.from("categories").select("id, title")
+    ]);
+
+    const catMap = new Map(allCats?.map((c) => [c.title.toLowerCase(), c.id]) || []);
+    const generalCat = allCats?.find(c => c.title === "General");
+    if (!generalCat) return NextResponse.json({ error: "General category missing" }, { status: 500 });
+    const GENERAL_CATEGORY_ID = generalCat.id;
+
+    if (isDryRun) {
+      const analysis = parsedProducts.map(p => {
+        const exact = allExistingProducts?.find(ep => ep.name === p.name);
+        if (exact) return { csvItem: p.name, status: "exact_match", matchId: exact.id, matchName: exact.name };
+
+        // Fuzzy match
+        let bestMatch: any = null;
+        let highestSim = 0;
+        allExistingProducts?.forEach(ep => {
+          const sim = similarity(p.name, ep.name);
+          if (sim > highestSim) {
+            highestSim = sim;
+            bestMatch = ep;
+          }
+        });
+
+        if (highestSim > 0.7) {
+          return { csvItem: p.name, status: "potential_rename", matchId: bestMatch.id, matchName: bestMatch.name, similarity: highestSim };
+        }
+
+        const suggestion = highestSim > 0.4 ? { id: bestMatch.id, name: bestMatch.name, similarity: highestSim } : undefined;
+        return { csvItem: p.name, status: "new", suggestion };
+      });
+
+      return NextResponse.json({ 
+        success: true, 
+        dryRun: true, 
+        analysis,
+        totalParsed: parsedProducts.length 
       });
     }
 
-    // FETCH GENERAL CATEGORY
-    let GENERAL_CATEGORY_ID: string;
-    const { data: generalCat } = await supabase
-      .from("categories")
-      .select("id")
-      .eq("title", "General")
-      .single();
-
-    if (!generalCat) {
-      console.error("General category missing");
-      return NextResponse.json({ error: "General missing" }, { status: 500 });
-    }
-    GENERAL_CATEGORY_ID = generalCat.id;
-    console.log(`General category ID: ${GENERAL_CATEGORY_ID}`);
-
-    const { data: allCats } = await supabase
-      .from("categories")
-      .select("id, title");
-    const catMap = new Map(
-      allCats?.map((c) => [c.title.toLowerCase(), c.id]) || []
-    );
-    console.log(`Loaded ${catMap.size} categories`);
-
     // ─────────────────────────────────────────────────────────────
-    // TRACK PRODUCTS IN CSV FOR OUT-OF-STOCK DETECTION
+    // ACTUAL EXECUTION (CONFIRMED)
     // ─────────────────────────────────────────────────────────────
-    const productsInCSV = new Set(parsedProducts.map(p => p.name));
     let totalInserted = 0;
-    let totalMarkedOutOfStock = 0;
+    let totalUpdated = 0;
+    const finalProductsInCSVNames = new Set<string>();
 
-    for (let i = 0; i < parsedProducts.length; i += BATCH_SIZE) {
-      const batch = parsedProducts.slice(i, i + BATCH_SIZE);
-      console.log(
-        `Processing batch ${i / BATCH_SIZE + 1} (${batch.length} items)`
+    for (const p of parsedProducts) {
+      const lowestPrice = Math.min(...p.options.map((o: any) => o.price));
+      const highestPrice = Math.max(...p.options.map((o: any) => o.price));
+      const sheetCatLower = (p.categoryTitle || "").toLowerCase();
+      const categoryId = catMap.get(sheetCatLower) || GENERAL_CATEGORY_ID;
+      const categoryTitle = sheetCatLower && catMap.has(sheetCatLower) ? p.categoryTitle : "General";
+
+      const imgEntry = findImageEntry(p.name);
+      const productMainImg = getProductImage(imgEntry);
+      const optionImg = getOptionImage(imgEntry);
+      const tags = getFreshCategoryTag(p.categoryTitle);
+
+      let existing = allExistingProducts?.find(ep => ep.name === p.name);
+      
+      const conf = confirmations[p.name];
+      if (conf?.action === 'ignore') continue;
+      if (!existing && conf?.action === 'rename') {
+        const targetId = conf.targetId;
+        existing = allExistingProducts?.find(ep => ep.id === targetId);
+      }
+
+      const existingTags = existing?.tags || [];
+      const newTags = tags || [];
+      const combinedWithoutDiscount = [...existingTags, ...newTags].filter(
+        (t) => typeof t === "string" && !t.toLowerCase().startsWith("discount:")
       );
+      const mergedTags = Array.from(new Set(combinedWithoutDiscount));
 
-      for (const p of batch) {
-        const lowestPrice = Math.min(...p.options.map((o: any) => o.price));
-        const highestPrice = Math.max(...p.options.map((o: any) => o.price));
-        const sheetCatLower = (p.categoryTitle || "").toLowerCase();
-        const categoryTitle =
-          sheetCatLower && catMap.has(sheetCatLower)
-            ? p.categoryTitle
-            : "General";
-        let categoryId = GENERAL_CATEGORY_ID;
+      if ((p as any).discount) {
+        mergedTags.push(`Discount: ${(p as any).discount}`);
+      }
 
-        if (sheetCatLower && catMap.has(sheetCatLower)) {
-          categoryId = catMap.get(sheetCatLower)!;
-          console.log(`Matched: "${p.categoryTitle}" → ${categoryId}`);
-        } else {
-          console.log(`No match: "${p.categoryTitle}" → using General`);
+      const updateData: any = {
+        name: p.name,
+        price: lowestPrice,
+        list_price: highestPrice,
+        category_ids: [categoryId, GENERAL_CATEGORY_ID],
+        stock_status: "in_stock",
+        tags: mergedTags,
+      };
+
+      if (existing) {
+        const updatedOptions = (existing.options || []).map((opt: any) => {
+          const newOpt = p.options.find((o: any) => o.name === opt.name);
+          if (newOpt) {
+            return { ...opt, price: newOpt.price, list_price: newOpt.price, image: optionImg, stockStatus: "In Stock" };
+          }
+          return opt;
+        });
+
+        p.options.forEach((newOpt: any) => {
+          if (!updatedOptions.some((o: any) => o.name === newOpt.name)) {
+            updatedOptions.push({ name: newOpt.name, image: optionImg, price: newOpt.price, list_price: newOpt.price, stockStatus: "In Stock" });
+          }
+        });
+
+        updateData.options = updatedOptions;
+        const currentImgs = existing.images ?? [];
+        if (currentImgs.length === 1 && currentImgs[0] === DEFAULT_IMAGE) {
+          updateData.images = [productMainImg];
         }
 
-        // ─────────────────────────────────────────────────────────────
-        // IMAGE & TAGS LOOKUP
-        // ─────────────────────────────────────────────────────────────
-        const imgEntry = findImageEntry(p.name);
-        const productMainImg = getProductImage(imgEntry);
-        const optionImg = getOptionImage(imgEntry);
-        const tags = getFreshCategoryTag(p.categoryTitle); // null if empty
-
-        // FETCH EXISTING PRODUCT
-        const { data: existing } = await supabase
-          .from("products")
-          .select("id, options, price, list_price, images, tags, stock_status, in_season")
-          .eq("name", p.name)
-          .single();
-
-        // Merge existing tags with new generated tags
-        const existingTags = existing?.tags || [];
-        const newTags = tags || [];
-        const mergedTags = Array.from(new Set([...existingTags, ...newTags]));
-
-        const updateData: any = {
+        const { error } = await supabase.from("products").update(updateData).eq("id", existing.id);
+        if (!error) {
+          totalUpdated++;
+          finalProductsInCSVNames.add(p.name);
+        }
+      } else {
+        const newProduct: ProductInsert = {
+          name: p.name,
+          slug: slugify(p.name),
+          description: generateDescription(p, lowestPrice, highestPrice, categoryTitle),
           price: lowestPrice,
           list_price: highestPrice,
+          brand: null,
+          avg_rating: 0.0,
+          num_reviews: null,
+          num_sales: 0,
+          count_in_stock: null,
+          stock_status: "in_stock",
+          is_published: true,
+          vendor_id: null,
           category_ids: [categoryId, GENERAL_CATEGORY_ID],
-          stock_status: "in_stock", // ← Mark as in stock since it's in the CSV
           tags: mergedTags,
+          images: [productMainImg],
+          options: p.options.map((o: any) => ({ name: o.name, image: optionImg, price: o.price, list_price: o.price, stockStatus: "In Stock" })),
+          rating_distribution: {},
+          in_season: null,
         };
-
-        // ─────────────────────────────────────────────────────────────
-        // UPDATE EXISTING PRODUCT
-        // ─────────────────────────────────────────────────────────────
-        if (existing) {
-          console.log(`UPDATING: "${p.name}"`);
-
-          const updatedOptions = (existing.options || []).map((opt: any) => {
-            const newOpt = p.options.find((o: any) => o.name === opt.name);
-            if (newOpt) {
-              return {
-                ...opt,
-                price: newOpt.price,
-                list_price: newOpt.price,
-                image: optionImg,
-                stockStatus: "In Stock", // ← Mark option as in stock
-              };
-            }
-            return opt;
-          });
-
-          p.options.forEach((newOpt: any) => {
-            if (!updatedOptions.some((o: any) => o.name === newOpt.name)) {
-              updatedOptions.push({
-                name: newOpt.name,
-                image: optionImg,
-                price: newOpt.price,
-                list_price: newOpt.price,
-                stockStatus: "In Stock",
-              });
-            }
-          });
-
-          updateData.options = updatedOptions;
-
-          const currentImgs = existing.images ?? [];
-          if (currentImgs.length === 1 && currentImgs[0] === DEFAULT_IMAGE) {
-            updateData.images = [productMainImg];
-          }
-
-          const { error } = await supabase
-            .from("products")
-            .update(updateData)
-            .eq("id", existing.id);
-
-          if (error) {
-            console.error(`Update failed for ${p.name}:`, error.message);
-          } else {
-            console.log(
-              `Updated ${p.name}: ${p.options.length} options synced, marked IN STOCK`
-            );
-          }
-        }
-        // ─────────────────────────────────────────────────────────────
-        // INSERT NEW PRODUCT
-        // ─────────────────────────────────────────────────────────────
-        else {
-          console.log(`CREATING: "${p.name}"`);
-
-          const newProduct: ProductInsert = {
-            name: p.name,
-            slug: slugify(p.name),
-            description: generateDescription(
-              p,
-              lowestPrice,
-              highestPrice,
-              categoryTitle
-            ),
-            price: lowestPrice,
-            list_price: highestPrice,
-            brand: null,
-            avg_rating: 0.0,
-            num_reviews: null,
-            num_sales: 0,
-            count_in_stock: null,
-            stock_status: "in_stock", // ← New products are in stock
-            is_published: true,
-            vendor_id: null,
-            category_ids: [categoryId, GENERAL_CATEGORY_ID],
-            tags,
-            images: [productMainImg],
-            options: p.options.map((o: any) => ({
-              name: o.name,
-              image: optionImg,
-              price: o.price,
-              list_price: o.price,
-              stockStatus: "In Stock",
-            })),
-            rating_distribution: {},
-            in_season: null, // ← Admin will set this manually
-          };
-
-          const { error } = await supabase
-            .from("products")
-            .insert(newProduct);
-
-          if (error) {
-            console.error(`Insert failed for ${p.name}:`, error.message);
-          } else {
-            console.log(`Created ${p.name}`);
-          }
-        }
-
-        totalInserted++;
-      }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // MARK PRODUCTS NOT IN CSV AS OUT OF STOCK
-    // ─────────────────────────────────────────────────────────────
-    console.log("\n🔍 Checking for products missing from CSV...");
-    const { data: allProducts } = await supabase
-      .from("products")
-      .select("id, name, stock_status");
-
-    if (allProducts) {
-      for (const product of allProducts) {
-        if (!productsInCSV.has(product.name) && product.stock_status !== "out_of_stock") {
-          const { error } = await supabase
-            .from("products")
-            .update({ stock_status: "out_of_stock" })
-            .eq("id", product.id);
-
-          if (!error) {
-            console.log(`❌ Marked OUT OF STOCK: "${product.name}"`);
-            totalMarkedOutOfStock++;
-          }
+        const { error } = await supabase.from("products").insert(newProduct);
+        if (!error) {
+          totalInserted++;
+          finalProductsInCSVNames.add(p.name);
         }
       }
     }
 
+    // Mark missing products as out of stock
+    let totalMarkedOutOfStock = 0;
+    if (allExistingProducts) {
+      for (const product of allExistingProducts) {
+        // If it was renamed TO something else, it's covered by the new name in Set.
+        // If it was NOT in the CSV and NOT target of a rename, mark OOS.
+        const wasTargetOfRename = Object.values(confirmations).some((c: any) => c.action === 'rename' && c.targetId === product.id);
+        if (!finalProductsInCSVNames.has(product.name) && !wasTargetOfRename && product.stock_status !== "out_of_stock") {
+          const { error } = await supabase.from("products").update({ stock_status: "out_of_stock" }).eq("id", product.id);
+          if (!error) totalMarkedOutOfStock++;
+        }
+      }
+    }
 
-    console.log(`\n✅ IMPORT COMPLETE: ${totalInserted} products processed`);
-    console.log(`📦 ${totalMarkedOutOfStock} products marked OUT OF STOCK (not in CSV)`);
-    
     return NextResponse.json({ 
       success: true, 
-      total: totalInserted,
+      totalInserted,
+      totalUpdated,
       markedOutOfStock: totalMarkedOutOfStock,
-      message: `Updated ${totalInserted} products. ${totalMarkedOutOfStock} products marked out of stock.`
+      message: `Updated ${totalUpdated} and created ${totalInserted} products. ${totalMarkedOutOfStock} marked out of stock.`
     });
   } catch (error: any) {
-    console.error("FATAL ERROR:", error);
+    console.error("API error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
