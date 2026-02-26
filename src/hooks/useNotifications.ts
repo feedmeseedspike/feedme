@@ -91,42 +91,38 @@ export function useNotifications(userId: string | undefined) {
           if (!newNotification.dismissed) {
              setNotifications((prev) => [newNotification, ...prev]);
              
-             if ("Notification" in window && Notification.permission === "granted") {
+             // Play sound (professional touch)
+             try {
                 const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
                 audio.play().catch(() => {});
+             } catch (e) {}
 
-                const title = "FeedMe Update";
-                const options: any = {
-                  body: newNotification.body,
-                  icon: "/icon.png",
-                  vibrate: [200, 100, 200],
-                  silent: false,
-                  data: {
-                    link: newNotification.link || '/'
-                  }
-                };
+             const title = "FeedMe Update";
+             const options: any = {
+               body: newNotification.body,
+               icon: "/icon.png",
+               vibrate: [200, 100, 200],
+               silent: false,
+               tag: `notification-${newNotification.id}`, // Avoid duplicates
+               data: {
+                 link: newNotification.link || '/'
+               }
+             };
 
+             if ("Notification" in window && Notification.permission === "granted") {
                 if ("serviceWorker" in navigator) {
                   navigator.serviceWorker.ready.then((registration) => {
                     registration.showNotification(title, options);
                   }).catch(() => {
-                    if ("vibrate" in navigator) (navigator as any).vibrate([200, 100, 200]);
-                    const noti = new window.Notification(title, options);
-                    noti.onclick = () => {
-                      window.focus();
-                      if (newNotification.link) window.location.href = newNotification.link;
-                    };
+                    new window.Notification(title, options);
                   });
                 } else {
-                  if ("vibrate" in navigator) (navigator as any).vibrate([200, 100, 200]);
-                  const noti = new window.Notification(title, options);
-                  noti.onclick = () => {
-                    window.focus();
-                    if (newNotification.link) window.location.href = newNotification.link;
-                  };
+                  new window.Notification(title, options);
                 }
              } else {
-                showToast(`New Notification: ${newNotification.body}`, "info");
+                // Fallback to toast if system notification is blocked or not granted
+                showToast(`${newNotification.body}`, "info");
+                console.log("System notification skipped: Permission state is", Notification.permission);
              }
           }
         }

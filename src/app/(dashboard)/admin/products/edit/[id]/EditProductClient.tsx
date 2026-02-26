@@ -981,9 +981,11 @@ export default function EditProductClient({
                           {...field}
                           placeholder="Enter price"
                           type="number"
-                          value={field.value === 0 ? "" : String(field.value)}
+                          value={field.value ?? ""}
                           onChange={(e) =>
-                            field.onChange(parseFloat(e.target.value) || 0)
+                            field.onChange(
+                              e.target.value === "" ? undefined : parseFloat(e.target.value)
+                            )
                           }
                           className="col-span-7"
                           disabled={form.watch("variation") === "Yes"}
@@ -1007,14 +1009,10 @@ export default function EditProductClient({
                           {...field}
                           placeholder="Enter list price"
                           type="number"
-                          value={
-                            field.value === undefined ? "" : String(field.value)
-                          }
+                          value={field.value ?? ""}
                           onChange={(e) =>
                             field.onChange(
-                              e.target.value === ""
-                                ? undefined
-                                : parseFloat(e.target.value)
+                              e.target.value === "" ? undefined : parseFloat(e.target.value)
                             )
                           }
                           className="col-span-7"

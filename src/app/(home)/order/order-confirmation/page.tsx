@@ -356,7 +356,7 @@ export default function OrderConfirmationPage() {
             transition={{ delay: 0.4 }}
             className="text-gray-500 text-lg"
           >
-            Thank you, {order.profiles?.display_name || "Jerry"}. We&apos;ve sent a confirmation to your email.
+            Thank you, {order.profiles?.display_name || "User"}. We&apos;ve sent a confirmation to your email.
           </motion.p>
         </div>
 

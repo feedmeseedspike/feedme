@@ -20,6 +20,7 @@ import TrustFooterHighlight from "@components/shared/home/TrustFooterHighlight";
 import { QueryClient, dehydrate } from "@tanstack/react-query";
 import { ReactQueryHydrate } from "@providers/ReactQueryHydrate";
 import StoreFeatures from "@components/shared/home/StoreFeatures";
+import DiscountSlider from "@components/shared/home/DiscountSlider";
 
 
 import { createServerComponentClient } from "src/utils/supabase/server";
@@ -28,6 +29,7 @@ import { getAllCategoriesQuery } from "src/queries/categories";
 import {
   getProductsByTagQuery,
   getUsersPurchasedProductIds,
+  getDiscountedProductsQuery,
 } from "src/queries/products";
 import { fetchBundles } from "src/queries/bundles";
 import { mapSupabaseProductToIProductInput, CategoryData } from "src/lib/utils";
@@ -106,6 +108,17 @@ export default async function Home() {
           "new-arrival",
           10
         ).select("*");
+        if (error) throw error;
+        return data;
+      },
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ["products", { tag: "discounted-home", limit: 10 }],
+      queryFn: async () => {
+        const { data, error } = await getDiscountedProductsQuery(
+          supabase,
+          10
+        );
         if (error) throw error;
         return data;
       },
@@ -333,6 +346,10 @@ export default async function Home() {
                   tag="new-arrival"
                   limit={10}
                 />
+              </Suspense>
+
+              <Suspense fallback={<ProductSliderSkeleton />}>
+                <DiscountSlider title="Massive 10% Off Deals" limit={10} />
               </Suspense>
 
               <Suspense fallback={<ProductSliderSkeleton />}>

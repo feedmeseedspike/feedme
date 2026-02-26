@@ -29,18 +29,18 @@ const ProductPrice = React.memo(
       return formattedPrice;
     }
 
-    if (listPrice === 0) {
-      return <div className={cn("text-lg font-bold", className)}>{formattedPrice}</div>;
+    if (listPrice === 0 || listPrice <= price) {
+      return <div className={cn("text-[14px] font-bold text-[#1B6013]", className)}>{formattedPrice}</div>;
     }
 
     if (isDeal) {
       return (
         <div className="space-y-2">
-          <div className={`flex ${forListing && ""} items-center gap-2`}>
-            <div className={cn("text-lg font-bold", className)}>{formattedPrice}</div>
-            {/* <div className="text-muted-foreground text-xs py-2">
-            Was: <span className="line-through">{formattedListPrice}</span>
-          </div> */}
+          <div className={`flex ${forListing && ""} flex-col items-start gap-1`}>
+            <div className={cn("text-[14px] font-bold text-[#1B6013]", className)}>{formattedPrice}</div>
+            <div className="text-gray-400 text-xs font-semibold">
+              Was: <span className="line-through">{formattedListPrice}</span>
+            </div>
           </div>
         </div>
       );
@@ -48,9 +48,9 @@ const ProductPrice = React.memo(
 
     return (
       <div>
-        <div className="flex gap-2 items-center">
-          <div className={cn("text-lg font-bold", className)}>{formattedPrice}</div>
-          {/* <span className="line-through text-xs">{formattedListPrice}</span> */}
+        <div className="flex gap-1.5 items-center flex-wrap">
+          <div className={cn("text-[14px] font-bold text-[#1B6013]", className)}>{formattedPrice}</div>
+          <span className="line-through text-[10px] font-semibold text-gray-400">{formattedListPrice}</span>
         </div>
       </div>
     );

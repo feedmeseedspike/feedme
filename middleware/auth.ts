@@ -7,9 +7,17 @@ export function authMiddleware(
 ) {
   return async (request: NextRequest) => {
     try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseKey) {
+        return NextResponse.json(
+          { message: "Server configuration error" },
+          { status: 500 }
+        );
+      }
+
       let response = NextResponse.next({ request });
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
       const supabase = createServerClient(
         supabaseUrl,
         supabaseKey,

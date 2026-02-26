@@ -22,6 +22,7 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
+  Loader2,
 } from "lucide-react";
 import {
   Sheet,
@@ -44,7 +45,8 @@ import { BiEdit } from "react-icons/bi";
 import PaginationBar from "../../../../components/shared/pagination";
 import { Separator } from "@components/ui/separator";
 import Link from "next/link";
-import { getProducts, deleteProduct } from "../../../../queries/products";
+import { getProducts } from "../../../../queries/products";
+import { deleteProduct } from "src/lib/actions/product.actions";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "../../../../hooks/useToast";
@@ -56,7 +58,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@components/ui/dialog";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "src/utils/supabase/client";
 import { getCategoryById, getAllCategoriesQuery } from "src/queries/categories";
 import { debounce } from "lodash";
@@ -117,6 +119,7 @@ export default function ProductsClient({
   const searchParams = useSearchParams();
   const { showToast } = useToast();
   const supabase = createClient();
+  const queryClient = useQueryClient();
 
   // Local state for the input field
   const [inputValue, setInputValue] = useState(initialSearch || "");
@@ -166,6 +169,7 @@ export default function ProductsClient({
   const [categoryNames, setCategoryNames] = useState<Record<string, string>>(
     initialCategoryNames || {}
   );
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // State for all categories mapping
   const [allCategoryMap, setAllCategoryMap] = useState<Record<string, string>>(
@@ -305,10 +309,26 @@ export default function ProductsClient({
     },
     placeholderData: (prev) => prev,
     initialData: { data: initialProducts, count: totalProductsCount },
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
-  const products = queryResult?.data || initialProducts || [];
-  const currentTotalCount = queryResult?.count ?? totalProductsCount;
+  // Products derivation: Carefully extract from queryResult
+  // queryResult is the object { data: items[], count: total } returned by getProducts
+  const liveProducts = queryResult?.data;
+  const liveCount = queryResult?.count;
+
+  // Use live data if it exists, otherwise fall back to initial data provided by the server
+  const products = Array.isArray(liveProducts) ? liveProducts : (isLoading ? initialProducts : []);
+  const currentTotalCount = typeof liveCount === 'number' ? liveCount : totalProductsCount;
+  
+  useEffect(() => {
+    if (queryResult && Array.isArray(queryResult.data)) {
+      console.log(`[Products] Data Update: ${queryResult.data.length} items loaded (Total count: ${queryResult.count})`);
+    } else if (queryResult) {
+      console.log(`[Products] Query returned unexpected shape:`, queryResult);
+    }
+  }, [queryResult]);
 
   const stockStatuses = ["In stock", "Out of stock"];
   const publishedStatuses = ["Published", "Archived"];
@@ -376,22 +396,53 @@ export default function ProductsClient({
   };
 
   const handleDeleteClick = (product: any) => {
+    console.log("Delete button clicked for product:", product.name, product.id);
     setProductToDelete(product);
     setDeleteDialogOpen(true);
   };
 
   const handleDeleteConfirm = async () => {
-    if (!productToDelete) return;
-    try {
-      await deleteProduct(productToDelete.id);
-      showToast("Product deleted successfully!", "success");
-      await refetch();
-    } catch (err: any) {
-      console.error("Error deleting product:", err);
-      showToast(err.message || "Failed to delete product", "error");
+    if (!productToDelete) {
+      console.warn("handleDeleteConfirm called with no product selected");
+      return;
     }
+    
+    const deletingId = productToDelete.id;
+    const deletingName = productToDelete.name;
+    
+    console.log(`Initiating delete for ${deletingName} (${deletingId})...`);
+    
+    // Close dialog immediately to provide responsive feedback
     setDeleteDialogOpen(false);
-    setProductToDelete(null);
+    showToast(`Deleting ${deletingName}...`, "info");
+    
+    setIsDeleting(true);
+    
+    try {
+      const result = await deleteProduct(deletingId);
+      console.log(`Delete API result for ${deletingId}:`, result);
+      
+      if (result && result.success) {
+        showToast(result.message || `${deletingName} processed successfully!`, result.archived ? "info" : "success");
+        
+        // Wait a tiny bit for DB replication/consistency
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Force refresh both react-query and Next.js server cache
+        await queryClient.invalidateQueries({ queryKey: ["products"], exact: false });
+        const freshData = await refetch();
+        console.log(`[Products] Refetched ${freshData.data?.data?.length || 0} products.`);
+        
+        // router.refresh() handles the server-side props for initialProducts
+        router.refresh();
+      }
+    } catch (err: any) {
+      console.error("Error in handleDeleteConfirm:", err);
+      showToast(err.message || `Failed to delete ${deletingName}`, "error");
+    } finally {
+      setIsDeleting(false);
+      setProductToDelete(null); // Clear after everything is done
+    }
   };
 
   const totalPages = Math.ceil((currentTotalCount || 0) / itemsPerPage);
@@ -898,7 +949,13 @@ export default function ProductsClient({
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => handleDeleteClick(product)}>
+                      type="button"
+                      onClick={(e) => {
+                        console.log("Delete button clicked for product ID:", product.id);
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDeleteClick(product);
+                      }}>
                       <Trash2 size={16} />
                     </Button>
                   </TableCell>
@@ -935,11 +992,22 @@ export default function ProductsClient({
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}>
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={isDeleting}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDeleteConfirm}>
-              Delete
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}>
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

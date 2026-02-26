@@ -49,12 +49,7 @@ import { useToast } from "src/hooks/useToast";
 import { useCartQuery } from "src/queries/cart";
 import { CartItem, ProductOption } from "src/lib/actions/cart.actions";
 import { createVoucher } from "src/lib/actions/voucher.actions";
-import {
-  Step,
-  Stepper,
-  useStepper,
-  type StepItem,
-} from "../../../components/ui/stepper";
+
 import { ShimmerButton } from "@components/magicui/shimmer-button";
 import type { ShippingAddress } from "src/types/index";
 import { useUser } from "src/hooks/useUser";
@@ -184,10 +179,11 @@ const CartItemDisplay = React.memo(({ item, onRemove }: CartItemDisplayProps) =>
                 <button
                     type="button"
                     onClick={() => onRemove(item.id)}
-                    className="text-[9px] font-black text-gray-300 hover:text-red-500 transition-colors uppercase tracking-[0.2em] flex items-center gap-1.5 group/del"
+                    className="p-2 text-gray-300 hover:text-red-500 transition-colors group/del"
+                    title="Remove Item"
                 >
-                    <Trash2 size={10} className="group-hover/del:scale-110 transition-transform" />
-                    Discard item
+                    <Trash2 size={16} className="group-hover/del:scale-110 transition-transform" />
+                    <span className="sr-only">Remove</span>
                 </button>
             )}
         </div>
@@ -235,11 +231,6 @@ interface OrderProcessingResult {
   data?: any;
 }
 
-const steps = [
-  { label: "Shipping Information" },
-  { label: "Payment Method" },
-  { label: "Review Order" },
-] satisfies StepItem[];
 
 interface CheckoutFormProps {
   addresses: AddressWithId[];
@@ -441,6 +432,35 @@ const CheckoutForm = ({
     user?.display_name,
     user?.email,
   ]);
+
+  // Load guest addresses
+  useEffect(() => {
+    if (!user) {
+      const stored = localStorage.getItem("guestAddresses");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setUserAddresses(parsed);
+            if (!selectedAddressId) {
+                setSelectedAddressId(parsed[0].id);
+            }
+          }
+        } catch (e) {}
+      }
+    }
+  }, [user, selectedAddressId]);
+
+  // Save guest addresses on change
+  useEffect(() => {
+    if (!user) {
+      if (userAddresses.length > 0) {
+        localStorage.setItem("guestAddresses", JSON.stringify(userAddresses));
+      } else {
+        localStorage.removeItem("guestAddresses");
+      }
+    }
+  }, [user, userAddresses]);
 
   const isAuthenticated = !!user;
   const [isFirstOrder, setIsFirstOrder] = useState(false);
@@ -1076,7 +1096,7 @@ const CheckoutForm = ({
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 email: email,
-                amount: totalAmountPaid,
+                amount: Math.round(totalAmountPaid),
                 orderDetails: orderData,
               }),
             });
@@ -1195,25 +1215,23 @@ const CheckoutForm = ({
   const totalQuantity = items.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
-    <main className="bg-[#F9FAFB] min-h-screen">
+    <main className="bg-[#F9FAFB] min-h-screen font-proxima pb-20">
       <Container>
         <div className="py-12 md:py-16 animate-in fade-in slide-in-from-bottom-2 duration-700">
           <div className="max-w-6xl mx-auto">
             {/* Brand Header */}
             <div className="mb-12 text-center space-y-2">
-                 <h1 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">Checkout</h1>
+                 <h1 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight font-serif italic">Checkout</h1>
                  <p className="text-xs uppercase tracking-[0.2em] text-[#1B6013] font-bold">Secure your delivery</p>
             </div>
 
-             <div className="flex flex-col lg:flex-row gap-16 items-start">
-            {/* Left Column - Checkout Steps */}
+             <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 items-start">
+            {/* Left Column - Checkout Form */}
             <div className="lg:w-[60%] w-full">
-              <div className="space-y-6">
-                <Stepper orientation="vertical" initialStep={0} steps={steps} className="checkout-stepper-new">
-                  <Step label="Delivery Details">
-                    <div className="mt-12 space-y-10">
-                      <div className="pb-4 border-b border-[#D1D1D1]">
-                         <h3 className="text-[12px] uppercase tracking-[0.25em] font-black text-[#2A2A2A]">1. Identification & Destination</h3>
+              <div className="space-y-12">
+                  <section className="space-y-6">
+                      <div className="pb-4 border-b border-gray-200">
+                         <h3 className="text-lg font-bold text-gray-900 tracking-tight">Delivery Destination</h3>
                       </div>
 
                       {/* Address Summary Card */}
@@ -1248,12 +1266,15 @@ const CheckoutForm = ({
                             </div>
                         </div>
                       ) : (
-                        <div className="text-center py-12 bg-white rounded-3xl border-2 border-dashed border-gray-200 hover:border-green-200 transition-colors group cursor-pointer" onClick={() => setShowAddressModal(true)}>
-                             <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-4 group-hover:bg-green-50 transition-colors">
-                                <Icon icon="solar:map-point-add-bold-duotone" className="w-6 h-6 text-gray-400 group-hover:text-green-600 transition-colors" />
+                        <div 
+                          className="text-center py-10 px-6 bg-white rounded-2xl border border-dashed border-gray-300 hover:border-[#1B6013] hover:bg-[#1B6013]/5 transition-all group cursor-pointer" 
+                          onClick={() => setShowAddressModal(true)}
+                        >
+                             <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-[#1B6013]/10 flex items-center justify-center mx-auto mb-3 transition-colors">
+                                <Icon icon="solar:map-point-add-bold-duotone" className="w-5 h-5 text-gray-400 group-hover:text-[#1B6013] transition-colors" />
                              </div>
-                             <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">No address selected</p>
-                             <Button className="bg-[#1B6013] text-white rounded-xl shadow-lg shadow-green-100 h-10 px-6 font-bold text-xs uppercase tracking-widest">Add New Address</Button>
+                             <p className="text-sm font-bold text-gray-600 group-hover:text-[#1B6013] transition-colors">Select Delivery Address</p>
+                             <p className="text-xs text-gray-400 mt-1">Add or choose a delivery location</p>
                         </div>
                       )}
 
@@ -1276,7 +1297,7 @@ const CheckoutForm = ({
                                 {userAddresses.map((address) => (
                                   <label
                                     key={address.id}
-                                    className={`flex items-start gap-4 p-4 rounded-2xl border cursor-pointer transition-all ${selectedAddressId === address.id ? "border-[#1B6013] bg-[#1B6013]/5 ring-1 ring-[#1B6013]" : "border-gray-100 hover:border-gray-200 bg-white"}`}
+                                    className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all group ${selectedAddressId === address.id ? "border-[#1B6013] bg-[#1B6013]/5 ring-1 ring-[#1B6013]" : "border-gray-100 hover:border-gray-200 bg-white"}`}
                                   >
                                     <div className="pt-1">
                                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedAddressId === address.id ? "border-[#1B6013]" : "border-gray-300"}`}>
@@ -1300,10 +1321,10 @@ const CheckoutForm = ({
                                       </div>
                                       <div className="text-xs text-gray-400 mt-1 font-medium">{address.phone}</div>
                                     </div>
-                                    <div className="flex flex-col gap-1">
+                                    <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button
                                           type="button"
-                                          className="p-2 text-gray-400 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors"
+                                          className="p-1.5 text-gray-400 hover:text-[#1B6013] hover:bg-[#1B6013]/5 rounded-md transition-colors"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             setEditingAddress(address);
@@ -1321,7 +1342,7 @@ const CheckoutForm = ({
                                         </button>
                                         <button
                                           type="button"
-                                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             setAddressToDelete(address);
@@ -1341,21 +1362,21 @@ const CheckoutForm = ({
                               </div>
                             )}
                             <button
-                              className="w-full mt-2 py-3 border border-dashed border-gray-300 rounded-xl text-gray-500 font-bold text-xs uppercase tracking-widest hover:bg-gray-50 hover:border-gray-400 transition-all flex items-center justify-center gap-2"
-                              onClick={() => {
-                                setShowAddNewForm(true);
-                                setEditingAddress(null);
-                                shippingAddressForm.reset({
-                                  fullName: "",
-                                  street: "",
-                                  location: "",
-                                  phone: "",
-                                });
-                              }}
-                            >
-                              <Icon icon="solar:add-circle-bold" className="w-4 h-4" />
-                              Add New Address
-                            </button>
+                                className="w-full mt-4 py-3 border border-dashed border-gray-300 rounded-xl text-gray-500 font-bold text-xs uppercase tracking-widest hover:bg-gray-50 hover:border-gray-400 hover:text-gray-700 transition-all flex items-center justify-center gap-2"
+                                onClick={() => {
+                                  setShowAddNewForm(true);
+                                  setEditingAddress(null);
+                                  shippingAddressForm.reset({
+                                    fullName: "",
+                                    street: "",
+                                    location: "",
+                                    phone: "",
+                                  });
+                                }}
+                              >
+                                <Icon icon="solar:add-circle-bold" className="w-4 h-4" />
+                                Add New Address
+                              </button>
                           </div>
                         ) : (
                           <div className="mt-2">
@@ -1385,6 +1406,7 @@ const CheckoutForm = ({
                                         address = {
                                             id: editingAddress ? editingAddress.id : `temp-${Date.now()}`,
                                             ...newDetails,
+                                            email: values.email || "",
                                             user_id: null
                                         };
                                       }
@@ -1766,94 +1788,92 @@ const CheckoutForm = ({
                         </Form>
                       </div>
                     )}
-                  </div>
-                </Step>
+                  </section>
 
-                  <Step label="Secure Payment">
-                    <div className="mt-8 space-y-8">
-                       <div className="mb-6">
-                            <h3 className="text-xl font-bold text-gray-900">Payment Method</h3>
-                            <p className="text-sm text-gray-500 mt-1">Select a secure payment method</p>
+                  <section className="space-y-6">
+                       <div className="pb-4 border-b border-gray-200">
+                            <h3 className="text-lg font-bold text-gray-900 tracking-tight">Payment Method</h3>
                         </div>
 
                          <div className="grid grid-cols-1 gap-6">
                         <div
-                          className={`p-6 border-2 transition-all cursor-pointer relative overflow-hidden rounded-2xl ${
+                          className={`p-5 border transition-all cursor-pointer relative overflow-hidden rounded-xl ${
                             selectedPaymentMethod === "paystack"
-                              ? "border-[#1B6013] bg-[#1B6013]/5 ring-1 ring-[#1B6013]"
-                              : "border-gray-100 bg-white hover:border-gray-300"
+                              ? "border-[#1B6013] bg-[#1B6013]/5 shadow-sm"
+                              : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
                           }`}
                           onClick={() => setSelectedPaymentMethod("paystack")}
                         >
-                            {selectedPaymentMethod === "paystack" && (
-                                 <div className="absolute top-0 right-0 p-4">
-                                    <div className="bg-[#1B6013] text-white rounded-full p-1">
-                                        <Check size={12} strokeWidth={3} />
-                                    </div>
-                                 </div>
-                            )}
-                           <div className="flex items-center gap-6">
-                                <div className={`w-14 h-14 flex items-center justify-center rounded-full transition-all duration-300 ${
-                                    selectedPaymentMethod === "paystack" ? "bg-[#1B6013] text-white" : "bg-gray-50 text-gray-400"
+                           <div className="flex items-center gap-4">
+                                <div className={`w-12 h-12 flex items-center justify-center rounded-full transition-all duration-300 ${
+                                    selectedPaymentMethod === "paystack" ? "bg-[#1B6013] text-white shadow-md shadow-green-100" : "bg-gray-50 text-gray-400"
                                 }`}>
-                                    <Icon icon="solar:card-bold-duotone" className="w-7 h-7" />
+                                    <Icon icon="solar:card-bold-duotone" className="w-6 h-6" />
                                 </div>
-                                <div className="space-y-1">
-                                    <h4 className="font-bold text-lg text-gray-900">Debit Card / Transfer</h4>
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Powered by Paystack</p>
+                                <div className="space-y-0.5 flex-1">
+                                    <h4 className={`font-bold text-base ${selectedPaymentMethod === "paystack" ? "text-[#1B6013]" : "text-gray-700"}`}>Debit Card / Transfer</h4>
+                                    <p className="text-[10px] text-gray-400 font-medium">Secured payment via Paystack</p>
                                 </div>
+                                {selectedPaymentMethod === "paystack" && (
+                                    <div className="bg-[#1B6013] text-white rounded-full p-1">
+                                        <Check size={14} strokeWidth={3} />
+                                    </div>
+                                )}
                            </div>
                         </div>
 
                         {/* Wallet Card */}
                         <div
-                          className={`p-6 border-2 transition-all cursor-pointer relative overflow-hidden rounded-2xl ${
+                          className={`p-5 border transition-all cursor-pointer relative overflow-hidden rounded-xl ${
                             selectedPaymentMethod === "wallet"
-                              ? "border-[#1B6013] bg-[#1B6013]/5 ring-1 ring-[#1B6013]"
-                              : "border-gray-100 bg-white hover:border-gray-300"
-                          } ${walletBalance < totalAmountPaid ? "opacity-60 grayscale cursor-not-allowed" : ""}`}
+                              ? "border-[#1B6013] bg-[#1B6013]/5 shadow-sm"
+                              : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
+                          } ${!user || walletBalance < totalAmountPaid ? "opacity-60 grayscale cursor-not-allowed" : ""}`}
                           onClick={() => {
-                             if (walletBalance >= totalAmountPaid) setSelectedPaymentMethod("wallet");
+                             if (user && walletBalance >= totalAmountPaid) setSelectedPaymentMethod("wallet");
                           }}
                         >
-                             {selectedPaymentMethod === "wallet" && (
-                                 <div className="absolute top-0 right-0 p-4">
-                                    <div className="bg-[#1B6013] text-white rounded-full p-1">
-                                        <Check size={12} strokeWidth={3} />
-                                    </div>
-                                 </div>
-                            )}
-                           <div className="flex items-center gap-6">
-                                <div className={`w-14 h-14 flex items-center justify-center rounded-full transition-all duration-300 ${
-                                    selectedPaymentMethod === "wallet" ? "bg-[#1B6013] text-white" : "bg-gray-50 text-gray-400"
+                           <div className="flex items-center gap-4">
+                                <div className={`w-12 h-12 flex items-center justify-center rounded-full transition-all duration-300 ${
+                                    selectedPaymentMethod === "wallet" ? "bg-[#1B6013] text-white shadow-md shadow-green-100" : "bg-gray-50 text-gray-400"
                                 }`}>
-                                    <Icon icon="solar:wallet-bold-duotone" className="w-7 h-7" />
+                                    <Icon icon="solar:wallet-bold-duotone" className="w-6 h-6" />
                                 </div>
-                                <div className="flex-1 space-y-1">
-                                    <div className="flex items-baseline justify-between">
-                                        <h4 className="font-bold text-lg text-gray-900">Personal Wallet</h4>
-                                        <span className="font-bold text-lg text-gray-900">{formatNaira(walletBalance || 0)}</span>
+                                <div className="space-y-0.5 flex-1">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className={`font-bold text-base ${selectedPaymentMethod === "wallet" ? "text-[#1B6013]" : "text-gray-700"}`}>Personal Wallet</h4>
+                                        {user && (
+                                            <span className={`font-bold text-sm ${walletBalance < totalAmountPaid ? "text-red-500" : "text-gray-900"}`}>{formatNaira(walletBalance || 0)}</span>
+                                        )}
                                     </div>
                                     
-                                    {walletBalance < totalAmountPaid ? (
+                                    {!user ? (
                                         <div className="flex items-center gap-2">
-                                            <span className="bg-red-50 text-red-600 text-[9px] px-2 py-0.5 font-bold uppercase tracking-widest rounded">Low Balance</span>
-                                            <Link href="/account/wallet" className="text-[10px] font-bold text-[#1B6013] hover:underline uppercase tracking-widest">Recharge</Link>
+                                            <span className="text-gray-500 text-[10px] font-bold">Sign in to use Wallet</span>
+                                            <Link href="/login" className="text-[10px] font-bold text-[#1B6013] hover:underline uppercase tracking-wide">Login</Link>
+                                        </div>
+                                    ) : walletBalance < totalAmountPaid ? (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-red-500 text-[10px] font-bold">Insufficient Balance</span>
+                                            <Link href="/account/wallet" className="text-[10px] font-bold text-[#1B6013] hover:underline uppercase tracking-wide">Top-up</Link>
                                         </div>
                                     ) : (
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Available Credit</p>
+                                        <p className="text-[10px] text-gray-400 font-medium">Available Credit</p>
                                     )}
                                 </div>
+                                {selectedPaymentMethod === "wallet" && (
+                                    <div className="bg-[#1B6013] text-white rounded-full p-1">
+                                        <Check size={14} strokeWidth={3} />
+                                    </div>
+                                )}
                            </div>
                         </div>
                       </div>
-                    </div>
-                  </Step>
+                  </section>
 
-                   <Step label="Review Order">
-                    <div className="mt-12 space-y-10">
-                       <div className="pb-4 border-b border-gray-100">
-                         <h3 className="text-sm uppercase tracking-wider font-bold text-gray-900">Step 3. Confirm Summary</h3>
+                   <section className="space-y-6">
+                       <div className="pb-4 border-b border-gray-200">
+                         <h3 className="text-lg font-bold text-gray-900 tracking-tight">Additional Instructions</h3>
                       </div>
 
                         <div className="space-y-8">
@@ -1882,32 +1902,49 @@ const CheckoutForm = ({
                               />
                             </div>
                         </div>
-                    </div>
-                  </Step>
-                <Footer
-                  shippingAddressForm={shippingAddressForm}
-                  showToast={showToast}
-                  isSubmitting={isSubmitting}
-                  setIsSubmitting={setIsSubmitting}
-                  handleOrderSubmission={handleOrderSubmission}
-                  items={items}
-                  user={user}
-                />
-              </Stepper>
+                  </section>
+
+                <div className="pt-4 flex justify-end">
+                    <Button
+                        onClick={async () => {
+                            if (isSubmitting) return;
+                            const isFormValid = await shippingAddressForm.trigger();
+                            if (!user && !shippingAddressForm.getValues("email")) {
+                                shippingAddressForm.setError("email", { type: "manual", message: "Email is required for guest checkout" });
+                                showToast("Email is required for guest checkout", "error");
+                                return;
+                            }
+                            if (!isFormValid || !selectedAddressId) {
+                                showToast("Please fill out all required shipping fields and select an address.", "error");
+                                return;
+                            }
+                            handleOrderSubmission();
+                        }}
+                        disabled={isSubmitting || items.length === 0}
+                        className="rounded-xl bg-[#1B6013] text-white hover:bg-[#15490e] px-10 h-14 font-bold text-base tracking-tight shadow-md transition-all flex items-center justify-center gap-3 w-full sm:w-auto"
+                    >
+                        {isSubmitting ? (
+                            <Loader2 className="animate-spin h-6 w-6" />
+                        ) : (
+                            <Icon icon="solar:lock-password-bold" className="w-5 h-5" />
+                        )}
+                        {isSubmitting ? "Processing..." : "Place Order Now"}
+                    </Button>
+                </div>
+              </div>
             </div>
-          </div>
 
             <div className="lg:w-[40%] w-full">
               <div className="sticky top-24">
-                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-8 space-y-10 shadow-none relative overflow-hidden group">
+                  <div className="bg-white border border-gray-200 rounded-2xl p-6 lg:p-8 space-y-10 shadow-sm relative overflow-hidden group">
                     <div className="flex items-center justify-between">
-                         <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                              Order Summary
+                         <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                               Order Summary
                          </h3>
                          <span className="text-[10px] font-bold text-[#1B6013] bg-[#1B6013]/5 px-2 py-0.5 rounded-md">{totalQuantity} {totalQuantity === 1 ? 'Item' : 'Items'}</span>
                     </div>
                     
-                    <div className="pb-6 border-b border-slate-200/60">
+                    <div className="pb-6 border-b border-gray-100">
                         <BonusProgressBar subtotal={subtotal} isFirstOrder={isFirstOrder} isAuthenticated={isAuthenticated} />
                     </div>
 
@@ -1965,10 +2002,10 @@ const CheckoutForm = ({
                         </div>
                       )}
 
-                      <div className="pt-8 border-t border-slate-200/60 flex justify-between items-end">
-                        <span className="text-lg font-bold text-slate-900">Final Total</span>
+                      <div className="pt-6 border-t border-slate-200/60 flex justify-between items-end">
+                        <span className="text-base font-bold text-slate-700">Total to Pay</span>
                         <div className="text-right">
-                             <div className="text-3xl font-black text-[#1B6013] tracking-tighter leading-none tabular-nums">
+                             <div className="text-2xl font-black text-[#1B6013] tracking-tight tabular-nums">
                                 {formatNaira(totalAmountPaid)}
                              </div>
                         </div>
@@ -2025,7 +2062,7 @@ const CheckoutForm = ({
 
                      <div className="pt-4 border-t border-slate-200/60">
                         <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Voucher Code</h4>
-                        <div className="flex gap-2">
+                        <div className="flex relative">
                            <Input
                              placeholder="ENTER CODE"
                              value={voucherCode}
@@ -2033,13 +2070,13 @@ const CheckoutForm = ({
                                setVoucherCode(e.target.value);
                                setVoucherValidationAttempted(false);
                              }}
-                             className="flex-1 h-11 rounded-lg bg-white border-slate-200 font-bold text-sm focus:border-[#1B6013] focus:ring-0 transition-all uppercase px-4 shadow-none"
+                             className="flex-1 h-12 rounded-xl bg-white border-slate-200 font-bold text-sm focus:border-[#1B6013] focus:ring-0 transition-all uppercase pl-4 pr-24 shadow-none"
                              disabled={isReferralVoucher || isSubmitting}
                            />
                            <Button 
                                onClick={() => handleVoucherValidation()}
                                disabled={!voucherCode || isSubmitting}
-                               className="h-11 px-6 rounded-lg font-bold text-[10px] uppercase tracking-widest bg-slate-900 text-white hover:bg-black transition-all border-0 shadow-none"
+                               className="absolute right-1.5 top-1.5 bottom-1.5 h-auto px-5 rounded-lg font-bold text-[10px] uppercase tracking-widest bg-slate-900 text-white hover:bg-black transition-all border-0 shadow-none z-10"
                            >
                                Apply
                            </Button>
@@ -2091,7 +2128,13 @@ const CheckoutForm = ({
               onClick={async () => {
                 if (addressToDelete) {
                   setIsDeletingAddress(true);
-                  await deleteAddressAction(addressToDelete.id);
+                  if (user && !addressToDelete.id.toString().startsWith("temp-")) {
+                    try {
+                      await deleteAddressAction(addressToDelete.id);
+                    } catch (e) {
+                      console.error(e);
+                    }
+                  }
                   setUserAddresses((prev) =>
                     prev.filter((a) => a.id !== addressToDelete.id)
                   );
@@ -2116,121 +2159,6 @@ const CheckoutForm = ({
   );
 };
 
-interface FooterProps {
-  shippingAddressForm: any; // Use the actual type for useForm return
-  showToast: (message: string, type?: "success" | "error") => void;
-  isSubmitting: boolean;
-  setIsSubmitting: React.Dispatch<React.SetStateAction<boolean>>;
-  handleOrderSubmission: () => Promise<void>;
-  items: CartItem[];
-  user: any;
-}
-
-function Footer({
-  shippingAddressForm,
-  showToast,
-  isSubmitting,
-  setIsSubmitting,
-  handleOrderSubmission,
-  items,
-  user,
-}: FooterProps) {
-  const { nextStep, prevStep, isLastStep, activeStep } = useStepper();
-
-  const handleNext = async () => {
-    if (activeStep === 0) {
-      // Corresponds to Shipping Information
-      const isFormValid = await shippingAddressForm.trigger();
-
-      // Manual check for guest email
-      if (!user && !shippingAddressForm.getValues("email")) {
-         shippingAddressForm.setError("email", { 
-             type: "manual", 
-             message: "Email is required for guest checkout" 
-         });
-         showToast("Email is required for guest checkout", "error");
-         return;
-      }
-
-      if (!isFormValid) {
-        const errors = shippingAddressForm.formState.errors;
-        const errorMessages = Object.values(errors)
-          .map((err: any) => err.message)
-          .filter(Boolean);
-        
-        showToast(
-          errorMessages[0] || "Please fill out all required shipping fields correctly.",
-          "error"
-        );
-        return;
-      }
-    }
-    nextStep();
-  };
-
-  const handlePrev = () => {
-    prevStep();
-  };
-
-  const handlePlaceOrder = async () => {
-    await handleOrderSubmission();
-  };
-
-  return (
-     <div className="flex w-full flex-col md:flex-row items-center justify-between mt-12 pt-8 border-t border-gray-100 gap-8">
-      <div>
-        {activeStep !== 0 && (
-          <button
-            onClick={handlePrev}
-            className="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-black transition-all flex items-center gap-2 group"
-          >
-            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-            Previous
-          </button>
-        )}
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-        {activeStep === 0 && (
-            <Button
-                onClick={handleNext}
-                disabled={isSubmitting}
-                className="rounded-2xl bg-[#1B6013] text-white hover:bg-[#15490e] px-10 h-16 font-bold text-lg tracking-tight shadow-lg shadow-green-100 transition-all flex gap-4 items-center w-full sm:w-auto justify-center"
-            >
-                Continue to Payment
-                <ArrowRight size={20} />
-            </Button>
-        )}
-
-        {activeStep === 1 && (
-            <Button
-                onClick={handleNext}
-                disabled={isSubmitting}
-                className="rounded-2xl bg-[#1B6013] text-white hover:bg-[#15490e] px-10 h-16 font-bold text-lg tracking-tight shadow-lg shadow-green-100 transition-all flex gap-4 items-center w-full sm:w-auto justify-center"
-            >
-                Review Order Details
-                <ArrowRight size={20} />
-            </Button>
-        )}
-
-        {isLastStep && (
-            <Button
-                onClick={handlePlaceOrder}
-                disabled={isSubmitting || items.length === 0}
-                className="rounded-2xl bg-[#1B6013] text-white hover:bg-[#15490e] px-10 h-16 font-bold text-lg tracking-tight shadow-lg shadow-green-100 flex items-center justify-center gap-4 transition-all w-full sm:w-auto"
-            >
-                {isSubmitting ? (
-                    <Loader2 className="animate-spin h-6 w-6" />
-                ) : (
-                    <Icon icon="solar:lock-password-bold" className="w-6 h-6" />
-                )}
-                {isSubmitting ? "Processing..." : "Place Order Now"}
-            </Button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // Type guard for ProductOption
 function isProductOption(option: unknown): option is ProductOption {

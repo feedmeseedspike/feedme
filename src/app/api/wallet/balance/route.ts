@@ -1,4 +1,5 @@
 import { authMiddleware } from "middleware/auth";
+export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { supabase } from "src/lib/supabaseClient";
 

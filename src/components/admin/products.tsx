@@ -36,7 +36,8 @@ import { BiEdit } from "react-icons/bi";
 import PaginationBar from "../shared/pagination";
 import { Separator } from "@components/ui/separator";
 import Link from "next/link";
-import { getProducts, deleteProduct } from "../../../src/lib/api";
+import { getProducts } from "../../../src/lib/api";
+import { deleteProduct } from "src/lib/actions/product.actions";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "../../../src/hooks/useToast";
@@ -189,9 +190,11 @@ export default function Product() {
   const handleDeleteConfirm = async () => {
     if (!productToDelete || !productToDelete.id) return;
     try {
-      await deleteProduct(productToDelete.id);
-      showToast("Product deleted successfully!", "success");
-      await refetch();
+      const result = await deleteProduct(productToDelete.id);
+      if (result && result.success) {
+        showToast(result.message || "Product processed successfully!", result.archived ? "info" : "success");
+        await refetch();
+      }
     } catch (err) {
       showToast(
         err instanceof Error ? err.message : "Failed to delete product",

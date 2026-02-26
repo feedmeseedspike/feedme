@@ -74,19 +74,19 @@ export function NotificationsPopover({ userId }: NotificationsPopoverProps) {
             )}
           </h3>
           {notifications.length > 0 && (
-             <Button 
-               variant="ghost" 
-               size="sm" 
-               className="h-8 text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-gray-900" 
-               onClick={async () => {
-                 const result = await dismissAllNotificationsAction();
-                 if (result.success) {
-                   refresh();
-                 }
-               }}
-             >
-                Clear All
-             </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-8 text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-gray-900" 
+              onClick={async () => {
+                const result = await dismissAllNotificationsAction();
+                if (result.success) {
+                  refresh();
+                }
+              }}
+            >
+               Clear All
+            </Button>
           )}
         </div>
         <Separator />

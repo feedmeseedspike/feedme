@@ -10,7 +10,7 @@ export function getAllCategoriesQuery(client: TypedSupabaseClient) {
 }
 
 export async function getCategoryById(client: TypedSupabaseClient, id: string) {
-  const { data, error } = await client.from('categories').select('*').eq('id', id).single();
+  const { data, error } = await client.from('categories').select('*').eq('id', id).limit(1).maybeSingle();
   if (error) throw error;
   return data;
 } 

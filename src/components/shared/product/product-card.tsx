@@ -66,56 +66,79 @@ const ProductCard = ({
     (product as any).countInStock <= 0;
   const isOutOfSeason = (product as any).in_season === false;
 
-  const ProductImage = () => (
-    <div className="relative h-[100px] w-[120px] md:h-[135px] md:w-[160px]">
-      <Link href={`/product/${product.slug}`} className="block h-full w-full">
-        <div className="relative w-full h-full bg-[#F2F4F7] overflow-hidden rounded-[8px]">
-          <Image
-            src={
-              product.images && product.images.length > 0
-                ? getImageUrl(product.images[0])
-                : "/product-placeholder.png"
-            }
-            alt={product.name}
-            fill
-            sizes="(max-width: 768px) 120px, 160px"
-            loading="lazy"
-            className="w-full h-full object-cover"
-          />
-        </div>
-      </Link>
+  const ProductImage = () => {
+    // Check if there is a discount tag
+    const discountTag = (product as any).tags?.find?.((t: string) => t.toLowerCase().includes("discount"));
+    let discountText = null;
+    
+    if (discountTag) {
+      // Find the first percentage or number in the tag
+      const matches = discountTag.match(/\d+/);
+      if (matches) {
+        discountText = `${matches[0]}%`;
+      } else {
+        // Fallback for non-numeric discount tags
+        const rawText = discountTag.toLowerCase().replace("discount", "").replace(":", "").trim();
+        discountText = rawText || "SALE";
+      }
+    }
 
-      {!hideAddToCart && !!productId && (
-        <div className="absolute bottom-1 right-1.5 md:bottom-[4px] md:right-[4px] z-10">
-          <AddToCart
-            minimal
-            item={{
-              id: productId,
-              name: product.name,
-              slug: product.slug,
-              category:
-                Array.isArray(product.category) && product.category.length > 0
-                  ? product.category[0]
-                  : (product as any).category_ids?.[0] || "",
-              price: defaultPrice,
-              images: Array.isArray(product.images)
-                ? product.images.map((img: string | { url: string }) =>
-                    typeof img === "string" ? img : img.url
-                  )
-                : [],
-              countInStock: (product as any).countInStock ?? null,
-              options: optionsArr as any,
-              option: quickAddOption as any,
-              selectedOption: quickAddOption?.name,
-              in_season: (product as any).in_season ?? null,
-              iconOnly: true,
-              bundleId: (product as any).bundleId,
-            }}
-          />
-        </div>
-      )}
-    </div>
-  );
+    return (
+      <div className="relative h-[100px] w-[120px] md:h-[135px] md:w-[160px]">
+        {discountText && (
+          <div className="absolute top-0 left-0 bg-[#F0800F] text-white text-[9px] md:text-[10px] font-black px-2 py-1 rounded-br-[8px] z-20 uppercase tracking-tight pointer-events-none">
+            {discountText} OFF
+          </div>
+        )}
+        <Link href={`/product/${product.slug}`} className="block h-full w-full">
+          <div className="relative w-full h-full bg-[#F2F4F7] overflow-hidden rounded-[8px]">
+            <Image
+              src={
+                product.images && product.images.length > 0
+                  ? getImageUrl(product.images[0])
+                  : "/product-placeholder.png"
+              }
+              alt={product.name}
+              fill
+              sizes="(max-width: 768px) 120px, 160px"
+              loading="lazy"
+              className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+            />
+          </div>
+        </Link>
+
+        {!hideAddToCart && !!productId && (
+          <div className="absolute bottom-1 right-1.5 md:bottom-[4px] md:right-[4px] z-10">
+            <AddToCart
+              minimal
+              item={{
+                id: productId,
+                name: product.name,
+                slug: product.slug,
+                category:
+                  Array.isArray(product.category) && product.category.length > 0
+                    ? product.category[0]
+                    : (product as any).category_ids?.[0] || "",
+                price: defaultPrice,
+                images: Array.isArray(product.images)
+                  ? product.images.map((img: string | { url: string }) =>
+                      typeof img === "string" ? img : img.url
+                    )
+                  : [],
+                countInStock: (product as any).countInStock ?? null,
+                options: optionsArr as any,
+                option: quickAddOption as any,
+                selectedOption: quickAddOption?.name,
+                in_season: (product as any).in_season ?? null,
+                iconOnly: true,
+                bundleId: (product as any).bundleId,
+              }}
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
   const ProductDetails = () => (
     <div className="flex flex-col space-y-1 w-[120px] md:w-[160px]">
       <Link
@@ -125,24 +148,31 @@ const ProductCard = ({
         {product.name}
       </Link>
       {product.in_season === true && (
-        <span className="inline-block mt-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded font-semibold w-fit">
+        <span className="inline-block mt-1 px-2 py-0.5 text-[10px] bg-green-50 text-green-700 rounded-full font-bold border border-green-200 w-fit">
           In Season
         </span>
       )}
       {product.in_season === false && (
-        <span className="inline-block mt-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded font-semibold w-fit">
+        <span className="inline-block mt-1 px-2 py-0.5 text-[10px] bg-red-50 text-red-700 rounded-full font-bold border border-red-200 w-fit">
           Out of Season
         </span>
       )}
-      <span className="text-[14px] text-[#1B6013]">
-        {optionsArr.length > 1
-          ? `From ${formatNaira(Math.min(...optionsArr.map((opt: any) => opt.price ?? Infinity)))}`
-          : optionsArr.length === 1
-            ? formatNaira(optionsArr[0]?.price ?? product.price ?? 0)
-            : product.price !== null && product.price !== undefined
-              ? formatNaira(product.price)
-              : "Price N/A"}
-      </span>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="text-[14px] font-bold text-[#1B6013]">
+          {optionsArr.length > 1
+            ? `From ${formatNaira(Math.min(...optionsArr.map((opt: any) => opt.price ?? Infinity)))}`
+            : optionsArr.length === 1
+              ? formatNaira(optionsArr[0]?.price ?? product.price ?? 0)
+              : product.price !== null && product.price !== undefined
+                ? formatNaira(product.price)
+                : "Price N/A"}
+        </span>
+        {optionsArr.length <= 1 && (optionsArr[0]?.list_price || product.list_price) && (optionsArr[0]?.list_price > (optionsArr[0]?.price ?? product.price) || product.list_price > product.price) ? (
+          <span className="text-[10px] text-gray-400 font-semibold line-through">
+            {formatNaira(optionsArr[0]?.list_price || product.list_price)}
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 

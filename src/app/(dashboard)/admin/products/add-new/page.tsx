@@ -738,6 +738,12 @@ export default function AddProduct() {
                           {...field}
                           placeholder="Enter price"
                           type="number"
+                          value={field.value ?? ""}
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value === "" ? undefined : parseFloat(e.target.value)
+                            )
+                          }
                           className="col-span-7"
                         />
                       </FormControl>
@@ -760,6 +766,12 @@ export default function AddProduct() {
                           {...field}
                           placeholder="Enter list price"
                           type="number"
+                          value={field.value ?? ""}
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value === "" ? undefined : parseFloat(e.target.value)
+                            )
+                          }
                           className="col-span-7"
                         />
                       </FormControl>
