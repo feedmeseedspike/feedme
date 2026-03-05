@@ -34,8 +34,8 @@ import {
 // Server-side image upload using server action
 async function uploadCategoryImage(file: File, bucketName = "category-images") {
   const formData = new FormData();
-  formData.append('file', file);
-  formData.append('bucketName', bucketName);
+  formData.append("file", file);
+  formData.append("bucketName", bucketName);
   return await uploadCategoryImageAction(formData);
 }
 
@@ -182,7 +182,7 @@ export default function AddNewCategory() {
         // Upload banner image using server action
         const bannerObj = await uploadCategoryImage(
           bannerFile,
-          "category-images"
+          "category-images",
         );
         banner_url = bannerObj.url;
       }
@@ -513,7 +513,6 @@ export default function AddNewCategory() {
               type="submit"
               className="bg-[#1B6013] text-white"
               disabled={submitting}
-              onClick={() => }
             >
               {submitting ? "Creating..." : "Create Category"}
             </Button>

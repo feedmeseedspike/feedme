@@ -61,8 +61,8 @@ const animatedComponents = makeAnimated();
 // Server-side image upload using server action
 async function uploadProductImage(file: File, bucketName = "product-images") {
   const formData = new FormData();
-  formData.append('file', file);
-  formData.append('bucketName', bucketName);
+  formData.append("file", file);
+  formData.append("bucketName", bucketName);
   return await uploadProductImageAction(formData);
 }
 
@@ -100,7 +100,7 @@ const productSchema = z
         z.object({
           label: z.string(),
           value: z.string(),
-        })
+        }),
       )
       .min(1, "At least one category is required"),
     variation: z.enum(["Yes", "No"], {
@@ -110,11 +110,11 @@ const productSchema = z
       .array(z.instanceof(File))
       .refine(
         (files) => files.every((file) => file.size <= 5 * 1024 * 1024),
-        "Each image must be less than 5MB"
+        "Each image must be less than 5MB",
       )
       .refine(
         (files) => files.every((file) => file.type.startsWith("image/")),
-        "Only image files are allowed"
+        "Only image files are allowed",
       )
       .optional(), // Make optional
     options: z.array(OptionSchema).optional(),
@@ -147,7 +147,8 @@ const productSchema = z
           message: "Stock status is required when product has no variations",
         });
       }
-      const validImages = data.images?.filter(img => img instanceof File && img.size > 0) || [];
+      const validImages =
+        data.images?.filter((img) => img instanceof File && img.size > 0) || [];
       if (validImages.length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -185,7 +186,7 @@ export default function AddProduct() {
           (allCategories || []).map((cat: any) => ({
             label: cat.title,
             value: cat.id,
-          }))
+          })),
         );
       } catch (error) {
         console.error("Error loading categories:", error);
@@ -232,7 +233,7 @@ export default function AddProduct() {
               .then((res) => res.blob())
               .then(
                 (blob) =>
-                  new File([blob], "product-image.png", { type: "image/png" })
+                  new File([blob], "product-image.png", { type: "image/png" }),
               );
           })
           .filter(Boolean) || [];
@@ -261,7 +262,7 @@ export default function AddProduct() {
           (draftData.selectedCategories || []).map((catId: string) => {
             const found = categories.find((c) => c.value === catId);
             return found || { label: catId, value: catId };
-          })
+          }),
         );
         form.setValue("variation", draftData.variation);
         form.setValue("images", files);
@@ -277,7 +278,9 @@ export default function AddProduct() {
   useEffect(() => {
     const images = form.watch("images");
     if (images && images.length > 0) {
-      const validFiles = images.filter(file => file instanceof File && file.size > 0);
+      const validFiles = images.filter(
+        (file) => file instanceof File && file.size > 0,
+      );
       if (validFiles.length > 0) {
         const previews = validFiles.map((file) => URL.createObjectURL(file));
         setImagePreviews(previews);
@@ -338,7 +341,7 @@ export default function AddProduct() {
       price: data.price,
       stockStatus: data.stockStatus,
       selectedCategories: data.selectedCategories.map(
-        (category) => category.value
+        (category) => category.value,
       ),
       images: base64ProductImages,
       variation: data.variation,
@@ -354,7 +357,8 @@ export default function AddProduct() {
     const files = event.target.files;
     if (files && files.length > 0) {
       const validFiles = Array.from(files).filter(
-        (file) => file.type.startsWith("image/") && file.size <= 5 * 1024 * 1024
+        (file) =>
+          file.type.startsWith("image/") && file.size <= 5 * 1024 * 1024,
       );
       form.setValue("images", validFiles);
     } else {
@@ -366,12 +370,13 @@ export default function AddProduct() {
 
     // 1. Upload product images to storage (client-side)
     let uploadedImageUrls: string[] = [];
-    const validImages = data.images?.filter(img => img instanceof File && img.size > 0) || [];
-    
+    const validImages =
+      data.images?.filter((img) => img instanceof File && img.size > 0) || [];
+
     if (validImages.length > 0) {
       try {
         const uploadPromises = validImages.map((imageFile) =>
-          uploadProductImage(imageFile, "product-images")
+          uploadProductImage(imageFile, "product-images"),
         );
         uploadedImageUrls = await Promise.all(uploadPromises);
       } catch (err: any) {
@@ -390,14 +395,11 @@ export default function AddProduct() {
           let imageUrl = opt.image;
           if (opt.image instanceof File) {
             try {
-              imageUrl = await uploadProductImage(
-                opt.image,
-                "option-images"
-              );
+              imageUrl = await uploadProductImage(opt.image, "option-images");
             } catch (err: any) {
               showToast(
                 err.message || "Failed to upload option image",
-                "error"
+                "error",
               );
               setLoading(false);
               throw err;
@@ -407,7 +409,7 @@ export default function AddProduct() {
             ...opt,
             image: typeof imageUrl === "string" ? imageUrl : null,
           };
-        })
+        }),
       );
     }
 
@@ -430,7 +432,6 @@ export default function AddProduct() {
       options: hasVariations ? processedOptions : [],
       in_season: data.in_season,
     };
-
 
     try {
       const result = await addProductAction(productData);
@@ -471,17 +472,17 @@ export default function AddProduct() {
   const handleOptionSubmit = async (optionData: any) => {
     try {
       let imageUrl = optionData.image;
-      
+
       // Handle image upload if it's a File
       if (imageUrl instanceof File) {
         imageUrl = await uploadProductImage(imageUrl, "option-images");
       }
-      
+
       const newOption = {
         ...optionData,
         image: typeof imageUrl === "string" ? imageUrl : null,
       };
-      
+
       const current = form.watch("options") || [];
       form.setValue("options", [...current, newOption], {
         shouldValidate: true,
@@ -496,22 +497,26 @@ export default function AddProduct() {
     try {
       let imageUrl = optionData.image;
       const currentOptions = form.getValues("options") || [];
-      
+
       // If no new image provided, keep the existing image
-      if (!imageUrl && editOptionIndex !== null && currentOptions[editOptionIndex]) {
+      if (
+        !imageUrl &&
+        editOptionIndex !== null &&
+        currentOptions[editOptionIndex]
+      ) {
         imageUrl = currentOptions[editOptionIndex].image;
       }
-      
+
       // Handle image upload if it's a File
       if (imageUrl instanceof File) {
         imageUrl = await uploadProductImage(imageUrl, "option-images");
       }
-      
+
       const updatedOption = {
         ...optionData,
         image: typeof imageUrl === "string" ? imageUrl : null,
       };
-      
+
       if (editOptionIndex !== null) {
         const updatedOptions = [...currentOptions];
         updatedOptions[editOptionIndex] = updatedOption;
@@ -734,7 +739,9 @@ export default function AddProduct() {
                           value={field.value ?? ""}
                           onChange={(e) =>
                             field.onChange(
-                              e.target.value === "" ? undefined : parseFloat(e.target.value)
+                              e.target.value === ""
+                                ? undefined
+                                : parseFloat(e.target.value),
                             )
                           }
                           className="col-span-7"
@@ -762,7 +769,9 @@ export default function AddProduct() {
                           value={field.value ?? ""}
                           onChange={(e) =>
                             field.onChange(
-                              e.target.value === "" ? undefined : parseFloat(e.target.value)
+                              e.target.value === ""
+                                ? undefined
+                                : parseFloat(e.target.value),
                             )
                           }
                           className="col-span-7"
@@ -824,7 +833,7 @@ export default function AddProduct() {
                           onChange={(e) => {
                             const val = e.target.value;
                             field.onChange(
-                              val === "null" ? null : val === "true"
+                              val === "null" ? null : val === "true",
                             );
                           }}
                           className="col-span-7 border rounded px-2 py-1"
@@ -857,16 +866,22 @@ export default function AddProduct() {
                               checked={field.value}
                               onChange={(e) => field.onChange(e.target.checked)}
                             />
-                            <div className={`w-11 h-6 rounded-full transition-colors ${
-                              field.value ? 'bg-[#1B6013]' : 'bg-gray-200'
-                            }`}>
-                              <div className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
-                                field.value ? 'translate-x-5' : 'translate-x-0.5'
-                              } mt-0.5`} />
+                            <div
+                              className={`w-11 h-6 rounded-full transition-colors ${
+                                field.value ? "bg-[#1B6013]" : "bg-gray-200"
+                              }`}
+                            >
+                              <div
+                                className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
+                                  field.value
+                                    ? "translate-x-5"
+                                    : "translate-x-0.5"
+                                } mt-0.5`}
+                              />
                             </div>
                           </label>
                           <span className="text-sm text-gray-700">
-                            {field.value ? 'Published' : 'Draft'}
+                            {field.value ? "Published" : "Draft"}
                           </span>
                         </div>
                       </FormControl>
@@ -921,7 +936,7 @@ export default function AddProduct() {
                                       {option.image instanceof File ? (
                                         <Image
                                           src={URL.createObjectURL(
-                                            option.image
+                                            option.image,
                                           )}
                                           alt={option.name}
                                           fill
@@ -972,7 +987,7 @@ export default function AddProduct() {
                                         const current =
                                           form.watch("options") ?? [];
                                         const updated = current.filter(
-                                          (_, i) => i !== index
+                                          (_, i) => i !== index,
                                         );
                                         form.setValue("options", updated, {
                                           shouldValidate: true,
@@ -983,7 +998,7 @@ export default function AddProduct() {
                                     </button>
                                   </TableCell>
                                 </TableRow>
-                              )
+                              ),
                             )}
                           </TableBody>
                         </Table>
@@ -1001,7 +1016,7 @@ export default function AddProduct() {
                     onClose={() => setIsDialogOpen(false)}
                     onSubmit={handleOptionSubmit}
                   />
-                  
+
                   {/* Edit Option Modal */}
                   <OptionModal
                     isOpen={editOptionIndex !== null}
@@ -1034,7 +1049,6 @@ export default function AddProduct() {
               type="submit"
               className="w-full sm:w-auto bg-[#1B6013] text-white"
               disabled={loading}
-              onClick={() => }
             >
               {loading ? (
                 <span className="flex items-center gap-2">
