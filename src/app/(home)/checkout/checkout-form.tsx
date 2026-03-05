@@ -64,6 +64,7 @@ import {
 } from "@components/ui/dialog";
 import {
   addAddressAction,
+  updateAddressAction,
   deleteAddressAction,
 } from "@/app/(dashboard)/account/addresses/actions";
 import { clearCart } from "src/store/features/cartSlice";
@@ -1529,8 +1530,12 @@ const CheckoutForm = ({
                                        };
 
                                        if (user) {
-                                         address = await addAddressAction(newDetails);
-                                       } else {
+                                          if (editingAddress) {
+                                            address = await updateAddressAction(editingAddress.id, newDetails);
+                                          } else {
+                                            address = await addAddressAction(newDetails);
+                                          }
+                                        } else {
                                          address = {
                                              id: editingAddress ? editingAddress.id : `temp-${Date.now()}`,
                                              ...newDetails,
