@@ -37,8 +37,8 @@ const supabase = createClient();
 // Server-side image upload using server action
 async function uploadCategoryImage(file: File, bucketName = "category-images") {
   const formData = new FormData();
-  formData.append('file', file);
-  formData.append('bucketName', bucketName);
+  formData.append("file", file);
+  formData.append("bucketName", bucketName);
   return await uploadCategoryImageAction(formData);
 }
 
@@ -50,23 +50,22 @@ export default function EditCategoryClient({
   const router = useRouter();
   const { showToast } = useToast();
 
-
   const [title, setTitle] = useState(initialCategory.title || "");
   const [description, setDescription] = useState(
-    initialCategory.description || ""
+    initialCategory.description || "",
   );
   const [tag, setTag] = useState("");
   const [tags, setTags] = useState<string[]>(initialCategory.tags || []);
   const [keynote, setKeynote] = useState("");
   const [keynotes, setKeynotes] = useState<string[]>(
-    initialCategory.keynotes || []
+    initialCategory.keynotes || [],
   );
   const [imagePreview, setImagePreview] = useState<string | null>(
-    initialCategory.thumbnail?.url || null
+    initialCategory.thumbnail?.url || null,
   );
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(
-    initialCategory.banner_url || null
+    initialCategory.banner_url || null,
   );
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -76,7 +75,7 @@ export default function EditCategoryClient({
 
   useEffect(() => {
     const draftStr = localStorage.getItem(
-      `categoryDraft_${initialCategory.id}`
+      `categoryDraft_${initialCategory.id}`,
     );
     if (draftStr) {
       const draft = JSON.parse(draftStr);
@@ -150,7 +149,10 @@ export default function EditCategoryClient({
 
     if (imageFile) {
       try {
-        const uploadResult = await uploadCategoryImage(imageFile, "category-images");
+        const uploadResult = await uploadCategoryImage(
+          imageFile,
+          "category-images",
+        );
         thumbnail = {
           url: uploadResult.url,
           public_id: uploadResult.public_id,
@@ -165,7 +167,10 @@ export default function EditCategoryClient({
 
     if (bannerFile) {
       try {
-        const bannerResult = await uploadCategoryImage(bannerFile, "category-images");
+        const bannerResult = await uploadCategoryImage(
+          bannerFile,
+          "category-images",
+        );
         banner_url = bannerResult.url;
       } catch (err: any) {
         console.error("Banner upload error:", err);
@@ -184,7 +189,10 @@ export default function EditCategoryClient({
         thumbnail,
         banner_url,
       };
-      const result = await updateCategoryAction(initialCategory.id, updatedData);
+      const result = await updateCategoryAction(
+        initialCategory.id,
+        updatedData,
+      );
       showToast("Category updated successfully!", "success");
       // Clear the draft from localStorage
       localStorage.removeItem(`categoryDraft_${initialCategory.id}`);
@@ -221,7 +229,7 @@ export default function EditCategoryClient({
     };
     localStorage.setItem(
       `categoryDraft_${initialCategory.id}`,
-      JSON.stringify(draft)
+      JSON.stringify(draft),
     );
     showToast("Draft saved!", "success");
   };
@@ -460,7 +468,6 @@ export default function EditCategoryClient({
             type="submit"
             className="bg-[#1B6013] text-white"
             disabled={submitting}
-            onClick={() => }
           >
             {submitting ? "Saving..." : "Save Changes"}
           </Button>
