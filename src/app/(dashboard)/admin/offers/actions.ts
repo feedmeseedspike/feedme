@@ -4,8 +4,6 @@ import { createClient } from "src/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export async function addOfferAction(offerData: any) {
-  console.log('[DEBUG] ADD OFFER SERVER ACTION CALLED!');
-  console.log('[DEBUG] Received offerData:', JSON.stringify(offerData, null, 2));
   
   const supabase = await createClient();
   
@@ -29,14 +27,12 @@ export async function addOfferAction(offerData: any) {
     }
   }
   
-  console.log('[DEBUG] About to insert offer in DB with:', JSON.stringify(cleanData, null, 2));
   
   const { data, error } = await supabase
     .from("offers")
     .insert([cleanData])
     .select();
     
-  console.log('[DEBUG] Supabase insert result:', JSON.stringify({ data, error }, null, 2));
   
   if (error) {
     console.error('[ERROR] Supabase insert error:', error);
@@ -49,8 +45,6 @@ export async function addOfferAction(offerData: any) {
 }
 
 export async function updateOfferAction(offerId: string, offerData: any) {
-  console.log('[DEBUG] UPDATE OFFER SERVER ACTION CALLED!');
-  console.log('[DEBUG] Received offerData:', JSON.stringify(offerData, null, 2));
   
   const supabase = await createClient();
   
@@ -78,7 +72,6 @@ export async function updateOfferAction(offerId: string, offerData: any) {
   // Always update the updated_at timestamp
   cleanData.updated_at = new Date().toISOString();
   
-  console.log('[DEBUG] About to update offer in DB with:', JSON.stringify(cleanData, null, 2));
   
   const { data, error } = await supabase
     .from("offers")
@@ -86,7 +79,6 @@ export async function updateOfferAction(offerId: string, offerData: any) {
     .eq("id", offerId)
     .select();
     
-  console.log('[DEBUG] Supabase update result:', JSON.stringify({ data, error }, null, 2));
   
   if (error) {
     console.error('[ERROR] Supabase update error:', error);

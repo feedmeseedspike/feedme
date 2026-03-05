@@ -129,26 +129,49 @@ export async function POST(req: NextRequest) {
 
     if (isDryRun) {
       const analysis = parsedProducts.map(p => {
+        const lowestPrice = Math.min(...p.options.map((o: any) => o.price));
+        const highestPrice = Math.max(...p.options.map((o: any) => o.price));
+        
         const exact = allExistingProducts?.find(ep => ep.name === p.name);
-        if (exact) return { csvItem: p.name, status: "exact_match", matchId: exact.id, matchName: exact.name };
+        
+        const result: any = { 
+          csvItem: p.name, 
+          newPrice: lowestPrice,
+          newPriceMax: highestPrice
+        };
 
-        // Fuzzy match
-        let bestMatch: any = null;
-        let highestSim = 0;
-        allExistingProducts?.forEach(ep => {
-          const sim = similarity(p.name, ep.name);
-          if (sim > highestSim) {
-            highestSim = sim;
-            bestMatch = ep;
+        if (exact) {
+          result.status = "exact_match";
+          result.matchId = exact.id;
+          result.matchName = exact.name;
+          result.oldPrice = exact.price;
+        } else {
+          // Fuzzy match
+          let bestMatch: any = null;
+          let highestSim = 0;
+          allExistingProducts?.forEach(ep => {
+            const sim = similarity(p.name, ep.name);
+            if (sim > highestSim) {
+              highestSim = sim;
+              bestMatch = ep;
+            }
+          });
+
+          if (highestSim > 0.7) {
+            result.status = "potential_rename";
+            result.matchId = bestMatch.id;
+            result.matchName = bestMatch.name;
+            result.similarity = highestSim;
+            result.oldPrice = bestMatch.price;
+          } else {
+            result.status = "new";
+            if (highestSim > 0.4) {
+              result.suggestion = { id: bestMatch.id, name: bestMatch.name, similarity: highestSim, oldPrice: bestMatch.price };
+            }
           }
-        });
-
-        if (highestSim > 0.7) {
-          return { csvItem: p.name, status: "potential_rename", matchId: bestMatch.id, matchName: bestMatch.name, similarity: highestSim };
         }
 
-        const suggestion = highestSim > 0.4 ? { id: bestMatch.id, name: bestMatch.name, similarity: highestSim } : undefined;
-        return { csvItem: p.name, status: "new", suggestion };
+        return result;
       });
 
       return NextResponse.json({ 
@@ -167,8 +190,17 @@ export async function POST(req: NextRequest) {
     const finalProductsInCSVNames = new Set<string>();
 
     for (const p of parsedProducts) {
-      const lowestPrice = Math.min(...p.options.map((o: any) => o.price));
-      const highestPrice = Math.max(...p.options.map((o: any) => o.price));
+      // Find the option that defines the 'lowest price' to use its oldPrice for the product-level list_price
+      const lowestPriceOption = p.options.reduce((prev, curr) => prev.price < curr.price ? prev : curr);
+      const lowestPrice = lowestPriceOption.price;
+      
+      // Calculate a sensible product-level list_price:
+      // If the lowest price option has an oldPrice > currentPrice, use it as list_price.
+      // Otherwise fallback to highest price (existing behavior for price range) or same as price if no range.
+      let productListPrice = (lowestPriceOption.oldPrice && lowestPriceOption.oldPrice > lowestPrice) 
+        ? lowestPriceOption.oldPrice 
+        : Math.max(...p.options.map((o: any) => o.price));
+
       const sheetCatLower = (p.categoryTitle || "").toLowerCase();
       const categoryId = catMap.get(sheetCatLower) || GENERAL_CATEGORY_ID;
       const categoryTitle = sheetCatLower && catMap.has(sheetCatLower) ? p.categoryTitle : "General";
@@ -201,7 +233,7 @@ export async function POST(req: NextRequest) {
       const updateData: any = {
         name: p.name,
         price: lowestPrice,
-        list_price: highestPrice,
+        list_price: productListPrice,
         category_ids: [categoryId, GENERAL_CATEGORY_ID],
         stock_status: "in_stock",
         tags: mergedTags,
@@ -211,14 +243,19 @@ export async function POST(req: NextRequest) {
         const updatedOptions = (existing.options || []).map((opt: any) => {
           const newOpt = p.options.find((o: any) => o.name === opt.name);
           if (newOpt) {
-            return { ...opt, price: newOpt.price, list_price: newOpt.price, image: optionImg, stockStatus: "In Stock" };
+            // Use oldPrice from CSV if it's a discount, otherwise use new price
+            const optListPrice = (newOpt.oldPrice && newOpt.oldPrice > newOpt.price) ? newOpt.oldPrice : newOpt.price;
+            return { ...opt, price: newOpt.price, list_price: optListPrice, image: optionImg, stockStatus: "In Stock" };
           }
-          return opt;
+          // If option is missing from CSV, mark as Out of Stock
+          return { ...opt, stockStatus: "Out of Stock" };
         });
 
+        // Add brand new options found in CSV
         p.options.forEach((newOpt: any) => {
           if (!updatedOptions.some((o: any) => o.name === newOpt.name)) {
-            updatedOptions.push({ name: newOpt.name, image: optionImg, price: newOpt.price, list_price: newOpt.price, stockStatus: "In Stock" });
+            const optListPrice = (newOpt.oldPrice && newOpt.oldPrice > newOpt.price) ? newOpt.oldPrice : newOpt.price;
+            updatedOptions.push({ name: newOpt.name, image: optionImg, price: newOpt.price, list_price: optListPrice, stockStatus: "In Stock" });
           }
         });
 
@@ -237,9 +274,9 @@ export async function POST(req: NextRequest) {
         const newProduct: ProductInsert = {
           name: p.name,
           slug: slugify(p.name),
-          description: generateDescription(p, lowestPrice, highestPrice, categoryTitle),
+          description: generateDescription(p, lowestPrice, productListPrice, categoryTitle),
           price: lowestPrice,
-          list_price: highestPrice,
+          list_price: productListPrice,
           brand: null,
           avg_rating: 0.0,
           num_reviews: null,
@@ -251,7 +288,10 @@ export async function POST(req: NextRequest) {
           category_ids: [categoryId, GENERAL_CATEGORY_ID],
           tags: mergedTags,
           images: [productMainImg],
-          options: p.options.map((o: any) => ({ name: o.name, image: optionImg, price: o.price, list_price: o.price, stockStatus: "In Stock" })),
+          options: p.options.map((o: any) => {
+             const optListPrice = (o.oldPrice && o.oldPrice > o.price) ? o.oldPrice : o.price;
+             return { name: o.name, image: optionImg, price: o.price, list_price: optListPrice, stockStatus: "In Stock" };
+          }),
           rating_distribution: {},
           in_season: null,
         };
@@ -262,6 +302,7 @@ export async function POST(req: NextRequest) {
         }
       }
     }
+
 
     // Mark missing products as out of stock
     let totalMarkedOutOfStock = 0;

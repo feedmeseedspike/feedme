@@ -216,6 +216,9 @@ export async function getProductsServer({
   price,
   rating,
   sort,
+  isAdmin = false,
+  stockStatus,
+  publishedStatus,
 }: {
   query?: string;
   category?: string;
@@ -225,19 +228,54 @@ export async function getProductsServer({
   price?: string;
   rating?: string;
   sort?: string;
+  isAdmin?: boolean;
+  stockStatus?: string;
+  publishedStatus?: string;
 }) {
   const supabase = await createClient(); // Initialize client inside the function
   // Build the base query for counting
   let countQuery = supabase
     .from("products")
-    .select("*", { count: "exact", head: true })
-    .eq("is_published", true);
+    .select("*", { count: "exact", head: true });
+    
+  if (!isAdmin) {
+    countQuery = countQuery.eq("is_published", true);
+  }
 
   if (query && query !== "all") {
     countQuery = countQuery.ilike("name", `%${query}%`);
   }
-  if (category && category !== "all") {
-    countQuery = countQuery.contains("category_ids", [category]);
+  if (category && category !== "all" && category) {
+    const categoryList = category.split(",").filter(Boolean);
+    if (categoryList.length > 0) {
+      countQuery = countQuery.contains("category_ids", categoryList);
+    }
+  }
+
+  if (stockStatus && stockStatus !== "all") {
+    const statuses = stockStatus.split(",").map(s => s.trim().toLowerCase());
+    const filterValues: string[] = [];
+    if (statuses.includes("in stock")) filterValues.push("in_stock");
+    if (statuses.includes("out of stock")) filterValues.push("out_of_stock");
+    
+    if (filterValues.length === 1) {
+      countQuery = countQuery.eq("stock_status", filterValues[0]);
+    } else if (filterValues.length > 1) {
+      countQuery = countQuery.in("stock_status", filterValues);
+    }
+  }
+
+  if (publishedStatus && publishedStatus !== "all") {
+    const statuses = publishedStatus.split(",").map(s => s.trim().toLowerCase());
+    const filterValues: boolean[] = [];
+    if (statuses.includes("published")) filterValues.push(true);
+    if (statuses.includes("archived")) filterValues.push(false);
+    
+    if (filterValues.length === 1) {
+      countQuery = countQuery.eq("is_published", filterValues[0]);
+    } else if (filterValues.length > 1) {
+      countQuery = countQuery.in("is_published", filterValues);
+    }
   }
   if (tag && tag !== "all") {
     countQuery = countQuery.contains("tags", [tag]);
@@ -258,14 +296,46 @@ export async function getProductsServer({
   // Build the paginated query
   let queryBuilder = supabase
     .from("products")
-    .select("*")
-    .eq("is_published", true);
+    .select("*");
+    
+  if (!isAdmin) {
+    queryBuilder = queryBuilder.eq("is_published", true);
+  }
 
   if (query && query !== "all") {
     queryBuilder = queryBuilder.ilike("name", `%${query}%`);
   }
-  if (category && category !== "all") {
-    queryBuilder = queryBuilder.contains("category_ids", [category]);
+  if (category && category !== "all" && category) {
+    const categoryList = category.split(",").filter(Boolean);
+    if (categoryList.length > 0) {
+      queryBuilder = queryBuilder.contains("category_ids", categoryList);
+    }
+  }
+
+  if (stockStatus && stockStatus !== "all") {
+    const statuses = stockStatus.split(",").map(s => s.trim().toLowerCase());
+    const filterValues: string[] = [];
+    if (statuses.includes("in stock")) filterValues.push("in_stock");
+    if (statuses.includes("out of stock")) filterValues.push("out_of_stock");
+    
+    if (filterValues.length === 1) {
+      queryBuilder = queryBuilder.eq("stock_status", filterValues[0]);
+    } else if (filterValues.length > 1) {
+      queryBuilder = queryBuilder.in("stock_status", filterValues);
+    }
+  }
+
+  if (publishedStatus && publishedStatus !== "all") {
+    const statuses = publishedStatus.split(",").map(s => s.trim().toLowerCase());
+    const filterValues: boolean[] = [];
+    if (statuses.includes("published")) filterValues.push(true);
+    if (statuses.includes("archived")) filterValues.push(false);
+    
+    if (filterValues.length === 1) {
+      queryBuilder = queryBuilder.eq("is_published", filterValues[0]);
+    } else if (filterValues.length > 1) {
+      queryBuilder = queryBuilder.in("is_published", filterValues);
+    }
   }
   if (tag && tag !== "all") {
     queryBuilder = queryBuilder.contains("tags", [tag]);
@@ -278,20 +348,44 @@ export async function getProductsServer({
     queryBuilder = queryBuilder.gte("price", minPrice).lte("price", maxPrice);
   }
 
-  const sortingOptions: Record<string, { column: string; ascending: boolean }> =
-    {
-      "best-selling": { column: "num_sales", ascending: false },
-      "price-low-to-high": { column: "price", ascending: true },
-      "price-high-to-low": { column: "price", ascending: false },
-      "avg-customer-review": { column: "avg_rating", ascending: false },
-    };
+  const validSortFields = [
+    "name",
+    "price",
+    "created_at",
+    "updated_at",
+    "num_sales",
+    "num_reviews",
+    "avg_rating",
+    "stock_status",
+    "is_published",
+  ];
 
-  if (sort && sortingOptions[sort]) {
-    queryBuilder = queryBuilder.order(sortingOptions[sort].column, {
-      ascending: sortingOptions[sort].ascending,
-    });
+  if (sort && sort.includes(":")) {
+    const [field, order] = sort.split(":");
+    if (validSortFields.includes(field)) {
+      queryBuilder = queryBuilder.order(field, { ascending: order === "asc" });
+    } else {
+      queryBuilder = queryBuilder.order("created_at", { ascending: false });
+    }
+  } else if (sort) {
+    // Handle legacy sorting keys
+    const sortingOptions: Record<string, { column: string; ascending: boolean }> =
+      {
+        "best-selling": { column: "num_sales", ascending: false },
+        "price-low-to-high": { column: "price", ascending: true },
+        "price-high-to-low": { column: "price", ascending: false },
+        "avg-customer-review": { column: "avg_rating", ascending: false },
+      };
+
+    if (sortingOptions[sort]) {
+      queryBuilder = queryBuilder.order(sortingOptions[sort].column, {
+        ascending: sortingOptions[sort].ascending,
+      });
+    } else {
+      queryBuilder = queryBuilder.order("created_at", { ascending: false });
+    }
   } else {
-    queryBuilder = queryBuilder.order("id", { ascending: true });
+    queryBuilder = queryBuilder.order("created_at", { ascending: false });
   }
 
   const { data, error } = await queryBuilder.range(
@@ -456,20 +550,24 @@ export async function deleteProduct(id: string) {
 export async function getProductsBySearch(query: string, limit = 10) {
   const supabase = await createClient();
   const terms = expandSearchTerms(query);
-  const filter = buildSearchFilter(terms, ["name", "description", "brand"]);
+  
+  // Search in name, description, brand, and tags (using a broader limit to allow JS sorting)
+  const filter = buildSearchFilter(terms, ['name', 'description', 'brand']);
+  
   const { data, error } = await supabase
     .from("products")
-    .select("id, slug, name, images")
+    .select("id, slug, name, images, tags")
     .or(filter)
     .eq("is_published", true)
-    .limit(limit);
+    .limit(50); // Fetch more than requested to allow for better relevance sorting
+    
   if (error) throw error;
   
   // Sort by relevance to ensure exact matches come first
   const sortedData = sortProductsByRelevance(data || [], query);
   
-  // Prefer the first image if available
-  return sortedData.map((p: any) => ({
+  // Prefer the first image and return only the requested limit
+  return sortedData.slice(0, limit).map((p: any) => ({
     id: p.id,
     slug: p.slug,
     name: p.name,
@@ -481,28 +579,35 @@ export async function getCategoriesBySearch(query: string, limit = 5) {
   const supabase = await createClient();
   const terms = expandSearchTerms(query);
   
-  // Build filter for categories (title column)
-  const filters = terms.map(term => `title.ilike.%${term.replace(/[%_]/g, '\\$&')}%`).join(',');
+  // Build filter for categories (title and description if available - assuming at least title)
+  const filters = terms.map(term => {
+    const escaped = term.replace(/[%_]/g, '\\$&');
+    return `title.ilike.%${escaped}%`;
+  }).join(',');
   
   const { data, error } = await supabase
     .from("categories")
     .select("id, title, thumbnail")
     .or(filters)
-    .limit(limit);
+    .limit(20); // More for sorting
     
   if (error) throw error;
   
-  // Sort by relevance (manual sort since we have little data usually)
+  // Sort by relevance (manual sort)
   const normalizedQuery = query.toLowerCase().trim();
-  return (data || []).sort((a, b) => {
+  const sorted = (data || []).sort((a, b) => {
     const aTitle = a.title.toLowerCase();
     const bTitle = b.title.toLowerCase();
     if (aTitle === normalizedQuery) return -1;
     if (bTitle === normalizedQuery) return 1;
     if (aTitle.startsWith(normalizedQuery)) return -1;
     if (bTitle.startsWith(normalizedQuery)) return 1;
+    if (aTitle.includes(normalizedQuery)) return -1;
+    if (bTitle.includes(normalizedQuery)) return 1;
     return 0;
   });
+
+  return sorted.slice(0, limit);
 }
 
 export async function getProductById(id: string) {

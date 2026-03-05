@@ -54,7 +54,7 @@ const Signin = async (props: {
     return redirect(callbackUrl);
   }
 
-  // // console.log(user, callbackUrl)
+  // // 
 
   return (
     <main className="h-screen flex gap-6">

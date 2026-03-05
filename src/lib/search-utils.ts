@@ -27,6 +27,19 @@ export const SEARCH_SYNONYMS: Record<string, string[]> = {
   "meat": ["beef", "goat meat", "ram", "chicken", "protein", "cow leg"],
   "goat": ["meat", "ogufe"],
   
+  // Vegetables & Roots
+  "onion": ["onions", "albasa", "red onion", "white onion"],
+  "tomato": ["tomatoes", "tomati", "paste", "puree"],
+  "potato": ["potatoes", "sweet potato", "irish potato", "tubers"],
+  "carrot": ["carrots"],
+  "cabbage": ["cabbages"],
+  "lettuce": ["lettuces"],
+  "cucumber": ["cucumbers"],
+  "eggplant": ["eggplants", "garden egg", "igba"],
+  "okra": ["okro", "lady's finger", "ila"],
+  "spinach": ["efo", "tete", "shoko"],
+  "ugwu": ["pumpkin leaves", "u-gu"],
+  
   // Seeds & Nuts
   "seed": ["nuts", "flax", "maca", "sesame", "almond", "tiger nut", "groundnut", "peanut"],
   "nut": ["seed", "groundnut", "almond", "cashew", "tiger nut"],
@@ -51,6 +64,9 @@ export const SEARCH_SYNONYMS: Record<string, string[]> = {
   "amala": ["elubo", "yam flour", "black flour"],
   "beans": ["ewa", "honey beans", "oloyin", "iron beans", "kidney beans", "baked beans"],
   "ewa": ["beans"],
+  "egg": ["eggs"],
+  "milk": ["peak", "dano", "cowbell", "creamer", "evaporated"],
+  "bread": ["sliced", "agege", "wheat bread"],
   
   // Common terms
   "seasoning": ["maggie", "knorr", "ajinomoto", "royco", "bullion", "cube", "spice"],
@@ -124,13 +140,29 @@ export function expandSearchTerms(query: string): string[] {
   // Check whole query
   addSynonyms(normalizedQuery);
 
+  // Simple pluralization/singularization
+  const handlePlurals = (word: string) => {
+    if (word.length < 3) return;
+    
+    // Singular to Plural (very basic)
+    if (word.endsWith('o')) terms.add(word + 'es');
+    else if (word.endsWith('y')) terms.add(word.slice(0, -1) + 'ies');
+    else if (!word.endsWith('s')) terms.add(word + 's');
+    
+    // Plural to Singular
+    if (word.endsWith('ies')) terms.add(word.slice(0, -3) + 'y');
+    else if (word.endsWith('es')) terms.add(word.slice(0, -2));
+    else if (word.endsWith('s')) terms.add(word.slice(0, -1));
+  };
+
+  handlePlurals(normalizedQuery);
+
   // Check individual words if multi-word query
-  const words = normalizedQuery.split(/\s+/);
+  const words = normalizedQuery.split(/\s+/).filter(w => w.length > 1);
   if (words.length > 1) {
     words.forEach(word => {
-      if (word.length > 2) {
-        addSynonyms(word);
-      }
+      addSynonyms(word);
+      handlePlurals(word);
     });
   }
 
@@ -166,13 +198,14 @@ export function buildSearchFilter(terms: string[], columns: string[] = ["name", 
  * Sorts a list of products based on their relevance to the search query.
  * Relevancy order: exact name match > name starts with > name contains > others.
  */
-export function sortProductsByRelevance<T extends { name: string; description?: string | null }>(
+export function sortProductsByRelevance<T extends { name: string; description?: string | null; tags?: string[] | null }>(
   products: T[],
   query: string
 ): T[] {
   if (!query || query === "all") return products;
   
   const normalizedQuery = query.toLowerCase().trim();
+  const queryWords = normalizedQuery.split(/\s+/).filter(w => w.length > 1);
   
   return [...products].sort((a, b) => {
     const aName = a.name.toLowerCase();
@@ -190,13 +223,32 @@ export function sortProductsByRelevance<T extends { name: string; description?: 
     if (aStarts && !bStarts) return -1;
     if (!aStarts && bStarts) return 1;
     
-    // 3. Name Contains Query
+    // 3. Contains the exact whole phrase
+    const aContainsPhrase = aName.includes(normalizedQuery);
+    const bContainsPhrase = bName.includes(normalizedQuery);
+    if (aContainsPhrase && !bContainsPhrase) return -1;
+    if (!aContainsPhrase && bContainsPhrase) return 1;
+
+    // 4. Multi-word match: Contains ALL words from query (highest relevance for non-contiguous)
+    if (queryWords.length > 1) {
+      const aAllWords = queryWords.every(word => aName.includes(word));
+      const bAllWords = queryWords.every(word => bName.includes(word));
+      if (aAllWords && !bAllWords) return -1;
+      if (!aAllWords && bAllWords) return 1;
+    }
+    
+    // 5. Check tags for exact or partial match
+    const aTagsMatched = a.tags?.some(t => t.toLowerCase().includes(normalizedQuery));
+    const bTagsMatched = b.tags?.some(t => t.toLowerCase().includes(normalizedQuery));
+    if (aTagsMatched && !bTagsMatched) return -1;
+    if (!aTagsMatched && bTagsMatched) return 1;
+
+    // 6. Name Contains Query (Generic)
     const aContains = aName.includes(normalizedQuery);
     const bContains = bName.includes(normalizedQuery);
     if (aContains && !bContains) return -1;
     if (!aContains && bContains) return 1;
     
-    // 4. Keep existing order (e.g., best-selling) for remaining matches
     return 0;
   });
 }

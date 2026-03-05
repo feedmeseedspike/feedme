@@ -57,12 +57,10 @@ async function BlackFridayContent({ sort }: { sort: string }) {
     .order("created_at", { ascending: true });
 
   // Debug: log raw data count
-  console.log("Black Friday raw items count:", data?.length);
 
   // Keep items that have a product; ignore start/end dates for now
   const items = data?.filter((item) => !!item.products) ?? [];
 
-  // console.log("Black Friday filtered items count:", items.length);
 
   if (items.length === 0) {
     return (

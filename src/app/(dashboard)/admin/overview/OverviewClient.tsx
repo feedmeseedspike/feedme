@@ -2,6 +2,7 @@
 
 import Chart from "@components/admin/chart";
 import React, { useState, useEffect, useMemo } from "react";
+import Image from "next/image";
 import { Icon } from "@iconify/react";
 import {
   Table,
@@ -343,30 +344,30 @@ const OverviewClient: React.FC<OverviewClientProps> = ({
 
     // Calculate current period metrics
     setTotalOrdersMetrics({
-      total: calculateMetrics(totalOrdersChartData, "sales").total,
+      total: calculateMetrics(totalOrdersChartDataProcessed, "sales").total,
       percentageChange:
         prevTotalOrdersMetrics.total > 0
-          ? ((calculateMetrics(totalOrdersChartData, "sales").total -
+          ? ((calculateMetrics(totalOrdersChartDataProcessed, "sales").total -
               prevTotalOrdersMetrics.total) /
               prevTotalOrdersMetrics.total) *
             100
           : 0,
     });
     setDeliveredOrdersMetrics({
-      total: calculateMetrics(deliveredOrdersChartData, "orders").total,
+      total: calculateMetrics(deliveredOrdersChartDataProcessed, "orders").total,
       percentageChange:
         prevDeliveredOrdersMetrics.total > 0
-          ? ((calculateMetrics(deliveredOrdersChartData, "orders").total -
+          ? ((calculateMetrics(deliveredOrdersChartDataProcessed, "orders").total -
               prevDeliveredOrdersMetrics.total) /
               prevDeliveredOrdersMetrics.total) *
             100
           : 0,
     });
     setTotalRevenueMetrics({
-      total: calculateMetrics(totalRevenueChartData, "revenue").total,
+      total: calculateMetrics(totalRevenueChartDataProcessed, "revenue").total,
       percentageChange:
         prevTotalRevenueMetrics.total > 0
-          ? ((calculateMetrics(totalRevenueChartData, "revenue").total -
+          ? ((calculateMetrics(totalRevenueChartDataProcessed, "revenue").total -
               prevTotalRevenueMetrics.total) /
               prevTotalRevenueMetrics.total) *
             100
@@ -384,7 +385,7 @@ const OverviewClient: React.FC<OverviewClientProps> = ({
         0
       )
     );
-  }, [orders, initialOrders]);
+  }, [orders, initialOrders, prevDeliveredOrdersMetrics.total, prevTotalOrdersMetrics.total, prevTotalRevenueMetrics.total]);
 
   // Add effect to calculate previous period metrics when compareTo or date changes
   useEffect(() => {
@@ -473,12 +474,6 @@ const OverviewClient: React.FC<OverviewClientProps> = ({
     compareTo,
     date,
     initialOrders,
-    deliveredOrdersChartData,
-    prevDeliveredOrdersMetrics.total,
-    prevTotalOrdersMetrics.total,
-    prevTotalRevenueMetrics.total,
-    totalOrdersChartData,
-    totalRevenueChartData,
   ]);
 
   const handleApply = () => {
@@ -690,7 +685,13 @@ const OverviewClient: React.FC<OverviewClientProps> = ({
                <div key={user.user_id} className="flex items-center gap-3 bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
                   <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden text-sm font-bold text-gray-500">
                       {user.avatar_url ? (
-                        <img src={user.avatar_url} alt={user.display_name} className="h-full w-full object-cover" />
+                        <Image 
+                          src={user.avatar_url} 
+                          alt={user.display_name} 
+                          width={40}
+                          height={40}
+                          className="h-full w-full object-cover" 
+                        />
                       ) : (
                         (user.display_name?.[0] || user.email?.[0] || 'U').toUpperCase()
                       )}

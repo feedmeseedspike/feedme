@@ -50,7 +50,6 @@ export default function EditCategoryClient({
   const router = useRouter();
   const { showToast } = useToast();
 
-  console.log("initialCategeory", initialCategory);
 
   const [title, setTitle] = useState(initialCategory.title || "");
   const [description, setDescription] = useState(
@@ -185,9 +184,7 @@ export default function EditCategoryClient({
         thumbnail,
         banner_url,
       };
-      console.log("Category data to be updated:", updatedData);
       const result = await updateCategoryAction(initialCategory.id, updatedData);
-      console.log("Category updated successfully:", result);
       showToast("Category updated successfully!", "success");
       // Clear the draft from localStorage
       localStorage.removeItem(`categoryDraft_${initialCategory.id}`);
@@ -463,7 +460,7 @@ export default function EditCategoryClient({
             type="submit"
             className="bg-[#1B6013] text-white"
             disabled={submitting}
-            onClick={() => console.log("Save Changes button clicked")}
+            onClick={() => }
           >
             {submitting ? "Saving..." : "Save Changes"}
           </Button>

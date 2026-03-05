@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { BlogPost } from "@/lib/actions/blog.actions";
 import BlogCard from "./BlogCard";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import PaginationBar from "../pagination";
 
 interface BlogGridProps {
   category?: string;
@@ -17,7 +17,7 @@ const POSTS_PER_PAGE = 9;
 export default function BlogGrid({ category, page }: BlogGridProps) {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hasNextPage, setHasNextPage] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export default function BlogGrid({ category, page }: BlogGridProps) {
       try {
         const offset = (page - 1) * POSTS_PER_PAGE;
         const url = new URL("/api/blog/posts", window.location.origin);
-        url.searchParams.set("limit", (POSTS_PER_PAGE + 1).toString()); // Fetch one extra to check if there's a next page
+        url.searchParams.set("limit", POSTS_PER_PAGE.toString());
         url.searchParams.set("offset", offset.toString());
         
         if (category) {
@@ -37,9 +37,8 @@ export default function BlogGrid({ category, page }: BlogGridProps) {
         const data = await response.json();
         
         if (data.success) {
-          const fetchedPosts = data.posts;
-          setHasNextPage(fetchedPosts.length > POSTS_PER_PAGE);
-          setPosts(fetchedPosts.slice(0, POSTS_PER_PAGE)); // Remove the extra post
+          setPosts(data.posts);
+          setTotalCount(data.totalCount || 0);
         }
       } catch (error) {
         console.error("Error fetching posts:", error);
@@ -54,17 +53,14 @@ export default function BlogGrid({ category, page }: BlogGridProps) {
   if (loading) {
     return (
       <div>
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">
-            {category ? `${category} Posts` : "Latest Posts"}
-          </h2>
+        <div className="flex items-center justify-between mb-8">
+          <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 9 }).map((_, i) => (
+          {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="space-y-4">
               <div className="h-48 bg-gray-200 rounded-lg animate-pulse" />
               <div className="h-6 bg-gray-200 rounded animate-pulse" />
-              <div className="h-4 bg-gray-200 rounded animate-pulse" />
               <div className="h-4 bg-gray-200 rounded animate-pulse w-2/3" />
             </div>
           ))}
@@ -73,15 +69,7 @@ export default function BlogGrid({ category, page }: BlogGridProps) {
     );
   }
 
-  const createPageUrl = (newPage: number) => {
-    const params = new URLSearchParams(searchParams);
-    if (newPage > 1) {
-      params.set("page", newPage.toString());
-    } else {
-      params.delete("page");
-    }
-    return `/blog?${params.toString()}`;
-  };
+  const totalPages = Math.ceil(totalCount / POSTS_PER_PAGE);
 
   return (
     <section>
@@ -90,7 +78,7 @@ export default function BlogGrid({ category, page }: BlogGridProps) {
           {category ? `${category.charAt(0).toUpperCase() + category.slice(1)} Posts` : "Latest Posts"}
         </h2>
         <div className="text-sm text-gray-500">
-          Page {page}
+          {totalCount} posts found
         </div>
       </div>
 
@@ -118,34 +106,10 @@ export default function BlogGrid({ category, page }: BlogGridProps) {
             ))}
           </div>
 
-          {/* Pagination */}
-          {(page > 1 || hasNextPage) && (
-            <div className="flex justify-center items-center gap-4">
-              {page > 1 && (
-                <Link
-                  href={createPageUrl(page - 1)}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <ChevronLeft size={16} />
-                  Previous
-                </Link>
-              )}
-              
-              <span className="px-4 py-2 bg-[#1B6013] text-white rounded-lg">
-                {page}
-              </span>
-              
-              {hasNextPage && (
-                <Link
-                  href={createPageUrl(page + 1)}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Next
-                  <ChevronRight size={16} />
-                </Link>
-              )}
-            </div>
-          )}
+          <PaginationBar 
+            page={page}
+            totalPages={totalPages}
+          />
         </>
       )}
     </section>

@@ -356,20 +356,17 @@ export default function AddProduct() {
       const validFiles = Array.from(files).filter(
         (file) => file.type.startsWith("image/") && file.size <= 5 * 1024 * 1024
       );
-      console.log("Valid files selected:", validFiles);
       form.setValue("images", validFiles);
     } else {
       form.setValue("images", []);
     }
   };
   const onSubmit = async (data: ProductFormValues) => {
-    console.log("Form submitted with data:", data);
     setLoading(true);
 
     // 1. Upload product images to storage (client-side)
     let uploadedImageUrls: string[] = [];
     const validImages = data.images?.filter(img => img instanceof File && img.size > 0) || [];
-    console.log("Valid images for upload:", validImages);
     
     if (validImages.length > 0) {
       try {
@@ -377,7 +374,6 @@ export default function AddProduct() {
           uploadProductImage(imageFile, "product-images")
         );
         uploadedImageUrls = await Promise.all(uploadPromises);
-        console.log("Uploaded image URLs:", uploadedImageUrls);
       } catch (err: any) {
         console.error("Image upload error:", err);
         showToast(err.message || "Failed to upload product images", "error");
@@ -435,11 +431,9 @@ export default function AddProduct() {
       in_season: data.in_season,
     };
 
-    console.log("Product data to be sent:", productData);
 
     try {
       const result = await addProductAction(productData);
-      console.log("Product created successfully:", result);
       showToast("Product created successfully!", "success");
       form.reset();
       setImagePreviews([]);
@@ -543,7 +537,6 @@ export default function AddProduct() {
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit, (errors) => {
-            console.log("Form validation errors:", errors);
             showToast("Please fix the form errors before submitting", "error");
           })}
           className="p-6 rounded-lg shadow-md bg-white flex flex-col gap-2"
@@ -1041,7 +1034,7 @@ export default function AddProduct() {
               type="submit"
               className="w-full sm:w-auto bg-[#1B6013] text-white"
               disabled={loading}
-              onClick={() => console.log("Add Product button clicked")}
+              onClick={() => }
             >
               {loading ? (
                 <span className="flex items-center gap-2">

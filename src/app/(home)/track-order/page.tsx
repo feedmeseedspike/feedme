@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Image from "next/image";
 import { Input } from "@components/ui/input";
 import { Button } from "@components/ui/button";
 import { Search, Package, Truck, CheckCircle, Clock, AlertCircle, Loader2, ArrowRight, MapPin, Calendar, CreditCard } from "lucide-react";
@@ -22,13 +23,7 @@ export default function TrackOrderPage() {
   const [error, setError] = useState<string | null>(null);
   const [orderData, setOrderData] = useState<any>(null);
 
-  useEffect(() => {
-    if (initialOrderId) {
-      handleTrack(initialOrderId);
-    }
-  }, [initialOrderId]);
-
-  const handleTrack = async (id: string, updateUrl = false) => {
+  const handleTrack = useCallback(async (id: string, updateUrl = false) => {
     if (!id.trim()) return;
     
     // Update URL if searched manually
@@ -55,7 +50,13 @@ export default function TrackOrderPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [initialOrderId, router]);
+
+  useEffect(() => {
+    if (initialOrderId) {
+      handleTrack(initialOrderId);
+    }
+  }, [initialOrderId, handleTrack]);
 
   const getStatusStep = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -290,7 +291,13 @@ export default function TrackOrderPage() {
                                         <div key={item.id} className="flex gap-4 items-start">
                                             <div className="w-16 h-16 bg-gray-100 rounded-xl overflow-hidden shadow-inner border border-gray-100 flex-shrink-0">
                                                 {item.products?.images?.[0] ? (
-                                                    <img src={item.products.images[0]} alt={item.products.name} className="w-full h-full object-cover"/>
+                                                    <Image 
+                                                      src={item.products.images[0]} 
+                                                      alt={item.products.name} 
+                                                      width={64}
+                                                      height={64}
+                                                      className="w-full h-full object-cover"
+                                                    />
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center text-gray-300">
                                                         <Package size={20} />

@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import NextImage from 'next/image';
 
 interface ImageUploadZoneProps {
   onImageUploaded?: (url: string) => void;
@@ -61,7 +62,7 @@ export default function ImageUploadZone({
     return data.url;
   };
 
-  const handleFile = async (file: File) => {
+  const handleFile = useCallback(async (file: File) => {
     const validationError = validateFile(file);
     if (validationError) {
       setError(validationError);
@@ -81,7 +82,8 @@ export default function ImageUploadZone({
     } finally {
       setUploading(false);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onImageUploaded]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -101,7 +103,7 @@ export default function ImageUploadZone({
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFile(e.dataTransfer.files[0]);
     }
-  }, []);
+  }, [handleFile]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -119,11 +121,14 @@ export default function ImageUploadZone({
     return (
       <div className={`relative group ${className}`}>
         <div className="relative overflow-hidden rounded-lg border border-gray-200">
-          <img 
-            src={currentImage} 
-            alt="Uploaded" 
-            className="w-full h-48 object-cover"
-          />
+          <div className="relative w-full h-48">
+            <NextImage
+              src={currentImage}
+              alt="Uploaded"
+              fill
+              className="object-cover"
+            />
+          </div>
           
           {/* Remove button - positioned at top-right */}
           <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">

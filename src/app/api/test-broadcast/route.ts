@@ -14,8 +14,8 @@ export async function GET() {
     }
 
     // Get the latest blog post
-    const posts = await getAllBlogPosts({ limit: 1, status: 'published' });
-    const latestPost = posts[0];
+    const postsData = await getAllBlogPosts({ limit: 1, status: 'published' });
+    const latestPost = postsData.posts[0];
 
     if (!latestPost) {
        return NextResponse.json({ success: false, error: "No published blog posts found." }, { status: 404 });

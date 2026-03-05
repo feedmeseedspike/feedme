@@ -69,8 +69,6 @@ export default function AddNewCategory() {
       if (error) {
         console.error("Supabase error fetching products:", error);
       }
-      // console.log(allProducts);
-      // console.log("Fetched products:", data);
       if (!error && data) setAllProducts(data);
     }
     fetchProducts();
@@ -204,9 +202,7 @@ export default function AddNewCategory() {
         thumbnail,
         banner_url,
       };
-      console.log("Category data to be sent:", newCategoryData);
       const created = await addCategoryAction(newCategoryData);
-      console.log("Category created successfully:", created);
       // Update selected products' category_ids
       if (created && selectedProducts.length > 0) {
         for (const prod of selectedProducts) {
@@ -517,7 +513,7 @@ export default function AddNewCategory() {
               type="submit"
               className="bg-[#1B6013] text-white"
               disabled={submitting}
-              onClick={() => console.log("Create Category button clicked")}
+              onClick={() => }
             >
               {submitting ? "Creating..." : "Create Category"}
             </Button>

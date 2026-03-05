@@ -5,6 +5,7 @@ import { ArrowLeft, Save, Eye, Image as ImageIcon } from "lucide-react";
 import { Button } from "@components/ui/button";
 import { BlogPost, BlogCategory } from "@/lib/actions/blog.actions";
 import ImageUploadZone from "@/components/admin/ImageUploadZone";
+import NextImage from "next/image";
 import EnhancedRichTextEditor from "./EnhancedRichTextEditor";
 
 interface BlogPostFormProps {
@@ -336,12 +337,14 @@ export default function BlogPostForm({ post, categories, onClose }: BlogPostForm
               </div>
               
               {formData.featured_image && (
-                <div className="md:col-span-2 mt-4">
-                  <img
+                <div className="md:col-span-2 mt-4 relative h-48 w-full max-w-md">
+                  <NextImage
                     src={formData.featured_image}
                     alt={formData.featured_image_alt || 'Preview'}
-                    className="w-full max-w-md h-48 object-cover rounded-lg"
-                    onError={(e) => {
+                    fill
+                    unoptimized
+                    className="object-cover rounded-lg"
+                    onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
                       (e.target as HTMLImageElement).style.display = 'none';
                     }}
                   />

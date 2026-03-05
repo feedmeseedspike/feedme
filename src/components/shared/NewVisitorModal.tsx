@@ -7,6 +7,8 @@ import {
 import { Button } from "../../components/ui/button";
 import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { useCallback } from "react";
 
 interface NewVisitorModalProps {
   isOpen: boolean;
@@ -16,20 +18,20 @@ interface NewVisitorModalProps {
 export function NewVisitorModal({ isOpen, onClose }: NewVisitorModalProps) {
   const router = useRouter();
 
-  const handleSignUp = () => {
+  const handleSignUp = useCallback(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('feedme_welcome_shown', 'true');
     }
     onClose();
     router.push('/register');
-  };
+  }, [onClose, router]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('feedme_welcome_dismissed', Date.now().toString());
     }
     onClose();
-  };
+  }, [onClose]);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -46,9 +48,10 @@ export function NewVisitorModal({ isOpen, onClose }: NewVisitorModalProps) {
           {/* Image Section */}
           <div className="relative h-36 md:h-full w-full bg-stone-200 group order-first">
             {/* Background Luxury Image */}
-            <img 
+            <Image 
               src="/images/intro.jpeg" 
               alt="Fresh Local Groceries" 
+              fill
               className="absolute inset-0 w-full h-full object-cover"
             />
             {/* Overlay Gradient for contrast */}
@@ -56,10 +59,12 @@ export function NewVisitorModal({ isOpen, onClose }: NewVisitorModalProps) {
             
             {/* Brand Overlay */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 md:top-8 md:left-8 md:translate-x-0 md:translate-y-0 z-20 opacity-0 md:opacity-100 transition-opacity duration-700">
-               <img 
+               <Image 
                  src="/Footerlogo.png" 
                  alt="FeedMe Logo"
-                 className="w-24 md:w-28"
+                 width={112}
+                 height={112}
+                 className="w-24 md:w-28 h-auto"
                />
             </div>
           </div>

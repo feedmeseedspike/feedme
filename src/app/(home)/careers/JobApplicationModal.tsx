@@ -105,7 +105,6 @@ export default function JobApplicationModal({
           if (typeof result === 'string') {
             setFormData({ ...formData, resume_url: result });
             showToast("Resume uploaded successfully (local storage)", "success");
-            console.log('Upload successful via base64 fallback');
           }
         };
 
@@ -150,7 +149,6 @@ export default function JobApplicationModal({
 
       // Send confirmation and notification emails
       try {
-        console.log("📧 Sending job application emails...");
         await fetch("/api/email/send-job-application", {
           method: "POST",
           headers: {
@@ -163,7 +161,6 @@ export default function JobApplicationModal({
             jobDepartment: job.department,
           }),
         });
-        console.log("✅ Job application emails sent");
       } catch (emailError) {
         console.error("❌ Failed to send emails:", emailError);
         // Don't fail the application if email fails

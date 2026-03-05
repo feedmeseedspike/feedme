@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
@@ -47,7 +47,7 @@ export default function JobApplicationForm({ job }: JobApplicationFormProps) {
   const { showToast } = useToast();
   const router = useRouter();
 
-  const STORAGE_KEY = `job-application-${job.id}`;
+  const STORAGE_KEY = useMemo(() => `job-application-${job.id}`, [job.id]);
 
   // Load saved form data on mount
   useEffect(() => {
@@ -60,7 +60,7 @@ export default function JobApplicationForm({ job }: JobApplicationFormProps) {
         console.error("Failed to parse saved form data:", error);
       }
     }
-  }, [job.id]);
+  }, [STORAGE_KEY]);
 
   // Save form data whenever it changes
   useEffect(() => {
@@ -94,7 +94,6 @@ export default function JobApplicationForm({ job }: JobApplicationFormProps) {
         return;
       }
 
-      console.log("Using base64 storage for CV...");
 
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -149,7 +148,6 @@ export default function JobApplicationForm({ job }: JobApplicationFormProps) {
 
       // Send confirmation and notification emails
       try {
-        console.log("📧 Sending job application emails...");
         await fetch("/api/email/send-job-application", {
           method: "POST",
           headers: {
@@ -162,7 +160,6 @@ export default function JobApplicationForm({ job }: JobApplicationFormProps) {
             jobDepartment: job.department,
           }),
         });
-        console.log("✅ Job application emails sent");
       } catch (emailError) {
         console.error("❌ Failed to send emails:", emailError);
         // Don't fail the application if email fails

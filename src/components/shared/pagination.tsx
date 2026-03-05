@@ -2,14 +2,13 @@
 
 import { cn } from "../../lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
   PaginationItem,
   PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
 } from "../../components/ui/pagination";
 
 type PaginationBarProps = {
@@ -45,60 +44,82 @@ const PaginationBar = ({
   }
 
   return (
-    <Pagination>
-      <PaginationContent>
+    <Pagination className="mt-8">
+      <PaginationContent className="gap-2 sm:gap-4">
+        {/* Previous Button */}
         <PaginationItem>
-          <PaginationPrevious
+          <button
             onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
             className={cn(
-              currentPage === 1 && "pointer-events-none text-muted-foreground"
+              "flex items-center justify-center w-8 h-8 rounded-full transition-colors",
+              currentPage === 1
+                ? "text-gray-300 cursor-not-allowed"
+                : "text-gray-600 hover:bg-green-50 hover:text-[#1B6013]"
             )}
+            aria-label="Previous page"
           >
-            Previous
-          </PaginationPrevious>
+            <ChevronLeft className="w-5 h-5" />
+          </button>
         </PaginationItem>
+
+        {/* Page Numbers */}
         {Array.from({ length: totalPages }).map((_, i) => {
           const pageNum = i + 1;
           const isEdgePage = pageNum === 1 || pageNum === totalPages;
-          const isNearCurrentPage = Math.abs(pageNum - currentPage) <= 2;
+          const isNearCurrentPage = Math.abs(pageNum - currentPage) <= 1;
 
           if (!isEdgePage && !isNearCurrentPage) {
-            if (i === 1 || i === totalPages - 2) {
+            if (
+              (pageNum === 2 && currentPage > 3) ||
+              (pageNum === totalPages - 1 && currentPage < totalPages - 2)
+            ) {
               return (
-                <PaginationItem key={pageNum} className="hidden md:block">
-                  <PaginationEllipsis className="text-muted-foreground" />
+                <PaginationItem key={pageNum}>
+                  <PaginationEllipsis className="text-gray-400" />
                 </PaginationItem>
               );
             }
             return null;
           }
+
+          const isActive = pageNum === currentPage;
+
           return (
-            <PaginationItem
-              key={pageNum}
-              className={cn(
-                "hidden md:block",
-                pageNum === currentPage && "pointer-events-none block"
-              )}
-            >
-              <PaginationLink
+            <PaginationItem key={pageNum}>
+              <button
                 onClick={() => handlePageChange(pageNum)}
-                isActive={pageNum === currentPage}
+                className={cn(
+                  "relative px-2 py-1 text-sm font-medium transition-all duration-200",
+                  isActive
+                    ? "text-[#1B6013]"
+                    : "text-gray-500 hover:text-[#1B6013]"
+                )}
               >
                 {pageNum}
-              </PaginationLink>
+                {isActive && (
+                  <span className="absolute bottom-0 left-0 w-full h-0.5 bg-[#1B6013]" />
+                )}
+              </button>
             </PaginationItem>
           );
         })}
+
+        {/* Next Button */}
         <PaginationItem>
-          <PaginationNext
+          <button
             onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
             className={cn(
-              currentPage >= totalPages &&
-                "pointer-events-none text-muted-foreground"
+              "flex items-center justify-center w-8 h-8 rounded-full transition-colors",
+              currentPage === totalPages
+                ? "text-gray-300 cursor-not-allowed"
+                : "text-gray-600 hover:bg-green-50 hover:text-[#1B6013]"
             )}
+            aria-label="Next page"
           >
-            Next
-          </PaginationNext>
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </PaginationItem>
       </PaginationContent>
     </Pagination>

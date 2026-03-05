@@ -19,8 +19,8 @@ export const BONUS_CONFIG = {
   },
   REPEAT_ORDER_CASHBACK: {
     min_spend: 25000,
-    cashback_percent: 10,
-    description: "10% cashback on orders above ₦25,000 for returning members",
+    cashback_percent: 5,
+    description: "5% cashback on orders above ₦25,000 for returning members",
   },
   SUBSEQUENT_FREE_DELIVERY: {
     min_spend: 50000,
@@ -95,7 +95,7 @@ export function getDealMessages(subtotal: number, items: CartItem[] = [], isFirs
 
   // Authentication prompt
   if (!isAuthenticated && subtotal >= BONUS_CONFIG.FIRST_TIME.min_spend) {
-      messages.push(`Log in for 10% Off!`);
+      messages.push(`Log in for 5% Off!`);
   }
   
   // First time visitor applied message

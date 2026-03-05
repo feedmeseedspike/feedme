@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { Upload, CheckCircle, AlertCircle, RefreshCw, Plus, ArrowRight, UserPlus, HelpCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatNaira } from "@/lib/utils";
 
 interface AnalysisResult {
   csvItem: string;
@@ -8,10 +8,14 @@ interface AnalysisResult {
   matchId?: string;
   matchName?: string;
   similarity?: number;
+  oldPrice?: number;
+  newPrice?: number;
+  newPriceMax?: number;
   suggestion?: {
     id: string;
     name: string;
     similarity: number;
+    oldPrice?: number;
   };
 }
 
@@ -170,6 +174,48 @@ export default function UploadExcel({ onSuccess }: Props) {
           </div>
 
           <div className="max-h-[500px] overflow-y-auto space-y-8 pr-4 custom-scrollbar">
+            {exacts.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-xs font-black text-[#10B981] uppercase tracking-widest bg-green-50 px-3 py-1.5 rounded-lg border border-green-100 flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4" /> Price Updates (Exact Matches)
+                  </h3>
+                  <div className="h-px flex-1 bg-gradient-to-r from-green-100 to-transparent"></div>
+                </div>
+                <div className="space-y-3">
+                  {exacts.map(item => (
+                    <div key={item.csvItem} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-100 group">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-900 uppercase">{item.csvItem}</span>
+                        <div className="flex items-center gap-4 mt-1">
+                          <div className="flex flex-col">
+                             <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">Current Price</span>
+                             <span className="text-xs font-bold text-gray-500">{formatNaira(item.oldPrice || 0)}</span>
+                          </div>
+                          <ArrowRight className="w-3 h-3 text-gray-300" />
+                          <div className="flex flex-col">
+                             <span className="text-[9px] text-[#10B981] font-bold uppercase tracking-tighter">New Price</span>
+                             <span className={cn(
+                               "text-xs font-black",
+                               (item.newPrice || 0) < (item.oldPrice || 0) ? "text-green-600" : (item.newPrice || 0) > (item.oldPrice || 0) ? "text-red-500" : "text-gray-900"
+                             )}>
+                               {formatNaira(item.newPrice || 0)}
+                               {item.newPriceMax && item.newPriceMax > item.newPrice! && ` - ${formatNaira(item.newPriceMax)}`}
+                               {(item.newPrice || 0) < (item.oldPrice || 0) && <span className="ml-1 text-[10px] bg-green-100 px-1 rounded">DROP</span>}
+                               {(item.newPrice || 0) > (item.oldPrice || 0) && <span className="ml-1 text-[10px] bg-red-100 px-1 rounded">HIKE</span>}
+                             </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                         <span className="text-[10px] font-black text-green-600 bg-green-50 px-3 py-1 rounded-full border border-green-100">MATCHED ✓</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {renames.length > 0 && (
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
@@ -185,6 +231,9 @@ export default function UploadExcel({ onSuccess }: Props) {
                         <div className="flex flex-col">
                           <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter mb-0.5">CSV Product Name</span>
                           <span className="font-bold text-gray-900 group-hover:text-amber-600 transition-colors uppercase">{item.csvItem}</span>
+                          {item.newPrice && (
+                            <span className="text-xs font-black text-green-600">CSV: {formatNaira(item.newPrice)}</span>
+                          )}
                         </div>
                         <div className="flex flex-col items-center px-4">
                            <ArrowRight className="w-4 h-4 text-amber-400" />
@@ -193,8 +242,12 @@ export default function UploadExcel({ onSuccess }: Props) {
                         <div className="flex flex-col">
                           <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter mb-0.5">Existing DB Product</span>
                           <span className="font-bold text-gray-700 uppercase">{item.matchName}</span>
+                          {item.oldPrice !== undefined && (
+                            <span className="text-xs font-bold text-gray-400">DB: {formatNaira(item.oldPrice)}</span>
+                          )}
                         </div>
                       </div>
+
                       <div className="flex gap-2">
                         <button 
                           onClick={() => toggleRename(item.csvItem, item.matchId!, item.matchName!)}
@@ -231,7 +284,12 @@ export default function UploadExcel({ onSuccess }: Props) {
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col">
                           <span className="font-black text-gray-900 text-lg uppercase leading-none">{item.csvItem}</span>
-                          <span className="text-xs text-blue-600 font-bold mt-1 uppercase tracking-tight">Status: New Creation</span>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-blue-600 font-bold uppercase tracking-tight">Status: New Creation</span>
+                            {item.newPrice && (
+                               <span className="text-xs font-black text-green-600 bg-green-50 px-2 rounded">Price: {formatNaira(item.newPrice)}</span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex gap-3">
                            <button 
@@ -263,7 +321,7 @@ export default function UploadExcel({ onSuccess }: Props) {
                               confirmations[item.csvItem]?.action === 'rename' ? "text-green-600 no-underline" : "text-amber-500"
                             )}
                           >
-                            {confirmations[item.csvItem]?.action === 'rename' ? '✓ Linked to ' + item.suggestion.name : 'Wait, link to this instead?'}
+                            {confirmations[item.csvItem]?.action === 'rename' ? '✓ Linked' : 'Wait, link to this instead?'}
                           </button>
                         </div>
                       )}

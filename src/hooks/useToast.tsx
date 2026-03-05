@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { createContext, useState, useContext, useEffect } from "react";
+import Image from "next/image";
 import {
   CheckCircle2,
   AlertCircle,
@@ -169,11 +170,14 @@ const Toast = ({
       className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${colorMap[type]} shadow-lg max-w-sm`}
     >
       {imageUrl ? (
-        <img
-          src={imageUrl}
-          alt=""
-          className="w-10 h-10 rounded object-cover border"
-        />
+        <div className="relative w-10 h-10 flex-shrink-0">
+          <Image
+            src={imageUrl}
+            alt=""
+            fill
+            className="rounded object-cover border"
+          />
+        </div>
       ) : (
         <div className={`flex-shrink-0 ${iconColorMap[type]}`}>
           {iconMap[type]}

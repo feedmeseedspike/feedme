@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@components/ui/button';
 import { X, Gift, ArrowRight } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useUser } from 'src/hooks/useUser';
@@ -42,9 +43,9 @@ export default function DealsPopup() {
     return () => clearTimeout(timer);
   }, [pathname, userId]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setIsOpen(false);
-  };
+  }, []);
 
   return (
     <AnimatePresence>
@@ -75,9 +76,10 @@ export default function DealsPopup() {
             <div className="relative">
                 {/* Visual Header */}
                 <div className="h-48 bg-[#1B6013] relative overflow-hidden flex items-center justify-center">
-                    <img 
+                    <Image 
                       src="/welcome-gift.png" 
                       alt="Welcome Gift" 
+                      fill
                       className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-40"
                     />
                     <motion.div 
@@ -86,9 +88,11 @@ export default function DealsPopup() {
                         transition={{ delay: 0.2 }}
                         className="relative z-10 w-40 h-40"
                     >
-                        <img 
+                        <Image 
                           src="/welcome-gift.png" 
                           alt="FeedMe Gift" 
+                          width={160}
+                          height={160}
                           className="w-full h-full object-contain drop-shadow-2xl"
                         />
                     </motion.div>
@@ -103,7 +107,7 @@ export default function DealsPopup() {
                     <p className="text-lg font-bold text-[#1B6013] mb-6">Your First Fresh Order</p>
                     
                     <p className="text-slate-500 text-sm leading-relaxed mb-8">
-                        Join FeedMe today for 5% OFF your first order! Plus, as a member, you&apos;ll unlock 10% cashback on all future orders over ₦25,000.
+                        Join FeedMe today for 5% OFF your first order! Plus, as a member, you&apos;ll unlock 5% cashback on all future orders over ₦25,000.
                     </p>
 
                     <Link href="/register" onClick={handleClose}>

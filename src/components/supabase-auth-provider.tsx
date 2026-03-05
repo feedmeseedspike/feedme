@@ -128,7 +128,7 @@ export function SupabaseAuthProvider({
               email: authenticatedUser.email ?? null,
               has_used_new_user_spin: user?.has_used_new_user_spin ?? false,
               loyalty_points: user?.loyalty_points ?? 0,
-              updated_at: user?.updated_at ?? null,
+              last_spin_at: user?.last_spin_at ?? null,
             });
           } else {
             setUser(userProfile);

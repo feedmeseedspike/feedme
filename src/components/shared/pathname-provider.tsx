@@ -6,13 +6,6 @@ import dynamic from "next/dynamic";
 
 import BottomNav from "@components/shared/BottomNav";
 
-const DynamicReferralBanner = dynamic(
-  () => import("@components/shared/ReferralBanner"),
-  {
-    ssr: false,
-    loading: () => null,
-  }
-);
 
 const DynamicWhatsAppButton = dynamic(
   () => import("@components/WhatsAppButton"),
@@ -54,9 +47,6 @@ export function PathnameProvider({
 
   return (
     <>
-      {!shouldHideNavAndBanner && (
-        <DynamicReferralBanner hasReferralStatus={hasReferralStatus} />
-      )}
       {children}
       {!shouldHideNavAndBanner && <BottomNav />}
       {!shouldHideNavAndBanner && (

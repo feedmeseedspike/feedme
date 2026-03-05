@@ -33,7 +33,7 @@ export async function processOrderRewards(
         const result = await creditWallet(
             userId,
             loyaltyCashback,
-            "Repeat Order Reward: 10% Cashback",
+            "Repeat Order Reward: 5% Cashback",
             `REPEAT-CB-${orderId}`
         );
         

@@ -3,7 +3,7 @@ interface ParsedProduct {
   categoryTitle: string;
   name: string;
   discount?: string;
-  options: { name: string; price: number }[];
+  options: { name: string; price: number; oldPrice?: number }[];
 }
 
 export function parseFeedMeSheet(
@@ -29,6 +29,8 @@ export function parseFeedMeSheet(
       // For price, be very specific to avoid picking up historical price columns
       if (n === 'new price') {
          idx = headers.findIndex((h) => h?.toString().toLowerCase().trim() === 'new price');
+      } else if (n === 'old price') {
+         idx = headers.findIndex((h) => h?.toString().toLowerCase().trim() === 'old price');
       } else {
          idx = headers.findIndex((h) => h?.toString().toLowerCase().includes(n));
       }
@@ -40,6 +42,7 @@ export function parseFeedMeSheet(
   const itemIdx = col("food item");
   const qtyIdx = col("quantity");
   const newPriceIdx = headers.findIndex(h => h?.toString().toLowerCase().trim() === "new price");
+  const oldPriceIdx = headers.findIndex(h => h?.toString().toLowerCase().trim() === "old price");
   const discountIdx = col("discount");
 
   if (catIdx === -1 || itemIdx === -1 || qtyIdx === -1 || newPriceIdx === -1) {
@@ -58,6 +61,7 @@ export function parseFeedMeSheet(
     const foodItemInRow = row[itemIdx]?.toString().trim();
     const quantity = row[qtyIdx]?.toString().trim();
     const newPriceStr = row[newPriceIdx]?.toString().trim();
+    const oldPriceStr = oldPriceIdx !== -1 ? row[oldPriceIdx]?.toString().trim() : undefined;
     const discountStr = discountIdx !== -1 ? row[discountIdx]?.toString().trim() : undefined;
 
     // Update state only if we have data in the first few columns
@@ -71,15 +75,18 @@ export function parseFeedMeSheet(
       continue;
     }
 
-    if (!quantity || !newPriceStr) {
+    // A valid entry must have a quantity and at least one price (New or Old)
+    if (!quantity || (!newPriceStr && !oldPriceStr)) {
       continue;
     }
 
-    // Clean and parse price
-    const price = parseFloat(newPriceStr.replace(/[^0-9.]/g, ""));
+    // Clean and parse prices
+    // If NEW PRICE is missing, fallback to OLD PRICE as the current price
+    const effectiveNewPriceStr = newPriceStr || oldPriceStr || "";
+    const price = parseFloat(effectiveNewPriceStr.replace(/[^0-9.]/g, ""));
+    const oldPrice = oldPriceStr ? parseFloat(oldPriceStr.replace(/[^0-9.]/g, "")) : undefined;
     
-    // Safety Threshold: Skip zero, NaN, or obvious outliers (e.g. dates mistaken for prices)
-    // 1,000,000 is our hard cap for produced items.
+    // Safety Threshold: Skip zero, NaN, or obvious outliers
     if (isNaN(price) || price <= 0 || price >= 1000000) {
       continue;
     }
@@ -105,7 +112,7 @@ export function parseFeedMeSheet(
     // Add unique options only
     const cleanQty = quantity.trim();
     if (!product.options.some(o => o.name === cleanQty)) {
-       product.options.push({ name: cleanQty, price });
+       product.options.push({ name: cleanQty, price, oldPrice: isNaN(oldPrice as number) ? undefined : oldPrice });
     }
   }
 

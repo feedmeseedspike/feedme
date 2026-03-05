@@ -4,9 +4,6 @@ import { createClient } from "src/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export async function updateCategoryAction(categoryId: string, categoryData: any) {
-  console.log('[DEBUG] UPDATE CATEGORY SERVER ACTION CALLED!');
-  console.log('[DEBUG] Updating category ID:', categoryId);
-  console.log('[DEBUG] Received categoryData:', JSON.stringify(categoryData, null, 2));
   
   const supabase = await createClient();
   
@@ -27,7 +24,6 @@ export async function updateCategoryAction(categoryId: string, categoryData: any
     }
   }
   
-  console.log('[DEBUG] About to update category in DB with:', JSON.stringify(cleanData, null, 2));
   
   const { data, error } = await supabase
     .from("categories")
@@ -35,7 +31,6 @@ export async function updateCategoryAction(categoryId: string, categoryData: any
     .eq("id", categoryId)
     .select();
     
-  console.log('[DEBUG] Supabase update result:', JSON.stringify({ data, error }, null, 2));
   
   if (error) {
     console.error('[ERROR] Supabase update error:', error);

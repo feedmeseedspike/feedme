@@ -1,243 +1,174 @@
 "use server";
 
-import { createClient, createServiceRoleClient } from "../../utils/supabase/server";
-import slugify from "slugify";
-import { sendBroadcastNotification } from "./notifications.actions";
+import { createServiceRoleClient } from "@/utils/supabase/server";
 
-// Types
-export interface BlogPost {
-  id: string;
-  title: string;
-  slug: string;
-  excerpt?: string;
-  content: string;
-  featured_image?: string;
-  featured_image_alt?: string;
-  category_id?: string;
-  author_id?: string;
-  status: 'draft' | 'published' | 'archived';
-  featured: boolean;
-  published_at?: string;
-  reading_time?: number;
-  views_count: number;
-  likes_count: number;
-  meta_title?: string;
-  meta_description?: string;
-  meta_keywords?: string;
-  prep_time?: number;
-  cook_time?: number;
-  servings?: number;
-  difficulty?: 'easy' | 'medium' | 'hard';
-  ingredients?: any[];
-  instructions?: any[];
-  nutritional_info?: any;
-  created_at: string;
-  updated_at: string;
-  // Relations
-  blog_categories?: BlogCategory;
-  blog_post_tags?: { blog_tags: BlogTag }[];
-  blog_recipe_products?: BlogRecipeProduct[];
-}
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface BlogCategory {
   id: string;
   name: string;
   slug: string;
-  description?: string;
-  color: string;
-  icon?: string;
-  featured: boolean;
-  sort_order: number;
+  description?: string | null;
+  color?: string | null;
+  featured?: boolean;
+  post_count?: number;
   created_at: string;
-  updated_at: string;
 }
 
-export interface BlogRecipeProduct {
+export interface BlogPost {
   id: string;
-  post_id: string;
-  product_id: string;
-  ingredient_name: string;
-  quantity?: string;
-  optional?: boolean;
-  created_at: string;
-  product?: any; // To support joined product data
-}
-
-export interface BlogTag {
-  id: string;
-  name: string;
+  title: string;
   slug: string;
-  created_at: string;
-}
-
-export interface BlogComment {
-  id: string;
-  post_id: string;
-  user_id: string;
-  parent_id?: string;
-  content: string;
-  status: 'pending' | 'approved' | 'rejected';
+  excerpt?: string | null;
+  content?: string | null;
+  featured_image?: string | null;
+  featured_image_alt?: string | null;
+  status: "draft" | "published" | "archived";
+  featured?: boolean;
+  author_id?: string | null;
+  category_id?: string | null;
+  tags?: string[] | null;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  meta_keywords?: string | null;
+  reading_time?: number | null;
+  views_count: number;
+  likes_count: number;
+  prep_time?: number | null;
+  cook_time?: number | null;
+  servings?: number | null;
+  difficulty?: "easy" | "medium" | "hard" | null;
+  ingredients?: any[] | null;
+  instructions?: any[] | null;
+  published_at?: string | null;
   created_at: string;
   updated_at: string;
-  user?: {
-    display_name: string;
-    avatar_url: string;
-  };
+  linked_products?: string[] | null;
+  // Joined relation fields (optional, from Supabase selects with joins)
+  blog_categories?: { id: string; name: string; slug: string } | null;
+  blog_post_tags?: Array<{ blog_tags: { id: string; name: string } }> | null;
+  blog_recipe_products?: Array<{ id: string; product?: any }> | null;
 }
 
-// Blog Posts Actions
-export async function getAllBlogPosts({
-  limit = 10,
-  offset = 0,
-  category,
-  featured,
-  status
-}: {
+// ─── Categories ──────────────────────────────────────────────────────────────
+
+export async function getAllBlogCategories(): Promise<BlogCategory[]> {
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase
+    .from("blog_categories")
+    .select("*")
+    .order("name");
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getFeaturedBlogCategories(): Promise<BlogCategory[]> {
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase
+    .from("blog_categories")
+    .select("*")
+    .eq("featured", true)
+    .order("name");
+
+  if (error) throw error;
+  return data || [];
+}
+
+// ─── Posts ────────────────────────────────────────────────────────────────────
+
+export async function getAllBlogPosts(options?: {
   limit?: number;
   offset?: number;
   category?: string;
   featured?: boolean;
   status?: string;
-} = {}) {
-  const supabase = await createClient();
-
-  let categoryId: string | undefined;
-
-  // If category slug is provided, get the category ID first
-  if (category) {
-    const { data: categoryData, error: categoryError } = await supabase
-      .from("blog_categories")
-      .select("id")
-      .eq("slug", category)
-      .single();
-
-    if (categoryError || !categoryData) {
-      // If category doesn't exist, return empty array
-      return [];
-    }
-
-    categoryId = categoryData.id;
-  }
+}): Promise<{ posts: BlogPost[]; totalCount: number }> {
+  const supabase = createServiceRoleClient();
 
   let query = supabase
     .from("blog_posts")
-    .select(`
-      *,
-      blog_categories(*),
-      blog_post_tags(blog_tags(*))
-    `)
-    .order("created_at", { ascending: false })
-    .range(offset, offset + limit - 1);
+    .select("*", { count: "exact" })
+    .order("published_at", { ascending: false });
 
-  if (status) {
-    query = query.eq("status", status);
+  if (options?.status) {
+    query = query.eq("status", options.status);
+  }
+  if (options?.category) {
+    query = query.eq("category_id", options.category);
+  }
+  if (options?.featured !== undefined) {
+    query = query.eq("featured", options.featured);
+  }
+  if (options?.limit) {
+    query = query.limit(options.limit);
+  }
+  if (options?.offset) {
+    const from = options.offset;
+    const to = from + (options.limit ?? 10) - 1;
+    query = query.range(from, to);
   }
 
-  if (categoryId) {
-    query = query.eq("category_id", categoryId);
-  }
-
-  if (featured !== undefined) {
-    query = query.eq("featured", featured);
-  }
-
-  const { data, error } = await query;
-
+  const { data, error, count } = await query;
   if (error) throw error;
-  return data as BlogPost[];
+  return { posts: data || [], totalCount: count || 0 };
 }
 
-export async function getBlogPostBySlug(slug: string) {
+export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
   const supabase = createServiceRoleClient();
-  
   const { data, error } = await supabase
     .from("blog_posts")
-    .select(`
-      *,
-      blog_categories(*),
-      blog_post_tags(blog_tags(*)),
-      blog_recipe_products(*)
-    `)
+    .select("*")
     .eq("slug", slug)
     .eq("status", "published")
     .single();
-  
-  if (error) throw error;
-  if (!data) return null;
 
-  const post = data as BlogPost;
-
-  // Manual join for products since foreign key relationship might be missing in schema cache
-  if (post.blog_recipe_products && post.blog_recipe_products.length > 0) {
-    const productIds = post.blog_recipe_products
-      .map((rp) => rp.product_id)
-      .filter(Boolean);
-
-    if (productIds.length > 0) {
-      const { data: products } = await supabase
-        .from("products")
-        .select("*")
-        .in("id", productIds);
-
-      if (products) {
-        post.blog_recipe_products = post.blog_recipe_products.map((rp) => ({
-          ...rp,
-          product: products.find((p) => p.id === rp.product_id)
-        }));
-      }
-    }
+  if (error) {
+    if (error.code === "PGRST116") return null; // not found
+    throw error;
   }
-
-  return post;
+  return data;
 }
 
-// Admin version that doesn't filter by status
-export async function getBlogPostBySlugAdmin(slug: string) {
+export async function getBlogPostBySlugAdmin(slug: string): Promise<BlogPost | null> {
   const supabase = createServiceRoleClient();
-  
   const { data, error } = await supabase
     .from("blog_posts")
-    .select(`
-      *,
-      blog_categories(*),
-      blog_post_tags(blog_tags(*))
-    `)
+    .select("*")
     .eq("slug", slug)
     .single();
-  
-  if (error) throw error;
-  return data as BlogPost;
+
+  if (error) {
+    if (error.code === "PGRST116") return null;
+    throw error;
+  }
+  return data;
 }
 
-export async function getFeaturedBlogPosts(limit = 3) {
-  const supabase = await createClient();
-  
+export async function getFeaturedBlogPosts(limit = 3): Promise<BlogPost[]> {
+  const supabase = createServiceRoleClient();
   const { data, error } = await supabase
     .from("blog_posts")
-    .select(`
-      *,
-      blog_categories(*),
-      blog_post_tags(blog_tags(*))
-    `)
+    .select("*")
     .eq("status", "published")
     .eq("featured", true)
     .order("published_at", { ascending: false })
     .limit(limit);
-  
+
   if (error) throw error;
-  return data as BlogPost[];
+  return data || [];
 }
 
-export async function getRelatedBlogPosts(postId: string, categoryId?: string, limit = 3) {
-  const supabase = await createClient();
-  
+export async function getRelatedBlogPosts(
+  postId: string,
+  categoryId?: string | null,
+  limit = 3
+): Promise<BlogPost[]> {
+  const supabase = createServiceRoleClient();
+
   let query = supabase
     .from("blog_posts")
-    .select(`
-      *,
-      blog_categories(*),
-      blog_post_tags(blog_tags(*))
-    `)
+    .select("*")
     .eq("status", "published")
     .neq("id", postId)
     .order("published_at", { ascending: false })
@@ -248,378 +179,203 @@ export async function getRelatedBlogPosts(postId: string, categoryId?: string, l
   }
 
   const { data, error } = await query;
-  
   if (error) throw error;
-  return data as BlogPost[];
+
+  // If not enough from same category, fill with other posts
+  if ((data?.length ?? 0) < limit && categoryId) {
+    const { data: morePosts } = await supabase
+      .from("blog_posts")
+      .select("*")
+      .eq("status", "published")
+      .neq("id", postId)
+      .neq("category_id", categoryId)
+      .order("published_at", { ascending: false })
+      .limit(limit - (data?.length ?? 0));
+
+    return [...(data || []), ...(morePosts || [])];
+  }
+
+  return data || [];
 }
 
-export async function searchBlogPosts(searchTerm: string, limit = 10) {
-  const supabase = await createClient();
-  
+export async function searchBlogPosts(
+  query: string,
+  limit = 10
+): Promise<BlogPost[]> {
+  const supabase = createServiceRoleClient();
   const { data, error } = await supabase
     .from("blog_posts")
-    .select(`
-      *,
-      blog_categories(*),
-      blog_post_tags(blog_tags(*))
-    `)
+    .select("*")
     .eq("status", "published")
-    .or(`title.ilike.%${searchTerm}%,excerpt.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`)
+    .or(`title.ilike.%${query}%,excerpt.ilike.%${query}%,content.ilike.%${query}%`)
     .order("published_at", { ascending: false })
     .limit(limit);
-  
+
   if (error) throw error;
-  return data as BlogPost[];
+  return data || [];
 }
 
-export async function incrementBlogPostViews(postId: string) {
+export async function createBlogPost(
+  postData: Partial<BlogPost>
+): Promise<BlogPost> {
   const supabase = createServiceRoleClient();
-  
-  const { error } = await supabase.rpc('increment_blog_post_views', {
-    post_id: postId
-  });
-  
-  if (error) {
-    console.error('Error incrementing views:', error);
-  }
-}
 
-// Create Blog Post (Admin)
-export async function createBlogPost(postData: Partial<BlogPost>) {
-  const supabase = createServiceRoleClient();
-  
-  // Generate slug from title
-  const slug = postData.title ? slugify(postData.title, { lower: true, strict: true }) : '';
-  
-  // Calculate reading time (rough estimate: 200 words per minute)
-  const wordCount = postData.content ? postData.content.replace(/<[^>]*>/g, '').split(' ').length : 0;
-  const reading_time = Math.ceil(wordCount / 200);
-  
-  // Strip relational fields
-  const fieldsToStrip = ['blog_categories', 'blog_post_tags', 'blog_recipe_products', 'blog_tags', 'product'];
-  const cleanedPayload = Object.fromEntries(
-    Object.entries(postData).filter(([key]) => !fieldsToStrip.includes(key))
-  );
+  const now = new Date().toISOString();
+  const payload = {
+    ...postData,
+    views_count: postData.views_count ?? 0,
+    likes_count: postData.likes_count ?? 0,
+    created_at: now,
+    updated_at: now,
+    published_at:
+      postData.status === "published"
+        ? postData.published_at ?? now
+        : postData.published_at ?? null,
+  };
 
   const { data, error } = await supabase
     .from("blog_posts")
-    .insert([{
-      ...cleanedPayload,
-      slug,
-      reading_time,
-      published_at: postData.status === 'published' ? new Date().toISOString() : null,
-    }])
+    .insert(payload)
     .select()
     .single();
-  
+
   if (error) throw error;
-
-  if (postData.status === 'published' && data) {
-    sendBroadcastNotification({
-      type: "info",
-      title: "New Blog Post!",
-      body: `Check out our latest post: ${data.title}`,
-      link: `/blog/${data.slug}`
-    }).catch(err => console.error("Auto-broadcast failed:", err));
-  }
-
-  return data as BlogPost;
+  return data;
 }
 
-export async function updateBlogPost(postId: string, postData: Partial<BlogPost>) {
-  // Use service role for admin operations to bypass RLS
+export async function updateBlogPost(
+  id: string,
+  postData: Partial<BlogPost>
+): Promise<BlogPost> {
   const supabase = createServiceRoleClient();
-  
-  
-  
-  // Don't auto-generate slug for existing posts to avoid conflicts
-  // Only update slug if explicitly provided and different from auto-generated
-  if (postData.title) {
-    const autoSlug = slugify(postData.title, { lower: true, strict: true });
-    
-    // Don't update slug automatically - keep the original slug
-    delete postData.slug;
-  }
-  
-  // Calculate reading time if content changed
-  if (postData.content) {
-    const wordCount = postData.content.replace(/<[^>]*>/g, '').split(' ').length;
-    postData.reading_time = Math.ceil(wordCount / 200);
-    
-  }
-  
-  // Set published_at if status changes to published
-  if (postData.status === 'published') {
-    postData.published_at = new Date().toISOString();
-    
-  }
-  
-  // Clean up the data - remove relational fields and empty values
-  const fieldsToStrip = ['blog_categories', 'blog_post_tags', 'blog_recipe_products', 'product'];
-  const cleanedData = Object.fromEntries(
-    Object.entries(postData).filter(([key, value]) => {
-      if (fieldsToStrip.includes(key)) return false;
-      if (value === null || value === undefined) return false;
-      if (typeof value === 'string' && value.trim() === '') return false;
-      if (Array.isArray(value) && value.length === 0) return false;
-      return true;
-    })
-  );
-  
-  
-  
-  // First verify the post exists with this ID and get its current status
-  const { data: existingCheck, error: checkError } = await supabase
-    .from("blog_posts")
-    .select("id, title, slug, status")
-    .eq("id", postId)
-    .single();
-  
-  
-  
-  if (checkError || !existingCheck) {
-    throw new Error(`Post with ID ${postId} does not exist in database`);
-  }
-  
-  const { data, error } = await supabase
-    .from("blog_posts")
-    .update(cleanedData)
-    .eq("id", postId)
-    .select();
-  
-  
-  
-  if (error) {
-    console.error("Supabase update error:", error);
-    throw error;
-  }
-  
-  if (!data || data.length === 0) {
-    console.error("No rows updated for post ID:", postId);
-    throw new Error("Blog post not found or could not be updated");
-  }
-  
-  const updatedPost = data[0] as BlogPost;
 
-  // Trigger Broadcast if status changed to published
-  if (postData.status === 'published' && existingCheck.status !== 'published') {
-     sendBroadcastNotification({
-        type: "info",
-        title: "New Blog Post!",
-        body: `We just published: ${updatedPost.title}`,
-        link: `/blog/${updatedPost.slug}`
-     }).catch(err => console.error("Auto-broadcast failed:", err));
-  }
-  
-  return updatedPost;
-}
+  const payload: any = {
+    ...postData,
+    updated_at: new Date().toISOString(),
+  };
 
-export async function deleteBlogPost(postId: string) {
-  const supabase = createServiceRoleClient();
-  
-  const { error } = await supabase
-    .from("blog_posts")
-    .delete()
-    .eq("id", postId);
-  
-  if (error) throw error;
-}
-
-// Blog Categories Actions
-export async function getAllBlogCategories() {
-  const supabase = await createClient();
-  
-  const { data, error } = await supabase
-    .from("blog_categories")
-    .select("*")
-    .order("sort_order", { ascending: true });
-  
-  if (error) throw error;
-  return data as BlogCategory[];
-}
-
-export async function getBlogCategoryBySlug(slug: string) {
-  const supabase = await createClient();
-  
-  const { data, error } = await supabase
-    .from("blog_categories")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-  
-  if (error) throw error;
-  return data as BlogCategory;
-}
-
-export async function getFeaturedBlogCategories() {
-  const supabase = await createClient();
-  
-  const { data, error } = await supabase
-    .from("blog_categories")
-    .select("*")
-    .eq("featured", true)
-    .order("sort_order", { ascending: true });
-  
-  if (error) throw error;
-  return data as BlogCategory[];
-}
-
-// Blog Tags Actions
-export async function getAllBlogTags() {
-  const supabase = await createClient();
-  
-  const { data, error } = await supabase
-    .from("blog_tags")
-    .select("*")
-    .order("name", { ascending: true });
-  
-  if (error) throw error;
-  return data as BlogTag[];
-}
-
-export async function getBlogPostsByTag(tagSlug: string, limit = 10) {
-  const supabase = await createClient();
-  
-  const { data, error } = await supabase
-    .from("blog_posts")
-    .select(`
-      *,
-      blog_categories(*),
-      blog_post_tags!inner(blog_tags!inner(*))
-    `)
-    .eq("status", "published")
-    .eq("blog_post_tags.blog_tags.slug", tagSlug)
-    .order("published_at", { ascending: false })
-    .limit(limit);
-  
-  if (error) throw error;
-  return data as BlogPost[];
-}
-
-// Blog Likes Actions
-export async function toggleBlogPostLike(postId: string, userId?: string, guestId?: string) {
-  const supabase = await createClient();
-  
-  if (!userId && !guestId) throw new Error("Must provide either userId or guestId");
-
-  let query = supabase.from("blog_post_likes").select("id, user_id, guest_id").eq("post_id", postId);
-  
-  if (userId && guestId) {
-    query = query.or(`user_id.eq.${userId},guest_id.eq.${guestId}`);
-  } else if (userId) {
-    query = query.eq("user_id", userId);
-  } else {
-    query = query.eq("guest_id", guestId!);
-  }
-
-  const { data: existingLikes } = await query.order('user_id', { ascending: false }); // User-linked likes first
-  const existingLike = existingLikes?.[0];
-  
-  if (existingLike) {
-    // IF we are logged in BUT the like we found is ONLY a guest like
-    // We update it to be a User Like instead of deleting it (Migration)
-    if (userId && !existingLike.user_id) {
-        const { error: updateError } = await supabase
-            .from("blog_post_likes")
-            .update({ user_id: userId })
-            .eq("id", existingLike.id);
-            
-        if (!updateError) return { liked: true, migrated: true };
+  // Set published_at when first publishing
+  if (postData.status === "published" && !postData.published_at) {
+    // Fetch existing to check if already has one
+    const { data: existing } = await supabase
+      .from("blog_posts")
+      .select("published_at")
+      .eq("id", id)
+      .single();
+    if (!existing?.published_at) {
+      payload.published_at = new Date().toISOString();
     }
+  }
 
-    // Otherwise, standard Unlike (Toggle Off)
-    const { error } = await supabase
-      .from("blog_post_likes")
-      .delete()
-      .eq("id", existingLike.id);
-      
-    if (error) throw error;
+  const { data, error } = await supabase
+    .from("blog_posts")
+    .update(payload)
+    .eq("id", id)
+    .select()
+    .single();
 
-    const adminSupabase = createServiceRoleClient();
-    await adminSupabase.rpc('decrement_blog_post_likes', { post_id: postId });
+  if (error) throw error;
+  return data;
+}
 
-    return { liked: false };
-  } else {
-    // Toggle On - Create new Like
-    const insertData: any = { post_id: postId };
-    if (userId) insertData.user_id = userId;
-    if (guestId) insertData.guest_id = guestId;
+export async function deleteBlogPost(id: string): Promise<void> {
+  const supabase = createServiceRoleClient();
+  const { error } = await supabase.from("blog_posts").delete().eq("id", id);
+  if (error) throw error;
+}
 
-    const { error } = await supabase
-      .from("blog_post_likes")
-      .insert([insertData]);
-    
-    if (error) throw error;
-
-    const adminSupabase = createServiceRoleClient();
-    await adminSupabase.rpc('increment_blog_post_likes', { post_id: postId });
-
-    return { liked: true };
+export async function incrementBlogPostViews(id: string): Promise<void> {
+  const supabase = createServiceRoleClient();
+  const { error } = await supabase.rpc("increment_blog_views", { post_id: id });
+  if (error) {
+    // Fallback: manual increment
+    await supabase
+      .from("blog_posts")
+      .update({ views_count: supabase.rpc("increment_blog_views", { post_id: id }) as any })
+      .eq("id", id);
   }
 }
 
-export async function checkBlogPostLike(postId: string, userId?: string, guestId?: string) {
-  const supabase = await createClient();
-  
-  if (!userId && !guestId) return { liked: false };
+// ─── Likes ───────────────────────────────────────────────────────────────────
+
+export async function toggleBlogPostLike(
+  postId: string,
+  userId?: string,
+  guestId?: string
+): Promise<{ liked: boolean; likes_count: number }> {
+  const supabase = createServiceRoleClient();
+
+  // Check if already liked
+  let query = supabase
+    .from("blog_post_likes")
+    .select("id")
+    .eq("post_id", postId);
+
+  if (userId) query = query.eq("user_id", userId);
+  else if (guestId) query = query.eq("guest_id", guestId);
+
+  const { data: existing } = await query.maybeSingle();
+
+  if (existing) {
+    // Unlike
+    await supabase.from("blog_post_likes").delete().eq("id", existing.id);
+    await supabase.rpc("decrement_blog_likes", { post_id: postId });
+  } else {
+    // Like
+    await supabase.from("blog_post_likes").insert({
+      post_id: postId,
+      user_id: userId || null,
+      guest_id: guestId || null,
+    });
+    await supabase.rpc("increment_blog_likes", { post_id: postId });
+  }
+
+  // Get updated count
+  const { data: post } = await supabase
+    .from("blog_posts")
+    .select("likes_count")
+    .eq("id", postId)
+    .single();
+
+  return { liked: !existing, likes_count: post?.likes_count ?? 0 };
+}
+
+export async function checkBlogPostLike(
+  postId: string,
+  userId?: string,
+  guestId?: string
+): Promise<{ liked: boolean }> {
+  const supabase = createServiceRoleClient();
 
   let query = supabase
     .from("blog_post_likes")
     .select("id")
     .eq("post_id", postId);
-    
-  if (userId && guestId) {
-    query = query.or(`user_id.eq.${userId},guest_id.eq.${guestId}`);
-  } else if (userId) {
-    query = query.eq("user_id", userId);
-  } else {
-    query = query.eq("guest_id", guestId!);
-  }
 
-  const { data, error } = await query.maybeSingle();
-  
-  if (error && error.code !== 'PGRST116') {
-    console.error("Error checking like status:", error);
-  }
-  
+  if (userId) query = query.eq("user_id", userId);
+  else if (guestId) query = query.eq("guest_id", guestId);
+
+  const { data } = await query.maybeSingle();
   return { liked: !!data };
 }
 
-// Blog Comments Actions
-export async function getBlogPostComments(postId: string) {
-  const supabase = await createClient();
-  
-  const { data, error } = await supabase
-    .from("blog_comments")
-    .select(`
-      *,
-      user:profiles(display_name, avatar_url)
-    `)
-    .eq("post_id", postId)
-    .eq("status", "approved")
-    .order("created_at", { ascending: true });
-  
-  if (error) {
-    console.error("Error fetching comments:", error);
-    return [];
-  }
-  return data;
-}
+// ─── Tags ────────────────────────────────────────────────────────────────────
 
-export async function createBlogComment(commentData: {
-  post_id: string;
-  user_id: string;
-  content: string;
-  parent_id?: string;
-}) {
-  const supabase = await createClient();
-  
+export async function getAllBlogTags(): Promise<string[]> {
+  const supabase = createServiceRoleClient();
   const { data, error } = await supabase
-    .from("blog_comments")
-    .insert([commentData])
-    .select()
-    .single();
-  
+    .from("blog_posts")
+    .select("tags")
+    .eq("status", "published");
+
   if (error) throw error;
-  return data as BlogComment;
+
+  const allTags = new Set<string>();
+  (data || []).forEach((post: any) => {
+    if (Array.isArray(post.tags)) {
+      post.tags.forEach((tag: string) => allTags.add(tag));
+    }
+  });
+
+  return Array.from(allTags).sort();
 }

@@ -168,7 +168,6 @@ export async function fetchOrderDetailsAction(orderId: string) {
   
   const supabase = await createClient();
   
-  console.log("fetchOrderDetailsAction START", orderId);
 
   // 1. Fetch Order
   // Removed 'phone' from profiles selection as it doesn't exist
@@ -206,7 +205,6 @@ export async function fetchOrderDetailsAction(orderId: string) {
   }
 
   if (!items || items.length === 0) {
-     console.log("fetchOrderDetailsAction No items found in order_items table");
      return { ...orderWithParsedAddress, order_items: [] };
   }
 
@@ -257,6 +255,5 @@ export async function fetchOrderDetailsAction(orderId: string) {
     voucherData = v;
   }
   
-  console.log("fetchOrderDetailsAction END success, items:", finalItems.length);
   return { ...orderWithParsedAddress, order_items: finalItems, vouchers: voucherData };
 }
