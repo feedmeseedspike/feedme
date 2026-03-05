@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Share2, Copy, Check, Loader2 } from "lucide-react";
+import { Share2, Check, Loader2 } from "lucide-react";
 import { createSharedCart } from "src/lib/actions/shared-cart.actions";
 import { useToast } from "src/hooks/useToast";
 
@@ -28,34 +28,33 @@ export default function ShareCartButton({
         return;
       }
 
-      try {
-        if (
-          typeof navigator !== "undefined" &&
-          typeof (navigator as any).share === "function"
-        ) {
-          // Native share sheet on mobile
+      const { url } = result;
+
+      // Use the native OS/browser share sheet.
+      // Works on: iOS Safari, Android Chrome, desktop Chrome/Edge (Windows share dialog).
+      if (typeof navigator !== "undefined" && typeof (navigator as any).share === "function") {
+        try {
           await (navigator as any).share({
             title: "My FeedMe Cart 🛒",
             text: "Check out what I'm ordering from FeedMe!",
-            url: result.url,
+            url,
           });
-        } else {
-          // Fallback: clipboard copy
-          await navigator.clipboard.writeText(result.url);
-          setCopied(true);
-          showToast("Cart link copied! Share it with anyone.", "success");
-          setTimeout(() => setCopied(false), 3000);
+          return; // native sheet handled it — we're done
+        } catch (err: any) {
+          // AbortError = user just closed the sheet, not an error — stop silently
+          if (err?.name === "AbortError") return;
+          // Any other error → fall through to clipboard fallback below
         }
+      }
+
+      // Fallback (Firefox desktop / unsupported): copy link + show toast
+      try {
+        await navigator.clipboard.writeText(url);
+        setCopied(true);
+        showToast("Cart link copied! Paste it anywhere to share 📋", "success");
+        setTimeout(() => setCopied(false), 3000);
       } catch {
-        // User cancelled share or clipboard failed – fallback
-        try {
-          await navigator.clipboard.writeText(result.url);
-          setCopied(true);
-          showToast("Cart link copied to clipboard!", "success");
-          setTimeout(() => setCopied(false), 3000);
-        } catch {
-          showToast(`Share this link: ${result.url}`, "info");
-        }
+        showToast(`Your share link: ${url}`, "info");
       }
     });
   };

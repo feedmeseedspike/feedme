@@ -152,29 +152,29 @@ const CartItemDisplay = React.memo(({ item, onRemove }: CartItemDisplayProps) =>
           fill
           className="object-cover transition-transform duration-700 group-hover:scale-110"
         />
-        <div className="absolute top-0 right-0 bg-[#2A2A2A] text-white px-1.5 py-0.5 text-[9px] font-black pointer-events-none">
+        <div className="absolute top-0 right-0 bg-[#2A2A2A] text-white px-1.5 py-0.5 text-[9px] font-bold pointer-events-none">
           {item.quantity}×
         </div>
       </div>
       <div className="flex flex-1 flex-col justify-center min-w-0">
         <div className="flex justify-between items-start gap-4">
           <div className="space-y-1">
-            <h4 className="text-base font-serif italic text-[#2A2A2A] line-clamp-1 leading-tight">
+            <h4 className="text-base   text-[#2A2A2A] line-clamp-1 leading-tight">
                {item.products?.name || item.bundles?.name || item.offers?.title || item.meta?.name || productOption?.name}
             </h4>
             {productOption?.name && productOption.name !== (item.products?.name || item.bundles?.name || item.offers?.title || item.meta?.name) ? (
-              <p className="text-[9px] text-[#B07D62] font-black uppercase tracking-widest">
+              <p className="text-[9px] text-[#B07D62] font-bold uppercase tracking-wider">
                   Selection: {productOption.name}
               </p>
             ) : item.price === 0 ? (
-                <p className="text-[9px] text-[#FF9900] font-black uppercase tracking-widest flex items-center gap-1">
+                <p className="text-[9px] text-[#FF9900] font-bold uppercase tracking-wider flex items-center gap-1">
                    <Icon icon="solar:gift-bold" className="w-3 h-3" /> Spin Prize
                 </p>
             ) : (
                 null
             )}
           </div>
-          <p className="text-sm font-black text-[#2A2A2A] tabular-nums">
+          <p className="text-sm font-bold text-[#2A2A2A] tabular-nums">
             {formatNaira(
               ((productOption?.price !== undefined && productOption?.price !== null
                 ? productOption.price
@@ -1347,14 +1347,14 @@ const CheckoutForm = ({
   const totalQuantity = items.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
-    <main className="bg-[#F9FAFB] min-h-screen font-proxima pb-20">
+    <main className="bg-gray-50 min-h-screen font-proxima pb-20">
       <Container>
         <div className="py-12 md:py-16 animate-in fade-in slide-in-from-bottom-2 duration-700">
           <div className="max-w-6xl mx-auto">
             {/* Brand Header */}
             <div className="mb-12 text-center space-y-2">
-                 <h1 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight font-serif italic">Checkout</h1>
-                 <p className="text-xs uppercase tracking-[0.2em] text-[#1B6013] font-bold">Secure your delivery</p>
+                 <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight  ">Checkout</h1>
+                 <p className="text-xs uppercase tracking-[0.1em] text-[#1B6013] font-bold">SECURE CHECKOUT</p>
             </div>
 
              <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 items-start">
@@ -1362,13 +1362,13 @@ const CheckoutForm = ({
             <div className="lg:w-[60%] w-full">
               <div className="space-y-12">
                   <section className="space-y-6">
-                       <div className="pb-4 border-b border-gray-200">
-                          <h3 className="text-lg font-bold text-gray-900 tracking-tight uppercase">1. Delivery Destination</h3>
+                       <div className="pb-3">
+                          <h3 className="text-xl font-bold text-gray-900 tracking-tight">1. Delivery Destination</h3>
                        </div>
 
                        {/* Address Summary Card */}
                        {selectedAddress ? (
-                         <div className="p-8 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                         <div className="p-6 bg-white rounded-xl shadow-[0_4px_16px_rgba(0,0,0,0.04)] border border-gray-100 hover:shadow-md transition-all group relative overflow-hidden">
                              <div className="absolute top-0 right-0 w-12 h-12 bg-[#1B6013]/5 flex items-center justify-center">
                                 <Icon icon="solar:map-point-wave-bold-duotone" className="w-6 h-6 text-[#1B6013]" />
                              </div>
@@ -1397,25 +1397,25 @@ const CheckoutForm = ({
                                  </button>
                              </div>
                          </div>
-                       ) : (
+                       ) : userAddresses && userAddresses.length > 0 ? (
                          <div 
-                           className="text-center py-12 px-6 bg-white rounded-2xl border-2 border-dashed border-gray-200 hover:border-[#1B6013] hover:bg-[#1B6013]/5 transition-all group cursor-pointer" 
+                           className="text-center py-10 px-6 bg-white rounded-xl border border-dashed border-gray-300 hover:border-[#1B6013] hover:bg-green-50/50 transition-all group cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.02)]" 
                            onClick={() => setShowAddressModal(true)}
                          >
                               <div className="w-12 h-12 rounded-full bg-gray-50 group-hover:bg-[#FF9900]/10 flex items-center justify-center mx-auto mb-4 transition-colors">
                                  <Icon icon="solar:map-point-add-bold-duotone" className="w-6 h-6 text-gray-400 group-hover:text-[#FF9900] transition-colors" />
                               </div>
-                              <p className="text-sm font-black text-gray-600 group-hover:text-[#FF9900] transition-colors uppercase tracking-widest">Select Delivery Address</p>
+                              <p className="text-sm font-bold text-gray-600 group-hover:text-[#FF9900] transition-colors uppercase tracking-wider">Select Delivery Address</p>
                               <p className="text-xs text-gray-400 mt-2">Add or choose where we should deliver your food</p>
                          </div>
-                       )}
+                       ) : null}
 
                     {/* Modal for address selection/addition */}
                     <Dialog
                       open={showAddressModal}
                       onOpenChange={setShowAddressModal}
                     >
-                      <DialogContent className="max-w-md w-full max-h-[90vh] rounded-3xl p-6">
+                      <DialogContent className="max-w-md w-full max-h-[90vh] rounded-2xl p-6">
                         <DialogHeader>
                           <DialogTitle className="text-xl font-bold">Select Delivery Address</DialogTitle>
                         </DialogHeader>
@@ -1429,7 +1429,7 @@ const CheckoutForm = ({
                                 {userAddresses.map((address) => (
                                   <div
                                     key={address.id}
-                                    className={`relative flex items-start gap-4 p-5 rounded-2xl border transition-all cursor-pointer group ${selectedAddressId === address.id ? "border-[#1B6013] bg-green-50/30" : "border-gray-100 bg-white hover:border-gray-200"}`}
+                                    className={`relative flex items-start gap-4 p-4 rounded-xl border transition-all cursor-pointer group ${selectedAddressId === address.id ? "border-[#1B6013] bg-green-50/30" : "border-gray-100 bg-white hover:border-gray-200"}`}
                                     onClick={() => setSelectedAddressId(address.id)}
                                   >
                                     <div className="pt-1">
@@ -1483,7 +1483,7 @@ const CheckoutForm = ({
                                 ))}
                               </div>
                             ) : (
-                              <div className="text-center py-10 text-gray-400 text-sm italic">
+                              <div className="text-center py-10 text-gray-400 text-sm ">
                                 No saved addresses found.
                               </div>
                             )}
@@ -1502,7 +1502,7 @@ const CheckoutForm = ({
                                       email: "",
                                     });
                                 }}
-                                className="w-full py-4 rounded-2xl border-2 border-dashed border-gray-100 text-[#1B6013] font-bold text-sm hover:border-[#1B6013] hover:bg-green-50/30 transition-all flex items-center justify-center gap-2"
+                                className="w-full h-12 rounded-xl border border-dashed border-gray-300 text-gray-700 font-semibold text-sm hover:border-[#1B6013] hover:text-[#1B6013] hover:bg-green-50/50 transition-all flex items-center justify-center gap-2"
                             >
                                 <Icon icon="solar:add-circle-bold" className="w-5 h-5" />
                                 Add New Address
@@ -1583,13 +1583,13 @@ const CheckoutForm = ({
                                      control={shippingAddressForm.control}
                                      name="firstName"
                                      render={({ field }) => (
-                                       <FormItem className="relative">
-                                         <FormLabel className="absolute -top-3 left-4 bg-[#FEFEED] px-1 text-xs text-gray-400 z-10">First Name <span className="text-red-500">*</span></FormLabel>
+                                       <FormItem className="space-y-1">
+                                         <FormLabel className="text-xs font-semibold text-gray-700">First Name <span className="text-red-500">*</span></FormLabel>
                                          <FormControl>
                                            <Input
                                              placeholder="Enter first name"
                                              {...field}
-                                             className="rounded-lg bg-white border-gray-300 h-12 pt-2 focus-visible:ring-1 focus-visible:ring-orange-400"
+                                             className="rounded-xl border-gray-200 bg-gray-50 h-12 focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#1B6013] transition-all"
                                            />
                                          </FormControl>
                                          <FormMessage />
@@ -1600,13 +1600,13 @@ const CheckoutForm = ({
                                      control={shippingAddressForm.control}
                                      name="lastName"
                                      render={({ field }) => (
-                                       <FormItem className="relative">
-                                         <FormLabel className="absolute -top-3 left-4 bg-[#FEFEED] px-1 text-xs text-gray-400 z-10">Last Name <span className="text-red-500">*</span></FormLabel>
+                                       <FormItem className="space-y-1">
+                                         <FormLabel className="text-xs font-semibold text-gray-700">Last Name <span className="text-red-500">*</span></FormLabel>
                                          <FormControl>
                                            <Input
                                              placeholder="Enter last name"
                                              {...field}
-                                             className="rounded-lg bg-white border-gray-300 h-12 pt-2 focus-visible:ring-1 focus-visible:ring-orange-400"
+                                             className="rounded-xl border-gray-200 bg-gray-50 h-12 focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#1B6013] transition-all"
                                            />
                                          </FormControl>
                                          <FormMessage />
@@ -1620,13 +1620,13 @@ const CheckoutForm = ({
                                      control={shippingAddressForm.control}
                                      name="phone"
                                      render={({ field }) => (
-                                       <FormItem className="relative">
-                                         <FormLabel className="absolute -top-3 left-4 bg-[#FEFEED] px-1 text-xs text-gray-400 z-10">Phone Number <span className="text-red-500">*</span></FormLabel>
+                                       <FormItem className="space-y-1">
+                                         <FormLabel className="text-xs font-semibold text-gray-700">Phone Number <span className="text-red-500">*</span></FormLabel>
                                            <FormControl>
                                              <Input
                                                placeholder="8144602273"
                                                {...field}
-                                               className="rounded-lg bg-white border-gray-300 h-12 flex-1 pt-2 focus-visible:ring-1 focus-visible:ring-orange-400"
+                                               className="rounded-xl border-gray-200 bg-gray-50 h-12 focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#1B6013] transition-all flex-1"
                                              />
                                            </FormControl>
                                          <FormMessage />
@@ -1639,8 +1639,8 @@ const CheckoutForm = ({
                                      control={shippingAddressForm.control}
                                      name="additionalPhone"
                                      render={({ field }) => (
-                                       <FormItem className="relative">
-                                         <FormLabel className="absolute -top-3 left-4 bg-[#FEFEED] px-1 text-xs text-gray-400 z-10">Additional Phone Number</FormLabel>
+                                       <FormItem className="space-y-1">
+                                         <FormLabel className="text-xs font-semibold text-gray-700">Additional Phone Number</FormLabel>
                                          <div className="flex">
                                            <div className="flex items-center justify-center bg-gray-50 border border-r-0 border-gray-300 rounded-l-lg px-3 text-sm text-gray-500 font-medium h-12">
                                              +234
@@ -1664,13 +1664,13 @@ const CheckoutForm = ({
                                    control={shippingAddressForm.control}
                                    name="street"
                                    render={({ field }) => (
-                                     <FormItem className="relative">
-                                       <FormLabel className="absolute -top-3 left-4 bg-[#FEFEED] px-1 text-xs text-gray-400 z-10">Delivery Address <span className="text-red-500">*</span></FormLabel>
+                                     <FormItem className="space-y-1">
+                                       <FormLabel className="text-xs font-semibold text-gray-700">Delivery Address <span className="text-red-500">*</span></FormLabel>
                                        <FormControl>
                                          <Input
                                            placeholder="Enter street address"
                                            {...field}
-                                           className="rounded-lg bg-white border-gray-300 h-12 pt-2 focus-visible:ring-1 focus-visible:ring-orange-400"
+                                           className="rounded-xl border-gray-200 bg-gray-50 h-12 focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#1B6013] transition-all"
                                          />
                                        </FormControl>
                                        <FormMessage />
@@ -1686,9 +1686,9 @@ const CheckoutForm = ({
                                       control={shippingAddressForm.control}
                                       name="location"
                                       render={({ field }) => (
-                                        <FormItem className="relative flex flex-col">
-                                          <FormLabel className="absolute -top-3 left-4 bg-[#FEFEED] px-1 text-xs text-gray-400 z-10">City <span className="text-red-500">*</span></FormLabel>
-                                          <Popover open={isLocationPopoverOpen} onOpenChange={setIsLocationPopoverOpen}>
+                                        <FormItem className="flex flex-col space-y-1">
+                                          <FormLabel className="text-xs font-semibold text-gray-700">City <span className="text-red-500">*</span></FormLabel>
+                                          <Popover modal={true} open={isLocationPopoverOpen} onOpenChange={setIsLocationPopoverOpen}>
                                             <PopoverTrigger asChild>
                                               <FormControl>
                                                 <Button
@@ -1706,8 +1706,8 @@ const CheckoutForm = ({
                                                 </Button>
                                               </FormControl>
                                             </PopoverTrigger>
-                                       <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[100]" align="start" sideOffset={4} avoidCollisions={true}>
-                                        <div className="flex flex-col max-h-[min(450px,60vh)]">
+                                       <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[100] rounded-xl overflow-hidden shadow-xl border-gray-100" align="start" sideOffset={4} side="bottom">
+                                        <div className="flex flex-col max-h-[300px]">
                                                  <div className="flex items-center px-3 py-2 border-b">
                                                    <Input
                                                      placeholder="Search area..."
@@ -1718,7 +1718,7 @@ const CheckoutForm = ({
                                                  </div>
                                                  <div className="overflow-y-auto flex-1 p-1 custom-scrollbar">
                                                    <div className="p-1">
-                                                     <p className="px-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400">Official Zones</p>
+                                                     <p className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">Official Zones</p>
                                                      {deliveryLocations
                                                        .filter(loc => loc.name.toLowerCase().includes(locationSearch.trim().toLowerCase()))
                                                        .map((loc) => (
@@ -1740,40 +1740,6 @@ const CheckoutForm = ({
                                                          </button>
                                                        ))}
                                                      
-                                                     <div className="mt-4">
-                                                       <p className="px-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400">Other Lagos Areas</p>
-                                                       {lagosAreas
-                                                         .filter(area => 
-                                                           !deliveryLocations.some(l => l.name === area.name) &&
-                                                           area.name.toLowerCase().includes(locationSearch.trim().toLowerCase())
-                                                         )
-                                                         .slice(0, 50)
-                                                         .map((area) => (
-                                                           <button
-                                                             key={area.name}
-                                                             type="button"
-                                                             className={cn(
-                                                               "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
-                                                               field.value === area.name ? "bg-[#1B6013] text-white" : "hover:bg-gray-100"
-                                                             )}
-                                                             onClick={() => {
-                                                               field.onChange(area.name);
-                                                               const pseudoLoc = {
-                                                                  id: `ext-${area.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-")}`,
-                                                                  name: area.name,
-                                                                  price: 3500,
-                                                                  created_at: new Date().toISOString(),
-                                                                  updated_at: new Date().toISOString(),
-                                                                };
-                                                               setCurrentLocation(pseudoLoc);
-                                                               setIsLocationPopoverOpen(false);
-                                                             }}
-                                                           >
-                                                             {area.name}
-                                                             {field.value === area.name && <Check className="h-4 w-4" />}
-                                                           </button>
-                                                         ))}
-                                                     </div>
                                                    </div>
                                                  </div>
                                                </div>
@@ -1790,13 +1756,13 @@ const CheckoutForm = ({
                                      control={shippingAddressForm.control}
                                      name="email"
                                      render={({ field }) => (
-                                       <FormItem className="relative">
-                                         <FormLabel className="absolute -top-3 left-4 bg-[#FEFEED] px-1 text-xs text-gray-400 z-10">Email Address <span className="text-red-500">*</span></FormLabel>
+                                       <FormItem className="space-y-1">
+                                         <FormLabel className="text-xs font-semibold text-gray-700">Email Address <span className="text-red-500">*</span></FormLabel>
                                          <FormControl>
                                            <Input
                                              placeholder="Enter email address"
                                              {...field}
-                                             className="rounded-lg bg-white border-gray-300 h-12 pt-2 focus-visible:ring-1 focus-visible:ring-orange-400"
+                                             className="rounded-xl border-gray-200 bg-gray-50 h-12 focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#1B6013] transition-all"
                                            />
                                          </FormControl>
                                          <FormMessage />
@@ -1835,7 +1801,7 @@ const CheckoutForm = ({
                           <DialogFooter className="pt-4">
                             <Button
                               type="button"
-                              className="bg-[#1B6013] text-white w-full hover:bg-[#154d0f] rounded-2xl h-14 font-black uppercase tracking-tight shadow-xl shadow-green-100"
+                              className="bg-[#1B6013] text-white w-full hover:bg-[#154d0f] rounded-xl h-12 font-bold shadow-md shadow-green-100/50"
                               onClick={() => setShowAddressModal(false)}
                             >
                               Confirm Selection
@@ -1847,10 +1813,10 @@ const CheckoutForm = ({
 
                     {/* If no address is selected, show the form inline (first time user) */}
                     {userAddresses.length === 0 && (
-                      <div className="mt-8 bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
+                      <div className="mt-6 bg-white p-6 rounded-xl border border-gray-200 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
                         <div className="mb-8">
-                            <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Add Delivery Address</h2>
-                            <p className="text-xs text-gray-500 mt-1 uppercase tracking-widest font-bold">Please enter your shipping details below</p>
+                            <h2 className="text-xl font-bold text-gray-900 uppercase tracking-tight">Add Delivery Address</h2>
+                            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wider font-bold">Please enter your shipping details below</p>
                         </div>
                         <Form {...shippingAddressForm}>
                           <form
@@ -1911,14 +1877,14 @@ const CheckoutForm = ({
                                 control={shippingAddressForm.control}
                                 name="firstName"
                                 render={({ field }) => (
-                                  <FormItem className="relative">
-                                    <FormLabel className="absolute -top-3 left-4 bg-white px-1 text-[10px] text-gray-400 z-10 font-bold uppercase tracking-widest">First Name <span className="text-red-500">*</span></FormLabel>
+                                  <FormItem className="space-y-1">
+                                    <FormLabel className="text-xs font-semibold text-gray-700 mb-1 block">First Name <span className="text-red-500">*</span></FormLabel>
                                     <FormControl>
                                       <Input
                                         placeholder="Enter first name"
                                         {...field}
                                         disabled={isAddingAddress}
-                                        className="rounded-lg bg-white border-gray-200 h-14 pt-2 shadow-sm focus-visible:ring-1 focus-visible:ring-[#1B6013]/20"
+                                        className="rounded-xl border-gray-200 bg-gray-50 h-12 focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#1B6013] transition-all shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
                                       />
                                     </FormControl>
                                     <FormMessage />
@@ -1929,14 +1895,14 @@ const CheckoutForm = ({
                                 control={shippingAddressForm.control}
                                 name="lastName"
                                 render={({ field }) => (
-                                  <FormItem className="relative">
-                                    <FormLabel className="absolute -top-3 left-4 bg-white px-1 text-[10px] text-gray-400 z-10 font-bold uppercase tracking-widest">Last Name <span className="text-red-500">*</span></FormLabel>
+                                  <FormItem className="space-y-1">
+                                    <FormLabel className="text-xs font-semibold text-gray-700 mb-1 block">Last Name <span className="text-red-500">*</span></FormLabel>
                                     <FormControl>
                                       <Input
                                         placeholder="Enter last name"
                                         {...field}
                                         disabled={isAddingAddress}
-                                        className="rounded-lg bg-white border-gray-200 h-14 pt-2 shadow-sm focus-visible:ring-1 focus-visible:ring-[#1B6013]/20"
+                                        className="rounded-xl border-gray-200 bg-gray-50 h-12 focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#1B6013] transition-all shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
                                       />
                                     </FormControl>
                                     <FormMessage />
@@ -1950,14 +1916,14 @@ const CheckoutForm = ({
                                 control={shippingAddressForm.control}
                                 name="phone"
                                 render={({ field }) => (
-                                  <FormItem className="relative">
-                                    <FormLabel className="absolute -top-3 left-4 bg-white px-1 text-[10px] text-gray-400 z-10 font-bold uppercase tracking-widest">Phone Number <span className="text-red-500">*</span></FormLabel>
+                                  <FormItem className="space-y-1">
+                                    <FormLabel className="text-xs font-semibold text-gray-700 mb-1 block">Phone Number <span className="text-red-500">*</span></FormLabel>
                                      <FormControl>
                                        <Input
                                          placeholder="8144602273"
                                          {...field}
                                          disabled={isAddingAddress}
-                                         className="rounded-lg bg-white border-gray-200 h-14 flex-1 pt-2 shadow-sm focus-visible:ring-1 focus-visible:ring-[#1B6013]/20"
+                                         className="rounded-xl border-gray-200 bg-gray-50 h-12 focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#1B6013] transition-all shadow-[0_2px_10px_rgba(0,0,0,0.02)] flex-1"
                                        />
                                      </FormControl>
                                     <FormMessage />
@@ -1969,8 +1935,8 @@ const CheckoutForm = ({
                                      control={shippingAddressForm.control}
                                      name="additionalPhone"
                                      render={({ field }) => (
-                                       <FormItem className="relative">
-                                         <FormLabel className="absolute -top-3 left-4 bg-white px-1 text-[10px] text-gray-400 z-10 font-bold uppercase tracking-widest">Additional Phone Number</FormLabel>
+                                       <FormItem className="space-y-1">
+                                         <FormLabel className="text-xs font-semibold text-gray-700 mb-1 block">Additional Phone Number</FormLabel>
                                          <div className="flex">
                                            <div className="flex items-center justify-center bg-gray-50 border border-r-0 border-gray-200 rounded-l-lg px-3 text-sm text-gray-500 font-medium h-14">
                                              +234
@@ -1980,7 +1946,7 @@ const CheckoutForm = ({
                                                placeholder="Secondary phone"
                                                {...field}
                                                disabled={isAddingAddress}
-                                               className="rounded-none rounded-r-lg bg-white border-gray-200 h-14 flex-1 pt-2 shadow-sm focus-visible:ring-1 focus-visible:ring-[#1B6013]/20"
+                                               className="rounded-none rounded-r-lg bg-white border-gray-200 h-14 flex-1 pt-2 shadow-[0_2px_10px_rgba(0,0,0,0.02)] focus-visible:ring-1 focus-visible:ring-[#1B6013]/20"
                                              />
                                            </FormControl>
                                          </div>
@@ -1995,14 +1961,14 @@ const CheckoutForm = ({
                               control={shippingAddressForm.control}
                               name="street"
                               render={({ field }) => (
-                                <FormItem className="relative">
-                                  <FormLabel className="absolute -top-3 left-4 bg-white px-1 text-[10px] text-gray-400 z-10 font-bold uppercase tracking-widest">Delivery Address <span className="text-red-500">*</span></FormLabel>
+                                <FormItem className="space-y-1">
+                                  <FormLabel className="text-xs font-semibold text-gray-700 mb-1 block">Delivery Address <span className="text-red-500">*</span></FormLabel>
                                   <FormControl>
                                     <Input
                                       placeholder="Enter street address"
                                       {...field}
                                       disabled={isAddingAddress}
-                                      className="rounded-lg bg-white border-gray-200 h-14 pt-2 shadow-sm focus-visible:ring-1 focus-visible:ring-[#1B6013]/20"
+                                      className="rounded-xl border-gray-200 bg-gray-50 h-12 focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#1B6013] transition-all shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
                                     />
                                   </FormControl>
                                   <FormMessage />
@@ -2014,9 +1980,9 @@ const CheckoutForm = ({
                                control={shippingAddressForm.control}
                                name="location"
                                render={({ field }) => (
-                                 <FormItem className="relative flex flex-col">
-                                   <FormLabel className="absolute -top-3 left-4 bg-white px-1 text-[10px] text-gray-400 z-10 font-bold uppercase tracking-widest">City <span className="text-red-500">*</span></FormLabel>
-                                   <Popover open={isNewAddressLocationPopoverOpen} onOpenChange={setIsNewAddressLocationPopoverOpen}>
+                                 <FormItem className="flex flex-col space-y-1">
+                                   <FormLabel className="text-xs font-semibold text-gray-700 mb-1 block">City <span className="text-red-500">*</span></FormLabel>
+                                   <Popover modal={true} open={isNewAddressLocationPopoverOpen} onOpenChange={setIsNewAddressLocationPopoverOpen}>
                                      <PopoverTrigger asChild>
                                        <FormControl>
                                          <Button
@@ -2024,7 +1990,7 @@ const CheckoutForm = ({
                                            role="combobox"
                                            disabled={isAddingAddress}
                                            className={cn(
-                                             "w-full justify-between rounded-lg bg-white border-gray-200 h-14 text-left font-normal pt-2 shadow-sm",
+                                             "w-full justify-between rounded-lg bg-white border-gray-200 h-14 text-left font-normal pt-2 shadow-[0_2px_10px_rgba(0,0,0,0.02)]",
                                              !field.value && "text-muted-foreground"
                                            )}
                                          >
@@ -2035,8 +2001,8 @@ const CheckoutForm = ({
                                          </Button>
                                        </FormControl>
                                      </PopoverTrigger>
-                                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[100]" align="start" sideOffset={4} avoidCollisions={true}>
-                                        <div className="flex flex-col max-h-[min(450px,60vh)]">
+                                       <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[100] rounded-xl overflow-hidden shadow-xl border-gray-100" align="start" sideOffset={4} side="bottom">
+                                        <div className="flex flex-col max-h-[300px]">
                                           <div className="flex items-center px-3 py-2 border-b">
                                             <Input
                                               placeholder="Search area..."
@@ -2047,7 +2013,7 @@ const CheckoutForm = ({
                                           </div>
                                           <div className="overflow-y-auto flex-1 p-1 custom-scrollbar">
                                             <div className="p-1">
-                                              <p className="px-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400">Official Zones</p>
+                                              <p className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">Official Zones</p>
                                               {deliveryLocations
                                                 .filter(loc => loc.name.toLowerCase().includes(locationSearch.trim().toLowerCase()))
                                                 .map((loc) => (
@@ -2068,70 +2034,7 @@ const CheckoutForm = ({
                                                     {field.value === loc.name && <Check className="h-4 w-4" />}
                                                   </button>
                                                 ))}
-                                                
-                                              <div className="mt-4">
-                                                <p className="px-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400">Other Lagos Areas</p>
-                                                {lagosAreas
-                                                  .filter(area => 
-                                                    !deliveryLocations.some(l => l.name === area.name) &&
-                                                    area.name.toLowerCase().includes(locationSearch.trim().toLowerCase())
-                                                  )
-                                                  .slice(0, 50)
-                                                  .map((area) => (
-                                                    <button
-                                                      key={area.name}
-                                                      type="button"
-                                                      className={cn(
-                                                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
-                                                        field.value === area.name ? "bg-[#1B6013] text-white" : "hover:bg-gray-100"
-                                                      )}
-                                                      onClick={() => {
-                                                        field.onChange(area.name);
-                                                        
-                                                        // Mapping Logic
-                                                        const lgaMap: Record<string, string> = {
-                                                          "Alimosho": "Alimosho",
-                                                          "Yaba": "Lagos Mainland",
-                                                          "Somolu": "Shomolu",
-                                                          "Ikoyi": "Eti-Osa",
-                                                          "Lekki": "Eti-Osa",
-                                                          "Iyana Ipaja": "Iyana Ipaja",
-                                                          "Ifako-Ijaiye": "Ifako/Ijaye",
-                                                          "Ketu": "Kosofe",
-                                                          "Maryland": "Ikeja",
-                                                          "Ebute Metta": "Lagos Mainland",
-                                                        };
 
-                                                        const targetLga = lgaMap[area.lga] || area.lga;
-                                                        
-                                                        const specificLoc = deliveryLocations.find(loc => 
-                                                          loc.name.toLowerCase().trim() === area.name.toLowerCase().trim()
-                                                        );
-                                                        
-                                                        const lgaLoc = deliveryLocations.find(loc => {
-                                                            const dbLga = loc.name.toLowerCase().replace(/[^a-z0-9]/g, "").trim();
-                                                            const searchLga = targetLga.toLowerCase().replace(/[^a-z0-9]/g, "").trim();
-                                                            return dbLga === searchLga || dbLga.includes(searchLga) || searchLga.includes(dbLga);
-                                                        });
-                                                        
-                                                        const price = specificLoc ? specificLoc.price : (lgaLoc ? lgaLoc.price : 3500);
-
-                                                        const pseudoLoc = {
-                                                          id: `ext-${area.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-")}`,
-                                                          name: area.name,
-                                                          price: price,
-                                                          created_at: new Date().toISOString(),
-                                                          updated_at: new Date().toISOString(),
-                                                        };
-                                                        setCurrentLocation(pseudoLoc);
-                                                        setIsNewAddressLocationPopoverOpen(false);
-                                                      }}
-                                                    >
-                                                      {area.name}
-                                                      {field.value === area.name && <Check className="h-4 w-4" />}
-                                                    </button>
-                                                  ))}
-                                              </div>
                                             </div>
                                           </div>
                                         </div>
@@ -2147,14 +2050,14 @@ const CheckoutForm = ({
                                 control={shippingAddressForm.control}
                                 name="email"
                                 render={({ field }) => (
-                                  <FormItem className="relative">
-                                    <FormLabel className="absolute -top-3 left-4 bg-white px-1 text-[10px] text-gray-400 z-10 font-bold uppercase tracking-widest">Email Address <span className="text-red-500">*</span></FormLabel>
+                                  <FormItem className="space-y-1">
+                                    <FormLabel className="text-xs font-semibold text-gray-700 mb-1 block">Email Address <span className="text-red-500">*</span></FormLabel>
                                     <FormControl>
                                       <Input
                                         placeholder="Enter email address"
                                         {...field}
                                         disabled={isAddingAddress}
-                                        className="rounded-lg bg-white border-gray-200 h-14 pt-2 shadow-sm focus-visible:ring-1 focus-visible:ring-[#1B6013]/20"
+                                        className="rounded-xl border-gray-200 bg-gray-50 h-12 focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#1B6013] transition-all shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
                                       />
                                     </FormControl>
                                     <FormMessage />
@@ -2166,7 +2069,7 @@ const CheckoutForm = ({
                             <div className="pt-4">
                               <Button
                                 type="submit"
-                                className="bg-[#1B6013] hover:bg-[#154d0f] text-white rounded-2xl w-full h-16 font-black tracking-tight shadow-xl shadow-green-100 transition-all active:scale-95 text-xl uppercase"
+                                className="bg-[#1B6013] hover:bg-[#154d0f] text-white rounded-xl w-full h-12 font-bold shadow-md hover:shadow-lg transition-all active:scale-95 text-base"
                                 disabled={isAddingAddress}
                               >
                                 {isAddingAddress ? (
@@ -2182,16 +2085,16 @@ const CheckoutForm = ({
                   </section>
 
                   <section className="space-y-6">
-                       <div className="pb-4 border-b border-gray-200">
-                            <h3 className="text-lg font-bold text-gray-900 tracking-tight uppercase">2. Payment Method</h3>
+                       <div className="pb-3">
+                            <h3 className="text-xl font-bold text-gray-900 tracking-tight">2. Payment Method</h3>
                         </div>
 
                          <div className="grid grid-cols-1 gap-6">
                         <div
-                          className={`p-6 border-2 transition-all cursor-pointer relative overflow-hidden rounded-2xl ${
+                          className={`p-4 border transition-all cursor-pointer relative overflow-hidden rounded-xl ${
                             selectedPaymentMethod === "paystack"
                               ? "border-[#1B6013] bg-green-50 shadow-md"
-                              : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm"
+                              : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
                           }`}
                           onClick={() => setSelectedPaymentMethod("paystack")}
                         >
@@ -2202,11 +2105,11 @@ const CheckoutForm = ({
                                     <Icon icon="solar:card-bold-duotone" className="w-7 h-7" />
                                 </div>
                                 <div className="space-y-0.5 flex-1">
-                                    <h4 className={`font-black text-lg uppercase tracking-tight ${selectedPaymentMethod === "paystack" ? "text-gray-900" : "text-gray-700"}`}>Debit Card / Transfer</h4>
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Secured payment via Paystack</p>
+                                    <h4 className={`font-bold text-lg uppercase tracking-tight ${selectedPaymentMethod === "paystack" ? "text-gray-900" : "text-gray-700"}`}>Debit Card / Transfer</h4>
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Secured payment via Paystack</p>
                                 </div>
                                 {selectedPaymentMethod === "paystack" && (
-                                    <div className="bg-[#1B6013] text-white rounded-full p-1.5 shadow-sm">
+                                    <div className="bg-[#1B6013] text-white rounded-full p-1.5 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
                                         <Check size={16} strokeWidth={4} />
                                     </div>
                                 )}
@@ -2215,10 +2118,10 @@ const CheckoutForm = ({
 
                         {/* Wallet Card */}
                         <div
-                          className={`p-6 border-2 transition-all cursor-pointer relative overflow-hidden rounded-2xl ${
+                          className={`p-4 border transition-all cursor-pointer relative overflow-hidden rounded-xl ${
                             selectedPaymentMethod === "wallet"
                               ? "border-[#1B6013] bg-green-50 shadow-md"
-                              : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm"
+                              : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
                           } ${!user || walletBalance < totalAmountPaid ? "opacity-60 grayscale cursor-not-allowed" : ""}`}
                           onClick={() => {
                              if (user && walletBalance >= totalAmountPaid) setSelectedPaymentMethod("wallet");
@@ -2232,13 +2135,13 @@ const CheckoutForm = ({
                                 </div>
                                 <div className="space-y-0.5 flex-1">
                                     <div className="flex items-center gap-2">
-                                        <h4 className={`font-black text-lg uppercase tracking-tight ${selectedPaymentMethod === "wallet" ? "text-gray-900" : "text-gray-700"}`}>Wallet Balance</h4>
+                                        <h4 className={`font-bold text-lg uppercase tracking-tight ${selectedPaymentMethod === "wallet" ? "text-gray-900" : "text-gray-700"}`}>Wallet Balance</h4>
                                         <Badge className="bg-green-100 text-[#1B6013] border-none font-bold text-[10px] px-2 py-0">₦{walletBalance.toLocaleString()}</Badge>
                                     </div>
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Fast & direct payment from your balance</p>
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Fast & direct payment from your balance</p>
                                 </div>
                                 {selectedPaymentMethod === "wallet" && (
-                                    <div className="bg-[#1B6013] text-white rounded-full p-1.5 shadow-sm">
+                                    <div className="bg-[#1B6013] text-white rounded-full p-1.5 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
                                         <Check size={16} strokeWidth={4} />
                                     </div>
                                 )}
@@ -2248,17 +2151,17 @@ const CheckoutForm = ({
                   </section>
 
                     <section className="space-y-6">
-                        <div className="pb-4 border-b border-gray-200">
-                          <h3 className="text-lg font-bold text-gray-900 tracking-tight uppercase">3. Additional Instructions</h3>
+                        <div className="pb-3">
+                          <h3 className="text-xl font-bold text-gray-900 tracking-tight">3. Additional Instructions</h3>
                        </div>
 
                          <div className="space-y-8">
-                             <div className="p-8 border border-gray-100 bg-white rounded-2xl flex items-start gap-6 shadow-sm">
+                             <div className="p-8 border border-gray-100 bg-white rounded-2xl flex items-start gap-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
                                  <div className="w-14 h-14 flex items-center justify-center text-[#1B6013] bg-green-50 rounded-2xl shrink-0">
                                      <Icon icon="solar:verified-check-bold-duotone" className="w-10 h-10" />
                                  </div>
                                  <div className="space-y-2">
-                                      <h4 className="text-lg font-black text-gray-900 uppercase tracking-tight">Order Readiness</h4>
+                                      <h4 className="text-lg font-bold text-gray-900 uppercase tracking-tight">Order Readiness</h4>
                                       <p className="text-sm text-gray-500 leading-relaxed font-medium">
                                          You are ordering <strong className="text-gray-900">{totalQuantity} {totalQuantity === 1 ? 'item' : 'items'}</strong> to be delivered to <strong className="text-gray-900">{selectedAddress?.city || 'your location'}</strong>.
                                       </p>
@@ -2266,7 +2169,7 @@ const CheckoutForm = ({
                              </div>
                              
                              <div className="space-y-3">
-                               <Label htmlFor="orderNote" className="text-xs font-black text-gray-500 uppercase tracking-widest pl-1">
+                               <Label htmlFor="orderNote" className="text-xs font-semibold text-gray-700 mb-1 block">
                                  Special Delivery Instructions
                                </Label>
                                <Textarea
@@ -2274,50 +2177,24 @@ const CheckoutForm = ({
                                  placeholder="E.g. Call upon arrival, Leave with security..."
                                  value={orderNote}
                                  onChange={(e) => setOrderNote(e.target.value)}
-                                 className="resize-none h-32 rounded-2xl border-gray-200 text-sm focus:border-[#1B6013] focus:ring-[#1B6013] transition-all bg-white p-6 shadow-sm font-medium"
+                                 className="resize-none h-28 rounded-xl border-gray-200 bg-gray-50 text-sm focus:bg-white focus:border-[#1B6013] focus:ring-1 focus:ring-[#1B6013] transition-all p-4 shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
                                />
                              </div>
                          </div>
                    </section>
 
-                 <div className="pt-8 flex justify-end">
-                     <Button
-                         onClick={async () => {
-                             if (isSubmitting) return;
-                             const isFormValid = await shippingAddressForm.trigger();
-                             if (!user && !shippingAddressForm.getValues("email")) {
-                                 shippingAddressForm.setError("email", { type: "manual", message: "Email is required for guest checkout" });
-                                 showToast("Email is required for guest checkout", "error");
-                                 return;
-                             }
-                             if (!isFormValid || !selectedAddressId) {
-                                 showToast("Please fill out all required shipping fields and select an address.", "error");
-                                 return;
-                             }
-                             handleOrderSubmission();
-                         }}
-                         disabled={isSubmitting || items.length === 0}
-                         className="rounded-2xl bg-[#1B6013] hover:bg-[#154d0f] text-white px-12 h-16 font-black text-xl tracking-tight shadow-xl shadow-green-100 transition-all flex items-center justify-center gap-4 w-full sm:w-auto uppercase active:scale-95"
-                     >
-                         {isSubmitting ? (
-                             <Loader2 className="animate-spin h-7 w-7" />
-                         ) : (
-                             <Icon icon="solar:lock-password-bold" className="w-6 h-6" />
-                         )}
-                         {isSubmitting ? "Processing..." : "Place Order Now"}
-                     </Button>
-                 </div>
+                 
               </div>
             </div>
 
             <div className="lg:w-[40%] w-full">
               <div className="sticky top-24">
-                   <div className="bg-white border border-gray-200 rounded-3xl p-8 lg:p-10 space-y-10 shadow-sm relative overflow-hidden group">
+                   <div className="bg-white rounded-2xl p-6 lg:p-8 space-y-6 shadow-[0px_4px_24px_rgba(0,0,0,0.06)] relative overflow-hidden border border-gray-200/60">
                     <div className="flex items-center justify-between">
-                         <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
+                         <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
                                 Order Summary
                          </h3>
-                         <span className="text-[10px] font-black text-[#1B6013] bg-green-50 px-3 py-1 rounded-full uppercase tracking-widest border border-green-100">{totalQuantity} {totalQuantity === 1 ? 'Item' : 'Items'}</span>
+                         <span className="text-[10px] font-bold text-[#1B6013] bg-green-50 px-3 py-1 rounded-full uppercase tracking-wider border border-green-100">{totalQuantity} {totalQuantity === 1 ? 'Item' : 'Items'}</span>
                     </div>
                     
                     <div className="pb-6 border-b border-gray-100">
@@ -2343,21 +2220,21 @@ const CheckoutForm = ({
 
                      <div className="space-y-6 pt-10 border-t border-slate-100 relative">
                         <div className="flex justify-between items-center text-sm">
-                         <span className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Subtotal</span>
-                         <span className="font-black text-slate-900">{formatNaira(subtotal)}</span>
+                         <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Subtotal</span>
+                         <span className="font-bold text-slate-900">{formatNaira(subtotal)}</span>
                        </div>
                        <div className="flex justify-between items-center text-sm">
-                         <span className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Delivery Fee</span>
-                         <span className="font-black text-slate-900">
+                         <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Delivery Fee</span>
+                         <span className="font-bold text-slate-900">
                            {qualifiesForFreeShipping ? (
-                                 <span className="text-[#1B6013] flex items-center gap-1 font-black uppercase text-[10px] tracking-wider">
+                                 <span className="text-[#1B6013] flex items-center gap-1 font-bold uppercase text-[10px] tracking-wider">
                                      <Icon icon="solar:check-circle-bold" className="w-4 h-4" />
                                      Free Delivery Reward
                                  </span>
                            ) : formLocation ? (
-                             <span className="text-sm font-black">{formatNaira(cost)}</span>
+                             <span className="text-sm font-bold">{formatNaira(cost)}</span>
                            ) : (
-                             <span className="text-slate-300 text-[10px] uppercase font-black tracking-widest italic">Calculated next</span>
+                             <span className="text-slate-300 text-[10px] uppercase font-bold tracking-wider ">Calculated next</span>
                            )}
                          </span>
                        </div>
@@ -2365,33 +2242,63 @@ const CheckoutForm = ({
                         {dealsDiscount > 0 && (
                          <div className="bg-green-50 p-4 rounded-xl border border-green-100">
                            <div className="flex justify-between items-center text-sm">
-                             <span className="text-[#1B6013] font-black uppercase tracking-widest text-[10px]">{appliedDiscountLabel}</span>
-                             <span className="font-black text-[#1B6013]">-{formatNaira(dealsDiscount)}</span>
+                             <span className="text-[#1B6013] font-bold uppercase tracking-wider text-[10px]">{appliedDiscountLabel}</span>
+                             <span className="font-bold text-[#1B6013]">-{formatNaira(dealsDiscount)}</span>
                            </div>
                          </div>
                        )}
 
                         {isVoucherValid && !isFreeDeliveryVoucher && (
                          <div className="flex justify-between items-center bg-green-50 p-4 rounded-xl border border-green-100">
-                           <span className="font-black text-[#1B6013] text-[10px] uppercase tracking-widest">Promo Applied</span>
-                           <span className="font-black text-[#1B6013]">-{formatNaira(voucherDiscount)}</span>
+                           <span className="font-bold text-[#1B6013] text-[10px] uppercase tracking-wider">Promo Applied</span>
+                           <span className="font-bold text-[#1B6013]">-{formatNaira(voucherDiscount)}</span>
                          </div>
                        )}
 
                        <div className="pt-6 border-t border-slate-100 flex justify-between items-end">
-                         <span className="text-lg font-black text-slate-900 uppercase tracking-tight">Total to Pay</span>
+                         <span className="text-lg font-bold text-slate-900 uppercase tracking-tight">Total to Pay</span>
                          <div className="text-right">
-                              <div className="text-3xl font-black text-[#1B6013] tracking-tighter tabular-nums drop-shadow-sm">
+                              <div className="text-3xl font-bold text-[#1B6013] tracking-tighter tabular-nums drop-shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
                                  {formatNaira(totalAmountPaid)}
                               </div>
                          </div>
-                       </div>
+
+                      </div>
+
+                      {/* PLACED ORDER BUTTON HERE */}
+                      <div className="pt-6 mt-4 border-t border-gray-100">
+                     <Button
+                         onClick={async () => {
+                             if (isSubmitting) return;
+                             const isFormValid = await shippingAddressForm.trigger();
+                             if (!user && !shippingAddressForm.getValues("email")) {
+                                 shippingAddressForm.setError("email", { type: "manual", message: "Email is required for guest checkout" });
+                                 showToast("Email is required for guest checkout", "error");
+                                 return;
+                             }
+                             if (!isFormValid || !selectedAddressId) {
+                                 showToast("Please fill out all required shipping fields and select an address.", "error");
+                                 return;
+                             }
+                             handleOrderSubmission();
+                         }}
+                         disabled={isSubmitting || items.length === 0}
+                         className="rounded-xl bg-[#1B6013] hover:bg-[#154d0f] text-white px-8 h-12 font-bold text-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 w-full active:scale-95"
+                     >
+                         {isSubmitting ? (
+                             <Loader2 className="animate-spin h-5 w-5" />
+                         ) : (
+                             <Icon icon="solar:lock-password-bold" className="w-6 h-6" />
+                         )}
+                         {isSubmitting ? "Processing..." : "Place Order Now"}
+                     </Button>
+                 </div>
                     </div>
 
                      {/* Available Vouchers Section */}
                      {isAuthenticated && (userVouchers && userVouchers.length > 0) && (
                        <div className="pt-8 border-t border-slate-100 pb-2 animate-in fade-in slide-in-from-top-2 duration-500">
-                          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                          <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                             <Icon icon="solar:gift-bold" className="w-3.5 h-3.5 text-[#1B6013]" />
                             Your Available Rewards
                           </h4>
@@ -2408,7 +2315,7 @@ const CheckoutForm = ({
                                   "flex items-center justify-between p-4 rounded-2xl border transition-all text-left group/v",
                                   isVoucherValid && voucherCode === voucher.code
                                     ? "bg-green-50 border-[#1B6013] opacity-80"
-                                    : "bg-white border-slate-100 hover:border-[#1B6013]/30 hover:shadow-sm"
+                                    : "bg-white border-slate-100 hover:border-[#1B6013]/30 hover:shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
                                 )}
                               >
                                 <div className="flex items-center gap-4">
@@ -2419,8 +2326,8 @@ const CheckoutForm = ({
                                     <Icon icon={voucher.code.includes("FREE-DELIV") ? "solar:delivery-bold" : "solar:ticket-bold"} className="w-5 h-5" />
                                   </div>
                                   <div className="min-w-0">
-                                    <p className="text-xs font-black text-gray-900 truncate uppercase tracking-tight">{voucher.description || voucher.code}</p>
-                                    <p className="text-[9px] font-black text-[#1B6013] uppercase tracking-widest truncate">{voucher.code}</p>
+                                    <p className="text-xs font-bold text-gray-900 truncate uppercase tracking-tight">{voucher.description || voucher.code}</p>
+                                    <p className="text-[9px] font-bold text-[#1B6013] uppercase tracking-wider truncate">{voucher.code}</p>
                                   </div>
                                 </div>
                                 {isVoucherValid && voucherCode === voucher.code ? (
@@ -2428,7 +2335,7 @@ const CheckoutForm = ({
                                     <Check className="w-3 h-3 stroke-[4]" />
                                   </div>
                                 ) : (
-                                  <div className="text-[9px] font-black text-slate-300 opacity-0 group-hover/v:opacity-100 transition-opacity uppercase tracking-widest">
+                                  <div className="text-[9px] font-bold text-slate-300 opacity-0 group-hover/v:opacity-100 transition-opacity uppercase tracking-wider">
                                     Apply
                                   </div>
                                 )}
@@ -2439,7 +2346,7 @@ const CheckoutForm = ({
                     )}
 
                       <div className="pt-6 border-t border-slate-100">
-                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Voucher Code</h4>
+                         <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-4">Voucher Code</h4>
                          <div className="flex relative">
                             <Input
                               placeholder="ENTER CODE"
@@ -2448,13 +2355,13 @@ const CheckoutForm = ({
                                 setVoucherCode(e.target.value);
                                 setVoucherValidationAttempted(false);
                               }}
-                              className="flex-1 h-14 rounded-2xl bg-white border-slate-200 font-black text-sm focus:border-[#1B6013] focus:ring-0 transition-all uppercase pl-6 pr-28 shadow-none tracking-widest"
+                              className="flex-1 h-12 rounded-xl bg-gray-50 border-gray-200 font-semibold text-sm focus:bg-white focus:border-[#1B6013] transition-all uppercase pl-4 pr-24 shadow-[0_2px_10px_rgba(0,0,0,0.02)] tracking-wider"
                               disabled={isReferralVoucher || isSubmitting}
                             />
                             <Button 
                                 onClick={() => handleVoucherValidation()}
                                 disabled={!voucherCode || isSubmitting}
-                                className="absolute right-2 top-2 bottom-2 h-auto px-6 rounded-xl font-black text-[10px] uppercase tracking-widest bg-gray-900 text-white hover:bg-black transition-all border-0 shadow-lg shadow-gray-200 z-10 active:scale-95"
+                                className="absolute right-1.5 top-1.5 bottom-1.5 h-auto px-5 rounded-lg font-bold text-xs uppercase tracking-wider bg-gray-900 text-white hover:bg-black transition-all shadow-[0_2px_10px_rgba(0,0,0,0.02)] z-10 active:scale-95"
                             >
                                 Apply
                             </Button>
@@ -2470,22 +2377,22 @@ const CheckoutForm = ({
         </Container>
       {/* Delete Confirmation Dialog */}
        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-         <DialogContent className="max-w-sm w-full rounded-3xl p-8">
+         <DialogContent className="max-w-sm w-full rounded-2xl p-8">
            <DialogHeader>
-             <DialogTitle className="text-xl font-black uppercase tracking-tight">Delete Address</DialogTitle>
+             <DialogTitle className="text-xl font-bold tracking-tight">Delete Address</DialogTitle>
            </DialogHeader>
            <div className="py-6 text-gray-600 font-medium">
              Are you sure you want to remove this delivery location?
              <div className="mt-4 p-4 bg-gray-50 rounded-2xl border border-gray-100 text-sm">
                {addressToDelete && (
                  <>
-                   <div className="font-black text-gray-900 uppercase tracking-tight mb-1">
+                   <div className="font-bold text-gray-900 uppercase tracking-tight mb-1">
                      {addressToDelete.label || (addressToDelete as any).fullName || user?.display_name}
                    </div>
                    <div className="text-gray-500 font-bold">
                      {addressToDelete.street}, {addressToDelete.city}
                    </div>
-                   <div className="text-[#1B6013] font-black mt-1 uppercase tracking-widest text-[10px]">
+                   <div className="text-[#1B6013] font-bold mt-1 uppercase tracking-wider text-[10px]">
                      {addressToDelete.phone}
                    </div>
                  </>
@@ -2496,14 +2403,14 @@ const CheckoutForm = ({
              <Button
                type="button"
                variant="outline"
-               className="flex-1 h-12 rounded-xl border-gray-200 font-black uppercase tracking-widest text-[10px] hover:bg-gray-50 bg-white text-gray-400"
+               className="flex-1 h-12 rounded-xl border-gray-200 font-bold uppercase tracking-wider text-[10px] hover:bg-gray-50 bg-white text-gray-400"
                onClick={() => setDeleteDialogOpen(false)}
              >
                Cancel
              </Button>
              <Button
                type="button"
-               className="flex-1 h-12 rounded-xl bg-red-500 text-white hover:bg-red-600 font-black uppercase tracking-widest text-[10px] shadow-lg shadow-red-100 active:scale-95 transition-all"
+               className="flex-1 h-12 rounded-xl bg-red-500 text-white hover:bg-red-600 font-bold uppercase tracking-wider text-[10px] shadow-lg shadow-red-100 active:scale-95 transition-all"
                disabled={isDeletingAddress}
                onClick={async () => {
                  if (addressToDelete) {
