@@ -1,0 +1,334 @@
+[
+  {
+    "name": "Abesan",
+    "lga": "Alimosho"
+  },
+  {
+    "name": "Abule Egba",
+    "lga": "Alimosho"
+  },
+  {
+    "name": "Abule-Ijesha",
+    "lga": "Yaba"
+  },
+  {
+    "name": "Agbado-Ijaiye",
+    "lga": "Ifako-Ijaiye"
+  },
+  {
+    "name": "Agege",
+    "lga": "Agege"
+  },
+  {
+    "name": "Agidingbi",
+    "lga": "Ikeja"
+  },
+  {
+    "name": "Aguda",
+    "lga": "Surulere"
+  },
+  {
+    "name": "Agungi",
+    "lga": "Lekki"
+  },
+  {
+    "name": "Ajah",
+    "lga": "Eti-Osa"
+  },
+  {
+    "name": "Ajegunle",
+    "lga": "Ajeromi-Ifelodun"
+  },
+  {
+    "name": "Akoka",
+    "lga": "Yaba"
+  },
+  {
+    "name": "Alaba",
+    "lga": "Ojo"
+  },
+  {
+    "name": "Alagbado",
+    "lga": "Alimosho"
+  },
+  {
+    "name": "Alapere",
+    "lga": "Ketu"
+  },
+  {
+    "name": "Alausa",
+    "lga": "Ikeja"
+  },
+  {
+    "name": "Alimosho",
+    "lga": "Alimosho"
+  },
+  {
+    "name": "Amuwo-Odofin",
+    "lga": "Amuwo-Odofin"
+  },
+  {
+    "name": "Anthony Village",
+    "lga": "Kosofe"
+  },
+  {
+    "name": "Apapa",
+    "lga": "Apapa"
+  },
+  {
+    "name": "Badagry",
+    "lga": "Badagry"
+  },
+  {
+    "name": "Bariga",
+    "lga": "Somolu"
+  },
+  {
+    "name": "Dolphin Estate",
+    "lga": "Ikoyi"
+  },
+  {
+    "name": "Don Dokunmu",
+    "lga": "Ikeja"
+  },
+  {
+    "name": "Ebute Metta",
+    "lga": "Lagos Mainland"
+  },
+  {
+    "name": "Egbeda",
+    "lga": "Alimosho"
+  },
+  {
+    "name": "Ejigbo",
+    "lga": "Oshodi-Isolo"
+  },
+  {
+    "name": "Epe",
+    "lga": "Epe"
+  },
+  {
+    "name": "Festac Town",
+    "lga": "Amuwo-Odofin"
+  },
+  {
+    "name": "Gbagada",
+    "lga": "Kosofe"
+  },
+  {
+    "name": "Idumota",
+    "lga": "Lagos Island"
+  },
+  {
+    "name": "Ifako-Ijaiye",
+    "lga": "Ifako-Ijaiye"
+  },
+  {
+    "name": "Ijanikin",
+    "lga": "Ojo"
+  },
+  {
+    "name": "Ijede",
+    "lga": "Ikorodu"
+  },
+  {
+    "name": "Ijesha",
+    "lga": "Surulere"
+  },
+  {
+    "name": "Iju Ishaga",
+    "lga": "Ifako-Ijaiye"
+  },
+  {
+    "name": "Ikeja",
+    "lga": "Ikeja"
+  },
+  {
+    "name": "Ikorodu",
+    "lga": "Ikorodu"
+  },
+  {
+    "name": "Ikosi",
+    "lga": "Ketu"
+  },
+  {
+    "name": "Ikotun",
+    "lga": "Alimosho"
+  },
+  {
+    "name": "Ikoyi",
+    "lga": "Eti-Osa"
+  },
+  {
+    "name": "Ilasamaja",
+    "lga": "Oshodi-Isolo"
+  },
+  {
+    "name": "Ilupeju",
+    "lga": "Mushin"
+  },
+  {
+    "name": "Iwaya",
+    "lga": "Yaba"
+  },
+  {
+    "name": "Iyana Ipaja",
+    "lga": "Alimosho"
+  },
+  {
+    "name": "Isherin",
+    "lga": "Berger"
+  },
+  {
+    "name": "Isolo",
+    "lga": "Oshodi-Isolo"
+  },
+  {
+    "name": "Itire",
+    "lga": "Surulere"
+  },
+  {
+    "name": "Jebba",
+    "lga": "Ebute Metta"
+  },
+  {
+    "name": "Ketu",
+    "lga": "Kosofe"
+  },
+  {
+    "name": "Lagos Island",
+    "lga": "Lagos Island"
+  },
+  {
+    "name": "Lagos Mainland",
+    "lga": "Lagos Mainland"
+  },
+  {
+    "name": "Lekki Phase 1",
+    "lga": "Eti-Osa"
+  },
+  {
+    "name": "Lekki Phase 2",
+    "lga": "Eti-Osa"
+  },
+  {
+    "name": "Magodo Phase 1",
+    "lga": "Kosofe"
+  },
+  {
+    "name": "Magodo Phase 2",
+    "lga": "Kosofe"
+  },
+  {
+    "name": "Maryland",
+    "lga": "Ikeja"
+  },
+  {
+    "name": "Mende",
+    "lga": "Maryland"
+  },
+  {
+    "name": "Mile 2",
+    "lga": "Amuwo-Odofin"
+  },
+  {
+    "name": "Mile 12",
+    "lga": "Kosofe"
+  },
+  {
+    "name": "Mushin",
+    "lga": "Mushin"
+  },
+  {
+    "name": "Obalende",
+    "lga": "Eti-Osa"
+  },
+  {
+    "name": "Obanikoro",
+    "lga": "Shomolu"
+  },
+  {
+    "name": "Ogba",
+    "lga": "Ikeja"
+  },
+  {
+    "name": "Ogudu",
+    "lga": "Kosofe"
+  },
+  {
+    "name": "Ojo",
+    "lga": "Ojo"
+  },
+  {
+    "name": "Ojodu",
+    "lga": "Ikeja"
+  },
+  {
+    "name": "Ojota",
+    "lga": "Kosofe"
+  },
+  {
+    "name": "Olowora",
+    "lga": "Kosofe"
+  },
+  {
+    "name": "Onigbongbo",
+    "lga": "Ikeja"
+  },
+  {
+    "name": "Onipanu",
+    "lga": "Shomolu"
+  },
+  {
+    "name": "Oniru",
+    "lga": "Eti-Osa"
+  },
+  {
+    "name": "Oregun",
+    "lga": "Ikeja"
+  },
+  {
+    "name": "Opebi",
+    "lga": "Ikeja"
+  },
+  {
+    "name": "Oshodi",
+    "lga": "Oshodi-Isolo"
+  },
+  {
+    "name": "Palmgrove",
+    "lga": "Shomolu"
+  },
+  {
+    "name": "Sangotedo",
+    "lga": "Eti-Osa"
+  },
+  {
+    "name": "Sabo",
+    "lga": "Yaba"
+  },
+  {
+    "name": "Shomolu",
+    "lga": "Shomolu"
+  },
+  {
+    "name": "Surulere",
+    "lga": "Surulere"
+  },
+  {
+    "name": "Takwa Bay",
+    "lga": "Lagos Island"
+  },
+  {
+    "name": "Victoria Garden City (VGC)",
+    "lga": "Eti-Osa"
+  },
+  {
+    "name": "Victoria Island",
+    "lga": "Eti-Osa"
+  },
+  {
+    "name": "Yaba",
+    "lga": "Lagos Mainland"
+  }
+]
