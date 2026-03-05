@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { createClient } from "@supabase/supabase-js";
 
-// Node.js runtime required — Buffer is not available in the Edge runtime
+// Node.js runtime — required for Buffer
 export const runtime = "nodejs";
 export const alt = "FeedMe Shared Cart";
 export const size = { width: 1200, height: 630 };
@@ -11,49 +11,51 @@ interface Props {
   params: { token: string };
 }
 
-// Direct anon-key fetch: external scrapers (WhatsApp, iMessage…) send no cookies
-// so the cookie-based server client would return nothing. Use anon key instead.
+// Fetch shared cart items using the anon key (no cookies required —
+// works for WhatsApp / iMessage scrapers that send no session cookies)
 async function fetchSharedCartItems(token: string) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data, error } = await supabase
-    .from("shared_carts")
-    .select("items, expires_at")
-    .eq("token", token)
-    .single();
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    const { data, error } = await supabase
+      .from("shared_carts")
+      .select("items, expires_at")
+      .eq("token", token)
+      .single();
 
-  if (error || !data) return null;
-  if (data.expires_at && new Date(data.expires_at as string) < new Date()) return null;
+    if (error || !data) return null;
+    if (
+      (data as any).expires_at &&
+      new Date((data as any).expires_at) < new Date()
+    )
+      return null;
 
-  const items = (data.items as any[]) || [];
-  // filter out free-prize items
-  return items.filter((i: any) => i.price && Number(i.price) > 0);
+    const rawItems = ((data as any).items as any[]) || [];
+    return rawItems.filter((i: any) => i.price && Number(i.price) > 0);
+  } catch {
+    return null;
+  }
 }
 
-// Convert an image URL to a base64 data-URL (Node.js runtime only)
-async function toDataUrl(url: string): Promise<string | null> {
+// Fetch a remote image and return it as an ArrayBuffer.
+// Satori (the engine behind ImageResponse) accepts ArrayBuffer directly for <img src>.
+async function fetchImageBuffer(url: string): Promise<ArrayBuffer | null> {
   try {
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) return null;
-    const buf = Buffer.from(await res.arrayBuffer());
-    const mime = res.headers.get("content-type") || "image/jpeg";
-    return `data:${mime};base64,${buf.toString("base64")}`;
+    return await res.arrayBuffer();
   } catch {
     return null;
   }
 }
 
 export default async function Image({ params }: Props) {
-  const items = await fetchSharedCartItems(params.token);
-  // Wrap in a result-like shape so the rest of the code stays the same
-  const result = items && items.length > 0
-    ? { success: true as const, items }
-    : { success: false as const, items: [] as any[] };
+  const cartItems = await fetchSharedCartItems(params.token);
 
-  // ---------- fallback when cart is missing / expired ----------
-  if (!result.success || !result.items.length) {
+  // ── Fallback brand card when cart is missing / expired ────────────────────
+  if (!cartItems || cartItems.length === 0) {
     return new ImageResponse(
       (
         <div
@@ -63,7 +65,7 @@ export default async function Image({ params }: Props) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "linear-gradient(135deg,#1B6013 0%,#0e3a0a 100%)",
+            background: "linear-gradient(135deg, #1B6013 0%, #0e3a0a 100%)",
           }}
         >
           <div
@@ -74,32 +76,19 @@ export default async function Image({ params }: Props) {
               gap: 16,
             }}
           >
-            {/* cart icon */}
-            <div
-              style={{
-                fontSize: 80,
-                lineHeight: 1,
-              }}
-            >
-              🛒
-            </div>
+            <div style={{ fontSize: 80 }}>🛒</div>
             <div
               style={{
                 color: "white",
-                fontSize: 48,
+                fontSize: 52,
                 fontWeight: 900,
                 letterSpacing: "-1px",
               }}
             >
               FeedMe Shared Cart
             </div>
-            <div
-              style={{
-                color: "rgba(255,255,255,0.65)",
-                fontSize: 24,
-              }}
-            >
-              FeedMe
+            <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 26 }}>
+             FeedMe
             </div>
           </div>
         </div>
@@ -108,9 +97,9 @@ export default async function Image({ params }: Props) {
     );
   }
 
-  const cartItems = result.items;
+  // ── Compute totals ────────────────────────────────────────────────────────
   const subtotal = cartItems.reduce(
-    (acc, item: any) => acc + (item.price ?? 0) * item.quantity,
+    (acc: number, item: any) => acc + (item.price ?? 0) * item.quantity,
     0
   );
   const formattedTotal = new Intl.NumberFormat("en-NG", {
@@ -119,29 +108,114 @@ export default async function Image({ params }: Props) {
     maximumFractionDigits: 0,
   }).format(subtotal);
 
-  // We show at most 4 product images in a 2×2 grid
+  // ── Fetch up to 4 product images ─────────────────────────────────────────
+  // We show a 2×2 grid on the left; if >4 items the last tile shows "+N more"
   const MAX_VISIBLE = 4;
-  const visibleItems = cartItems.slice(0, MAX_VISIBLE);
+  const visibleItems: any[] = cartItems.slice(0, MAX_VISIBLE);
   const extraCount = cartItems.length - MAX_VISIBLE;
 
-  // Pre-load images as data URLs (uses Node.js Buffer — fine since runtime = "nodejs")
-  const imageData: (string | null)[] = await Promise.all(
-    visibleItems.map((item) => (item.image ? toDataUrl(item.image) : Promise.resolve(null)))
+  // Pre-fetch all images in parallel; null = no image available
+  const buffers = await Promise.all(
+    visibleItems.map((item: any) =>
+      item.image ? fetchImageBuffer(item.image) : Promise.resolve(null)
+    )
   );
 
+  // Tile size: left panel is 630×630 split into 2×2 = 315×315 each
+  const TILE = 315;
+
+  // Build the 4 tiles (fill empty slots with a plain green background)
+  const tiles = Array.from({ length: MAX_VISIBLE }, (_, idx) => {
+    const buf = buffers[idx] ?? null;
+    const isLastAndHasExtra = idx === MAX_VISIBLE - 1 && extraCount > 0;
+
+    return (
+      <div
+        key={String(idx)}
+        style={{
+          width: TILE,
+          height: TILE,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+          background: "#d4e6d0",
+          // 2-px gap between tiles via border on the right / bottom of the first column/row
+          borderRight: idx % 2 === 0 ? "3px solid #F7F9F6" : "none",
+          borderBottom: idx < 2 ? "3px solid #F7F9F6" : "none",
+          position: "relative",
+        }}
+      >
+        {/* Product image — pass as ArrayBuffer; cast src to any to satisfy TS */}
+        {buf ? (
+          <img
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            src={buf as any}
+            style={{
+              width: TILE,
+              height: TILE,
+              objectFit: "cover",
+            }}
+          />
+        ) : (
+          <div style={{ fontSize: 64 }}>🥬</div>
+        )}
+
+        {/* Semi-transparent overlay on "+N more" tile */}
+        {isLastAndHasExtra && (
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: TILE,
+              height: TILE,
+              background: "rgba(0, 0, 0, 0.60)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+            }}
+          >
+            <div
+              style={{
+                color: "white",
+                fontSize: 56,
+                fontWeight: 900,
+                lineHeight: "1",
+              }}
+            >
+              +{extraCount}
+            </div>
+            <div
+              style={{
+                color: "rgba(255,255,255,0.8)",
+                fontSize: 20,
+                fontWeight: 700,
+              }}
+            >
+              more items
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  });
+
+  // ── Full image layout ─────────────────────────────────────────────────────
   return new ImageResponse(
     (
       <div
         style={{
-          width: "100%",
-          height: "100%",
+          width: 1200,
+          height: 630,
           display: "flex",
           flexDirection: "row",
           background: "#F7F9F6",
-          fontFamily: "sans-serif",
         }}
       >
-        {/* ── LEFT PANEL: product collage ── */}
+        {/* ── LEFT: 2×2 product collage ── */}
         <div
           style={{
             width: 630,
@@ -152,131 +226,31 @@ export default async function Image({ params }: Props) {
             position: "relative",
           }}
         >
-          {visibleItems.map((item, idx) => {
-            const img = imageData[idx];
-            const isLast = idx === MAX_VISIBLE - 1 && extraCount > 0;
+          {tiles}
 
-            return (
-              <div
-                key={idx}
-                style={{
-                  width: "50%",
-                  height: "50%",
-                  position: "relative",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  overflow: "hidden",
-                  borderRight: idx % 2 === 0 ? "3px solid #F7F9F6" : "none",
-                  borderBottom: idx < 2 ? "3px solid #F7F9F6" : "none",
-                  background: "#e8ede7",
-                }}
-              >
-                {img ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={img}
-                    alt={item.name}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
-                  />
-                ) : (
-                  <div style={{ fontSize: 56 }}>🥬</div>
-                )}
-                {/* Dark overlay for the "+N more" tile — ImageResponse doesn't support CSS filter */}
-                {isLast && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      background: "rgba(0,0,0,0.65)",
-                    }}
-                  />
-                )}
-
-                {/* "+N more" overlay on the last visible tile */}
-                {isLast && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 4,
-                    }}
-                  >
-                    <div
-                      style={{
-                        color: "white",
-                        fontSize: 52,
-                        fontWeight: 900,
-                        lineHeight: 1,
-                      }}
-                    >
-                      +{extraCount}
-                    </div>
-                    <div
-                      style={{
-                        color: "rgba(255,255,255,0.8)",
-                        fontSize: 18,
-                        fontWeight: 700,
-                        letterSpacing: "0.05em",
-                      }}
-                    >
-                      more items
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {/* fill empty slots if fewer than 4 items */}
-          {Array.from({ length: MAX_VISIBLE - visibleItems.length }).map(
-            (_, idx) => (
-              <div
-                key={`empty-${idx}`}
-                style={{
-                  width: "50%",
-                  height: "50%",
-                  background: "#e8ede7",
-                  borderRight:
-                    (visibleItems.length + idx) % 2 === 0
-                      ? "3px solid #F7F9F6"
-                      : "none",
-                  borderBottom: visibleItems.length + idx < 2 ? "3px solid #F7F9F6" : "none",
-                }}
-              />
-            )
-          )}
-
-          {/* FeedMe logo pill overlaid on the divider cross */}
+          {/* FeedMe pill badge at the centre of the 4-tile grid */}
           <div
             style={{
               position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%,-50%)",
+              top: 630 / 2,
+              left: 630 / 2,
+              transform: "translate(-50%, -50%)",
               background: "#1B6013",
               color: "white",
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: 900,
-              padding: "8px 18px",
+              padding: "7px 18px",
               borderRadius: 999,
-              letterSpacing: "0.04em",
               border: "3px solid #F7F9F6",
+              letterSpacing: "0.04em",
+              display: "flex",
             }}
           >
             FeedMe
           </div>
         </div>
 
-        {/* ── RIGHT PANEL: cart summary ── */}
+        {/* ── RIGHT: summary card ── */}
         <div
           style={{
             flex: 1,
@@ -288,9 +262,9 @@ export default async function Image({ params }: Props) {
             background: "#ffffff",
           }}
         >
-          {/* Top section */}
+          {/* Top */}
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {/* badge */}
+            {/* Badge */}
             <div
               style={{
                 display: "flex",
@@ -301,7 +275,7 @@ export default async function Image({ params }: Props) {
                 fontSize: 14,
                 fontWeight: 800,
                 letterSpacing: "0.15em",
-                padding: "6px 14px",
+                padding: "6px 16px",
                 borderRadius: 999,
                 alignSelf: "flex-start",
               }}
@@ -309,20 +283,16 @@ export default async function Image({ params }: Props) {
               🛒 SHARED CART
             </div>
 
-            {/* headline */}
+            {/* Headline */}
             <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 8,
-              }}
+              style={{ display: "flex", flexDirection: "column", gap: 6 }}
             >
               <div
                 style={{
-                  fontSize: 42,
+                  fontSize: 44,
                   fontWeight: 900,
                   color: "#0f1a0e",
-                  lineHeight: 1.1,
+                  lineHeight: "1.1",
                   letterSpacing: "-1px",
                 }}
               >
@@ -330,10 +300,10 @@ export default async function Image({ params }: Props) {
               </div>
               <div
                 style={{
-                  fontSize: 42,
+                  fontSize: 44,
                   fontWeight: 900,
                   color: "#1B6013",
-                  lineHeight: 1.1,
+                  lineHeight: "1.1",
                   letterSpacing: "-1px",
                 }}
               >
@@ -345,56 +315,44 @@ export default async function Image({ params }: Props) {
               style={{
                 fontSize: 20,
                 color: "#6b7c6a",
-                lineHeight: 1.4,
+                lineHeight: "1.4",
                 maxWidth: 340,
               }}
             >
-              Tap to view all items and add everything to your own cart in one
-              tap.
+              Tap to view all items and add everything to your cart in one tap.
             </div>
           </div>
 
-          {/* Stats row */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 16,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                gap: 16,
-              }}
-            >
-              {/* item count pill */}
+          {/* Bottom stats */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ display: "flex", gap: 14 }}>
+              {/* Item count */}
               <div
                 style={{
                   display: "flex",
                   flexDirection: "column",
+                  alignItems: "center",
                   background: "#F0F5EF",
                   borderRadius: 16,
                   padding: "16px 24px",
-                  alignItems: "center",
-                  minWidth: 120,
+                  minWidth: 110,
                 }}
               >
                 <div
                   style={{
-                    fontSize: 36,
+                    fontSize: 38,
                     fontWeight: 900,
                     color: "#1B6013",
-                    lineHeight: 1,
+                    lineHeight: "1",
                   }}
                 >
                   {cartItems.length}
                 </div>
                 <div
                   style={{
-                    fontSize: 13,
-                    color: "#6b7c6a",
+                    fontSize: 12,
                     fontWeight: 700,
+                    color: "#6b7c6a",
                     marginTop: 4,
                   }}
                 >
@@ -402,16 +360,16 @@ export default async function Image({ params }: Props) {
                 </div>
               </div>
 
-              {/* total pill */}
+              {/* Cart total */}
               <div
                 style={{
                   display: "flex",
                   flexDirection: "column",
+                  alignItems: "center",
+                  flex: 1,
                   background: "#F0F5EF",
                   borderRadius: 16,
                   padding: "16px 24px",
-                  alignItems: "center",
-                  flex: 1,
                 }}
               >
                 <div
@@ -419,7 +377,7 @@ export default async function Image({ params }: Props) {
                     fontSize: 30,
                     fontWeight: 900,
                     color: "#1B6013",
-                    lineHeight: 1,
+                    lineHeight: "1",
                     letterSpacing: "-0.5px",
                   }}
                 >
@@ -427,9 +385,9 @@ export default async function Image({ params }: Props) {
                 </div>
                 <div
                   style={{
-                    fontSize: 13,
-                    color: "#6b7c6a",
+                    fontSize: 12,
                     fontWeight: 700,
+                    color: "#6b7c6a",
                     marginTop: 4,
                   }}
                 >
@@ -438,7 +396,7 @@ export default async function Image({ params }: Props) {
               </div>
             </div>
 
-            {/* domain footer */}
+            {/* Footer */}
             <div
               style={{
                 display: "flex",
@@ -456,17 +414,13 @@ export default async function Image({ params }: Props) {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: 16,
+                  fontSize: 18,
                 }}
               >
                 🥬
               </div>
               <div
-                style={{
-                  fontSize: 16,
-                  fontWeight: 700,
-                  color: "#9aab98",
-                }}
+                style={{ fontSize: 16, fontWeight: 700, color: "#9aab98" }}
               >
                 FeedMe
               </div>
