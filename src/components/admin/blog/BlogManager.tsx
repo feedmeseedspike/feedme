@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Edit, Trash2, Eye, FileText, Calendar, Tag } from "lucide-react";
 import { Button } from "@components/ui/button";
+import Image from "next/image";
 import { BlogPost, BlogCategory } from "@/lib/actions/blog.actions";
 import BlogPostForm from "./BlogPostForm";
 import { format } from "date-fns";
@@ -84,7 +85,7 @@ export default function BlogManager() {
     }
   };
 
-  const getCategoryName = (categoryId?: string) => {
+  const getCategoryName = (categoryId?: string | null) => {
     const category = categories.find(c => c.id === categoryId);
     return category?.name || 'Uncategorized';
   };
@@ -158,10 +159,11 @@ export default function BlogManager() {
               {/* Featured Image */}
               <div className="h-48 bg-gray-100 relative">
                 {post.featured_image ? (
-                  <img
+                  <Image
                     src={post.featured_image}
                     alt={post.featured_image_alt || post.title}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-400">

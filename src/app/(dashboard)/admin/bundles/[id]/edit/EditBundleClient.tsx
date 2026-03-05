@@ -202,7 +202,6 @@ export default function EditBundleClient({
         chefName: data.chefName,
       };
       
-      console.log('Updating bundle with data:', updateData);
       
       await updateBundleWithProducts(updateData);
       

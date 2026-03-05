@@ -99,7 +99,6 @@ export default function AddressesClient({
 
   const onSubmit = async (values: FormValues) => {
     setLoading(true);
-    // console.log("onSubmit started");
     startTransition(async () => {
       try {
         if (editingAddress) {
@@ -127,7 +126,6 @@ export default function AddressesClient({
             zip: values.zip || "",
             country: values.country || "",
             phone: values.phone || "",
-            is_default: false,
           };
           const newAddress = await addAddressAction(addressData);
           if (newAddress) {
@@ -142,7 +140,6 @@ export default function AddressesClient({
         showToast(err.message || "Failed to save address", "error");
       } finally {
         setLoading(false);
-        // console.log("onSubmit finally, loading set to false");
       }
     });
   };

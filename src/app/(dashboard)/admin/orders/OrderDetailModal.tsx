@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { Button } from "@components/ui/button";
 import { Avatar, AvatarFallback } from "@components/ui/avatar";
@@ -222,21 +223,27 @@ export default function OrderDetailModal({ isOpen, onClose, order }: OrderDetail
                       <div key={item.id} className="flex gap-3 p-3 border rounded-lg">
                         <div className="w-12 h-12 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
                           {item.products?.images?.[0] ? (
-                            <img 
+                            <Image 
                               src={item.products.images[0]} 
                               alt="Product"
+                              width={48}
+                              height={48}
                               className="w-full h-full object-cover"
                             />
                           ) : item.bundles?.image ? (
-                            <img 
+                            <Image 
                               src={item.bundles.image} 
                               alt="Bundle"
+                              width={48}
+                              height={48}
                               className="w-full h-full object-cover"
                             />
                           ) : (item as any).offers?.image_url ? (
-                            <img 
+                            <Image 
                               src={(item as any).offers.image_url} 
                               alt="Offer"
+                              width={48}
+                              height={48}
                               className="w-full h-full object-cover"
                             />
                           ) : (

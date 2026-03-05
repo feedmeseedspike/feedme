@@ -4,8 +4,6 @@ import { createClient } from "src/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export async function addProductAction(productData: any) {
-  console.log('[DEBUG] ADD PRODUCT SERVER ACTION CALLED!');
-  console.log('[DEBUG] Received productData:', JSON.stringify(productData, null, 2));
   
   const supabase = await createClient();
   
@@ -49,14 +47,12 @@ export async function addProductAction(productData: any) {
     }
   }
   
-  console.log('[DEBUG] About to insert product in DB with:', JSON.stringify(cleanData, null, 2));
   
   const { data, error } = await supabase
     .from("products")
     .insert([cleanData])
     .select();
     
-  console.log('[DEBUG] Supabase insert result:', JSON.stringify({ data, error }, null, 2));
   
   if (error) {
     console.error('[ERROR] Supabase insert error:', error);

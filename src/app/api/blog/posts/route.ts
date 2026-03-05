@@ -11,7 +11,7 @@ export async function GET(req: Request) {
   const status = searchParams.get("status") || "published";
 
   try {
-    const posts = await getAllBlogPosts({
+    const { posts, totalCount } = await getAllBlogPosts({
       limit,
       offset,
       category,
@@ -19,7 +19,7 @@ export async function GET(req: Request) {
       status: status === "all" ? undefined : status  // Don't filter by status if "all"
     });
 
-    const response = NextResponse.json({ posts, success: true });
+    const response = NextResponse.json({ posts, totalCount, success: true });
 
     // Cache for 5 minutes for published posts, 0 for admin views
     const cacheTime = status === "published" ? 300 : 0;

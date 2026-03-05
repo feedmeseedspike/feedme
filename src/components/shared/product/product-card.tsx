@@ -86,7 +86,7 @@ const ProductCard = ({
     return (
       <div className="relative h-[100px] w-[120px] md:h-[135px] md:w-[160px]">
         {discountText && (
-          <div className="absolute top-0 left-0 bg-[#F0800F] text-white text-[9px] md:text-[10px] font-black px-2 py-1 rounded-br-[8px] z-20 uppercase tracking-tight pointer-events-none">
+          <div className="absolute top-0 left-0 bg-[#F0800F] text-white text-[9px] md:text-[10px] font-black px-2 py-1 rounded-tl-[8px] rounded-br-[8px] z-20 uppercase tracking-tight pointer-events-none">
             {discountText} OFF
           </div>
         )}
@@ -157,7 +157,7 @@ const ProductCard = ({
           Out of Season
         </span>
       )}
-      <div className="flex items-center gap-1.5 flex-wrap">
+      <div className="flex flex-col gap-1">
         <span className="text-[14px] font-bold text-[#1B6013]">
           {optionsArr.length > 1
             ? `From ${formatNaira(Math.min(...optionsArr.map((opt: any) => opt.price ?? Infinity)))}`
@@ -167,11 +167,18 @@ const ProductCard = ({
                 ? formatNaira(product.price)
                 : "Price N/A"}
         </span>
-        {optionsArr.length <= 1 && (optionsArr[0]?.list_price || product.list_price) && (optionsArr[0]?.list_price > (optionsArr[0]?.price ?? product.price) || product.list_price > product.price) ? (
-          <span className="text-[10px] text-gray-400 font-semibold line-through">
-            {formatNaira(optionsArr[0]?.list_price || product.list_price)}
-          </span>
-        ) : null}
+        {(() => {
+          const basePrice = product.price || 0;
+          const currentListPrice = optionsArr.length === 1 ? optionsArr[0]?.list_price : product.list_price;
+          const calculatedWasPrice = Math.round(basePrice * 1.1);
+          const displayWasPrice = (currentListPrice && currentListPrice > basePrice) ? currentListPrice : calculatedWasPrice;
+          
+          return (
+            <span className="text-[10px] text-gray-400 font-semibold line-through">
+              {formatNaira(displayWasPrice)}
+            </span>
+          );
+        })()}
       </div>
     </div>
   );

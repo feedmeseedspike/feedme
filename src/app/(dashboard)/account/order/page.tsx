@@ -25,7 +25,6 @@ export default async function OrdersPage({
       );
       orders = data;
 
-      console.log(orders);
       totalOrdersCount = count ?? 0;
     } catch (error) {
       console.error("Error fetching user orders:", error);

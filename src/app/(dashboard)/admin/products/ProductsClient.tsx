@@ -265,11 +265,12 @@ export default function ProductsClient({
         page: page,
         limit: itemsPerPage,
         search: urlSearch,
-        category: urlCategories[0] || "",
-        stockStatus: urlStock[0] || "",
-        publishedStatus: urlPublished[0] || "",
+        category: urlCategories.join(","),
+        stockStatus: urlStock.join(","),
+        publishedStatus: urlPublished.join(","),
         sortBy: urlSortBy,
         sortOrder: urlSortOrder,
+        isAdmin: true,
       });
 
       // Fetch category names for each product
@@ -324,9 +325,7 @@ export default function ProductsClient({
   
   useEffect(() => {
     if (queryResult && Array.isArray(queryResult.data)) {
-      console.log(`[Products] Data Update: ${queryResult.data.length} items loaded (Total count: ${queryResult.count})`);
     } else if (queryResult) {
-      console.log(`[Products] Query returned unexpected shape:`, queryResult);
     }
   }, [queryResult]);
 
@@ -396,7 +395,6 @@ export default function ProductsClient({
   };
 
   const handleDeleteClick = (product: any) => {
-    console.log("Delete button clicked for product:", product.name, product.id);
     setProductToDelete(product);
     setDeleteDialogOpen(true);
   };
@@ -410,7 +408,6 @@ export default function ProductsClient({
     const deletingId = productToDelete.id;
     const deletingName = productToDelete.name;
     
-    console.log(`Initiating delete for ${deletingName} (${deletingId})...`);
     
     // Close dialog immediately to provide responsive feedback
     setDeleteDialogOpen(false);
@@ -420,7 +417,6 @@ export default function ProductsClient({
     
     try {
       const result = await deleteProduct(deletingId);
-      console.log(`Delete API result for ${deletingId}:`, result);
       
       if (result && result.success) {
         showToast(result.message || `${deletingName} processed successfully!`, result.archived ? "info" : "success");
@@ -431,7 +427,6 @@ export default function ProductsClient({
         // Force refresh both react-query and Next.js server cache
         await queryClient.invalidateQueries({ queryKey: ["products"], exact: false });
         const freshData = await refetch();
-        console.log(`[Products] Refetched ${freshData.data?.data?.length || 0} products.`);
         
         // router.refresh() handles the server-side props for initialProducts
         router.refresh();
@@ -935,7 +930,7 @@ export default function ProductsClient({
                       className={
                         product.is_published
                           ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-700"
+                          : "bg-amber-100 text-amber-800"
                       }>
                       {product.is_published ? "Published" : "Archived"}
                     </Badge>
@@ -951,7 +946,6 @@ export default function ProductsClient({
                       size="icon"
                       type="button"
                       onClick={(e) => {
-                        console.log("Delete button clicked for product ID:", product.id);
                         e.preventDefault();
                         e.stopPropagation();
                         handleDeleteClick(product);

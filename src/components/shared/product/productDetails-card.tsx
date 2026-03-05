@@ -330,12 +330,17 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
         product.bundleId,
         user,
         cartItems,
-        anonymousCart,
+        anonymousCart.items,
+        anonymousCart.addItem,
+        anonymousCart.removeItem,
+        anonymousCart.updateQuantity,
         selectedOptionData,
         selectedOptionLabel,
         showToast,
-        router,
         updateCartMutation,
+        product.images,
+        product.slug,
+        anonymousCart
       ]
     );
 
@@ -366,11 +371,11 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
     }, [
       currentCartItem,
       user,
-      anonymousCart,
+      anonymousCart.removeItem,
       selectedOptionLabel,
       showToast,
-      router,
       removeCartItemMutation,
+      anonymousCart
     ]);
 
     const handleOptionChange = useCallback(
@@ -482,9 +487,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
         }
       },
       [
-        product.id,
-        (product as any)._id,
-        product.name,
+        product,
         user,
         showToast,
         router,
@@ -514,7 +517,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       return (
         <div className="relative">
           {discountText && (
-            <div className="absolute top-0 left-0 bg-[#F0800F] text-white text-[10px] font-black px-2.5 py-1.5 rounded-br-xl z-20 uppercase tracking-tight pointer-events-none">
+            <div className="absolute top-0 left-0 bg-[#F0800F] text-white text-[10px] font-black px-2.5 py-1.5 rounded-tl-lg rounded-br-lg z-20 uppercase tracking-tight pointer-events-none">
               {discountText} OFF
             </div>
           )}
@@ -806,12 +809,11 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
         </div>
       );
     }, [
-      product.price,
-      product.list_price,
       product.in_season,
       product.slug,
       product.images,
       product.name,
+      product.tags,
       selectedOptionData,
       sortedOptions,
       handleToggleLike,
@@ -821,41 +823,43 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       quantity,
       handleRemoveFromCart,
       handleQuantityChange,
-      showToast,
       handleUpdateCartQuantity,
+      selectedOptionLabel,
+      handleAddToCartClick,
+      product,
+      showToast
     ]);
 
     const ProductDetails = useMemo(() => {
       // Safely determine the price display
       let priceDisplay = "Price N/A";
+      const hasOptions = sortedOptions.length > 0;
+      const basePrice = product.price || 0;
 
-      if (sortedOptions.length > 0) {
+      if (hasOptions) {
         const firstPrice = sortedOptions[0]?.price;
         const lastPrice = sortedOptions[sortedOptions.length - 1]?.price;
-        if (sortedOptions.length === 1) {
-          // Only one option, show its price
-          priceDisplay = formatNaira(firstPrice);
-        } else if (
-          firstPrice !== null &&
-          firstPrice !== undefined &&
-          lastPrice !== null &&
-          lastPrice !== undefined &&
-          firstPrice !== lastPrice
-        ) {
-          // Multiple options with different prices, show range
-          priceDisplay = `${formatNaira(firstPrice)} - ${formatNaira(lastPrice)}`;
+        const distinctPrices = new Set(sortedOptions.map((opt: any) => opt.price));
+        
+        if (distinctPrices.size > 1) {
+          // Multiple options with different prices, show "From"
+          priceDisplay = `From ${formatNaira(Math.min(...Array.from(distinctPrices) as number[]))}`;
         } else if (firstPrice !== null && firstPrice !== undefined) {
-          // Multiple options but all have the same price
+          // All options same price
           priceDisplay = formatNaira(firstPrice);
-        } else if (lastPrice !== null && lastPrice !== undefined) {
-          priceDisplay = formatNaira(lastPrice);
         }
       } else if (product.price !== null && product.price !== undefined) {
         priceDisplay = formatNaira(product.price);
       }
 
+      // Calculate 10% Was price if list_price is missing
+      const calculatedWasPrice = Math.round(basePrice * 1.1);
+      const displayWasPrice = (product.list_price && product.list_price > basePrice) 
+        ? product.list_price 
+        : calculatedWasPrice;
+
       return (
-        <div className="flex-1">
+        <div className="flex-1 flex flex-col">
           <Link
             href={`/product/${product.slug}`}
             className="overflow-hidden text-ellipsis h4-bold"
@@ -867,51 +871,41 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           >
             {product.name}
           </Link>
-          {/* {console.log('Product in_season value:', product.in_season, 'for product:', product.name)} */}
-          {product.in_season === true && (
-            <span className="inline-block mt-1 px-2.5 py-0.5 text-[10px] bg-green-50 text-green-700 rounded-full font-bold border border-green-200">
-              In Season
-            </span>
-          )}
-          {product.in_season === false && (
-            <span className="inline-block mt-1 px-2.5 py-0.5 text-[10px] bg-red-50 text-red-700 rounded-full font-bold border border-red-200">
-              Out of Season
-            </span>
-          )}
-          <div className="flex gap-2">
+          
+          {/* <div className="flex gap-2 items-center">
             <Rating rating={product.avg_rating || 0} />
             {typeof product.num_reviews === "number" &&
               product.num_reviews > 0 && (
-                <span className="text-gray-600 text-sm">
+                <span className="text-gray-500 text-[10px]">
                   ({product.num_reviews})
                 </span>
               )}
-          </div>
+          </div> */}
 
-          <div className="flex flex-col">
-            {sortedOptions.length > 0 ? (
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-bold text-md text-[#1B6013] whitespace-nowrap">
-                  {priceDisplay}
-                </span>
-                {sortedOptions.length === 1 && sortedOptions[0]?.list_price && sortedOptions[0].list_price > sortedOptions[0].price ? (
-                  <span className="line-through text-xs font-semibold text-gray-400 whitespace-nowrap">
-                    {formatNaira(sortedOptions[0].list_price)}
-                  </span>
-                ) : null}
-              </div>
-            ) : (
-              <ProductPrice
-                isDeal={product.tags?.includes("todays-deal") || false}
-                price={product.price || 0}
-                listPrice={product.list_price || 0}
-                forListing
-              />
+          <div className="flex flex-col mt-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-bold text-md text-[#1B6013] whitespace-nowrap">
+                {priceDisplay}
+              </span>
+              <span className="line-through text-[10px] font-semibold text-gray-400 whitespace-nowrap">
+                {formatNaira(displayWasPrice)}
+              </span>
+            </div>
+            
+            {product.in_season === false && (
+              <span className="inline-block mt-1 px-2 py-0.5 text-[9px] bg-red-50 text-red-700 rounded-full font-bold border border-red-200 w-fit">
+                Out of Season
+              </span>
+            )}
+            {product.in_season === true && (
+              <span className="inline-block mt-1 px-2 py-0.5 text-[9px] bg-green-50 text-green-700 rounded-full font-bold border border-green-200 w-fit">
+                In Season
+              </span>
             )}
           </div>
         </div>
       );
-    }, [product, sortedOptions]);
+    }, [product.price, product.list_price, product.slug, product.name, product.avg_rating, product.num_reviews, product.in_season, sortedOptions]);
 
     const [optionPickerOpen, setOptionPickerOpen] = useState(false);
     const isMobile = useMediaQuery("(max-width: 768px)");
@@ -1232,8 +1226,6 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       selectedOption,
       desktopOptionPicker,
       mobileOptionPicker,
-      productImageSrc,
-      product.name,
     ]);
 
     return hideBorder ? (

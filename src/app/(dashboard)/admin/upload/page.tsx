@@ -1,7 +1,7 @@
 // app/upload/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { RefreshCw } from "lucide-react";
 import UploadExcel from "@/app/(dashboard)/admin/upload/upload";
 import Image from "next/image";
@@ -23,7 +23,7 @@ export default function Page() {
   const [loading, setLoading] = useState(true);
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
-const fetchProducts = async () => {
+const fetchProducts = useCallback(async () => {
   setLoading(true);
   try {
     // THIS IS THE MAGIC LINE — bypasses Next.js cache completely
@@ -37,19 +37,17 @@ const fetchProducts = async () => {
     });
 
     const data = await res.json();
-    console.log("Fetched at:", new Date().toLocaleString());
-    console.log("Fresh data:", data.products?.slice(0, 5));
     setProducts(data.products || []);
   } catch (err) {
     console.error("Fetch error:", err);
   } finally {
     setLoading(false);
   }
-};
+}, []);
 
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [fetchProducts]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 py-12">
@@ -103,7 +101,6 @@ const fetchProducts = async () => {
                       it.images[0] ===
                       ""
                   );
-                  console.log(thas);
                   setProducts(thas);
                 }}
                 className="text-green-700 hover:text-green-900 flex items-center gap-1 text-sm font-medium">
@@ -142,10 +139,11 @@ const fetchProducts = async () => {
                     <tr key={i} className="hover:bg-green-50">
                       <td className="px-6 py-3 font-medium text-gray-800">
                         <div className="w-[60px] h-[60px] relative rounded-md overflow-hidden">
-                          <img
-                            src={p.images[0]}
+                          <Image
+                            src={p.images[0] || "/placeholder-product.png"}
                             alt={p.name}
-                            // fill
+                            width={60}
+                            height={60}
                             className="object-cover"
                           />
                         </div>

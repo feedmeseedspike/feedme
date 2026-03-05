@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Bookmark } from "lucide-react";
 import { useToast } from "src/hooks/useToast";
 
@@ -17,11 +17,7 @@ export default function BookmarkButton({
   const [isLoading, setIsLoading] = useState(true);
   const { showToast } = useToast();
 
-  useEffect(() => {
-    checkBookmarkStatus();
-  }, [bundleId]);
-
-  const checkBookmarkStatus = async () => {
+  const checkBookmarkStatus = useCallback(async () => {
     try {
       const response = await fetch(`/api/recipes/${bundleId}/bookmark`);
       if (!response.ok) throw new Error("Failed to check bookmark status");
@@ -33,7 +29,11 @@ export default function BookmarkButton({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [bundleId]);
+
+  useEffect(() => {
+    checkBookmarkStatus();
+  }, [checkBookmarkStatus]);
 
   const handleToggleBookmark = async () => {
     try {

@@ -4,9 +4,6 @@ import { createClient } from "src/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export async function updateProductAction(productId: string, productData: any) {
-  console.log('[DEBUG] SERVER ACTION CALLED!');
-  console.log('[DEBUG] productId:', productId);
-  console.log('[DEBUG] Received productData:', JSON.stringify(productData, null, 2));
   
   const supabase = await createClient();
   
@@ -60,7 +57,6 @@ export async function updateProductAction(productId: string, productData: any) {
     }
   }
   
-  console.log('[DEBUG] About to update product in DB with:', JSON.stringify(cleanData, null, 2));
   
   const { data, error } = await supabase
     .from("products")
@@ -68,7 +64,6 @@ export async function updateProductAction(productId: string, productData: any) {
     .eq("id", productId)
     .select();
     
-  console.log('[DEBUG] Supabase update result:', JSON.stringify({ data, error }, null, 2));
   
   if (error) {
     console.error('[ERROR] Supabase update error:', error);
@@ -77,7 +72,6 @@ export async function updateProductAction(productId: string, productData: any) {
 
   // Handle related products
   if (productData.related_products && Array.isArray(productData.related_products)) {
-    console.log('[DEBUG] Updating related products:', productData.related_products);
     
     // 1. Delete existing relations
     const { error: deleteError } = await supabase

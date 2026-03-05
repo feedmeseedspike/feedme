@@ -27,13 +27,6 @@ import { NewVisitorProvider } from "@components/shared/ExitIntentProvider";
 import { getStoreSettings } from "@/lib/actions/settings.actions";
 import { StoreStatusProvider } from "@/providers/StoreStatusProvider";
 
-const DynamicReferralBanner = dynamicImport(
-  () => import("@components/shared/ReferralBanner"),
-  {
-    ssr: false,
-    loading: () => null,
-  }
-);
 
 const DealsPopup = dynamicImport(
   () => import("@components/shared/DealsPopup"),
@@ -325,8 +318,8 @@ export default async function RootLayout({
         </noscript>
         <NextTopLoader showSpinner={false} color="#F0800F" shadow="0" />
         {user?.user_id && <RegisterPush userId={user.user_id} />}
-        <LocationProvider>
-          <ReactQueryClientProvider>
+        <ReactQueryClientProvider>
+          <LocationProvider>
             <ReduxProvider>
               <ToastProvider>
                 <SupabaseAuthProvider
@@ -348,8 +341,8 @@ export default async function RootLayout({
                 </SupabaseAuthProvider>
               </ToastProvider>
             </ReduxProvider>
-          </ReactQueryClientProvider>
-        </LocationProvider>
+          </LocationProvider>
+        </ReactQueryClientProvider>
       </body>
     </html>
   );

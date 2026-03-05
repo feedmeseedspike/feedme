@@ -54,14 +54,12 @@ export default async function EditBundlePage({
       products: linkedProducts
     };
     
-    console.log('EditBundlePage - fetched bundle:', JSON.stringify(initialBundle, null, 2));
   } catch (err) {
     console.error('EditBundlePage - error fetching bundle:', err);
     return notFound();
   }
   
   if (!initialBundle) {
-    console.log('EditBundlePage - no bundle found');
     return notFound();
   }
   

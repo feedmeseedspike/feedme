@@ -293,7 +293,7 @@ export async function getUser(): Promise<GetUserReturn> {
       email: user.email ?? null,
       has_used_new_user_spin: false,
       loyalty_points: 0,
-      updated_at: null,
+      last_spin_at: null,
     };
   } catch (error) {
     return null;

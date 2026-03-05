@@ -28,6 +28,7 @@ import { IProductInput } from "src/types";
 import { createClient as createSupabaseClient } from "src/utils/supabase/client";
 import { getCustomerOrdersAction } from "src/lib/actions/user.action";
 import { motion, AnimatePresence } from "framer-motion";
+import ShareCartButton from "@components/shared/cart/ShareCartButton";
 
 interface GroupedCartItem {
   product?: CartItem["products"];
@@ -69,7 +70,6 @@ const CartClient: React.FC<CartClientProps> = ({
 }) => {
   const router = useRouter();
   const { showToast } = useToast();
-  console.log("CartClient user prop:", user);
   const anonymousCart = useAnonymousCart();
 
   useCartSubscription();
@@ -238,8 +238,15 @@ const CartClient: React.FC<CartClientProps> = ({
     }, 0);
   }, [items]);
 
-  const dealsDiscount = useMemo(() => calculateCartDiscount(subtotal, items, isFirstOrder, !!user?.user_id), [subtotal, items, isFirstOrder, user?.user_id]);
-  const dealMessages = useMemo(() => getDealMessages(subtotal, items, isFirstOrder, !!user?.user_id), [subtotal, items, isFirstOrder, user?.user_id]);
+  const hasFreePrize = useMemo(() => items.some(item => item.price === 0), [items]);
+  const dealsDiscount = useMemo(() => {
+      if (hasFreePrize) return 0;
+      return calculateCartDiscount(subtotal, items, isFirstOrder, !!user?.user_id);
+  }, [subtotal, items, isFirstOrder, user?.user_id, hasFreePrize]);
+  const dealMessages = useMemo(() => {
+      if (hasFreePrize) return [];
+      return getDealMessages(subtotal, items, isFirstOrder, !!user?.user_id);
+  }, [subtotal, items, isFirstOrder, user?.user_id, hasFreePrize]);
   const totalAmount = Math.max(0, subtotal - dealsDiscount);
 
   return (
@@ -255,7 +262,7 @@ const CartClient: React.FC<CartClientProps> = ({
                 <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mb-6">
                     <ShoppingBag className="w-5 h-5 text-slate-300" />
                 </div>
-                <h2 className="text-lg font-black tracking-tight mb-8 text-slate-400 uppercase tracking-[0.2em]">Basket Empty</h2>
+                <h2 className="text-lg font-black mb-8 text-slate-400 uppercase tracking-[0.2em]">Basket Empty</h2>
                 <Link href="/">
                   <Button className="bg-[#1B6013] text-white hover:bg-[#1B6013] opacity-90 h-10 px-8 rounded-full font-bold text-xs uppercase tracking-widest shadow-none transition-all border-0">
                     Start Shopping
@@ -283,7 +290,10 @@ const CartClient: React.FC<CartClientProps> = ({
                 <div className="space-y-6">
                     <div className="pb-4 border-b border-slate-100 flex items-center justify-between">
                         <span className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-400">Order Contents</span>
-                        <span className="text-[10px] font-bold text-[#1B6013] bg-[#1B6013]/5 px-2 py-0.5 rounded-md">{totalQuantity} Items</span>
+                        <div className="flex items-center gap-3">
+                          {user && <ShareCartButton />}
+                          <span className="text-[10px] font-bold text-[#1B6013] bg-[#1B6013]/5 px-2 py-0.5 rounded-md">{totalQuantity} Items</span>
+                        </div>
                     </div>
 
                     <div className="divide-y divide-slate-50">
@@ -430,7 +440,7 @@ const CartClient: React.FC<CartClientProps> = ({
              <div className="mb-10 flex items-end justify-between">
                 <div className="space-y-1">
                     <h3 className="text-xl font-black tracking-tight text-slate-900">Recommended for you</h3>
-                    <p className="text-slate-400 text-xs text-slate-900">Based on your current basket</p>
+                    <p className="text-slate-500 text-xs">Based on your current basket</p>
                 </div>
              </div>
              <ProductSlider

@@ -84,7 +84,7 @@ export default function BonusProgressBar({ subtotal, isFirstOrder = false, isAut
                     <Icon icon="solar:wheel-bold" className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                    <p className="text-[10px] font-black text-slate-900 leading-tight uppercase text-[#1B6013]">Welcome Spin Unlocked! 🎡</p>
+                    <p className="text-[10px] font-black leading-tight uppercase text-[#1B6013]">Welcome Spin Unlocked! 🎡</p>
                     <p className="text-[8px] font-medium text-slate-400">Spin the wheel to reveal your 10% Welcome Gift!</p>
                 </div>
             </motion.div>

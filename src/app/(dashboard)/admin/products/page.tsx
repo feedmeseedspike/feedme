@@ -37,8 +37,11 @@ export default async function ProductsPage({
         page: currentPage,
         limit: itemsPerPage,
         query: initialSearch || undefined,
-        category: initialCategories[0] || "",
+        category: initialCategories.join(","),
+        stockStatus: initialStock.join(","),
+        publishedStatus: initialPublished.join(","),
         sort: `${sortBy}:${sortOrder}`,
+        isAdmin: true,
       }),
       getAllCategories(),
     ]);

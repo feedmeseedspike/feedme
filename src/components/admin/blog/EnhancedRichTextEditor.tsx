@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import ProductAutocomplete from "./ProductAutocomplete";
 
 // Dynamically import ReactQuill to avoid SSR issues
@@ -106,12 +107,12 @@ const ImageCustomizationModal = ({
         </div>
 
         {/* Image Preview */}
-        <div className="mb-6">
-          <img
+        <div className="mb-6 relative h-[200px] w-full">
+          <Image
             src={imageUrl}
             alt="Preview"
-            className="max-w-full h-auto rounded border"
-            style={{ maxHeight: "200px" }}
+            fill
+            className="rounded border object-contain"
           />
         </div>
 

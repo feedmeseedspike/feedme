@@ -63,7 +63,7 @@ export default function PrizesClient({ initialPrizes, productsList }: { initialP
           return opt ? opt.price : selectedProduct.price;
       }
       return selectedProduct.price;
-  }, [selectedProduct, formData.sub_label, formData.product_id]);
+  }, [selectedProduct, formData.sub_label]);
 
   useEffect(() => {
       if (editingPrize) {

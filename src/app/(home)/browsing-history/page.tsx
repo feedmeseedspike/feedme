@@ -28,7 +28,6 @@ export default function BrowsingHistoryPage() {
             .join(",")}`
         );
         const result = await res.json();
-        // console.log(products.map((product) => product.id).join(","));
         setData(result);
       } catch (error) {
         console.error("Failed to fetch browsing history:", error);
@@ -40,7 +39,7 @@ export default function BrowsingHistoryPage() {
     fetchProducts();
   }, [products]);
 
-  // // console.log(data);
+  // // 
 
   return (
     <main>

@@ -333,7 +333,7 @@ export default function ProductDetailsClient({
         <p className="text-[#12B76A] text-[14px] border py-1 px-2 border-[#bfe0d0] w-fit flex gap-1 items-center">
           Freshness Guarantee <Freshness className="size-4" />
         </p>
-        <p className="text-[12px] pt-2">90k+ brought in past month</p>
+        <p className="text-[12px] pt-2">90k+ bought in past month</p>
         <Separator className="mt-4 mb-2" />
         <div className="flex flex-col gap-2">
           <p className="h4-bold">Variation: Grade A</p>

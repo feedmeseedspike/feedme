@@ -35,7 +35,7 @@ import { formatNaira, cn } from "src/lib/utils";
 import { useVoucherValidationMutation, useUserVouchersQuery } from "src/queries/vouchers";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { Badge } from "@components/ui/badge";
-import { Truck, Leaf, Check, Pencil, Trash2, Loader2, ArrowLeft, ArrowRight } from "lucide-react";
+import { Truck, Leaf, Check, Pencil, Trash2, Loader2, ArrowLeft, ArrowRight, Search, MapPin, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Icon } from "@iconify/react";
 import Link from "next/link";
@@ -76,6 +76,14 @@ import { calculateCartDiscount, getDealMessages, getAppliedDiscountLabel, BONUS_
 import { getCustomerOrdersAction } from "src/lib/actions/user.action";
 import BonusProgressBar from "@components/shared/BonusProgressBar";
 import { Database } from "src/utils/database.types";
+import { useLocation } from "@components/shared/header/Location";
+import lagosAreas from "@/lib/lagos-areas.json";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@components/ui/popover";
+
 
 
 
@@ -152,14 +160,14 @@ const CartItemDisplay = React.memo(({ item, onRemove }: CartItemDisplayProps) =>
         <div className="flex justify-between items-start gap-4">
           <div className="space-y-1">
             <h4 className="text-base font-serif italic text-[#2A2A2A] line-clamp-1 leading-tight">
-               {productOption?.name || item.products?.name || item.bundles?.name || item.offers?.title}
+               {item.products?.name || item.bundles?.name || item.offers?.title || item.meta?.name || productOption?.name}
             </h4>
-            {productOption?.name ? (
+            {productOption?.name && productOption.name !== (item.products?.name || item.bundles?.name || item.offers?.title || item.meta?.name) ? (
               <p className="text-[9px] text-[#B07D62] font-black uppercase tracking-widest">
                   Selection: {productOption.name}
               </p>
             ) : item.price === 0 ? (
-                <p className="text-[9px] text-[#1B6013] font-black uppercase tracking-widest flex items-center gap-1">
+                <p className="text-[9px] text-[#FF9900] font-black uppercase tracking-widest flex items-center gap-1">
                    <Icon icon="solar:gift-bold" className="w-3 h-3" /> Spin Prize
                 </p>
             ) : (
@@ -211,17 +219,21 @@ function useDeliveryLocations() {
 const shippingAddressDefaultValues =
   process.env.NODE_ENV === "development"
     ? {
-        fullName: "Jeremiah Oyedele",
+        firstName: "Jeremiah",
+        lastName: "Oyedele",
         street: "10, Yemisi Street",
         location: "Badagry",
         phone: "08144602273",
+        additionalPhone: "",
         email: "",
       }
     : {
-        fullName: "",
+        firstName: "",
+        lastName: "",
         street: "",
         location: "",
         phone: "",
+        additionalPhone: "",
         email: "",
       };
 
@@ -247,6 +259,8 @@ const CheckoutForm = ({
 }: CheckoutFormProps) => {
   const supabaseUser = useSupabaseUser();
   const user = supabaseUser || initialUser;
+  const { currentLocationId, locationName: globalLocationName, deliveryPrice: globalDeliveryPrice, setCurrentLocation, locations: globalLocations } = useLocation();
+
 
   // console.log("CheckoutForm: User:", user);
   const router = useRouter();
@@ -350,6 +364,9 @@ const CheckoutForm = ({
   const [autoAppliedReferralVoucher, setAutoAppliedReferralVoucher] =
     useState<boolean>(false);
   const [orderNote, setOrderNote] = useState("");
+  const [locationSearch, setLocationSearch] = useState("");
+  const [isLocationPopoverOpen, setIsLocationPopoverOpen] = useState(false);
+  const [isNewAddressLocationPopoverOpen, setIsNewAddressLocationPopoverOpen] = useState(false);
 
 
   const { mutateAsync: validateVoucherMutation } =
@@ -412,13 +429,48 @@ const CheckoutForm = ({
   useEffect(() => {
     if (selectedAddress) {
       const currentValues = shippingAddressForm.getValues();
+      const fullName = selectedAddress.label || user?.display_name || "";
+      const nameParts = fullName.trim().split(/\s+/);
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
       shippingAddressForm.reset({
-        fullName: selectedAddress.label || user?.display_name || currentValues.fullName || "",
+        firstName: firstName || currentValues.firstName || "",
+        lastName: lastName || currentValues.lastName || "",
         street: selectedAddress.street || currentValues.street || "",
+        landmark: selectedAddress.zip || currentValues.landmark || "",
+        region: selectedAddress.state || "Lagos",
         location: selectedAddress.city || currentValues.location || "",
         phone: selectedAddress.phone || currentValues.phone || "",
+        additionalPhone: (selectedAddress as any).additionalPhone || "",
         email: currentValues.email || user?.email || "",
       });
+
+      // Synchronize saved address with global location
+      if (selectedAddress.city) {
+        // Try to find in official locations first
+        const matchingLoc = globalLocations.find(l => l.name === selectedAddress.city);
+        if (matchingLoc) {
+          if (matchingLoc.id !== currentLocationId) {
+            setCurrentLocation(matchingLoc);
+          }
+        } else {
+          // Check if it's an extended area in our JSON
+          const matchingArea = lagosAreas.find(a => a.name === selectedAddress.city);
+          if (matchingArea) {
+            const pseudoLoc = {
+              id: `ext-${matchingArea.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-")}`,
+              name: matchingArea.name,
+              price: 3500,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
+            if (pseudoLoc.id !== currentLocationId) {
+              setCurrentLocation(pseudoLoc);
+            }
+          }
+        }
+      }
     } else if (user?.email) {
       const currentEmail = shippingAddressForm.getValues("email");
       if (!currentEmail) {
@@ -431,7 +483,20 @@ const CheckoutForm = ({
     shippingAddressForm,
     user?.display_name,
     user?.email,
+    setCurrentLocation,
+    globalLocations,
   ]);
+
+  // Sync global location with form if no address is selected
+  useEffect(() => {
+    if (!selectedAddressId && globalLocationName !== "Lagos") {
+      const currentLoc = shippingAddressForm.getValues("location");
+      if (currentLoc !== globalLocationName) {
+        shippingAddressForm.setValue("location", globalLocationName);
+      }
+    }
+  }, [globalLocationName, selectedAddressId, shippingAddressForm]);
+
 
   // Load guest addresses
   useEffect(() => {
@@ -524,8 +589,18 @@ const CheckoutForm = ({
     [items]
   );
 
-  const dealsDiscount = useMemo(() => calculateCartDiscount(subtotal, items, isFirstOrder, isAuthenticated), [subtotal, items, isFirstOrder, isAuthenticated]);
-  const dealMessages = useMemo(() => getDealMessages(subtotal, items, isFirstOrder, isAuthenticated), [subtotal, items, isFirstOrder, isAuthenticated]);
+  const hasFreePrize = useMemo(() => items.some(item => item.price === 0), [items]);
+
+  const dealsDiscount = useMemo(() => {
+    if (isVoucherValid || hasFreePrize) return 0;
+    return calculateCartDiscount(subtotal, items, isFirstOrder, isAuthenticated);
+  }, [subtotal, items, isFirstOrder, isAuthenticated, isVoucherValid, hasFreePrize]);
+  
+  const dealMessages = useMemo(() => {
+    if (isVoucherValid || hasFreePrize) return [];
+    return getDealMessages(subtotal, items, isFirstOrder, isAuthenticated);
+  }, [subtotal, items, isFirstOrder, isAuthenticated, isVoucherValid, hasFreePrize]);
+  
   const appliedDiscountLabel = useMemo(() => getAppliedDiscountLabel(subtotal, items, isFirstOrder, isAuthenticated), [subtotal, items, isFirstOrder, isAuthenticated]);
 
   // Free delivery logic: Per Doc V1.0, 50k+ spend awards free delivery on the NEXT order.
@@ -533,9 +608,57 @@ const CheckoutForm = ({
   const isFreeDeliveryVoucher = isVoucherValid && voucherCode.includes("FREE-DELIV");
   const qualifiesForFreeShipping = isFreeDeliveryVoucher;
   
-  const cost = qualifiesForFreeShipping
-    ? 0
-    : locations.find((loc) => loc.name === formLocation)?.price || 2500;
+  const cost = useMemo(() => {
+    if (qualifiesForFreeShipping) return 0;
+    if (!formLocation) return 2500;
+
+    // 1. Try exact match in delivery locations (LGAs or Specific Areas like Ajah)
+    const exactLoc = locations.find((loc) => 
+      loc.name.toLowerCase().replace(/[^a-z0-9]/g, "") === formLocation.toLowerCase().replace(/[^a-z0-9]/g, "")
+    );
+    if (exactLoc) return exactLoc.price;
+
+    // 2. Try mapping from lagosAreas (Area -> LGA)
+    const areaMapping = lagosAreas.find(area => 
+      area.name.toLowerCase().trim() === formLocation.toLowerCase().trim()
+    );
+    
+    if (areaMapping) {
+      // Direct mapping check first (e.g. if Ajah is listed as LGA in JSON)
+      const specificLoc = locations.find(loc => 
+        loc.name.toLowerCase().trim() === areaMapping.name.toLowerCase().trim()
+      );
+      if (specificLoc) return specificLoc.price;
+
+      // LGA Mapping Logic
+      const lgaMap: Record<string, string> = {
+        "Alimosho": "Alimosho",
+        "Yaba": "Lagos Mainland",
+        "Somolu": "Shomolu",
+        "Ikoyi": "Eti-Osa",
+        "Lekki": "Eti-Osa",
+        "Iyana Ipaja": "Iyana Ipaja",
+        "Ifako-Ijaiye": "Ifako/Ijaye",
+        "Ketu": "Kosofe",
+        "Maryland": "Ikeja",
+        "Ebute Metta": "Lagos Mainland",
+        "Berger": "Agege", // Fallback for Berger
+      };
+
+      const targetLga = lgaMap[areaMapping.lga] || areaMapping.lga;
+      const lgaLoc = locations.find(loc => {
+        const dbLga = loc.name.toLowerCase().replace(/[^a-z0-9]/g, "").trim();
+        const searchLga = targetLga.toLowerCase().replace(/[^a-z0-9]/g, "").trim();
+        return dbLga === searchLga || dbLga.includes(searchLga) || searchLga.includes(dbLga);
+      });
+      
+      if (lgaLoc) return lgaLoc.price;
+    }
+
+    // 3. Fallback to global or default
+    return (formLocation === globalLocationName ? globalDeliveryPrice : 3500); // 3500 as standard fallback
+  }, [qualifiesForFreeShipping, locations, formLocation, globalLocationName, globalDeliveryPrice]);
+
 
   // Service charge: 7.5% of subtotal (total orders), do not subtract delivery fee
   /*
@@ -580,7 +703,7 @@ const CheckoutForm = ({
   useEffect(() => {
     // Always check for referral and voucher for referred users
     const tryAutoApplyReferralVoucher = async () => {
-      if (!user?.user_id || isVoucherValid || !subtotal || subtotal === 0)
+      if (!user?.user_id || isVoucherValid || !subtotal || subtotal === 0 || hasFreePrize)
         return;
 
       // 1. Check if referral exists for this user
@@ -681,6 +804,7 @@ const CheckoutForm = ({
           if (!voucherFromUrl) return;
           if (voucherValidationAttempted) return; // Prevent loop or re-attempt if already tried
           if (isVoucherValid && voucherCode === voucherFromUrl) return; // Already applied
+          if (hasFreePrize) return; // Prevent voucher application with free item
 
           setVoucherCode(voucherFromUrl);
           
@@ -800,12 +924,11 @@ const CheckoutForm = ({
     );
     if (selectedAddress) {
       shippingAddressForm.reset({
-        fullName: user?.display_name || "",     
+        firstName: (selectedAddress as any).firstName || ((selectedAddress as any).label ? (selectedAddress as any).label.split(' ')[0] : user?.display_name?.split(' ')[0]) || "",
+        lastName: (selectedAddress as any).lastName || ((selectedAddress as any).label ? (selectedAddress as any).label.split(' ').slice(1).join(' ') : user?.display_name?.split(' ').slice(1).join(' ')) || "",
         street: selectedAddress.street,
         location: selectedAddress.city,
-        // location: selectedAddress.city,
         phone: selectedAddress.phone,
-        // email: selectedAddress.email || user?.email || "",
       });
     }
   };
@@ -815,6 +938,10 @@ const CheckoutForm = ({
   };
 
   const handleVoucherValidation = async (externalCode?: string) => {
+    if (hasFreePrize) {
+      showToast("Vouchers cannot be used with a free gift in your cart.", "error");
+      return;
+    }
     const codeToValidate = externalCode || voucherCode;
     
     if (!codeToValidate) {
@@ -924,7 +1051,12 @@ const CheckoutForm = ({
               price: item.price,
               option: item.option,
             })),
-            shippingAddress: shippingAddressForm.getValues(),
+            shippingAddress: {
+              fullName: `${shippingAddressForm.getValues().firstName} ${shippingAddressForm.getValues().lastName}`,
+              street: shippingAddressForm.getValues().street,
+              location: shippingAddressForm.getValues().location,
+              phone: shippingAddressForm.getValues().phone,
+            },
             totalAmount,
             totalAmountPaid,
             deliveryFee: cost,
@@ -984,7 +1116,7 @@ const CheckoutForm = ({
                         orderNumber: result.data.reference || result.data.orderId,
                         customerName:
                           user.display_name ||
-                          shippingAddressForm.getValues().fullName,
+                          `${shippingAddressForm.getValues().firstName} ${shippingAddressForm.getValues().lastName}`,
                         customerPhone: shippingAddressForm.getValues().phone,
                         itemsOrdered: items.map((item) => ({
                           title:
@@ -1017,7 +1149,7 @@ const CheckoutForm = ({
                         orderNumber: result.data.reference || result.data.orderId,
                         customerName:
                           user.display_name ||
-                          shippingAddressForm.getValues().fullName,
+                          `${shippingAddressForm.getValues().firstName} ${shippingAddressForm.getValues().lastName}`,
                         customerPhone: shippingAddressForm.getValues().phone,
                         itemsOrdered: items.map((item) => ({
                           title:
@@ -1123,7 +1255,7 @@ const CheckoutForm = ({
               // Additional data for webhook processing
               autoAppliedReferralVoucher: autoAppliedReferralVoucher,
               customerName:
-                user?.display_name || shippingAddressForm.getValues().fullName,
+                user?.display_name || `${shippingAddressForm.getValues().firstName} ${shippingAddressForm.getValues().lastName}`,
               customerPhone: shippingAddressForm.getValues().phone,
               itemsOrdered: items.map((item) => ({
                 title:
@@ -1230,53 +1362,53 @@ const CheckoutForm = ({
             <div className="lg:w-[60%] w-full">
               <div className="space-y-12">
                   <section className="space-y-6">
-                      <div className="pb-4 border-b border-gray-200">
-                         <h3 className="text-lg font-bold text-gray-900 tracking-tight">Delivery Destination</h3>
-                      </div>
+                       <div className="pb-4 border-b border-gray-200">
+                          <h3 className="text-lg font-bold text-gray-900 tracking-tight uppercase">1. Delivery Destination</h3>
+                       </div>
 
-                      {/* Address Summary Card */}
-                      {selectedAddress ? (
-                        <div className="p-8 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-12 h-12 bg-[#1B6013]/5 flex items-center justify-center">
-                               <Icon icon="solar:map-point-wave-bold-duotone" className="w-6 h-6 text-[#1B6013]" />
-                            </div>
-                            <div className="flex justify-between items-start">
-                                <div className="space-y-4">
-                                    <div className="space-y-1">
-                                       <span className="text-[10px] font-bold text-[#1B6013] uppercase tracking-wider">Delivery Destination</span>
-                                       <p className="text-xl font-bold text-gray-900">{selectedAddress.label || selectedAddress.fullName}</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-sm text-gray-500 leading-relaxed">
-                                            {selectedAddress.street}
-                                        </p>
-                                        <p className="text-sm text-gray-900 font-bold tracking-tight uppercase">{selectedAddress.city}</p>
-                                        <p className="text-xs text-gray-400 font-medium">{selectedAddress.phone}</p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => {
-                                        setShowAddressModal(true);
-                                        setShowAddNewForm(false);
-                                    }}
-                                    className="text-[10px] font-bold uppercase tracking-wider text-[#1B6013] border-b border-[#1B6013] pb-0.5 hover:text-green-700 transition-colors"
-                                >
-                                    Change
-                                </button>
-                            </div>
-                        </div>
-                      ) : (
-                        <div 
-                          className="text-center py-10 px-6 bg-white rounded-2xl border border-dashed border-gray-300 hover:border-[#1B6013] hover:bg-[#1B6013]/5 transition-all group cursor-pointer" 
-                          onClick={() => setShowAddressModal(true)}
-                        >
-                             <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-[#1B6013]/10 flex items-center justify-center mx-auto mb-3 transition-colors">
-                                <Icon icon="solar:map-point-add-bold-duotone" className="w-5 h-5 text-gray-400 group-hover:text-[#1B6013] transition-colors" />
+                       {/* Address Summary Card */}
+                       {selectedAddress ? (
+                         <div className="p-8 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                             <div className="absolute top-0 right-0 w-12 h-12 bg-[#1B6013]/5 flex items-center justify-center">
+                                <Icon icon="solar:map-point-wave-bold-duotone" className="w-6 h-6 text-[#1B6013]" />
                              </div>
-                             <p className="text-sm font-bold text-gray-600 group-hover:text-[#1B6013] transition-colors">Select Delivery Address</p>
-                             <p className="text-xs text-gray-400 mt-1">Add or choose a delivery location</p>
-                        </div>
-                      )}
+                             <div className="flex justify-between items-start">
+                                 <div className="space-y-4">
+                                     <div className="space-y-1">
+                                        <span className="text-[10px] font-bold text-[#1B6013] uppercase tracking-wider">Default Address</span>
+                                        <p className="text-xl font-bold text-gray-900">{selectedAddress.label || (selectedAddress as any).fullName || "Street Address"}</p>
+                                     </div>
+                                     <div className="space-y-1">
+                                         <p className="text-sm text-gray-500 leading-relaxed font-medium">
+                                             {selectedAddress.street}
+                                         </p>
+                                         <p className="text-sm text-gray-900 font-bold tracking-tight uppercase">{selectedAddress.city}</p>
+                                         <p className="text-xs text-gray-400 font-bold">{selectedAddress.phone}</p>
+                                     </div>
+                                 </div>
+                                 <button
+                                     onClick={() => {
+                                         setShowAddressModal(true);
+                                         setShowAddNewForm(false);
+                                     }}
+                                     className="text-[10px] font-bold uppercase tracking-wider text-[#1B6013] border-b-2 border-[#1B6013]/20 pb-0.5 hover:border-[#1B6013] transition-colors"
+                                 >
+                                     Change
+                                 </button>
+                             </div>
+                         </div>
+                       ) : (
+                         <div 
+                           className="text-center py-12 px-6 bg-white rounded-2xl border-2 border-dashed border-gray-200 hover:border-[#1B6013] hover:bg-[#1B6013]/5 transition-all group cursor-pointer" 
+                           onClick={() => setShowAddressModal(true)}
+                         >
+                              <div className="w-12 h-12 rounded-full bg-gray-50 group-hover:bg-[#FF9900]/10 flex items-center justify-center mx-auto mb-4 transition-colors">
+                                 <Icon icon="solar:map-point-add-bold-duotone" className="w-6 h-6 text-gray-400 group-hover:text-[#FF9900] transition-colors" />
+                              </div>
+                              <p className="text-sm font-black text-gray-600 group-hover:text-[#FF9900] transition-colors uppercase tracking-widest">Select Delivery Address</p>
+                              <p className="text-xs text-gray-400 mt-2">Add or choose where we should deliver your food</p>
+                         </div>
+                       )}
 
                     {/* Modal for address selection/addition */}
                     <Dialog
@@ -1293,299 +1425,417 @@ const CheckoutForm = ({
                             style={{ maxHeight: "60vh" }}
                           >
                             {userAddresses && userAddresses.length > 0 ? (
-                              <div className="space-y-3">
+                              <div className="space-y-4">
                                 {userAddresses.map((address) => (
-                                  <label
+                                  <div
                                     key={address.id}
-                                    className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all group ${selectedAddressId === address.id ? "border-[#1B6013] bg-[#1B6013]/5 ring-1 ring-[#1B6013]" : "border-gray-100 hover:border-gray-200 bg-white"}`}
+                                    className={`relative flex items-start gap-4 p-5 rounded-2xl border transition-all cursor-pointer group ${selectedAddressId === address.id ? "border-[#1B6013] bg-green-50/30" : "border-gray-100 bg-white hover:border-gray-200"}`}
+                                    onClick={() => setSelectedAddressId(address.id)}
                                   >
                                     <div className="pt-1">
-                                         <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedAddressId === address.id ? "border-[#1B6013]" : "border-gray-300"}`}>
+                                         <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${selectedAddressId === address.id ? "border-[#1B6013]" : "border-gray-300"}`}>
                                             {selectedAddressId === address.id && <div className="w-2.5 h-2.5 rounded-full bg-[#1B6013]" />}
                                          </div>
                                     </div>
-                                    <input
-                                      type="radio"
-                                      checked={selectedAddressId === address.id}
-                                      onChange={() =>
-                                        setSelectedAddressId(address.id)
-                                      }
-                                      className="sr-only"
-                                    />
                                     <div className="flex-1">
                                       <div className="font-bold text-gray-900 text-sm mb-1">
-                                        {address.label || user?.display_name}
+                                        {address.label || (address as any).fullName || user?.display_name}
                                       </div>
-                                      <div className="text-xs text-gray-500 leading-relaxed font-medium">
+                                      <div className="text-xs text-gray-500 leading-relaxed">
                                         {address.street}, {address.city}
                                       </div>
-                                      <div className="text-xs text-gray-400 mt-1 font-medium">{address.phone}</div>
+                                      <div className="text-[10px] text-gray-400 mt-1 font-bold tracking-tight">{address.phone}</div>
                                     </div>
-                                    <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex flex-col gap-2">
                                         <button
                                           type="button"
-                                          className="p-1.5 text-gray-400 hover:text-[#1B6013] hover:bg-[#1B6013]/5 rounded-md transition-colors"
+                                          className="p-1.5 text-gray-400 hover:text-[#1B6013] transition-colors"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             setEditingAddress(address);
                                             setShowAddNewForm(true);
                                             shippingAddressForm.reset({
-                                              fullName: address.label || "",
+                                              firstName: address.label?.split(" ")[0] || "",
+                                              lastName: address.label?.split(" ").slice(1).join("") || "",
                                               street: address.street,
                                               location: address.city,
                                               phone: address.phone,
+                                              additionalPhone: (address as any).additionalPhone || "",
+                                              email: address.email || "",
                                             });
                                           }}
-                                          title="Edit"
                                         >
                                           <Pencil size={14} />
                                         </button>
                                         <button
                                           type="button"
-                                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                          className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             setAddressToDelete(address);
                                             setDeleteDialogOpen(true);
                                           }}
-                                          title="Delete"
                                         >
                                           <Trash2 size={14} />
                                         </button>
                                     </div>
-                                  </label>
+                                  </div>
                                 ))}
                               </div>
                             ) : (
-                              <div className="text-center py-8 text-gray-400 text-sm">
+                              <div className="text-center py-10 text-gray-400 text-sm italic">
                                 No saved addresses found.
                               </div>
                             )}
                             <button
-                                className="w-full mt-4 py-3 border border-dashed border-gray-300 rounded-xl text-gray-500 font-bold text-xs uppercase tracking-widest hover:bg-gray-50 hover:border-gray-400 hover:text-gray-700 transition-all flex items-center justify-center gap-2"
+                                type="button"
                                 onClick={() => {
-                                  setShowAddNewForm(true);
-                                  setEditingAddress(null);
-                                  shippingAddressForm.reset({
-                                    fullName: "",
-                                    street: "",
-                                    location: "",
-                                    phone: "",
-                                  });
+                                    setShowAddNewForm(true);
+                                    setEditingAddress(null);
+                                    shippingAddressForm.reset({
+                                      firstName: "",
+                                      lastName: "",
+                                      street: "",
+                                      location: "",
+                                      phone: "",
+                                      additionalPhone: "",
+                                      email: "",
+                                    });
                                 }}
-                              >
-                                <Icon icon="solar:add-circle-bold" className="w-4 h-4" />
+                                className="w-full py-4 rounded-2xl border-2 border-dashed border-gray-100 text-[#1B6013] font-bold text-sm hover:border-[#1B6013] hover:bg-green-50/30 transition-all flex items-center justify-center gap-2"
+                            >
+                                <Icon icon="solar:add-circle-bold" className="w-5 h-5" />
                                 Add New Address
-                              </button>
+                            </button>
                           </div>
                         ) : (
-                          <div className="mt-2">
-                            <Form {...shippingAddressForm}>
-                              <form
-                                onSubmit={shippingAddressForm.handleSubmit(
-                                  async (values) => {
-                                    setIsAddingAddress(true);
-                                    try {
-                                      let address: any;
-                                      const newDetails = {
-                                          label: values.fullName || "Home",
-                                          street: values.street,
-                                          city: values.location,
-                                          state: "",
-                                          zip: "",
-                                          country: "",
-                                          phone: values.phone,
-                                      };
+                           <div className="mt-2 p-6 bg-green-50/50 rounded-xl border border-green-100">
+                             <Form {...shippingAddressForm}>
+                               <form
+                                 onSubmit={shippingAddressForm.handleSubmit(
+                                   async (values) => {
+                                     setIsAddingAddress(true);
+                                     try {
+                                       let address: any;
+                                       const newDetails = {
+                                           label: `${values.firstName} ${values.lastName}`.trim(),
+                                           street: values.street,
+                                           city: values.location,
+                                           state: "Lagos", // Removed region field
+                                           zip: "", // Removed landmark field
+                                           country: "Nigeria",
+                                           phone: values.phone,
+                                           additionalPhone: values.additionalPhone || "",
+                                       };
 
-                                      if (user) {
-                                        // Authenticated: Use Server Action
-                                        // Note: Logic implies creating new address even for edits (as per original code)
-                                        address = await addAddressAction(newDetails);
-                                      } else {
-                                        // Anonymous: Local Object
-                                        address = {
-                                            id: editingAddress ? editingAddress.id : `temp-${Date.now()}`,
-                                            ...newDetails,
-                                            email: values.email || "",
-                                            user_id: null
-                                        };
-                                      }
+                                       if (user) {
+                                         address = await addAddressAction(newDetails);
+                                       } else {
+                                         address = {
+                                             id: editingAddress ? editingAddress.id : `temp-${Date.now()}`,
+                                             ...newDetails,
+                                             email: values.email || "",
+                                             user_id: null
+                                         };
+                                       }
 
-                                      if (editingAddress) {
-                                        setUserAddresses((prev) =>
-                                          prev.map((a) =>
-                                            a.id === editingAddress.id
-                                              ? address
-                                              : a
-                                          )
-                                        );
-                                      } else {
-                                        setUserAddresses((prev) => [
-                                          ...prev,
-                                          address,
-                                        ]);
-                                      }
-                                      setSelectedAddressId(address.id);
-                                      showToast(
-                                        editingAddress
-                                          ? "Address updated!"
-                                          : "Address added!",
-                                        "success"
-                                      );
-                                      setShowAddNewForm(false);
-                                      setShowAddressModal(false);
-                                      setEditingAddress(null);
-                                      localStorage.removeItem(
-                                        "checkoutAddressForm"
-                                      );
-                                    } catch (err: any) {
-                                      showToast(
-                                        err.message || "Failed to add address",
-                                        "error"
-                                      );
-                                    } finally {
-                                      setIsAddingAddress(false);
-                                    }
-                                  }
-                                )}
-                                className="space-y-4"
-                              >
-                                <FormField
-                                  control={shippingAddressForm.control}
-                                  name="fullName"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          placeholder="Enter full name"
-                                          {...field}
-                                          className="rounded-xl bg-gray-50 border-gray-200"
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                  {/* Only show email field for guest users */}
-                                  {!user?.email && (
-                                  <FormField
-                                    control={shippingAddressForm.control}
-                                    name="email"
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
-                                        <FormControl>
-                                          <Input
-                                            placeholder="Enter email address"
-                                            {...field}
-                                            required
-                                            className="rounded-xl bg-gray-50 border-gray-200 focus:ring-green-500"
-                                          />
-                                        </FormControl>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                )}
-                                <FormField
-                                  control={shippingAddressForm.control}
-                                  name="street"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Address <span className="text-red-500">*</span></FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          placeholder="Enter street address"
-                                          {...field}
-                                          className="rounded-xl bg-gray-50 border-gray-200"
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={shippingAddressForm.control}
-                                  name="location"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Location <span className="text-red-500">*</span></FormLabel>
-                                      <Select
-                                        value={field.value}
-                                        onValueChange={field.onChange}
-                                      >
-                                        <FormControl>
-                                          <SelectTrigger className="rounded-xl bg-gray-50 border-gray-200">
-                                            <SelectValue placeholder="Select your location" />
-                                          </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                          {deliveryLocations.map((location) => (
-                                            <SelectItem
-                                              key={location.name}
-                                              value={location.name}
-                                            >
-                                              {location.name}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={shippingAddressForm.control}
-                                  name="phone"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Phone Number <span className="text-red-500">*</span></FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          placeholder="Enter phone number"
-                                          {...field}
-                                          className="rounded-xl bg-gray-50 border-gray-200"
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <DialogFooter className="gap-2 sm:gap-0">
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    className="rounded-xl"
-                                    onClick={() => {
-                                      setShowAddNewForm(false);
-                                      setEditingAddress(null);
-                                    }}
-                                  >
-                                    Cancel
-                                  </Button>
-                                  <Button
-                                    type="submit"
-                                    className="bg-[#1B6013] text-white rounded-xl"
-                                    disabled={isAddingAddress}
-                                  >
-                                    {isAddingAddress ? (
-                                      <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                                    ) : null}
-                                    {editingAddress
-                                      ? "Update Address"
-                                      : "Save Address"}
-                                  </Button>
-                                </DialogFooter>
-                              </form>
-                            </Form>
-                          </div>
+                                       if (editingAddress) {
+                                         setUserAddresses((prev) =>
+                                           prev.map((a) =>
+                                             a.id === editingAddress.id
+                                               ? address
+                                               : a
+                                           )
+                                         );
+                                       } else {
+                                         setUserAddresses((prev) => [
+                                           ...prev,
+                                           address,
+                                         ]);
+                                       }
+                                       setSelectedAddressId(address.id);
+                                       showToast(
+                                         editingAddress
+                                           ? "Address updated!"
+                                           : "Address added!",
+                                         "success"
+                                       );
+                                       setShowAddNewForm(false);
+                                       setShowAddressModal(false);
+                                       setEditingAddress(null);
+                                       localStorage.removeItem(
+                                         "checkoutAddressForm"
+                                       );
+                                     } catch (err: any) {
+                                       showToast(
+                                         err.message || "Failed to add address",
+                                         "error"
+                                       );
+                                     } finally {
+                                       setIsAddingAddress(false);
+                                     }
+                                   }
+                                 )}
+                                 className="space-y-6"
+                               >
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                   <FormField
+                                     control={shippingAddressForm.control}
+                                     name="firstName"
+                                     render={({ field }) => (
+                                       <FormItem className="relative">
+                                         <FormLabel className="absolute -top-3 left-4 bg-[#FEFEED] px-1 text-xs text-gray-400 z-10">First Name <span className="text-red-500">*</span></FormLabel>
+                                         <FormControl>
+                                           <Input
+                                             placeholder="Enter first name"
+                                             {...field}
+                                             className="rounded-lg bg-white border-gray-300 h-12 pt-2 focus-visible:ring-1 focus-visible:ring-orange-400"
+                                           />
+                                         </FormControl>
+                                         <FormMessage />
+                                       </FormItem>
+                                     )}
+                                   />
+                                   <FormField
+                                     control={shippingAddressForm.control}
+                                     name="lastName"
+                                     render={({ field }) => (
+                                       <FormItem className="relative">
+                                         <FormLabel className="absolute -top-3 left-4 bg-[#FEFEED] px-1 text-xs text-gray-400 z-10">Last Name <span className="text-red-500">*</span></FormLabel>
+                                         <FormControl>
+                                           <Input
+                                             placeholder="Enter last name"
+                                             {...field}
+                                             className="rounded-lg bg-white border-gray-300 h-12 pt-2 focus-visible:ring-1 focus-visible:ring-orange-400"
+                                           />
+                                         </FormControl>
+                                         <FormMessage />
+                                       </FormItem>
+                                     )}
+                                   />
+                                 </div>
+
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                   <FormField
+                                     control={shippingAddressForm.control}
+                                     name="phone"
+                                     render={({ field }) => (
+                                       <FormItem className="relative">
+                                         <FormLabel className="absolute -top-3 left-4 bg-[#FEFEED] px-1 text-xs text-gray-400 z-10">Phone Number <span className="text-red-500">*</span></FormLabel>
+                                           <FormControl>
+                                             <Input
+                                               placeholder="8144602273"
+                                               {...field}
+                                               className="rounded-lg bg-white border-gray-300 h-12 flex-1 pt-2 focus-visible:ring-1 focus-visible:ring-orange-400"
+                                             />
+                                           </FormControl>
+                                         <FormMessage />
+                                       </FormItem>
+                                     )}
+                                   />
+                                   {/* Additional phone hidden as per user request */}
+                                   {/* 
+                                   <FormField
+                                     control={shippingAddressForm.control}
+                                     name="additionalPhone"
+                                     render={({ field }) => (
+                                       <FormItem className="relative">
+                                         <FormLabel className="absolute -top-3 left-4 bg-[#FEFEED] px-1 text-xs text-gray-400 z-10">Additional Phone Number</FormLabel>
+                                         <div className="flex">
+                                           <div className="flex items-center justify-center bg-gray-50 border border-r-0 border-gray-300 rounded-l-lg px-3 text-sm text-gray-500 font-medium h-12">
+                                             +234
+                                           </div>
+                                           <FormControl>
+                                             <Input
+                                               placeholder="Secondary phone"
+                                               {...field}
+                                               className="rounded-none rounded-r-lg bg-white border-gray-300 h-12 flex-1 pt-2 focus-visible:ring-1 focus-visible:ring-orange-400"
+                                             />
+                                           </FormControl>
+                                         </div>
+                                         <FormMessage />
+                                       </FormItem>
+                                     )}
+                                   />
+                                   */}
+                                 </div>
+
+                                 <FormField
+                                   control={shippingAddressForm.control}
+                                   name="street"
+                                   render={({ field }) => (
+                                     <FormItem className="relative">
+                                       <FormLabel className="absolute -top-3 left-4 bg-[#FEFEED] px-1 text-xs text-gray-400 z-10">Delivery Address <span className="text-red-500">*</span></FormLabel>
+                                       <FormControl>
+                                         <Input
+                                           placeholder="Enter street address"
+                                           {...field}
+                                           className="rounded-lg bg-white border-gray-300 h-12 pt-2 focus-visible:ring-1 focus-visible:ring-orange-400"
+                                         />
+                                       </FormControl>
+                                       <FormMessage />
+                                     </FormItem>
+                                   )}
+                                 />
+
+                                 {/* Removed Landmark Field */}
+
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                   {/* Removed Region Field */}
+                                    <FormField
+                                      control={shippingAddressForm.control}
+                                      name="location"
+                                      render={({ field }) => (
+                                        <FormItem className="relative flex flex-col">
+                                          <FormLabel className="absolute -top-3 left-4 bg-[#FEFEED] px-1 text-xs text-gray-400 z-10">City <span className="text-red-500">*</span></FormLabel>
+                                          <Popover open={isLocationPopoverOpen} onOpenChange={setIsLocationPopoverOpen}>
+                                            <PopoverTrigger asChild>
+                                              <FormControl>
+                                                <Button
+                                                  variant="outline"
+                                                  role="combobox"
+                                                  className={cn(
+                                                    "w-full justify-between rounded-lg bg-white border-gray-300 h-12 text-left font-normal pt-2 focus:ring-orange-400",
+                                                    !field.value && "text-muted-foreground"
+                                                  )}
+                                                >
+                                                  {field.value
+                                                    ? field.value
+                                                    : "Please select"}
+                                                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50 transition-transform" />
+                                                </Button>
+                                              </FormControl>
+                                            </PopoverTrigger>
+                                       <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[100]" align="start" sideOffset={4} avoidCollisions={true}>
+                                        <div className="flex flex-col max-h-[min(450px,60vh)]">
+                                                 <div className="flex items-center px-3 py-2 border-b">
+                                                   <Input
+                                                     placeholder="Search area..."
+                                                     className="h-8 border-none focus-visible:ring-0 bg-transparent"
+                                                     value={locationSearch}
+                                                     onChange={(e) => setLocationSearch(e.target.value)}
+                                                   />
+                                                 </div>
+                                                 <div className="overflow-y-auto flex-1 p-1 custom-scrollbar">
+                                                   <div className="p-1">
+                                                     <p className="px-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400">Official Zones</p>
+                                                     {deliveryLocations
+                                                       .filter(loc => loc.name.toLowerCase().includes(locationSearch.trim().toLowerCase()))
+                                                       .map((loc) => (
+                                                         <button
+                                                           key={loc.id}
+                                                           type="button"
+                                                           className={cn(
+                                                             "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
+                                                             field.value === loc.name ? "bg-[#1B6013] text-white" : "hover:bg-gray-100"
+                                                           )}
+                                                           onClick={() => {
+                                                             field.onChange(loc.name);
+                                                             setCurrentLocation(loc);
+                                                             setIsLocationPopoverOpen(false);
+                                                           }}
+                                                         >
+                                                           {loc.name}
+                                                           {field.value === loc.name && <Check className="h-4 w-4" />}
+                                                         </button>
+                                                       ))}
+                                                     
+                                                     <div className="mt-4">
+                                                       <p className="px-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400">Other Lagos Areas</p>
+                                                       {lagosAreas
+                                                         .filter(area => 
+                                                           !deliveryLocations.some(l => l.name === area.name) &&
+                                                           area.name.toLowerCase().includes(locationSearch.trim().toLowerCase())
+                                                         )
+                                                         .slice(0, 50)
+                                                         .map((area) => (
+                                                           <button
+                                                             key={area.name}
+                                                             type="button"
+                                                             className={cn(
+                                                               "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
+                                                               field.value === area.name ? "bg-[#1B6013] text-white" : "hover:bg-gray-100"
+                                                             )}
+                                                             onClick={() => {
+                                                               field.onChange(area.name);
+                                                               const pseudoLoc = {
+                                                                  id: `ext-${area.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-")}`,
+                                                                  name: area.name,
+                                                                  price: 3500,
+                                                                  created_at: new Date().toISOString(),
+                                                                  updated_at: new Date().toISOString(),
+                                                                };
+                                                               setCurrentLocation(pseudoLoc);
+                                                               setIsLocationPopoverOpen(false);
+                                                             }}
+                                                           >
+                                                             {area.name}
+                                                             {field.value === area.name && <Check className="h-4 w-4" />}
+                                                           </button>
+                                                         ))}
+                                                     </div>
+                                                   </div>
+                                                 </div>
+                                               </div>
+                                            </PopoverContent>
+                                          </Popover>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+                                 </div>
+
+                                 {!user?.email && (
+                                   <FormField
+                                     control={shippingAddressForm.control}
+                                     name="email"
+                                     render={({ field }) => (
+                                       <FormItem className="relative">
+                                         <FormLabel className="absolute -top-3 left-4 bg-[#FEFEED] px-1 text-xs text-gray-400 z-10">Email Address <span className="text-red-500">*</span></FormLabel>
+                                         <FormControl>
+                                           <Input
+                                             placeholder="Enter email address"
+                                             {...field}
+                                             className="rounded-lg bg-white border-gray-300 h-12 pt-2 focus-visible:ring-1 focus-visible:ring-orange-400"
+                                           />
+                                         </FormControl>
+                                         <FormMessage />
+                                       </FormItem>
+                                     )}
+                                   />
+                                 )}
+
+                                 <div className="flex items-center justify-end gap-6 pt-4 border-t border-gray-200">
+                                   <button
+                                     type="button"
+                                     className="text-[#1B6013] font-bold text-sm hover:underline"
+                                     onClick={() => {
+                                       setShowAddNewForm(false);
+                                       setEditingAddress(null);
+                                     }}
+                                   >
+                                     Cancel
+                                   </button>
+                                   <Button
+                                     type="submit"
+                                     className="bg-[#1B6013] hover:bg-[#154d0f] text-white rounded-lg px-10 h-12 font-bold shadow-md transition-all active:scale-95"
+                                     disabled={isAddingAddress}
+                                   >
+                                     {isAddingAddress ? (
+                                       <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                                     ) : null}
+                                     {editingAddress ? "Update" : "Save"}
+                                   </Button>
+                                 </div>
+                               </form>
+                             </Form>
+                           </div>
                         )}
-                        {!showAddNewForm && (
-                          <DialogFooter>
+                         {!showAddNewForm && (
+                          <DialogFooter className="pt-4">
                             <Button
                               type="button"
-                              className="bg-[#1B6013] text-white w-full hover:bg-[#1B6013]/90 rounded-xl h-12 font-bold shadow-lg shadow-green-100"
+                              className="bg-[#1B6013] text-white w-full hover:bg-[#154d0f] rounded-2xl h-14 font-black uppercase tracking-tight shadow-xl shadow-green-100"
                               onClick={() => setShowAddressModal(false)}
                             >
                               Confirm Selection
@@ -1597,9 +1847,10 @@ const CheckoutForm = ({
 
                     {/* If no address is selected, show the form inline (first time user) */}
                     {userAddresses.length === 0 && (
-                      <div className="mt-8 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                        <div className="mb-6">
-                            <h3 className="text-lg font-bold text-gray-900">Add Delivery Address</h3>
+                      <div className="mt-8 bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
+                        <div className="mb-8">
+                            <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Add Delivery Address</h2>
+                            <p className="text-xs text-gray-500 mt-1 uppercase tracking-widest font-bold">Please enter your shipping details below</p>
                         </div>
                         <Form {...shippingAddressForm}>
                           <form
@@ -1608,32 +1859,26 @@ const CheckoutForm = ({
                                 setIsAddingAddress(true);
                                 try {
                                   let address: any;
-                                  if (user) {
-                                    address = await addAddressAction({
-                                      label: values.fullName || "Home",
+                                  const newDetails = {
+                                      label: `${values.firstName} ${values.lastName}`.trim(),
                                       street: values.street,
                                       city: values.location,
-                                      state: "",
+                                      state: "Lagos",
                                       zip: "",
-                                      country: "",
-                                      // country: "",
+                                      country: "Nigeria",
                                       phone: values.phone,
-                                      // email: values.email,
-                                    });
+                                      additionalPhone: values.additionalPhone || "",
+                                  };
+
+                                  if (user) {
+                                    address = await addAddressAction(newDetails);
                                   } else {
                                     // Handle guest/anonymous user - local state only
                                     address = {
                                       id: `temp-${Date.now()}`,
-                                      label: values.fullName || "Guest",
-                                      street: values.street,
-                                      city: values.location,
-                                      state: "",
-                                      zip: "",
-                                      country: "",
-                                      // zip: "",
-                                      // country: "",
-                                      phone: values.phone,
-                                      email: values.email,
+                                      ...newDetails,
+                                      email: values.email || "",
+                                      user_id: null
                                     };
                                   }
 
@@ -1659,130 +1904,276 @@ const CheckoutForm = ({
                                 }
                               }
                             )}
-                            className="space-y-4"
+                            className="space-y-6"
                           >
-                            <div className="grid grid-cols-1 gap-4">
-                                <FormField
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <FormField
                                 control={shippingAddressForm.control}
-                                name="fullName"
+                                name="firstName"
                                 render={({ field }) => (
-                                    <FormItem>
-                                     <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
+                                  <FormItem className="relative">
+                                    <FormLabel className="absolute -top-3 left-4 bg-white px-1 text-[10px] text-gray-400 z-10 font-bold uppercase tracking-widest">First Name <span className="text-red-500">*</span></FormLabel>
                                     <FormControl>
-                                        <Input
-                                        placeholder="Enter full name"
+                                      <Input
+                                        placeholder="Enter first name"
                                         {...field}
                                         disabled={isAddingAddress}
-                                        className="rounded-xl bg-gray-50 border-gray-200"
-                                        />
+                                        className="rounded-lg bg-white border-gray-200 h-14 pt-2 shadow-sm focus-visible:ring-1 focus-visible:ring-[#1B6013]/20"
+                                      />
                                     </FormControl>
                                     <FormMessage />
-                                    </FormItem>
+                                  </FormItem>
                                 )}
-                                />
-                                {/* Only show email field for guest users */}
-                                {!user?.email && (
-                                  <FormField
-                                  control={shippingAddressForm.control}
-                                  name="email"
-                                  render={({ field }) => (
-                                      <FormItem>
-                                      <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
-                                      <FormControl>
-                                          <Input
-                                          placeholder="Enter email address"
-                                          {...field}
-                                          required
-                                          disabled={isAddingAddress}
-                                          className="rounded-xl bg-gray-50 border-gray-200 focus:ring-green-500"
-                                          />
-                                      </FormControl>
-                                      <FormMessage />
-                                      </FormItem>
-                                  )}
-                                  />
+                              />
+                              <FormField
+                                control={shippingAddressForm.control}
+                                name="lastName"
+                                render={({ field }) => (
+                                  <FormItem className="relative">
+                                    <FormLabel className="absolute -top-3 left-4 bg-white px-1 text-[10px] text-gray-400 z-10 font-bold uppercase tracking-widest">Last Name <span className="text-red-500">*</span></FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        placeholder="Enter last name"
+                                        {...field}
+                                        disabled={isAddingAddress}
+                                        className="rounded-lg bg-white border-gray-200 h-14 pt-2 shadow-sm focus-visible:ring-1 focus-visible:ring-[#1B6013]/20"
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
                                 )}
+                              />
                             </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <FormField
+                                control={shippingAddressForm.control}
+                                name="phone"
+                                render={({ field }) => (
+                                  <FormItem className="relative">
+                                    <FormLabel className="absolute -top-3 left-4 bg-white px-1 text-[10px] text-gray-400 z-10 font-bold uppercase tracking-widest">Phone Number <span className="text-red-500">*</span></FormLabel>
+                                     <FormControl>
+                                       <Input
+                                         placeholder="8144602273"
+                                         {...field}
+                                         disabled={isAddingAddress}
+                                         className="rounded-lg bg-white border-gray-200 h-14 flex-1 pt-2 shadow-sm focus-visible:ring-1 focus-visible:ring-[#1B6013]/20"
+                                       />
+                                     </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                               {/* 
+                                   <FormField
+                                     control={shippingAddressForm.control}
+                                     name="additionalPhone"
+                                     render={({ field }) => (
+                                       <FormItem className="relative">
+                                         <FormLabel className="absolute -top-3 left-4 bg-white px-1 text-[10px] text-gray-400 z-10 font-bold uppercase tracking-widest">Additional Phone Number</FormLabel>
+                                         <div className="flex">
+                                           <div className="flex items-center justify-center bg-gray-50 border border-r-0 border-gray-200 rounded-l-lg px-3 text-sm text-gray-500 font-medium h-14">
+                                             +234
+                                           </div>
+                                           <FormControl>
+                                             <Input
+                                               placeholder="Secondary phone"
+                                               {...field}
+                                               disabled={isAddingAddress}
+                                               className="rounded-none rounded-r-lg bg-white border-gray-200 h-14 flex-1 pt-2 shadow-sm focus-visible:ring-1 focus-visible:ring-[#1B6013]/20"
+                                             />
+                                           </FormControl>
+                                         </div>
+                                         <FormMessage />
+                                       </FormItem>
+                                     )}
+                                   />
+                                   */}
+                            </div>
+
                             <FormField
                               control={shippingAddressForm.control}
                               name="street"
                               render={({ field }) => (
-                                <FormItem>
-                                   <FormLabel>Address <span className="text-red-500">*</span></FormLabel>
+                                <FormItem className="relative">
+                                  <FormLabel className="absolute -top-3 left-4 bg-white px-1 text-[10px] text-gray-400 z-10 font-bold uppercase tracking-widest">Delivery Address <span className="text-red-500">*</span></FormLabel>
                                   <FormControl>
                                     <Input
                                       placeholder="Enter street address"
                                       {...field}
                                       disabled={isAddingAddress}
-                                      className="rounded-xl bg-gray-50 border-gray-200"
+                                      className="rounded-lg bg-white border-gray-200 h-14 pt-2 shadow-sm focus-visible:ring-1 focus-visible:ring-[#1B6013]/20"
                                     />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
                               )}
                             />
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormField
+
+                             <FormField
+                               control={shippingAddressForm.control}
+                               name="location"
+                               render={({ field }) => (
+                                 <FormItem className="relative flex flex-col">
+                                   <FormLabel className="absolute -top-3 left-4 bg-white px-1 text-[10px] text-gray-400 z-10 font-bold uppercase tracking-widest">City <span className="text-red-500">*</span></FormLabel>
+                                   <Popover open={isNewAddressLocationPopoverOpen} onOpenChange={setIsNewAddressLocationPopoverOpen}>
+                                     <PopoverTrigger asChild>
+                                       <FormControl>
+                                         <Button
+                                           variant="outline"
+                                           role="combobox"
+                                           disabled={isAddingAddress}
+                                           className={cn(
+                                             "w-full justify-between rounded-lg bg-white border-gray-200 h-14 text-left font-normal pt-2 shadow-sm",
+                                             !field.value && "text-muted-foreground"
+                                           )}
+                                         >
+                                           {field.value
+                                             ? field.value
+                                             : "Please select your area"}
+                                           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50 transition-transform" />
+                                         </Button>
+                                       </FormControl>
+                                     </PopoverTrigger>
+                                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[100]" align="start" sideOffset={4} avoidCollisions={true}>
+                                        <div className="flex flex-col max-h-[min(450px,60vh)]">
+                                          <div className="flex items-center px-3 py-2 border-b">
+                                            <Input
+                                              placeholder="Search area..."
+                                              className="h-8 border-none focus-visible:ring-0 bg-transparent"
+                                              value={locationSearch}
+                                              onChange={(e) => setLocationSearch(e.target.value)}
+                                            />
+                                          </div>
+                                          <div className="overflow-y-auto flex-1 p-1 custom-scrollbar">
+                                            <div className="p-1">
+                                              <p className="px-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400">Official Zones</p>
+                                              {deliveryLocations
+                                                .filter(loc => loc.name.toLowerCase().includes(locationSearch.trim().toLowerCase()))
+                                                .map((loc) => (
+                                                  <button
+                                                    key={loc.id}
+                                                    type="button"
+                                                    className={cn(
+                                                      "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
+                                                      field.value === loc.name ? "bg-[#1B6013] text-white" : "hover:bg-gray-100"
+                                                    )}
+                                                    onClick={() => {
+                                                      field.onChange(loc.name);
+                                                      setCurrentLocation(loc);
+                                                      setIsNewAddressLocationPopoverOpen(false);
+                                                    }}
+                                                  >
+                                                    {loc.name}
+                                                    {field.value === loc.name && <Check className="h-4 w-4" />}
+                                                  </button>
+                                                ))}
+                                                
+                                              <div className="mt-4">
+                                                <p className="px-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400">Other Lagos Areas</p>
+                                                {lagosAreas
+                                                  .filter(area => 
+                                                    !deliveryLocations.some(l => l.name === area.name) &&
+                                                    area.name.toLowerCase().includes(locationSearch.trim().toLowerCase())
+                                                  )
+                                                  .slice(0, 50)
+                                                  .map((area) => (
+                                                    <button
+                                                      key={area.name}
+                                                      type="button"
+                                                      className={cn(
+                                                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
+                                                        field.value === area.name ? "bg-[#1B6013] text-white" : "hover:bg-gray-100"
+                                                      )}
+                                                      onClick={() => {
+                                                        field.onChange(area.name);
+                                                        
+                                                        // Mapping Logic
+                                                        const lgaMap: Record<string, string> = {
+                                                          "Alimosho": "Alimosho",
+                                                          "Yaba": "Lagos Mainland",
+                                                          "Somolu": "Shomolu",
+                                                          "Ikoyi": "Eti-Osa",
+                                                          "Lekki": "Eti-Osa",
+                                                          "Iyana Ipaja": "Iyana Ipaja",
+                                                          "Ifako-Ijaiye": "Ifako/Ijaye",
+                                                          "Ketu": "Kosofe",
+                                                          "Maryland": "Ikeja",
+                                                          "Ebute Metta": "Lagos Mainland",
+                                                        };
+
+                                                        const targetLga = lgaMap[area.lga] || area.lga;
+                                                        
+                                                        const specificLoc = deliveryLocations.find(loc => 
+                                                          loc.name.toLowerCase().trim() === area.name.toLowerCase().trim()
+                                                        );
+                                                        
+                                                        const lgaLoc = deliveryLocations.find(loc => {
+                                                            const dbLga = loc.name.toLowerCase().replace(/[^a-z0-9]/g, "").trim();
+                                                            const searchLga = targetLga.toLowerCase().replace(/[^a-z0-9]/g, "").trim();
+                                                            return dbLga === searchLga || dbLga.includes(searchLga) || searchLga.includes(dbLga);
+                                                        });
+                                                        
+                                                        const price = specificLoc ? specificLoc.price : (lgaLoc ? lgaLoc.price : 3500);
+
+                                                        const pseudoLoc = {
+                                                          id: `ext-${area.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-")}`,
+                                                          name: area.name,
+                                                          price: price,
+                                                          created_at: new Date().toISOString(),
+                                                          updated_at: new Date().toISOString(),
+                                                        };
+                                                        setCurrentLocation(pseudoLoc);
+                                                        setIsNewAddressLocationPopoverOpen(false);
+                                                      }}
+                                                    >
+                                                      {area.name}
+                                                      {field.value === area.name && <Check className="h-4 w-4" />}
+                                                    </button>
+                                                  ))}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </PopoverContent>
+                                   </Popover>
+                                   <FormMessage />
+                                 </FormItem>
+                               )}
+                             />
+
+                            {!user?.email && (
+                              <FormField
                                 control={shippingAddressForm.control}
-                                name="location"
+                                name="email"
                                 render={({ field }) => (
-                                    <FormItem>
-                                     <FormLabel>Location <span className="text-red-500">*</span></FormLabel>
-                                    <Select
-                                        value={field.value}
-                                        onValueChange={field.onChange}
-                                        disabled={isAddingAddress}
-                                    >
-                                        <FormControl>
-                                        <SelectTrigger className="rounded-xl bg-gray-50 border-gray-200">
-                                            <SelectValue placeholder="Select your location" />
-                                        </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                        {deliveryLocations.map((location) => (
-                                            <SelectItem
-                                            key={location.name}
-                                            value={location.name}
-                                            >
-                                            {location.name}
-                                            </SelectItem>
-                                        ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                                />
-                                <FormField
-                                control={shippingAddressForm.control}
-                                name="phone"
-                                render={({ field }) => (
-                                    <FormItem>
-                                     <FormLabel>Phone Number <span className="text-red-500">*</span></FormLabel>
+                                  <FormItem className="relative">
+                                    <FormLabel className="absolute -top-3 left-4 bg-white px-1 text-[10px] text-gray-400 z-10 font-bold uppercase tracking-widest">Email Address <span className="text-red-500">*</span></FormLabel>
                                     <FormControl>
-                                        <Input
-                                        placeholder="Enter phone number"
+                                      <Input
+                                        placeholder="Enter email address"
                                         {...field}
                                         disabled={isAddingAddress}
-                                        className="rounded-xl bg-gray-50 border-gray-200"
-                                        />
+                                        className="rounded-lg bg-white border-gray-200 h-14 pt-2 shadow-sm focus-visible:ring-1 focus-visible:ring-[#1B6013]/20"
+                                      />
                                     </FormControl>
                                     <FormMessage />
-                                    </FormItem>
+                                  </FormItem>
                                 )}
-                                />
-                            </div>
+                              />
+                            )}
+
                             <div className="pt-4">
-                                <Button
-                                    type="submit"
-                                    className="bg-[#1B6013] text-white rounded-xl h-12 px-8 font-bold uppercase tracking-widest shadow-lg shadow-green-100 w-full md:w-auto"
-                                    disabled={isAddingAddress}
-                                >
-                                    {isAddingAddress ? (
-                                    <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                                    ) : null}
-                                    Save Address to Continue
-                                </Button>
+                              <Button
+                                type="submit"
+                                className="bg-[#1B6013] hover:bg-[#154d0f] text-white rounded-2xl w-full h-16 font-black tracking-tight shadow-xl shadow-green-100 transition-all active:scale-95 text-xl uppercase"
+                                disabled={isAddingAddress}
+                              >
+                                {isAddingAddress ? (
+                                  <Loader2 className="animate-spin mr-2 h-6 w-6" />
+                                ) : null}
+                                Save Address & Continue
+                              </Button>
                             </div>
                           </form>
                         </Form>
@@ -1792,31 +2183,31 @@ const CheckoutForm = ({
 
                   <section className="space-y-6">
                        <div className="pb-4 border-b border-gray-200">
-                            <h3 className="text-lg font-bold text-gray-900 tracking-tight">Payment Method</h3>
+                            <h3 className="text-lg font-bold text-gray-900 tracking-tight uppercase">2. Payment Method</h3>
                         </div>
 
                          <div className="grid grid-cols-1 gap-6">
                         <div
-                          className={`p-5 border transition-all cursor-pointer relative overflow-hidden rounded-xl ${
+                          className={`p-6 border-2 transition-all cursor-pointer relative overflow-hidden rounded-2xl ${
                             selectedPaymentMethod === "paystack"
-                              ? "border-[#1B6013] bg-[#1B6013]/5 shadow-sm"
-                              : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
+                              ? "border-[#1B6013] bg-green-50 shadow-md"
+                              : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm"
                           }`}
                           onClick={() => setSelectedPaymentMethod("paystack")}
                         >
-                           <div className="flex items-center gap-4">
-                                <div className={`w-12 h-12 flex items-center justify-center rounded-full transition-all duration-300 ${
-                                    selectedPaymentMethod === "paystack" ? "bg-[#1B6013] text-white shadow-md shadow-green-100" : "bg-gray-50 text-gray-400"
+                           <div className="flex items-center gap-5">
+                                <div className={`w-14 h-14 flex items-center justify-center rounded-2xl transition-all duration-300 ${
+                                    selectedPaymentMethod === "paystack" ? "bg-[#1B6013] text-white shadow-lg shadow-green-100" : "bg-gray-50 text-gray-400"
                                 }`}>
-                                    <Icon icon="solar:card-bold-duotone" className="w-6 h-6" />
+                                    <Icon icon="solar:card-bold-duotone" className="w-7 h-7" />
                                 </div>
                                 <div className="space-y-0.5 flex-1">
-                                    <h4 className={`font-bold text-base ${selectedPaymentMethod === "paystack" ? "text-[#1B6013]" : "text-gray-700"}`}>Debit Card / Transfer</h4>
-                                    <p className="text-[10px] text-gray-400 font-medium">Secured payment via Paystack</p>
+                                    <h4 className={`font-black text-lg uppercase tracking-tight ${selectedPaymentMethod === "paystack" ? "text-gray-900" : "text-gray-700"}`}>Debit Card / Transfer</h4>
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Secured payment via Paystack</p>
                                 </div>
                                 {selectedPaymentMethod === "paystack" && (
-                                    <div className="bg-[#1B6013] text-white rounded-full p-1">
-                                        <Check size={14} strokeWidth={3} />
+                                    <div className="bg-[#1B6013] text-white rounded-full p-1.5 shadow-sm">
+                                        <Check size={16} strokeWidth={4} />
                                     </div>
                                 )}
                            </div>
@@ -1824,46 +2215,31 @@ const CheckoutForm = ({
 
                         {/* Wallet Card */}
                         <div
-                          className={`p-5 border transition-all cursor-pointer relative overflow-hidden rounded-xl ${
+                          className={`p-6 border-2 transition-all cursor-pointer relative overflow-hidden rounded-2xl ${
                             selectedPaymentMethod === "wallet"
-                              ? "border-[#1B6013] bg-[#1B6013]/5 shadow-sm"
-                              : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
+                              ? "border-[#1B6013] bg-green-50 shadow-md"
+                              : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm"
                           } ${!user || walletBalance < totalAmountPaid ? "opacity-60 grayscale cursor-not-allowed" : ""}`}
                           onClick={() => {
                              if (user && walletBalance >= totalAmountPaid) setSelectedPaymentMethod("wallet");
                           }}
                         >
-                           <div className="flex items-center gap-4">
-                                <div className={`w-12 h-12 flex items-center justify-center rounded-full transition-all duration-300 ${
-                                    selectedPaymentMethod === "wallet" ? "bg-[#1B6013] text-white shadow-md shadow-green-100" : "bg-gray-50 text-gray-400"
+                           <div className="flex items-center gap-5">
+                                <div className={`w-14 h-14 flex items-center justify-center rounded-2xl transition-all duration-300 ${
+                                    selectedPaymentMethod === "wallet" ? "bg-[#1B6013] text-white shadow-lg shadow-green-100" : "bg-gray-50 text-gray-400"
                                 }`}>
-                                    <Icon icon="solar:wallet-bold-duotone" className="w-6 h-6" />
+                                    <Icon icon="solar:wallet-money-bold-duotone" className="w-7 h-7" />
                                 </div>
                                 <div className="space-y-0.5 flex-1">
-                                    <div className="flex items-center justify-between">
-                                        <h4 className={`font-bold text-base ${selectedPaymentMethod === "wallet" ? "text-[#1B6013]" : "text-gray-700"}`}>Personal Wallet</h4>
-                                        {user && (
-                                            <span className={`font-bold text-sm ${walletBalance < totalAmountPaid ? "text-red-500" : "text-gray-900"}`}>{formatNaira(walletBalance || 0)}</span>
-                                        )}
+                                    <div className="flex items-center gap-2">
+                                        <h4 className={`font-black text-lg uppercase tracking-tight ${selectedPaymentMethod === "wallet" ? "text-gray-900" : "text-gray-700"}`}>Wallet Balance</h4>
+                                        <Badge className="bg-green-100 text-[#1B6013] border-none font-bold text-[10px] px-2 py-0">₦{walletBalance.toLocaleString()}</Badge>
                                     </div>
-                                    
-                                    {!user ? (
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-gray-500 text-[10px] font-bold">Sign in to use Wallet</span>
-                                            <Link href="/login" className="text-[10px] font-bold text-[#1B6013] hover:underline uppercase tracking-wide">Login</Link>
-                                        </div>
-                                    ) : walletBalance < totalAmountPaid ? (
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-red-500 text-[10px] font-bold">Insufficient Balance</span>
-                                            <Link href="/account/wallet" className="text-[10px] font-bold text-[#1B6013] hover:underline uppercase tracking-wide">Top-up</Link>
-                                        </div>
-                                    ) : (
-                                        <p className="text-[10px] text-gray-400 font-medium">Available Credit</p>
-                                    )}
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Fast & direct payment from your balance</p>
                                 </div>
                                 {selectedPaymentMethod === "wallet" && (
-                                    <div className="bg-[#1B6013] text-white rounded-full p-1">
-                                        <Check size={14} strokeWidth={3} />
+                                    <div className="bg-[#1B6013] text-white rounded-full p-1.5 shadow-sm">
+                                        <Check size={16} strokeWidth={4} />
                                     </div>
                                 )}
                            </div>
@@ -1871,77 +2247,77 @@ const CheckoutForm = ({
                       </div>
                   </section>
 
-                   <section className="space-y-6">
-                       <div className="pb-4 border-b border-gray-200">
-                         <h3 className="text-lg font-bold text-gray-900 tracking-tight">Additional Instructions</h3>
-                      </div>
+                    <section className="space-y-6">
+                        <div className="pb-4 border-b border-gray-200">
+                          <h3 className="text-lg font-bold text-gray-900 tracking-tight uppercase">3. Additional Instructions</h3>
+                       </div>
 
-                        <div className="space-y-8">
-                            <div className="p-8 border border-gray-100 bg-white rounded-2xl flex items-start gap-6 shadow-sm">
-                                <div className="w-12 h-12 flex items-center justify-center text-[#1B6013] bg-[#1B6013]/5 rounded-full shrink-0">
-                                    <Icon icon="solar:verified-check-bold-duotone" className="w-8 h-8" />
-                                </div>
-                                <div className="space-y-2">
-                                     <h4 className="text-lg font-bold text-gray-900">Order Readiness</h4>
-                                     <p className="text-sm text-gray-500 leading-relaxed">
-                                        You are ordering <strong className="text-gray-900">{totalQuantity} {totalQuantity === 1 ? 'item' : 'items'}</strong> to be delivered to <strong className="text-gray-900">{selectedAddress?.city}</strong>.
-                                     </p>
-                                </div>
-                            </div>
-                            
-                            <div className="space-y-3">
-                              <Label htmlFor="orderNote" className="text-xs font-bold text-gray-700 uppercase tracking-wider pl-1">
-                                Delivery Instructions
-                              </Label>
-                              <Textarea
-                                id="orderNote"
-                                placeholder="E.g. Call upon arrival, Leave with security..."
-                                value={orderNote}
-                                onChange={(e) => setOrderNote(e.target.value)}
-                                className="resize-none h-32 rounded-xl border-gray-200 text-sm focus:border-[#1B6013] focus:ring-[#1B6013] transition-all bg-white p-5 shadow-sm"
-                              />
-                            </div>
-                        </div>
-                  </section>
+                         <div className="space-y-8">
+                             <div className="p-8 border border-gray-100 bg-white rounded-2xl flex items-start gap-6 shadow-sm">
+                                 <div className="w-14 h-14 flex items-center justify-center text-[#1B6013] bg-green-50 rounded-2xl shrink-0">
+                                     <Icon icon="solar:verified-check-bold-duotone" className="w-10 h-10" />
+                                 </div>
+                                 <div className="space-y-2">
+                                      <h4 className="text-lg font-black text-gray-900 uppercase tracking-tight">Order Readiness</h4>
+                                      <p className="text-sm text-gray-500 leading-relaxed font-medium">
+                                         You are ordering <strong className="text-gray-900">{totalQuantity} {totalQuantity === 1 ? 'item' : 'items'}</strong> to be delivered to <strong className="text-gray-900">{selectedAddress?.city || 'your location'}</strong>.
+                                      </p>
+                                 </div>
+                             </div>
+                             
+                             <div className="space-y-3">
+                               <Label htmlFor="orderNote" className="text-xs font-black text-gray-500 uppercase tracking-widest pl-1">
+                                 Special Delivery Instructions
+                               </Label>
+                               <Textarea
+                                 id="orderNote"
+                                 placeholder="E.g. Call upon arrival, Leave with security..."
+                                 value={orderNote}
+                                 onChange={(e) => setOrderNote(e.target.value)}
+                                 className="resize-none h-32 rounded-2xl border-gray-200 text-sm focus:border-[#1B6013] focus:ring-[#1B6013] transition-all bg-white p-6 shadow-sm font-medium"
+                               />
+                             </div>
+                         </div>
+                   </section>
 
-                <div className="pt-4 flex justify-end">
-                    <Button
-                        onClick={async () => {
-                            if (isSubmitting) return;
-                            const isFormValid = await shippingAddressForm.trigger();
-                            if (!user && !shippingAddressForm.getValues("email")) {
-                                shippingAddressForm.setError("email", { type: "manual", message: "Email is required for guest checkout" });
-                                showToast("Email is required for guest checkout", "error");
-                                return;
-                            }
-                            if (!isFormValid || !selectedAddressId) {
-                                showToast("Please fill out all required shipping fields and select an address.", "error");
-                                return;
-                            }
-                            handleOrderSubmission();
-                        }}
-                        disabled={isSubmitting || items.length === 0}
-                        className="rounded-xl bg-[#1B6013] text-white hover:bg-[#15490e] px-10 h-14 font-bold text-base tracking-tight shadow-md transition-all flex items-center justify-center gap-3 w-full sm:w-auto"
-                    >
-                        {isSubmitting ? (
-                            <Loader2 className="animate-spin h-6 w-6" />
-                        ) : (
-                            <Icon icon="solar:lock-password-bold" className="w-5 h-5" />
-                        )}
-                        {isSubmitting ? "Processing..." : "Place Order Now"}
-                    </Button>
-                </div>
+                 <div className="pt-8 flex justify-end">
+                     <Button
+                         onClick={async () => {
+                             if (isSubmitting) return;
+                             const isFormValid = await shippingAddressForm.trigger();
+                             if (!user && !shippingAddressForm.getValues("email")) {
+                                 shippingAddressForm.setError("email", { type: "manual", message: "Email is required for guest checkout" });
+                                 showToast("Email is required for guest checkout", "error");
+                                 return;
+                             }
+                             if (!isFormValid || !selectedAddressId) {
+                                 showToast("Please fill out all required shipping fields and select an address.", "error");
+                                 return;
+                             }
+                             handleOrderSubmission();
+                         }}
+                         disabled={isSubmitting || items.length === 0}
+                         className="rounded-2xl bg-[#1B6013] hover:bg-[#154d0f] text-white px-12 h-16 font-black text-xl tracking-tight shadow-xl shadow-green-100 transition-all flex items-center justify-center gap-4 w-full sm:w-auto uppercase active:scale-95"
+                     >
+                         {isSubmitting ? (
+                             <Loader2 className="animate-spin h-7 w-7" />
+                         ) : (
+                             <Icon icon="solar:lock-password-bold" className="w-6 h-6" />
+                         )}
+                         {isSubmitting ? "Processing..." : "Place Order Now"}
+                     </Button>
+                 </div>
               </div>
             </div>
 
             <div className="lg:w-[40%] w-full">
               <div className="sticky top-24">
-                  <div className="bg-white border border-gray-200 rounded-2xl p-6 lg:p-8 space-y-10 shadow-sm relative overflow-hidden group">
+                   <div className="bg-white border border-gray-200 rounded-3xl p-8 lg:p-10 space-y-10 shadow-sm relative overflow-hidden group">
                     <div className="flex items-center justify-between">
-                         <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                               Order Summary
+                         <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
+                                Order Summary
                          </h3>
-                         <span className="text-[10px] font-bold text-[#1B6013] bg-[#1B6013]/5 px-2 py-0.5 rounded-md">{totalQuantity} {totalQuantity === 1 ? 'Item' : 'Items'}</span>
+                         <span className="text-[10px] font-black text-[#1B6013] bg-green-50 px-3 py-1 rounded-full uppercase tracking-widest border border-green-100">{totalQuantity} {totalQuantity === 1 ? 'Item' : 'Items'}</span>
                     </div>
                     
                     <div className="pb-6 border-b border-gray-100">
@@ -1965,123 +2341,125 @@ const CheckoutForm = ({
                       )}
                     </div>
 
-                    <div className="space-y-6 pt-10 border-t border-slate-200/60 relative">
+                     <div className="space-y-6 pt-10 border-t border-slate-100 relative">
+                        <div className="flex justify-between items-center text-sm">
+                         <span className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Subtotal</span>
+                         <span className="font-black text-slate-900">{formatNaira(subtotal)}</span>
+                       </div>
                        <div className="flex justify-between items-center text-sm">
-                        <span className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Subtotal</span>
-                        <span className="font-bold text-slate-900">{formatNaira(subtotal)}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Delivery Fee</span>
-                        <span className="font-bold text-slate-900">
-                          {qualifiesForFreeShipping ? (
-                                <span className="text-[#1B6013] flex items-center gap-1 font-black uppercase text-[10px] tracking-wider">
-                                    <Icon icon="solar:check-circle-bold" className="w-3.5 h-3.5" />
-                                    Free Delivery Reward
-                                </span>
-                          ) : formLocation ? (
-                            <span className="text-sm font-bold">{formatNaira(cost)}</span>
-                          ) : (
-                            <span className="text-slate-300 text-[10px] uppercase font-bold tracking-wider italic">Calculated next</span>
-                          )}
-                        </span>
-                      </div>
+                         <span className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Delivery Fee</span>
+                         <span className="font-black text-slate-900">
+                           {qualifiesForFreeShipping ? (
+                                 <span className="text-[#1B6013] flex items-center gap-1 font-black uppercase text-[10px] tracking-wider">
+                                     <Icon icon="solar:check-circle-bold" className="w-4 h-4" />
+                                     Free Delivery Reward
+                                 </span>
+                           ) : formLocation ? (
+                             <span className="text-sm font-black">{formatNaira(cost)}</span>
+                           ) : (
+                             <span className="text-slate-300 text-[10px] uppercase font-black tracking-widest italic">Calculated next</span>
+                           )}
+                         </span>
+                       </div>
                       
-                       {dealsDiscount > 0 && (
-                        <div className="bg-white p-4 rounded-lg border border-slate-100">
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-[#1B6013] font-bold uppercase tracking-wider text-[10px]">{appliedDiscountLabel}</span>
-                            <span className="font-bold text-[#1B6013]">-{formatNaira(dealsDiscount)}</span>
-                          </div>
-                        </div>
-                      )}
+                        {dealsDiscount > 0 && (
+                         <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+                           <div className="flex justify-between items-center text-sm">
+                             <span className="text-[#1B6013] font-black uppercase tracking-widest text-[10px]">{appliedDiscountLabel}</span>
+                             <span className="font-black text-[#1B6013]">-{formatNaira(dealsDiscount)}</span>
+                           </div>
+                         </div>
+                       )}
 
-                       {isVoucherValid && !isFreeDeliveryVoucher && (
-                        <div className="flex justify-between items-center bg-white p-4 rounded-lg border border-slate-100">
-                          <span className="font-bold text-[#1B6013] text-[10px] uppercase tracking-wider">Promo Applied</span>
-                          <span className="font-black text-[#1B6013]">-{formatNaira(voucherDiscount)}</span>
-                        </div>
-                      )}
+                        {isVoucherValid && !isFreeDeliveryVoucher && (
+                         <div className="flex justify-between items-center bg-green-50 p-4 rounded-xl border border-green-100">
+                           <span className="font-black text-[#1B6013] text-[10px] uppercase tracking-widest">Promo Applied</span>
+                           <span className="font-black text-[#1B6013]">-{formatNaira(voucherDiscount)}</span>
+                         </div>
+                       )}
 
-                      <div className="pt-6 border-t border-slate-200/60 flex justify-between items-end">
-                        <span className="text-base font-bold text-slate-700">Total to Pay</span>
-                        <div className="text-right">
-                             <div className="text-2xl font-black text-[#1B6013] tracking-tight tabular-nums">
-                                {formatNaira(totalAmountPaid)}
-                             </div>
-                        </div>
-                      </div>
+                       <div className="pt-6 border-t border-slate-100 flex justify-between items-end">
+                         <span className="text-lg font-black text-slate-900 uppercase tracking-tight">Total to Pay</span>
+                         <div className="text-right">
+                              <div className="text-3xl font-black text-[#1B6013] tracking-tighter tabular-nums drop-shadow-sm">
+                                 {formatNaira(totalAmountPaid)}
+                              </div>
+                         </div>
+                       </div>
                     </div>
 
-                    {/* Available Vouchers Section */}
-                    {isAuthenticated && (userVouchers && userVouchers.length > 0) && (
-                      <div className="pt-6 border-t border-slate-200/60 pb-2 animate-in fade-in slide-in-from-top-2 duration-500">
-                         <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                           <Icon icon="solar:gift-bold" className="w-3 h-3 text-[#1B6013]" />
-                           Your Available Rewards
-                         </h4>
-                         <div className="flex flex-col gap-2">
-                           {userVouchers.map((voucher: Database["public"]["Tables"]["vouchers"]["Row"]) => (
-                             <button
-                               key={voucher.id}
-                               type="button"
-                               disabled={isVoucherValid && voucherCode === voucher.code}
-                               onClick={() => {
-                                 handleVoucherValidation(voucher.code);
-                               }}
-                               className={cn(
-                                 "flex items-center justify-between p-3 rounded-x border transition-all text-left group/v",
-                                 isVoucherValid && voucherCode === voucher.code
-                                   ? "bg-[#1B6013]/5 border-[#1B6013] opacity-80"
-                                   : "bg-white border-slate-100 hover:border-[#1B6013]/30 hover:shadow-sm"
-                               )}
-                             >
-                               <div className="flex items-center gap-3">
-                                 <div className={cn(
-                                   "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-                                   voucher.code.includes("FREE-DELIV") ? "bg-orange-50 text-orange-500" : "bg-green-50 text-[#1B6013]"
-                                 )}>
-                                   <Icon icon={voucher.code.includes("FREE-DELIV") ? "solar:delivery-bold" : "solar:ticket-bold"} className="w-4 h-4" />
-                                 </div>
-                                 <div className="min-w-0">
-                                   <p className="text-xs font-bold text-slate-900 truncate">{voucher.name}</p>
-                                   <p className="text-[9px] font-black text-[#1B6013] uppercase tracking-tighter truncate">{voucher.code}</p>
-                                 </div>
-                               </div>
-                               {isVoucherValid && voucherCode === voucher.code ? (
-                                 <Check className="w-4 h-4 text-[#1B6013] shrink-0" />
-                               ) : (
-                                 <div className="text-[9px] font-bold text-slate-400 opacity-0 group-hover/v:opacity-100 transition-opacity uppercase">
-                                   Apply
-                                 </div>
-                               )}
-                             </button>
-                           ))}
-                         </div>
-                      </div>
+                     {/* Available Vouchers Section */}
+                     {isAuthenticated && (userVouchers && userVouchers.length > 0) && (
+                       <div className="pt-8 border-t border-slate-100 pb-2 animate-in fade-in slide-in-from-top-2 duration-500">
+                          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <Icon icon="solar:gift-bold" className="w-3.5 h-3.5 text-[#1B6013]" />
+                            Your Available Rewards
+                          </h4>
+                          <div className="flex flex-col gap-3">
+                            {userVouchers.map((voucher: Database["public"]["Tables"]["vouchers"]["Row"]) => (
+                              <button
+                                key={voucher.id}
+                                type="button"
+                                disabled={isVoucherValid && voucherCode === voucher.code}
+                                onClick={() => {
+                                  handleVoucherValidation(voucher.code);
+                                }}
+                                className={cn(
+                                  "flex items-center justify-between p-4 rounded-2xl border transition-all text-left group/v",
+                                  isVoucherValid && voucherCode === voucher.code
+                                    ? "bg-green-50 border-[#1B6013] opacity-80"
+                                    : "bg-white border-slate-100 hover:border-[#1B6013]/30 hover:shadow-sm"
+                                )}
+                              >
+                                <div className="flex items-center gap-4">
+                                  <div className={cn(
+                                    "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                                    voucher.code.includes("FREE-DELIV") ? "bg-green-50 text-[#1B6013]" : "bg-green-50 text-[#1B6013]"
+                                  )}>
+                                    <Icon icon={voucher.code.includes("FREE-DELIV") ? "solar:delivery-bold" : "solar:ticket-bold"} className="w-5 h-5" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-black text-gray-900 truncate uppercase tracking-tight">{voucher.description || voucher.code}</p>
+                                    <p className="text-[9px] font-black text-[#1B6013] uppercase tracking-widest truncate">{voucher.code}</p>
+                                  </div>
+                                </div>
+                                {isVoucherValid && voucherCode === voucher.code ? (
+                                  <div className="bg-[#1B6013] text-white rounded-full p-1">
+                                    <Check className="w-3 h-3 stroke-[4]" />
+                                  </div>
+                                ) : (
+                                  <div className="text-[9px] font-black text-slate-300 opacity-0 group-hover/v:opacity-100 transition-opacity uppercase tracking-widest">
+                                    Apply
+                                  </div>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                       </div>
                     )}
 
-                     <div className="pt-4 border-t border-slate-200/60">
-                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Voucher Code</h4>
-                        <div className="flex relative">
-                           <Input
-                             placeholder="ENTER CODE"
-                             value={voucherCode}
-                             onChange={(e) => {
-                               setVoucherCode(e.target.value);
-                               setVoucherValidationAttempted(false);
-                             }}
-                             className="flex-1 h-12 rounded-xl bg-white border-slate-200 font-bold text-sm focus:border-[#1B6013] focus:ring-0 transition-all uppercase pl-4 pr-24 shadow-none"
-                             disabled={isReferralVoucher || isSubmitting}
-                           />
-                           <Button 
-                               onClick={() => handleVoucherValidation()}
-                               disabled={!voucherCode || isSubmitting}
-                               className="absolute right-1.5 top-1.5 bottom-1.5 h-auto px-5 rounded-lg font-bold text-[10px] uppercase tracking-widest bg-slate-900 text-white hover:bg-black transition-all border-0 shadow-none z-10"
-                           >
-                               Apply
-                           </Button>
-                        </div>
-                     </div>
+                      <div className="pt-6 border-t border-slate-100">
+                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Voucher Code</h4>
+                         <div className="flex relative">
+                            <Input
+                              placeholder="ENTER CODE"
+                              value={voucherCode}
+                              onChange={(e) => {
+                                setVoucherCode(e.target.value);
+                                setVoucherValidationAttempted(false);
+                              }}
+                              className="flex-1 h-14 rounded-2xl bg-white border-slate-200 font-black text-sm focus:border-[#1B6013] focus:ring-0 transition-all uppercase pl-6 pr-28 shadow-none tracking-widest"
+                              disabled={isReferralVoucher || isSubmitting}
+                            />
+                            <Button 
+                                onClick={() => handleVoucherValidation()}
+                                disabled={!voucherCode || isSubmitting}
+                                className="absolute right-2 top-2 bottom-2 h-auto px-6 rounded-xl font-black text-[10px] uppercase tracking-widest bg-gray-900 text-white hover:bg-black transition-all border-0 shadow-lg shadow-gray-200 z-10 active:scale-95"
+                            >
+                                Apply
+                            </Button>
+                         </div>
+                      </div>
                   </div>
                 </div>
               </div>
@@ -2091,70 +2469,71 @@ const CheckoutForm = ({
 
         </Container>
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="max-w-sm w-full">
-          <DialogHeader>
-            <DialogTitle>Delete Address</DialogTitle>
-          </DialogHeader>
-          <div className="py-4 text-gray-700">
-            Are you sure you want to delete this address?
-            <div className="mt-2 text-sm text-gray-500">
-              {addressToDelete && (
-                <>
-                  <div className="font-semibold">
-                    {addressToDelete.label || user?.display_name}
-                  </div>
-                  <div>
-                    {addressToDelete.street}, {addressToDelete.city} |{" "}
-                    {addressToDelete.phone}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              className="bg-gray-100 text-gray-700 hover:bg-gray-200"
-              onClick={() => setDeleteDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              className="bg-[#1B6013]/90 text-white hover:bg-[#1B6013]"
-              disabled={isDeletingAddress}
-              onClick={async () => {
-                if (addressToDelete) {
-                  setIsDeletingAddress(true);
-                  if (user && !addressToDelete.id.toString().startsWith("temp-")) {
-                    try {
-                      await deleteAddressAction(addressToDelete.id);
-                    } catch (e) {
-                      console.error(e);
-                    }
-                  }
-                  setUserAddresses((prev) =>
-                    prev.filter((a) => a.id !== addressToDelete.id)
-                  );
-                  if (selectedAddressId === addressToDelete.id)
-                    setSelectedAddressId(userAddresses[0]?.id || null);
-                  showToast("Address deleted!", "success");
-                  setDeleteDialogOpen(false);
-                  setAddressToDelete(null);
-                  setIsDeletingAddress(false);
-                }
-              }}
-            >
-              {isDeletingAddress ? (
-                <Loader2 className="animate-spin mr-2 h-4 w-4" />
-              ) : null}
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+         <DialogContent className="max-w-sm w-full rounded-3xl p-8">
+           <DialogHeader>
+             <DialogTitle className="text-xl font-black uppercase tracking-tight">Delete Address</DialogTitle>
+           </DialogHeader>
+           <div className="py-6 text-gray-600 font-medium">
+             Are you sure you want to remove this delivery location?
+             <div className="mt-4 p-4 bg-gray-50 rounded-2xl border border-gray-100 text-sm">
+               {addressToDelete && (
+                 <>
+                   <div className="font-black text-gray-900 uppercase tracking-tight mb-1">
+                     {addressToDelete.label || (addressToDelete as any).fullName || user?.display_name}
+                   </div>
+                   <div className="text-gray-500 font-bold">
+                     {addressToDelete.street}, {addressToDelete.city}
+                   </div>
+                   <div className="text-[#1B6013] font-black mt-1 uppercase tracking-widest text-[10px]">
+                     {addressToDelete.phone}
+                   </div>
+                 </>
+               )}
+             </div>
+           </div>
+           <DialogFooter className="flex-row gap-3">
+             <Button
+               type="button"
+               variant="outline"
+               className="flex-1 h-12 rounded-xl border-gray-200 font-black uppercase tracking-widest text-[10px] hover:bg-gray-50 bg-white text-gray-400"
+               onClick={() => setDeleteDialogOpen(false)}
+             >
+               Cancel
+             </Button>
+             <Button
+               type="button"
+               className="flex-1 h-12 rounded-xl bg-red-500 text-white hover:bg-red-600 font-black uppercase tracking-widest text-[10px] shadow-lg shadow-red-100 active:scale-95 transition-all"
+               disabled={isDeletingAddress}
+               onClick={async () => {
+                 if (addressToDelete) {
+                   setIsDeletingAddress(true);
+                   if (user && !addressToDelete.id.toString().startsWith("temp-")) {
+                     try {
+                       await deleteAddressAction(addressToDelete.id);
+                     } catch (e) {
+                       console.error(e);
+                     }
+                   }
+                   setUserAddresses((prev) =>
+                     prev.filter((a) => a.id !== addressToDelete.id)
+                   );
+                   if (selectedAddressId === addressToDelete.id)
+                     setSelectedAddressId(userAddresses[0]?.id || null);
+                   showToast("Address deleted!", "success");
+                   setDeleteDialogOpen(false);
+                   setAddressToDelete(null);
+                   setIsDeletingAddress(false);
+                 }
+               }}
+             >
+               {isDeletingAddress ? (
+                 <Loader2 className="animate-spin mr-2 h-4 w-4" />
+               ) : "Delete"}
+             </Button>
+           </DialogFooter>
+         </DialogContent>
+       </Dialog>
     </main>
   );
 };

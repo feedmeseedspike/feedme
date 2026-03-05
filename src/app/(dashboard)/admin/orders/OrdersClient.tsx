@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { Tables } from "@/utils/database.types";
 import {
   Table,
@@ -200,20 +201,41 @@ export default function OrdersClient({
   const [isPending, startTransition] = useTransition();
 
 
+  // --- useQuery (must be before callbacks that reference data) ---
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["orders", page, activeFilters, filterVersion],
+    queryFn: async () => {
+      const result = await fetchOrders({
+        page: page,
+        itemsPerPage: itemsPerPage,
+        ...activeFilters,
+      });
 
-  // --- URL SYNC FOR DEEP LINKING ---
-  // Sync URL with Selected Order
-  useEffect(() => {
-    const orderIdParam = searchParams.get("orderId");
-    if (orderIdParam && (!selectedOrder || selectedOrder.id !== orderIdParam)) {
-      handleOrderClick(orderIdParam);
-    } else if (!orderIdParam && isOrderDetailOpen) {
-       setIsOrderDetailOpen(false);
-    }
-  }, [searchParams]);
+      // Normalize shipping_address for client-side fetches
+      if (result.data) {
+        result.data = result.data.map((order: any) => ({
+          ...order,
+          shipping_address:
+            typeof order.shipping_address === "string"
+              ? (() => {
+                  try {
+                    return JSON.parse(order.shipping_address);
+                  } catch {
+                    return null;
+                  }
+                })()
+              : order.shipping_address || null,
+        }));
+      }
+      return result;
+    },
+    initialData: { data: initialOrders, count: totalOrdersCount },
+    staleTime: 1000 * 60, // 1 minute
+  });
+
 
   // Update URL when drawer state changes
-  const updateUrlWithOrderId = (orderId: string | null) => {
+  const updateUrlWithOrderId = useCallback((orderId: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
     if (orderId) {
       params.set("orderId", orderId);
@@ -221,9 +243,9 @@ export default function OrdersClient({
       params.delete("orderId");
     }
     router.push(`?${params.toString()}`, { scroll: false });
-  };
+  }, [searchParams, router]);
 
-  const handleOrderClick = async (orderId: string) => {
+  const handleOrderClick = useCallback(async (orderId: string) => {
     // 1. Try to find in current list
     let basicOrderData = data?.data?.find((order: any) => order.id === orderId);
 
@@ -273,7 +295,17 @@ export default function OrdersClient({
       // Don't close immediately so user sees error, but maybe clear loading?
       setSelectedOrder((prev: any) => ({ ...prev, loading: false, loadingItems: false }));
     }
-  };
+  }, [data?.data, searchParams, showToast, updateUrlWithOrderId]);
+
+  // Sync URL with Selected Order
+  useEffect(() => {
+    const orderIdParam = searchParams.get("orderId");
+    if (orderIdParam && (!selectedOrder || selectedOrder.id !== orderIdParam)) {
+      handleOrderClick(orderIdParam);
+    } else if (!orderIdParam && isOrderDetailOpen) {
+       setIsOrderDetailOpen(false);
+    }
+  }, [searchParams, handleOrderClick, isOrderDetailOpen, selectedOrder]);
 
   // Close handler to clean up URL
   const handleCloseDrawer = (open: boolean) => {
@@ -347,42 +379,10 @@ export default function OrdersClient({
     router.replace(`?${params.toString()}`);
   };
 
+
   // --- FILTER SHEET TOGGLE ---
   const openSheet = () => setIsSheetOpen(true);
   const closeSheet = () => setIsSheetOpen(false);
-
-  // --- useQuery ---
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["orders", page, activeFilters, filterVersion],
-    queryFn: async () => {
-      console.log('Fetching orders with filters:', activeFilters);
-      const result = await fetchOrders({
-        page: page,
-        itemsPerPage: itemsPerPage,
-        ...activeFilters,
-      });
-
-      // Normalize shipping_address for client-side fetches
-      if (result.data) {
-        result.data = result.data.map((order: any) => ({
-          ...order,
-          shipping_address:
-            typeof order.shipping_address === "string"
-              ? (() => {
-                  try {
-                    return JSON.parse(order.shipping_address);
-                  } catch {
-                    return null;
-                  }
-                })()
-              : order.shipping_address || null,
-        }));
-      }
-      return result;
-    },
-    initialData: { data: initialOrders, count: totalOrdersCount },
-    staleTime: 1000 * 60, // 1 minute
-  });
 
   // --- AUTO-OPEN SINGLE SEARCH RESULT ---
   useEffect(() => {
@@ -396,7 +396,7 @@ export default function OrdersClient({
          handleOrderClick(order.id);
       }
     }
-  }, [data, activeFilters.search, isLoading]); // Added isLoading dependency
+  }, [data, activeFilters.search, isLoading, handleOrderClick, searchParams]); // Added isLoading dependency
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -482,7 +482,6 @@ export default function OrdersClient({
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "orders" },
         (payload: any) => {
-          console.log("New order received!", payload);
           showToast(`New Order Received!`, "success"); // Simplified message as reference usually triggers later via trigger or stays raw
           queryClient.invalidateQueries({ queryKey: ["orders"] }); // Refresh list
         }
@@ -1065,21 +1064,27 @@ export default function OrdersClient({
                       >
                         <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
                           {item.products?.images?.[0] ? (
-                            <img
+                            <Image
                               src={item.products.images[0]}
                               alt="Product"
+                              width={48}
+                              height={48}
                               className="w-full h-full object-cover"
                             />
                           ) : item.bundles?.thumbnail_url ? (
-                            <img
+                            <Image
                               src={item.bundles.thumbnail_url}
                               alt="Bundle"
+                              width={48}
+                              height={48}
                               className="w-full h-full object-cover"
                             />
                           ) : (item as any).offers?.image_url ? (
-                            <img
+                            <Image
                               src={(item as any).offers.image_url}
                               alt="Offer"
+                              width={48}
+                              height={48}
                               className="w-full h-full object-cover"
                             />
                           ) : (

@@ -188,27 +188,34 @@ const SearchPage = async (props: {
   const noResults = data.totalProducts === 0;
 
   // Get categories that actually have products in the search results
+  // We'll count the frequency and sort them by relevance (nearest)
+  const categoryFrequency: Record<string, number> = {};
+  data.products.forEach((p: ProductType) => {
+    if (Array.isArray(p.category_ids) && (p.category_ids?.length ?? 0) > 0) {
+      const primaryCatId = p.category_ids![0];
+      categoryFrequency[primaryCatId] = (categoryFrequency[primaryCatId] || 0) + 1;
+    }
+  });
+
+  const sortedCategoryIds = Object.keys(categoryFrequency).sort(
+    (a, b) => categoryFrequency[b] - categoryFrequency[a]
+  );
+  
+  // Max 5 categories to keep the UI clean
+  const maxCategories = 5;
+
   const relevantCategories =
     q !== "all" && q !== ""
-      ? Array.from(
-          new Set(
-            data.products
-              .filter(
-                (p: ProductType) =>
-                  Array.isArray(p.category_ids) &&
-                  (p.category_ids?.length ?? 0) > 0
-              )
-              .map((p: ProductType) => p.category_ids![0])
-          )
-        )
+      ? sortedCategoryIds
+          .slice(0, maxCategories)
           .map((categoryId) => {
             const foundCategory = categories.find(
               (cat: Category) => cat.id === categoryId
             );
             return foundCategory || { id: categoryId, title: categoryId };
           })
-          .filter((cat) => cat.title !== cat.id) // Filter out categories where title is the same as ID (UUID)
-      : categories;
+          .filter((cat: any) => cat.title !== cat.id)
+      : categories.slice(0, maxCategories);
 
   // Add a mapping function for Supabase product row to IProductInput
   function mapSupabaseProductToIProductInput(product: any): IProductInput {

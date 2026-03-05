@@ -1,4 +1,6 @@
 import React from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface PaginationProps {
   totalPages: number;
@@ -7,34 +9,80 @@ interface PaginationProps {
 }
 
 const Pagination: React.FC<PaginationProps> = ({ totalPages, currentPage, onPageChange }) => {
+  if (totalPages <= 1) return null;
+
   return (
-    <div className="flex">
+    <div className="flex items-center gap-4">
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className={`flex items-center justify-center px-4 py-2 mx-1 text-black capitalize bg-white rounded-md cursor-${currentPage === 1 ? "not-allowed" : "pointer"} rtl:-scale-x-100 dark:bg-gray-800 dark:text-gray-600`}
+        className={cn(
+          "flex items-center justify-center w-8 h-8 rounded-full transition-colors",
+          currentPage === 1
+            ? "text-gray-300 cursor-not-allowed"
+            : "text-gray-600 hover:bg-green-50 hover:text-[#1B6013]"
+        )}
+        aria-label="Previous page"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-        </svg>
+        <ChevronLeft className="w-5 h-5" />
       </button>
-      {[...Array(totalPages)].map((_, index) => (
-        <button
-          key={index + 1}
-          onClick={() => onPageChange(index + 1)}
-          className={`hidden px-4 py-2 mx-1 text-gray-700 transition-colors duration-300 transform bg-white sm:inline dark:bg-gray-800 dark:text-gray-200 hover:bg-gray-100 rounded-full ${currentPage === index + 1 ? "bg-[#F9FAFB] text-black rounded-full" : ""}`}
-        >
-          {index + 1}
-        </button>
-      ))}
+
+      <div className="flex items-center gap-2">
+        {Array.from({ length: totalPages }).map((_, index) => {
+          const pageNum = index + 1;
+          const isActive = currentPage === pageNum;
+
+          // Simple logic for showing pages - can be enhanced with ellipses if needed
+          // but for now keeping it simple or matching the other component's logic
+          if (totalPages > 7) {
+            const isEdgePage = pageNum === 1 || pageNum === totalPages;
+            const isNearCurrentPage = Math.abs(pageNum - currentPage) <= 1;
+
+            if (!isEdgePage && !isNearCurrentPage) {
+              if (
+                (pageNum === 2 && currentPage > 3) ||
+                (pageNum === totalPages - 1 && currentPage < totalPages - 2)
+              ) {
+                return (
+                  <span key={pageNum} className="text-gray-400">
+                    ...
+                  </span>
+                );
+              }
+              return null;
+            }
+          }
+
+          return (
+            <button
+              key={pageNum}
+              onClick={() => onPageChange(pageNum)}
+              className={cn(
+                "relative px-2 py-1 text-sm font-medium transition-all duration-200",
+                isActive ? "text-[#1B6013]" : "text-gray-500 hover:text-[#1B6013]"
+              )}
+            >
+              {pageNum}
+              {isActive && (
+                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-[#1B6013]" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className={`flex items-center justify-center px-4 py-2 mx-1 text-gray-700 transition-colors duration-300 transform bg-white rounded-md rtl:-scale-x-100 dark:bg-gray-800 dark:text-gray-200 hover:bg-blue-500 dark:hover:bg-blue-500 hover:text-white ${currentPage === totalPages ? "cursor-not-allowed" : "pointer"}`}
+        className={cn(
+          "flex items-center justify-center w-8 h-8 rounded-full transition-colors",
+          currentPage === totalPages
+            ? "text-gray-300 cursor-not-allowed"
+            : "text-gray-600 hover:bg-green-50 hover:text-[#1B6013]"
+        )}
+        aria-label="Next page"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-        </svg>
+        <ChevronRight className="w-5 h-5" />
       </button>
     </div>
   );

@@ -85,7 +85,7 @@ export default function Agents() {
     const updatedAgents = agents?.map((agent: Agent) =>
       agent.id === selectedAgent?.id ? { ...agent, ...updatedAgent } : agent
     );
-    // // console.log("Updated Agents:", updatedAgents);
+    // // 
     // TODO: Implement actual agent update logic using a mutation
     // setAgents(updatedAgents || []); // This line is no longer needed with react-query
     setIsEditModalOpen(false);

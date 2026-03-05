@@ -1,10 +1,9 @@
-/* eslint-disable @next/next/no-img-element */
-/* eslint-disable jsx-a11y/alt-text */
 "use client";
 import React from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
+import Image from "next/image";
 
 export default function BottomNav() {
   const pathname = usePathname();
@@ -88,9 +87,11 @@ export default function BottomNav() {
                       />
                     </AnimatePresence>
                   )}
-                  <img
+                  <Image
                     src={item.icon}
                     alt={item.label}
+                    width={24}
+                    height={24}
                     className={`w-6 h-6 relative z-10 ${isActive ? "grayscale-0" : "grayscale"}`}
                   />
                   <span className="relative z-10">{item.label}</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useDispatch } from "react-redux";
 import { useSearchParams } from "next/navigation";
@@ -70,17 +70,82 @@ export default function OrderConfirmationPage() {
   const clearCartMutation = useClearCartMutation();
 
   // --- Logic from original file ---
-  async function clearData() {
+  const clearData = useCallback(async () => {
     try {
       await clearCartMutation.mutateAsync();
     } catch (e) {
       console.error("Failed to clear server cart", e);
     }
-  }
+  }, [clearCartMutation]);
 
   useEffect(() => {
     // Initial cleanup
     clearData();
+  }, [clearData]);
+
+  // Fetch order function moved outside useEffect to follow Rules of Hooks
+  const fetchOrder = useCallback(async (idToFetch: string) => {
+    try {
+      const res = await fetch(`/api/orders/${idToFetch}`);
+      const data = await res.json();
+      
+      if (data.error) {
+         setError(data.error);
+         setLoading(false);
+         return true; 
+      }
+
+      setOrder(data);
+      
+      // Calculate items and subtotal for rewards
+      const orderItems = data.order_items || [];
+      const orderSubtotal = orderItems.reduce((acc: number, item: any) => {
+        const price = (item.option?.price ?? item.price) || 0;
+        return acc + price * item.quantity;
+      }, 0);
+
+      // Always set reward summary for UI feedback, even if payment is pending
+      const rewards = {
+          freeDelivery: orderSubtotal >= BONUS_CONFIG.SUBSEQUENT_FREE_DELIVERY.min_spend,
+          cashback: data.user_id ? calculatePotentialCashBack(orderSubtotal) : 0,
+          tierPoints: data.user_id ? calculateLoyaltyPoints(orderSubtotal) : 0,
+      };
+      setRewardSummary(rewards);
+
+      if (data.payment_status === "Paid" || data.payment_status === "paid") {
+         setSpinNotifVisible(true);
+         
+         // Automatically trigger the wheel
+         if (!localStorage.getItem(`spin_triggered_${idToFetch}`)) {
+            setTimeout(() => {
+               window.dispatchEvent(new CustomEvent('trigger-spin-wheel'));
+               localStorage.setItem(`spin_triggered_${idToFetch}`, "true");
+            }, 2500); 
+         }
+      }
+
+      setLoading(false);
+
+      // Check if we should stop polling
+      const isTerminalState = ["Paid", "paid", "Failed", "failed", "Declined", "Cancelled"].includes(data.payment_status);
+      if (isTerminalState) {
+          if (data.payment_status === "Paid" || data.payment_status === "paid") {
+             setShowConfetti(true);
+             if (!localStorage.getItem(`toast_shown_${idToFetch}`)) {
+              showToast("Order confirmed!", "success");
+              localStorage.setItem(`toast_shown_${idToFetch}`, "true");
+            }
+         }
+         return true; 
+      }
+      
+      return false; 
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load order");
+      setLoading(false);
+      return true;
+    }
   }, []);
 
   useEffect(() => {
@@ -112,80 +177,18 @@ export default function OrderConfirmationPage() {
     let attempts = 0;
     const maxAttempts = 20; // Poll for 1 minute (20 * 3s)
 
-    const fetchOrder = async () => {
-      try {
-        const res = await fetch(`/api/orders/${id}`);
-        const data = await res.json();
-        
-        if (data.error) {
-           setError(data.error);
-           setLoading(false);
-           return true; 
-        }
-
-        setOrder(data);
-        
-        // Calculate items and subtotal for rewards
-        const orderItems = data.order_items || [];
-        const orderSubtotal = orderItems.reduce((acc: number, item: any) => {
-          const price = (item.option?.price ?? item.price) || 0;
-          return acc + price * item.quantity;
-        }, 0);
-
-        // Always set reward summary for UI feedback, even if payment is pending
-        const rewards = {
-            freeDelivery: orderSubtotal >= BONUS_CONFIG.SUBSEQUENT_FREE_DELIVERY.min_spend,
-            cashback: data.user_id ? calculatePotentialCashBack(orderSubtotal) : 0,
-            tierPoints: data.user_id ? calculateLoyaltyPoints(orderSubtotal) : 0,
-        };
-        setRewardSummary(rewards);
-
-        if (data.payment_status === "Paid" || data.payment_status === "paid") {
-           setSpinNotifVisible(true);
-           
-           // Automatically trigger the wheel
-           if (!localStorage.getItem(`spin_triggered_${id}`)) {
-              setTimeout(() => {
-                 window.dispatchEvent(new CustomEvent('trigger-spin-wheel'));
-                 localStorage.setItem(`spin_triggered_${id}`, "true");
-              }, 2500); 
-           }
-        }
-
-        setLoading(false);
-
-        // Check if we should stop polling
-        const isTerminalState = ["Paid", "paid", "Failed", "failed", "Declined", "Cancelled"].includes(data.payment_status);
-        if (isTerminalState) {
-            if (data.payment_status === "Paid" || data.payment_status === "paid") {
-               if (!showConfetti) setShowConfetti(true);
-               if (!localStorage.getItem(`toast_shown_${id}`)) {
-                showToast("Order confirmed!", "success");
-                localStorage.setItem(`toast_shown_${id}`, "true");
-              }
-           }
-           return true; 
-        }
-        
-        return false; 
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load order");
-        setLoading(false);
-        return true;
-      }
-    };
-
     // Initial fetch
-    fetchOrder().then(shouldStop => {
+    fetchOrder(id).then(shouldStop => {
        if (!shouldStop) {
           intervalId = setInterval(async () => {
              attempts++;
              if (attempts >= maxAttempts) {
-               clearInterval(intervalId);
-               return;
+                clearInterval(intervalId);
+                return;
              }
-             const stop = await fetchOrder();
+             // Use local id variable to ensure we have the correct one
+             const currentId = id as string;
+             const stop = await fetchOrder(currentId);
              if (stop) clearInterval(intervalId);
           }, 3000);
        }
@@ -194,7 +197,7 @@ export default function OrderConfirmationPage() {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [urlOrderId, dispatch]); 
+  }, [orderId, dispatch, fetchOrder]); 
 
   const copyReferralCode = () => {
     // Only attempt if order exists

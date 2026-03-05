@@ -24,8 +24,8 @@ export default function BrowsingHistoryPage() {
         );
         const data = await res.json();
         setHistoryData(data);
-        // // console.log(data)
-        // // console.log(historyData)
+        // // 
+        // // 
       } catch (error) {
         console.error("Failed to fetch browsing history:", error);
       }

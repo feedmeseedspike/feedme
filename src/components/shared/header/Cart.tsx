@@ -15,6 +15,7 @@ import {
   SheetTrigger,
 } from "@components/ui/sheet";
 import { ArrowLeft, Trash2Icon } from "lucide-react";
+import ShareCartButton from "@components/shared/cart/ShareCartButton";
 import { Icon } from "@iconify/react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -936,12 +937,15 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
             )}
           </SheetTitle>
           {totalQuantity > 0 && (
-            <p
-              className="badge cursor-pointer w-fit select-none"
-              onClick={handleClearCart}
-            >
-              Clear Cart
-            </p>
+            <div className="flex items-center gap-2">
+              {user && <ShareCartButton compact />}
+              <p
+                className="badge cursor-pointer w-fit select-none"
+                onClick={handleClearCart}
+              >
+                Clear
+              </p>
+            </div>
           )}
         </SheetHeader>
 

@@ -120,9 +120,7 @@ export default function CategoriesClient({
     if (categoryToDelete) {
       try {
         setLoading(true);
-        console.log("Deleting category:", categoryToDelete.id);
         await deleteCategoryAction(categoryToDelete.id);
-        console.log("Category deleted successfully");
         
         // Show success message
         showToast("Category deleted successfully!", "success");
@@ -325,7 +323,6 @@ export default function CategoriesClient({
                       variant="outline"
                       size="icon"
                       onClick={() => {
-                        console.log("Delete button clicked for category:", category.id);
                         handleDeleteClick(category);
                       }}
                     >

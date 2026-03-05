@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@components/ui/button";
 import { Badge } from "@components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
@@ -19,11 +19,7 @@ export default function CareersClient() {
   const [applicationCounts, setApplicationCounts] = useState<Record<string, number>>({});
   const { showToast } = useToast();
 
-  useEffect(() => {
-    fetchJobs();
-  }, []);
-
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async () => {
     try {
       setLoading(true);
       const jobsData = await getAllJobs();
@@ -45,7 +41,11 @@ export default function CareersClient() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
+
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
 
   const handleDeleteJob = async (jobId: string) => {
     if (!confirm("Are you sure you want to delete this job posting?")) return;

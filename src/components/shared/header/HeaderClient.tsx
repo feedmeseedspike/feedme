@@ -38,6 +38,9 @@ import SpinNotification from "./SpinNotification";
 import { createClient } from "@utils/supabase/client";
 import { useToast } from "src/hooks/useToast";
 import { toSlug } from "@/lib/utils";
+import { Locations } from "./Location";
+import TopAnnouncementBar from "./TopAnnouncementBar";
+
 
 const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
   const { user, isLoading: isUserLoading } = useUser();
@@ -99,8 +102,9 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
   const isLoggedIn = !!user;
 
   return (
-    <header className="top-0 left-0 right-0 z-50 sticky">
-      <div className="bg-[#1B6013] shadow-sm">
+    <header className="top-0 left-0 right-0 z-50 sticky shadow-sm">
+      <TopAnnouncementBar />
+      <div className="bg-[#1B6013]">
         <Container className="pt-4 pb-2 md:py-4">
           <div className="flex items-center h-auto">
             {/* Logo and Mobile Menu */}
@@ -135,7 +139,7 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                     className="w-[80%] bg-[#1B6013] text-white flex flex-col h-full !px-4 !pb-0"
                   >
                     <SheetHeader>
-                      <SheetTitle>
+                      <SheetTitle className="flex items-center justify-between">
                         <Link
                           href="/"
                           onClick={() => setOpenMobileSheet(false)}
@@ -149,8 +153,10 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                             priority={true}
                           />
                         </Link>
+                        {/* <Locations /> */}
                       </SheetTitle>
                     </SheetHeader>
+
 
                     {/* Scrollable Categories Section */}
                     <div className="flex-1 overflow-y-auto py-4">
@@ -197,7 +203,7 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                               <div className="space-y-1">
                                 <Link
                                   href="/track-order"
-                                  className="block py-2 hover:bg-white/10 rounded text-lg px-2 transition-colors flex items-center gap-2"
+                                  className="py-2 hover:bg-white/10 rounded text-lg px-2 transition-colors flex items-center gap-2"
                                   onClick={() => setOpenMobileSheet(false)}
                                 >
                                   Track Order
@@ -239,7 +245,7 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                                 href="https://play.google.com/store/apps/details?id=com.feedmemobile"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="block py-2 hover:bg-white/10 rounded text-lg px-2 text-[#3BCCFF] font-bold transition-colors flex items-center gap-2"
+                                className="py-2 hover:bg-white/10 rounded text-lg px-2 text-[#3BCCFF] font-bold transition-colors flex items-center gap-2"
                                 onClick={() => setOpenMobileSheet(false)}
                               >
                                 <Icon icon="mdi:google-play" className="w-6 h-6" />
@@ -258,12 +264,14 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                           <Link
                             href="/login"
                             className="block w-full text-center bg-white/10 py-3 rounded transition-colors"
+                            onClick={() => setOpenMobileSheet(false)}
                           >
                             Sign In
                           </Link>
                           <Link
                             href="/register"
                             className="block w-full text-center bg-white text-[#1B6013] hover:bg-white/90 py-3 rounded transition-colors"
+                            onClick={() => setOpenMobileSheet(false)}
                           >
                             Create Account
                           </Link>
@@ -281,7 +289,7 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                                 console.error("Logout failed:", error);
                               }
                             }}
-                            className="block w-full text-center bg-red-500/20 text-red-100 hover:bg-red-500/30 py-3 rounded transition-colors flex items-center justify-center gap-2"
+                            className="w-full text-center bg-red-500/20 text-red-100 hover:bg-red-500/30 py-3 rounded transition-colors flex items-center justify-center gap-2"
                           >
                             Sign Out
                           </button>
@@ -323,8 +331,12 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                       </Link>
                     )}
                   </div>
+                  <div className="hidden md:block">
+                     {/* <Locations /> */}
+                  </div>
                 </div>
               </div>
+
 
               {/* Desktop Search */}
               <div className="hidden md:block flex-1 md:max-w-[55rem] pl-8">

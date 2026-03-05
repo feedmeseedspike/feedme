@@ -151,7 +151,7 @@ export function useNotifications(userId: string | undefined) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, supabase]);
+  }, [userId, supabase, showToast]);
 
   const dismissNotification = async (id: number) => {
     // Optimistic update

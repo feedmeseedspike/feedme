@@ -293,7 +293,7 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
             )}
 
         <div className="prose prose-lg prose-stone max-w-none mb-16 prose-p:font-proxima prose-p:font-light prose-p:leading-[2] prose-p:text-stone-600 prose-headings:font-bold prose-headings:text-[#1D2939] prose-img:rounded-none prose-img:shadow-lg prose-a:text-[#1B6013] prose-a:no-underline hover:prose-a:underline prose-blockquote:border-l-[#1B6013] prose-blockquote:bg-[#FAF9F6] prose-blockquote:py-2 prose-blockquote:px-6 prose-blockquote:not-italic prose-blockquote:font-normal">
-            <ProductLinkParser content={post.content} />
+            <ProductLinkParser content={post.content || ''} />
         </div>
 
         {/* Shop the Story - Dynamic Product Section */}

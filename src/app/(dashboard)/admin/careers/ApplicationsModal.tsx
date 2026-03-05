@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
@@ -21,11 +21,7 @@ export default function ApplicationsModal({ jobId, onClose }: ApplicationsModalP
   const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null);
   const { showToast } = useToast();
 
-  useEffect(() => {
-    fetchApplications();
-  }, [jobId]);
-
-  const fetchApplications = async () => {
+  const fetchApplications = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getJobApplications(jobId);
@@ -35,7 +31,11 @@ export default function ApplicationsModal({ jobId, onClose }: ApplicationsModalP
     } finally {
       setLoading(false);
     }
-  };
+  }, [jobId, showToast]);
+
+  useEffect(() => {
+    fetchApplications();
+  }, [fetchApplications]);
 
   const handleStatusChange = async (applicationId: string, newStatus: JobApplication['status']) => {
     try {

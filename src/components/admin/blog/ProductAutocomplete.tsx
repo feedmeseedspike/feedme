@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Search, Package, Layers, Tag, X } from "lucide-react";
+import Image from "next/image";
 
 interface ProductResult {
   id: string;
@@ -222,12 +223,13 @@ export default function ProductAutocomplete({
               }`}
             >
               {/* Product Image */}
-              <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden">
                 {product.image ? (
-                  <img
+                  <Image
                     src={product.image}
                     alt={product.name}
-                    className="w-full h-full object-cover rounded-lg"
+                    fill
+                    className="object-cover"
                   />
                 ) : (
                   getTypeIcon(product.type)

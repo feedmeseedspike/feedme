@@ -11,6 +11,7 @@ import { SPIN_PRIZES_CONFIG } from "../deals";
 import { getSpinPrizes } from "./prize.actions";
 import supabaseAdmin from "src/utils/supabase/admin";
 import { sendUnifiedNotification } from "./notifications.actions";
+import { ADMIN_EMAIL } from "../constants";
 
 export async function spinTheWheel() {
   const supabase = await createClient();
@@ -46,7 +47,7 @@ export async function spinTheWheel() {
   // Use admin to avoid RLS delays
   const { data: profile, error: profileError } = await supabaseAdmin
     .from('profiles')
-    .select('has_used_new_user_spin, last_spin_at, display_name')
+    .select('has_used_new_user_spin, last_spin_at, display_name, email')
     .eq('user_id', user.id)
     .single();
 
@@ -303,36 +304,41 @@ export async function spinTheWheel() {
             await addToCart(selectedPrize.product_id, 1, finalOption as any, null, null, null, 0);
             
             resultMessage = `You've unlocked ${selectedPrize.label}! It has been added to your cart.`;
-
-            // Notify Admin
-            try {
-                const adminEmail = "orders.feedmeafrica@gmail.com"; 
-                const winnerName = profile?.display_name || user.user_metadata?.full_name || user.user_metadata?.name || "Unknown Name";
-                await sendMail({
-                    to: adminEmail,
-                    subject: `🎰 SPIN WIN: ${selectedPrize.label} won by ${winnerName} (${user.email})`,
-                    html: `
-                        <div style="font-family: sans-serif; padding: 20px;">
-                            <h2 style="color: #1B6013;">Spin & Win Alert 🎰</h2>
-                            <p>A user has won a physical prize!</p>
-                            <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                                <p><strong>Name:</strong> ${winnerName}</p>
-                                <p><strong>Email:</strong> ${user.email}</p>
-                                <p><strong>Prize:</strong> ${selectedPrize.label}</p>
-                                <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
-                            </div>
-                            <p>The item has been automatically added to their cart for ₦0.</p>
-                        </div>
-                    `
-                });
-            } catch (err) {
-                console.error("Failed to send admin spin notification", err);
-                // Don't block the user flow
-            }
-
         } else {
             console.error("Prize item missing product_id");
             resultMessage = `You won ${selectedPrize.label}, but we couldn't add it to your cart. Contact support!`;
+        }
+    }
+
+    // 4. Notify Admin for ALL non-empty wins
+    if (selectedPrize.type !== 'none') {
+        try {
+            const winnerName = profile?.display_name || user.user_metadata?.full_name || user.user_metadata?.name || "Unknown Name";
+            const winnerEmail = profile?.email || user.email || "No Email Provided";
+            
+            await sendMail({
+                to: ADMIN_EMAIL,
+                subject: `🎰 SPIN WIN: ${selectedPrize.label} won by ${winnerName} (${winnerEmail})`,
+                html: `
+                    <div style="font-family: sans-serif; padding: 20px;">
+                        <h2 style="color: #1B6013;">Spin & Win Alert 🎰</h2>
+                        <p>A user has won a reward on the wheel!</p>
+                        <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin: 20px 0;">
+                            <p><strong>Name:</strong> ${winnerName}</p>
+                            <p><strong>Email:</strong> ${winnerEmail}</p>
+                            <p><strong>Prize Type:</strong> ${selectedPrize.type}</p>
+                            <p><strong>Prize Label:</strong> ${selectedPrize.label}</p>
+                            <p><strong>Prize Value:</strong> ${selectedPrize.value || 'N/A'}</p>
+                            <p><strong>Voucher Code:</strong> ${data?.code || 'N/A'}</p>
+                            <p><strong>Time:</strong> ${new Date().toLocaleString('en-NG')}</p>
+                        </div>
+                        <p style="color: #666; font-size: 12px;">This is an automated administrative notification.</p>
+                    </div>
+                `
+            });
+        } catch (err) {
+            console.error("Failed to send admin spin notification", err);
+            // Don't block the user flow
         }
     }
     

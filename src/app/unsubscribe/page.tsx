@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 
 type ApiResponse = {
   success: boolean;
@@ -51,11 +52,14 @@ export default function UnsubscribePage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
       <div className="max-w-md w-full bg-white border border-gray-200 rounded-lg p-6 text-center">
-        <img
-          src="https://res.cloudinary.com/ahisi/image/upload/v1731071676/logo_upovep.png"
-          alt="FeedMe"
-          style={{ height: 37, width: "auto", margin: "0 auto 12px" }}
-        />
+        <div className="relative h-[37px] w-full mb-3">
+          <Image
+            src="https://res.cloudinary.com/ahisi/image/upload/v1731071676/logo_upovep.png"
+            alt="FeedMe"
+            fill
+            className="object-contain"
+          />
+        </div>
         <h1 className="text-xl font-semibold text-[#1B6013] mb-2">
           Unsubscribe
         </h1>

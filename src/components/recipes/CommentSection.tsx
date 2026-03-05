@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { MessageCircle, Send } from "lucide-react";
 import CommentItem from "./CommentItem";
 import { Button } from "@components/ui/button";
@@ -29,12 +29,7 @@ export default function CommentSection({ bundleId }: CommentSectionProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { showToast } = useToast();
 
-  // Fetch comments
-  useEffect(() => {
-    fetchComments();
-  }, [bundleId]);
-
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     try {
       const response = await fetch(`/api/recipes/${bundleId}/comments`);
       if (!response.ok) throw new Error("Failed to fetch comments");
@@ -46,7 +41,13 @@ export default function CommentSection({ bundleId }: CommentSectionProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bundleId]);
+
+  // Fetch comments
+  useEffect(() => {
+    fetchComments();
+  }, [fetchComments]);
 
   // Organize comments into nested structure
   const organizeComments = (flatComments: Comment[]): Comment[] => {

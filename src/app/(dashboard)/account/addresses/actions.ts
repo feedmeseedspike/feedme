@@ -7,7 +7,6 @@ import { Tables, TablesInsert } from "src/utils/database.types";
 export async function addAddressAction(
   addressData: TablesInsert<"addresses">
 ) {
-  console.log("Adding address:", addressData);
   const user = await getUser();
   if (!user) throw new Error("Not authenticated");
   const supabase = await createClient();

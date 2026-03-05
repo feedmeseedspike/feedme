@@ -5,7 +5,6 @@ export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
   const settings = await getStoreSettings();
-  console.log("SettingsPage fetched settings:", settings);
 
   const defaultValues = settings || {
     open_time: "08:00",
