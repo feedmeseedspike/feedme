@@ -209,6 +209,10 @@ export async function getProducts({
   publishedStatus = "",
   sortBy = "created_at",
   sortOrder = "desc",
+  isAdmin = false,
+  tag = "",
+  price = "",
+  rating = "",
 }: {
   page?: number;
   limit?: number;
@@ -218,11 +222,21 @@ export async function getProducts({
   publishedStatus?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
+  isAdmin?: boolean;
+  tag?: string;
+  price?: string;
+  rating?: string;
 }) {
   const supabase = getSupabase();
   const offset = (page - 1) * limit;
 
   let query = supabase.from("products").select("*", { count: "exact" });
+
+  // In Admin mode, we show both published and unpublished
+  // In User mode (default), we only show published
+  if (!isAdmin && !publishedStatus) {
+    query = query.eq("is_published", true);
+  }
 
   if (search) {
     const terms = expandSearchTerms(search);
@@ -230,16 +244,55 @@ export async function getProducts({
     query = query.or(filter);
   }
 
-  if (category) {
-    query = query.contains("category_ids", [category]);
+  // Handle multiple Categories (comma-separated)
+  if (category && category !== "all") {
+    const categoryList = category.split(",").filter(Boolean);
+    if (categoryList.length > 0) {
+      query = query.contains("category_ids", categoryList);
+    }
   }
 
-  if (stockStatus) {
-    query = query.eq("stock_status", stockStatus === "In stock" ? "in_stock" : "out_of_stock");
+  // Handle multiple Stock Statuses
+  if (stockStatus && stockStatus !== "all") {
+    const statuses = stockStatus.split(",").map(s => s.trim().toLowerCase());
+    const filterValues: string[] = [];
+    if (statuses.includes("in stock")) filterValues.push("in_stock");
+    if (statuses.includes("out of stock")) filterValues.push("out_of_stock");
+    
+    if (filterValues.length === 1) {
+      query = query.eq("stock_status", filterValues[0]);
+    } else if (filterValues.length > 1) {
+      query = query.in("stock_status", filterValues);
+    }
   }
 
-  if (publishedStatus) {
-    query = query.eq("is_published", publishedStatus === "Published");
+  // Handle multiple Published Statuses
+  if (publishedStatus && publishedStatus !== "all") {
+    const statuses = publishedStatus.split(",").map(s => s.trim().toLowerCase());
+    const filterValues: boolean[] = [];
+    if (statuses.includes("published")) filterValues.push(true);
+    if (statuses.includes("archived")) filterValues.push(false);
+    
+    if (filterValues.length === 1) {
+      query = query.eq("is_published", filterValues[0]);
+    } else if (filterValues.length > 1) {
+      query = query.in("is_published", filterValues);
+    }
+  }
+  
+  if (tag && tag !== "all") {
+    query = query.contains("tags", [tag]);
+  }
+  
+  if (rating && rating !== "all") {
+    query = query.gte("avg_rating", Number(rating));
+  }
+  
+  if (price && price !== "all") {
+    const [minPrice, maxPrice] = price.split("-").map(Number);
+    if (!isNaN(minPrice) && !isNaN(maxPrice)) {
+      query = query.gte("price", minPrice).lte("price", maxPrice);
+    }
   }
 
   const validSortFields = ["name", "price", "created_at", "updated_at", "num_sales", "num_reviews", "avg_rating", "stock_status", "is_published"];
