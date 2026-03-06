@@ -486,13 +486,14 @@ const CheckoutForm = ({
     user?.email,
     setCurrentLocation,
     globalLocations,
+    currentLocationId,
   ]);
 
-  // Sync global location with form if no address is selected
+  // Sync global location with form ONLY IF no address is selected AND the form currently has no location set
   useEffect(() => {
-    if (!selectedAddressId && globalLocationName !== "Lagos") {
+    if (!selectedAddressId && globalLocationName && globalLocationName !== "Lagos") {
       const currentLoc = shippingAddressForm.getValues("location");
-      if (currentLoc !== globalLocationName) {
+      if (!currentLoc || currentLoc === "Lagos") {
         shippingAddressForm.setValue("location", globalLocationName);
       }
     }
@@ -797,6 +798,7 @@ const CheckoutForm = ({
     showToast,
     startTransition,
     voucherFromUrl,
+    hasFreePrize,
   ]);
 
   useEffect(() => {
@@ -851,7 +853,7 @@ const CheckoutForm = ({
       if (voucherFromUrl && !isVoucherValid && subtotal > 0) {
           autoApplyUrlVoucher();
       }
-  }, [voucherFromUrl, subtotal, isVoucherValid, validateVoucherMutation, startTransition, showToast, voucherValidationAttempted, voucherCode]);
+  }, [voucherFromUrl, subtotal, isVoucherValid, validateVoucherMutation, startTransition, showToast, voucherValidationAttempted, voucherCode, hasFreePrize]);
 
   // Auto-apply Free Delivery if user has one and no voucher is applied
   // Auto-apply Free Delivery if user has one and no voucher is applied
@@ -1416,14 +1418,14 @@ const CheckoutForm = ({
                       open={showAddressModal}
                       onOpenChange={setShowAddressModal}
                     >
-                      <DialogContent className="max-w-md w-full max-h-[90vh] rounded-2xl p-6">
-                        <DialogHeader>
-                          <DialogTitle className="text-xl font-bold">Select Delivery Address</DialogTitle>
+                      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-hidden flex flex-col p-0 rounded-3xl border-none shadow-2xl">
+                        <DialogHeader className="p-6 pb-2">
+                          <DialogTitle className="text-2xl font-bold text-gray-900 tracking-tight">Select Delivery Address</DialogTitle>
                         </DialogHeader>
+                        <div className="flex-1 overflow-y-auto p-6 pt-2 custom-scrollbar">
                         {!showAddNewForm ? (
                           <div
-                            className="space-y-4 overflow-y-auto pr-2 custom-scrollbar"
-                            style={{ maxHeight: "60vh" }}
+                            className="space-y-4"
                           >
                             {userAddresses && userAddresses.length > 0 ? (
                               <div className="space-y-4">
@@ -1685,13 +1687,13 @@ const CheckoutForm = ({
 
                                  {/* Removed Landmark Field */}
 
-                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                 <div className="grid grid-cols-1">
                                    {/* Removed Region Field */}
                                     <FormField
                                       control={shippingAddressForm.control}
                                       name="location"
                                       render={({ field }) => (
-                                        <FormItem className="flex flex-col space-y-1">
+                                        <FormItem className="flex flex-col space-y-1 w-full">
                                           <FormLabel className="text-xs font-semibold text-gray-700">City <span className="text-red-500">*</span></FormLabel>
                                           <Popover modal={true} open={isLocationPopoverOpen} onOpenChange={setIsLocationPopoverOpen}>
                                             <PopoverTrigger asChild>
@@ -1710,8 +1712,8 @@ const CheckoutForm = ({
                                                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50 transition-transform" />
                                                 </Button>
                                               </FormControl>
-                                            </PopoverTrigger>
-                                       <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[100] rounded-xl overflow-hidden shadow-xl border-gray-100" align="start" sideOffset={4} side="bottom">
+                                             </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[320px] md:min-w-[450px] p-0 z-[100] rounded-2xl overflow-hidden shadow-2xl border-gray-100 animate-in fade-in zoom-in-95 duration-200" align="start" sideOffset={8} side="bottom">
                                         <div className="flex flex-col max-h-[300px]">
                                                  <div className="flex items-center px-3 py-2 border-b">
                                                    <Input
@@ -1800,18 +1802,19 @@ const CheckoutForm = ({
                                  </div>
                                </form>
                              </Form>
-                           </div>
+                            </div>
                         )}
+                        </div>
                          {!showAddNewForm && (
-                          <DialogFooter className="pt-4">
+                          <div className="p-6 pt-2 border-t border-gray-50 bg-gray-50/30">
                             <Button
                               type="button"
-                              className="bg-[#1B6013] text-white w-full hover:bg-[#154d0f] rounded-xl h-12 font-bold shadow-md shadow-green-100/50"
+                              className="bg-[#1B6013] text-white w-full hover:bg-[#154d0f] rounded-xl h-14 font-bold shadow-lg shadow-green-100 transition-all active:scale-[0.98]"
                               onClick={() => setShowAddressModal(false)}
                             >
                               Confirm Selection
                             </Button>
-                          </DialogFooter>
+                          </div>
                         )}
                       </DialogContent>
                     </Dialog>
@@ -1842,11 +1845,15 @@ const CheckoutForm = ({
                                   };
 
                                   if (user) {
-                                    address = await addAddressAction(newDetails);
+                                    if (editingAddress) {
+                                      address = await updateAddressAction(editingAddress.id, newDetails);
+                                    } else {
+                                      address = await addAddressAction(newDetails);
+                                    }
                                   } else {
                                     // Handle guest/anonymous user - local state only
                                     address = {
-                                      id: `temp-${Date.now()}`,
+                                      id: editingAddress ? editingAddress.id : `temp-${Date.now()}`,
                                       ...newDetails,
                                       email: values.email || "",
                                       user_id: null
@@ -2006,7 +2013,7 @@ const CheckoutForm = ({
                                          </Button>
                                        </FormControl>
                                      </PopoverTrigger>
-                                       <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[100] rounded-xl overflow-hidden shadow-xl border-gray-100" align="start" sideOffset={4} side="bottom">
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[320px] md:min-w-[450px] p-0 z-[100] rounded-2xl overflow-hidden shadow-2xl border-gray-100 animate-in fade-in zoom-in-95 duration-200" align="start" sideOffset={8} side="bottom">
                                         <div className="flex flex-col max-h-[300px]">
                                           <div className="flex items-center px-3 py-2 border-b">
                                             <Input
