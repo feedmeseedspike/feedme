@@ -149,8 +149,9 @@ export default async function Image({ params }: Props) {
         {/* Product image — pass as ArrayBuffer; cast src to any to satisfy TS */}
         {buf ? (
           <img
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            /* eslint-disable-next-line @next/next/no-img-element */
             src={buf as any}
+            alt="Product image"
             style={{
               width: TILE,
               height: TILE,

@@ -9,16 +9,37 @@ export async function addAddressAction(
 ) {
   const user = await getUser();
   if (!user) throw new Error("Not authenticated");
-  const supabase = await createClient();
-  // Strip email if present since it's not in the database schema
-  const { email, ...cleanAddressData } = addressData as any;
-  const { data, error } = await supabase
-    .from("addresses")
-    .insert([{ ...cleanAddressData, user_id: user.user_id }])
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
+  
+  try {
+    const supabase = await createClient();
+    
+    // Explicitly pick only the fields that exist in the database table
+    const cleanAddressData = {
+      label: addressData.label,
+      street: addressData.street,
+      city: addressData.city,
+      state: addressData.state || "Lagos",
+      zip: addressData.zip || "",
+      country: addressData.country || "Nigeria",
+      phone: addressData.phone,
+      user_id: user.user_id
+    };
+
+    const { data, error } = await supabase
+      .from("addresses")
+      .insert([cleanAddressData])
+      .select()
+      .single();
+      
+    if (error) {
+      console.error("Supabase insert error:", error);
+      throw new Error(error.message);
+    }
+    return data;
+  } catch (err: any) {
+    console.error("addAddressAction crash:", err);
+    throw err;
+  }
 }
 
 // Update Address
@@ -28,18 +49,37 @@ export async function updateAddressAction(
 ) {
   const user = await getUser();
   if (!user) throw new Error("Not authenticated");
-  const supabase = await createClient();
-  // Strip email if present
-  const { email, ...cleanUpdates } = updates as any;
-  const { data, error } = await supabase
-    .from("addresses")
-    .update(cleanUpdates)
-    .eq("id", id)
-    .eq("user_id", user.user_id)
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
+  
+  try {
+    const supabase = await createClient();
+    
+    // Explicitly pick only the fields that exist in the database table
+    const cleanUpdates: any = {};
+    if (updates.label !== undefined) cleanUpdates.label = updates.label;
+    if (updates.street !== undefined) cleanUpdates.street = updates.street;
+    if (updates.city !== undefined) cleanUpdates.city = updates.city;
+    if (updates.state !== undefined) cleanUpdates.state = updates.state;
+    if (updates.zip !== undefined) cleanUpdates.zip = updates.zip;
+    if (updates.country !== undefined) cleanUpdates.country = updates.country;
+    if (updates.phone !== undefined) cleanUpdates.phone = updates.phone;
+
+    const { data, error } = await supabase
+      .from("addresses")
+      .update(cleanUpdates)
+      .eq("id", id)
+      .eq("user_id", user.user_id)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error("Supabase update error:", error);
+      throw new Error(error.message);
+    }
+    return data;
+  } catch (err: any) {
+    console.error("updateAddressAction crash:", err);
+    throw err;
+  }
 }
 
 // Delete Address
