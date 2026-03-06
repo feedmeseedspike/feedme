@@ -429,75 +429,44 @@ const CheckoutForm = ({
   // When selectedAddressId changes, update the form values
   useEffect(() => {
     if (selectedAddress) {
-      const currentValues = shippingAddressForm.getValues();
       const fullName = selectedAddress.label || user?.display_name || "";
       const nameParts = fullName.trim().split(/\s+/);
       const firstName = nameParts[0] || "";
       const lastName = nameParts.slice(1).join(" ") || "";
 
+      // Use setValue instead of reset to avoid clearing other form states unintentionally
+      // and only update if the values are actually different to prevent unnecessary renders
+      const currentLoc = shippingAddressForm.getValues("location");
+      if (selectedAddress.city && currentLoc !== selectedAddress.city) {
+         shippingAddressForm.setValue("location", selectedAddress.city);
+      }
+      
       shippingAddressForm.reset({
-        firstName: firstName || currentValues.firstName || "",
-        lastName: lastName || currentValues.lastName || "",
-        street: selectedAddress.street || currentValues.street || "",
-        landmark: selectedAddress.zip || currentValues.landmark || "",
+        firstName: firstName || "",
+        lastName: lastName || "",
+        street: selectedAddress.street || "",
+        landmark: selectedAddress.zip || "",
         region: selectedAddress.state || "Lagos",
-        location: selectedAddress.city || currentValues.location || "",
-        phone: selectedAddress.phone || currentValues.phone || "",
+        location: selectedAddress.city || "",
+        phone: selectedAddress.phone || "",
         additionalPhone: (selectedAddress as any).additionalPhone || "",
-        email: currentValues.email || user?.email || "",
+        email: user?.email || "",
       });
 
       // Synchronize saved address with global location
       if (selectedAddress.city) {
-        // Try to find in official locations first
         const matchingLoc = globalLocations.find(l => l.name === selectedAddress.city);
         if (matchingLoc) {
           if (matchingLoc.id !== currentLocationId) {
             setCurrentLocation(matchingLoc);
           }
-        } else {
-          // Check if it's an extended area in our JSON
-          const matchingArea = lagosAreas.find(a => a.name === selectedAddress.city);
-          if (matchingArea) {
-            const pseudoLoc = {
-              id: `ext-${matchingArea.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-")}`,
-              name: matchingArea.name,
-              price: 3500,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            };
-            if (pseudoLoc.id !== currentLocationId) {
-              setCurrentLocation(pseudoLoc);
-            }
-          }
         }
       }
-    } else if (user?.email) {
-      const currentEmail = shippingAddressForm.getValues("email");
-      if (!currentEmail) {
-        shippingAddressForm.setValue("email", user.email);
-      }
     }
-  }, [
-    selectedAddressId,
-    selectedAddress,
-    shippingAddressForm,
-    user?.display_name,
-    user?.email,
-    setCurrentLocation,
-    globalLocations,
-    currentLocationId,
-  ]);
+  }, [selectedAddressId, selectedAddress?.id, user?.email]); // Minimal dependencies to prevent loops
 
-  // Sync global location with form ONLY IF no address is selected AND the form currently has no location set
-  useEffect(() => {
-    if (!selectedAddressId && globalLocationName && globalLocationName !== "Lagos") {
-      const currentLoc = shippingAddressForm.getValues("location");
-      if (!currentLoc || currentLoc === "Lagos") {
-        shippingAddressForm.setValue("location", globalLocationName);
-      }
-    }
-  }, [globalLocationName, selectedAddressId, shippingAddressForm]);
+  // Removed aggressive location sync to prevent form overwrites
+  // The location will be synced only when an address is explicitly selected below.
 
 
   // Load guest addresses
@@ -1695,7 +1664,7 @@ const CheckoutForm = ({
                                       render={({ field }) => (
                                         <FormItem className="flex flex-col space-y-1 w-full">
                                           <FormLabel className="text-xs font-semibold text-gray-700">City <span className="text-red-500">*</span></FormLabel>
-                                          <Popover modal={true} open={isLocationPopoverOpen} onOpenChange={setIsLocationPopoverOpen}>
+                                        <Popover modal={false} open={isLocationPopoverOpen} onOpenChange={setIsLocationPopoverOpen}>
                                             <PopoverTrigger asChild>
                                               <FormControl>
                                                 <Button
@@ -1738,7 +1707,6 @@ const CheckoutForm = ({
                                                            )}
                                                            onClick={() => {
                                                              field.onChange(loc.name);
-                                                             setCurrentLocation(loc);
                                                              setIsLocationPopoverOpen(false);
                                                            }}
                                                          >
@@ -1860,10 +1828,15 @@ const CheckoutForm = ({
                                     };
                                   }
 
-                                  setUserAddresses((prev) => [
-                                    ...prev,
-                                    address,
-                                  ]);
+                                  if (editingAddress) {
+                                    setUserAddresses((prev) =>
+                                      prev.map((a) =>
+                                        a.id === editingAddress.id ? address : a
+                                      )
+                                    );
+                                  } else {
+                                    setUserAddresses((prev) => [...prev, address]);
+                                  }
                                   setSelectedAddressId(address.id);
                                   showToast("Address added!", "success");
                                   setShowAddNewForm(false);
@@ -1994,7 +1967,7 @@ const CheckoutForm = ({
                                render={({ field }) => (
                                  <FormItem className="flex flex-col space-y-1">
                                    <FormLabel className="text-xs font-semibold text-gray-700 mb-1 block">City <span className="text-red-500">*</span></FormLabel>
-                                   <Popover modal={true} open={isNewAddressLocationPopoverOpen} onOpenChange={setIsNewAddressLocationPopoverOpen}>
+                                   <Popover modal={false} open={isNewAddressLocationPopoverOpen} onOpenChange={setIsNewAddressLocationPopoverOpen}>
                                      <PopoverTrigger asChild>
                                        <FormControl>
                                          <Button
@@ -2038,7 +2011,6 @@ const CheckoutForm = ({
                                                     )}
                                                     onClick={() => {
                                                       field.onChange(loc.name);
-                                                      setCurrentLocation(loc);
                                                       setIsNewAddressLocationPopoverOpen(false);
                                                     }}
                                                   >

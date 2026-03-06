@@ -97,36 +97,61 @@ export default async function Image({ params }: Props) {
     );
   }
 
-  // ── Compute totals ────────────────────────────────────────────────────────
+  // ── Helper: Process Image URLs (JSON handling + Absolute URLs) ────────────
+  const processImageUrl = (url: any): string | null => {
+    if (!url) return null;
+    let targetUrl = url;
+    if (typeof url === 'string' && url.trim().startsWith('{')) {
+      try {
+        const parsed = JSON.parse(url);
+        if (parsed?.url) targetUrl = parsed.url;
+      } catch (e) {}
+    } else if (url && typeof url === 'object' && url.url) {
+      targetUrl = url.url;
+    }
+    if (typeof targetUrl !== 'string') return null;
+    if (!targetUrl.startsWith('http')) {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://feedme.ng";
+      return `${baseUrl.replace(/\/$/, '')}/${targetUrl.replace(/^\//, '')}`;
+    }
+    return targetUrl;
+  };
+
   const subtotal = cartItems.reduce(
     (acc: number, item: any) => acc + (item.price ?? 0) * item.quantity,
     0
   );
-  const formattedTotal = new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-  }).format(subtotal);
+  // Safer currency formatting for OG images (some fonts lack the Naira symbol)
+  const formattedTotal = `N${subtotal.toLocaleString()}`;
 
   // ── Fetch up to 4 product images ─────────────────────────────────────────
-  // We show a 2×2 grid on the left; if >4 items the last tile shows "+N more"
   const MAX_VISIBLE = 4;
   const visibleItems: any[] = cartItems.slice(0, MAX_VISIBLE);
   const extraCount = cartItems.length - MAX_VISIBLE;
 
-  // Pre-fetch all images in parallel; null = no image available
+  // Pre-fetch all images in parallel
   const buffers = await Promise.all(
-    visibleItems.map((item: any) =>
-      item.image ? fetchImageBuffer(item.image) : Promise.resolve(null)
-    )
+    visibleItems.map(async (item: any) => {
+      const imageUrl = processImageUrl(item.image || item.products?.images?.[0] || item.bundles?.thumbnail_url || item.offers?.image_url);
+      if (!imageUrl) return null;
+      try {
+        const res = await fetch(imageUrl, { cache: "no-store", headers: { 'User-Agent': 'FeedMe-OG-Generator' } });
+        if (!res.ok) return null;
+        return await res.arrayBuffer();
+      } catch (e) {
+        return null;
+      }
+    })
   );
 
-  // Tile size: left panel is 630×630 split into 2×2 = 315×315 each
+  const firstSuccesfulBuffer = buffers.find(b => b !== null);
   const TILE = 315;
 
-  // Build the 4 tiles (fill empty slots with a plain green background)
   const tiles = Array.from({ length: MAX_VISIBLE }, (_, idx) => {
-    const buf = buffers[idx] ?? null;
+    let buf = buffers[idx];
+    // Fallback to first successful buffer if this specific one failed
+    if (!buf && firstSuccesfulBuffer) buf = firstSuccesfulBuffer;
+
     const isLastAndHasExtra = idx === MAX_VISIBLE - 1 && extraCount > 0;
 
     return (
@@ -140,18 +165,16 @@ export default async function Image({ params }: Props) {
           justifyContent: "center",
           overflow: "hidden",
           background: "#d4e6d0",
-          // 2-px gap between tiles via border on the right / bottom of the first column/row
           borderRight: idx % 2 === 0 ? "3px solid #F7F9F6" : "none",
           borderBottom: idx < 2 ? "3px solid #F7F9F6" : "none",
           position: "relative",
         }}
       >
-        {/* Product image — pass as ArrayBuffer; cast src to any to satisfy TS */}
         {buf ? (
           <img
             /* eslint-disable-next-line @next/next/no-img-element */
             src={buf as any}
-            alt="Product image"
+            alt=""
             style={{
               width: TILE,
               height: TILE,
@@ -159,10 +182,20 @@ export default async function Image({ params }: Props) {
             }}
           />
         ) : (
-          <div style={{ fontSize: 64 }}>🥬</div>
+          <div style={{ 
+              display: "flex", 
+              width: "100%", 
+              height: "100%", 
+              alignItems: "center", 
+              justifyContent: "center", 
+              background: "#1B6013",
+              color: "white",
+              fontSize: 64
+          }}>
+            🥬
+          </div>
         )}
 
-        {/* Semi-transparent overlay on "+N more" tile */}
         {isLastAndHasExtra && (
           <div
             style={{
