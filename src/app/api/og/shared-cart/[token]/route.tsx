@@ -158,34 +158,31 @@ export async function GET(
 
   const buffers = await Promise.all(
     visibleItems.map(async (item: any) => {
-      const imageUrl = processImageUrl(item.image || item.products?.images?.[0] || item.bundles?.thumbnail_url || item.offers?.image_url);
+      let imageUrl = processImageUrl(item.image || item.products?.images?.[0] || item.bundles?.thumbnail_url || item.offers?.image_url);
       if (!imageUrl) return null;
+
+      // Satori / @vercel/og does NOT support WebP. 
+      // We use a safe, high-speed open-source proxy (wsrv.nl) to convert images to PNG on the fly.
+      // This ensures even WebP product images render perfectly in the preview.
+      if (imageUrl.startsWith('http')) {
+        imageUrl = `https://wsrv.nl/?url=${encodeURIComponent(imageUrl)}&output=png&w=600&fit=cover`;
+      }
+
       try {
         const res = await fetch(imageUrl, { cache: "no-store", headers: { 'User-Agent': 'FeedMe-OG-Generator' } });
         if (!res.ok) return null;
-        
-        // Satori / @vercel/og does NOT support WebP. 
-        // We must skip them to prevent a 500 error.
-        const contentType = res.headers.get('content-type');
-        if (contentType?.includes('webp') || imageUrl.toLowerCase().endsWith('.webp')) {
-          console.log('OG_DEBUG: Skipping unsupported WebP image:', imageUrl);
-          return null;
-        }
-
         return await res.arrayBuffer();
       } catch (e) {
+        console.error('OG_DEBUG: Fetch error for image:', imageUrl, e);
         return null;
       }
     })
   );
 
-  const firstSuccesfulBuffer = buffers.find(b => b !== null);
   const TILE = 315;
 
   const tiles = Array.from({ length: MAX_VISIBLE }, (_, idx) => {
-    let buf = buffers[idx];
-    if (!buf && firstSuccesfulBuffer) buf = firstSuccesfulBuffer;
-
+    const buf = buffers[idx];
     const isLastAndHasExtra = idx === MAX_VISIBLE - 1 && extraCount > 0;
 
     return (

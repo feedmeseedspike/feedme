@@ -1682,43 +1682,46 @@ const CheckoutForm = ({
                                                 </Button>
                                               </FormControl>
                                              </PopoverTrigger>
-                                        <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[320px] md:min-w-[450px] p-0 z-[100] rounded-2xl overflow-hidden shadow-2xl border-gray-100 animate-in fade-in zoom-in-95 duration-200" align="start" sideOffset={8} side="bottom">
-                                        <div className="flex flex-col max-h-[300px]">
-                                                 <div className="flex items-center px-3 py-2 border-b">
-                                                   <Input
-                                                     placeholder="Search area..."
-                                                     className="h-8 border-none focus-visible:ring-0 bg-transparent"
-                                                     value={locationSearch}
-                                                     onChange={(e) => setLocationSearch(e.target.value)}
-                                                   />
-                                                 </div>
-                                                 <div className="overflow-y-auto flex-1 p-1 custom-scrollbar">
-                                                   <div className="p-1">
-                                                     <p className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">Official Zones</p>
-                                                     {deliveryLocations
-                                                       .filter(loc => loc.name.toLowerCase().includes(locationSearch.trim().toLowerCase()))
-                                                       .map((loc) => (
-                                                         <button
-                                                           key={loc.id}
-                                                           type="button"
-                                                           className={cn(
-                                                             "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
-                                                             field.value === loc.name ? "bg-[#1B6013] text-white" : "hover:bg-gray-100"
-                                                           )}
-                                                           onClick={() => {
-                                                             field.onChange(loc.name);
-                                                             setIsLocationPopoverOpen(false);
-                                                           }}
-                                                         >
-                                                           {loc.name}
-                                                           {field.value === loc.name && <Check className="h-4 w-4" />}
-                                                         </button>
-                                                       ))}
-                                                     
-                                                   </div>
-                                                 </div>
-                                               </div>
-                                            </PopoverContent>
+                                        <PopoverContent 
+                                           className="w-[--radix-popover-trigger-width] min-w-[320px] md:min-w-[450px] p-0 z-[100] rounded-2xl shadow-2xl border-gray-100 animate-in fade-in zoom-in-95 duration-200" 
+                                           align="start" 
+                                           sideOffset={8} 
+                                           side="bottom"
+                                           style={{ display: "flex", flexDirection: "column" }}
+                                         >
+                                           <div className="flex items-center px-3 py-2 border-b">
+                                             <Input
+                                               placeholder="Search area..."
+                                               className="h-8 border-none focus-visible:ring-0 bg-transparent"
+                                               value={locationSearch}
+                                               onChange={(e) => setLocationSearch(e.target.value)}
+                                             />
+                                           </div>
+                                           <div style={{ maxHeight: "300px", overflowY: "auto" }} className="p-1 custom-scrollbar w-full">
+                                             <div className="p-1 w-full">
+                                               <p className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">Official Zones</p>
+                                               {deliveryLocations
+                                                 .filter(loc => loc.name.toLowerCase().includes(locationSearch.trim().toLowerCase()))
+                                                 .map((loc) => (
+                                                   <button
+                                                     key={loc.id}
+                                                     type="button"
+                                                     className={cn(
+                                                       "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
+                                                       field.value === loc.name ? "bg-[#1B6013] text-white" : "hover:bg-gray-100"
+                                                     )}
+                                                     onClick={() => {
+                                                       field.onChange(loc.name);
+                                                       setIsLocationPopoverOpen(false);
+                                                     }}
+                                                   >
+                                                     {loc.name}
+                                                     {field.value === loc.name && <Check className="h-4 w-4" />}
+                                                   </button>
+                                                 ))}
+                                             </div>
+                                           </div>
+                                         </PopoverContent>
                                           </Popover>
                                           <FormMessage />
                                         </FormItem>
