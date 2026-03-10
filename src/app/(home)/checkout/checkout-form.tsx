@@ -1110,7 +1110,7 @@ const CheckoutForm = ({
                         deliveryAddress: shippingAddressForm.getValues().street,
                         localGovernment:
                           shippingAddressForm.getValues().location,
-                        discount: voucherDiscount,
+                        discount: voucherDiscount + dealsDiscount + staffDiscount,
                         totalAmount: totalAmountPaid,
                         orderNote: orderNote,
                         paymentMethod: selectedPaymentMethod,
@@ -1145,7 +1145,7 @@ const CheckoutForm = ({
                         serviceCharge: /*serviceCharge*/ 0, // Service charge commented out
                         totalAmount: subtotal,
                         totalAmountPaid: totalAmountPaid,
-                        discount: voucherDiscount, // Pass discount
+                        discount: voucherDiscount + dealsDiscount + staffDiscount, // Pass discount
                         userid: user.user_id,
                       },
                     }),
@@ -1664,7 +1664,7 @@ const CheckoutForm = ({
                                       render={({ field }) => (
                                         <FormItem className="flex flex-col space-y-1 w-full">
                                           <FormLabel className="text-xs font-semibold text-gray-700">City <span className="text-red-500">*</span></FormLabel>
-                                        <Popover modal={false} open={isLocationPopoverOpen} onOpenChange={setIsLocationPopoverOpen}>
+                                        <Popover modal={true} open={isLocationPopoverOpen} onOpenChange={setIsLocationPopoverOpen}>
                                             <PopoverTrigger asChild>
                                               <FormControl>
                                                 <Button
@@ -1970,7 +1970,7 @@ const CheckoutForm = ({
                                render={({ field }) => (
                                  <FormItem className="flex flex-col space-y-1">
                                    <FormLabel className="text-xs font-semibold text-gray-700 mb-1 block">City <span className="text-red-500">*</span></FormLabel>
-                                   <Popover modal={false} open={isNewAddressLocationPopoverOpen} onOpenChange={setIsNewAddressLocationPopoverOpen}>
+                                   <Popover modal={true} open={isNewAddressLocationPopoverOpen} onOpenChange={setIsNewAddressLocationPopoverOpen}>
                                      <PopoverTrigger asChild>
                                        <FormControl>
                                          <Button
@@ -2232,6 +2232,13 @@ const CheckoutForm = ({
                              <span className="text-[#1B6013] font-bold uppercase tracking-wider text-[10px]">{appliedDiscountLabel}</span>
                              <span className="font-bold text-[#1B6013]">-{formatNaira(dealsDiscount)}</span>
                            </div>
+                         </div>
+                       )}
+
+                        {staffDiscount > 0 && (
+                         <div className="flex justify-between items-center bg-green-50 p-4 rounded-xl border border-green-100">
+                           <span className="font-bold text-[#1B6013] text-[10px] uppercase tracking-wider">Staff Discount (10%)</span>
+                           <span className="font-bold text-[#1B6013]">-{formatNaira(staffDiscount)}</span>
                          </div>
                        )}
 

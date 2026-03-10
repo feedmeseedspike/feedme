@@ -42,6 +42,7 @@ import { IProductInput } from "src/types";
 import { mapSupabaseProductToIProductInput, CategoryData } from "src/lib/utils";
 import Head from "next/head";
 import { notFound } from "next/navigation";
+import { Package, ClipboardList, Truck } from "lucide-react";
 
 export async function generateMetadata({
   params,
@@ -451,12 +452,64 @@ const ProductDetails = async (props: {
             recipes={safeRecipes}
           />
 
-          {/* Product Description and Reviews */}
-          <div className="bg-white my-6 p-3">
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="item-1" className="!border-none">
-                <AccordionTrigger>Product Description</AccordionTrigger>
-                <AccordionContent>{product.description || ""}</AccordionContent>
+          {/* Product Description and Additional Info */}
+          <div className="bg-white my-6 p-4 rounded-lg shadow-sm border border-gray-100">
+            <Accordion type="single" collapsible defaultValue="item-1" className="w-full">
+              {/* Product Details Tab */}
+              <AccordionItem value="item-1" className="!border-none border-b border-gray-100 py-2">
+                <AccordionTrigger className="text-xl font-bold text-[#1B6013] hover:no-underline">
+                  <div className="flex items-center gap-3">
+                    <Package className="w-5 h-5" />
+                    Product Details
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-700 leading-relaxed pt-2 text-base">
+                  {product.description ? (
+                    <div dangerouslySetInnerHTML={{ __html: product.description.replace(/\n/g, '<br/>') }} />
+                  ) : (
+                    "No detailed description available for this product."
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+              
+              {/* Ingredients & Nutrition Facts Tab */}
+              <AccordionItem value="item-2" className="!border-none border-b border-gray-100 py-2">
+                <AccordionTrigger className="text-xl font-bold text-[#1B6013] hover:no-underline">
+                  <div className="flex items-center gap-3">
+                    <ClipboardList className="w-5 h-5" />
+                    Ingredients and Nutrition Facts
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-700 leading-relaxed pt-2 text-base">
+                  {(product as any).nutrition_facts ? (
+                    <div dangerouslySetInnerHTML={{ __html: (product as any).nutrition_facts.replace(/\n/g, '<br/>') }} />
+                  ) : (
+                    "Nutrition facts and ingredient information mapping is currently being updated."
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+              
+              {/* Shipping & Returns Tab */}
+              <AccordionItem value="item-3" className="!border-none py-2">
+                <AccordionTrigger className="text-xl font-bold text-[#1B6013] hover:no-underline">
+                  <div className="flex items-center gap-3">
+                    <Truck className="w-5 h-5" />
+                    Shipping & Returns
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-700 leading-relaxed pt-2 text-base">
+                  <h3 className="font-semibold text-lg text-gray-900 mb-2">Fast & Secure Delivery</h3>
+                  <p className="mb-4">Get your fresh food delivered to your doorstep under <span className="font-bold">3 hours</span> anywhere in Lagos, including Victoria Island and Lekki.</p>
+                  
+                  <h3 className="font-semibold text-lg text-gray-900 mb-2">Refunds & Returns Eligibility</h3>
+                  <p className="mb-2">We strive to ensure you are completely satisfied with your purchases. If you are not happy with your order, we offer refunds for valid complaints made within <span className="font-bold">24 hours</span> of delivery.</p>
+                  <ul className="list-disc pl-5 mb-4 space-y-1">
+                    <li><span className="font-semibold">Perishable goods</span> (e.g., fresh produce, raw meat) cannot be returned unless strictly defective.</li>
+                    <li>You must provide proof (photo/video) of the issue.</li>
+                    <li>The product must be unused and in its original packaging.</li>
+                  </ul>
+                  <p className="text-sm">For the complete policy or to initiate a return, please review our <Link href="/return-policy" className="text-[#F0800F] font-semibold hover:underline">Return & Refund Policy</Link>.</p>
+                </AccordionContent>
               </AccordionItem>
             </Accordion>
           </div>
