@@ -250,29 +250,29 @@ const SearchPage = async (props: {
       {!noResults && (
         <div className="py-2 md:border-b shadow-sm">
           <Container className="lg:!px-[40px]">
-            <div className="flex justify-between items-center ">
-              <div className="flex items-center">
+            <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center gap-4 py-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {category !== "all" ? (
                   <h1 className="relative z-10 py-1 md:py-3 text-[#1B6013] text-2xl md:text-3xl font-bold">
                     {category.charAt(0).toUpperCase() + category.slice(1)}
                   </h1>
                 ) : (
                   <>
-                    <span className="">{`${data.from}-${data.to} of ${data.totalProducts} results`}</span>
+                    <span className="text-sm md:text-base">{`${data.from}-${data.to} of ${data.totalProducts} results`}</span>
                     {(q !== "all" && q !== "") ||
                     tag !== "all" ||
                     rating !== "all" ||
                     price !== "all" ||
                     season !== "all" ? (
-                      <Button variant={"link"} asChild>
+                      <Button variant={"link"} asChild className="px-2">
                         <Link href="/search">Clear</Link>
                       </Button>
                     ) : null}
                   </>
                 )}
               </div>
-              <div className="flex items-center">
-                <div className="rounded-2xl px-4">
+              <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                <div className="rounded-2xl">
                   <ProductSortSelector
                     sortOrders={sortOrders}
                     sort={sort}

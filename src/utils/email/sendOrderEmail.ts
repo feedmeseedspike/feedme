@@ -36,7 +36,7 @@ export async function sendOrderConfirmationEmails({
            ${adminOrderProps.isFirstOrder ? `<p style="margin: 4px 0;"><span style="background: #1B6013; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">FIRST ORDER (10% OFF APPLIED)</span></p>` : ''}
            
            ${adminOrderProps.rewards && (adminOrderProps.rewards.cashback > 0 || adminOrderProps.rewards.freeDeliveryBonus || adminOrderProps.rewards.pointsAwarded > 0) ? `
-              <div style="margin-top: 10px; border-top: 1px solid #1B601310; pt-8;">
+              <div style="margin-top: 10px; border-top: 1px solid #1B601310; padding-top: 8px;">
                  <p style="margin: 4px 0; color: #1B6013;"><strong>Rewards Earned:</strong></p>
                  <ul style="margin: 4px 0; padding-left: 20px; font-size: 14px;">
                     ${adminOrderProps.rewards.cashback > 0 ? `<li>Cashback: ₦${adminOrderProps.rewards.cashback}</li>` : ''}

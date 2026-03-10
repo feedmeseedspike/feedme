@@ -23,6 +23,7 @@ import {
   useCartQuery,
   useUpdateCartItemQuantityMutation,
   useCartSubscription,
+  useClearCartMutation,
 } from "src/queries/cart";
 import { IProductInput } from "src/types";
 import { createClient as createSupabaseClient } from "src/utils/supabase/client";
@@ -76,6 +77,7 @@ const CartClient: React.FC<CartClientProps> = ({
   const { data: serverCartItems } = useCartQuery();
   const updateItemQuantityMutation = useUpdateCartItemQuantityMutation();
   const removeCartItemMutation = useRemoveFromCartMutation();
+  const clearCartMutation = useClearCartMutation();
   
   const [items, setItems] = useState<CartItem[]>(cartItems);
   const [isFirstOrder, setIsFirstOrder] = useState(false);
@@ -199,6 +201,25 @@ const CartClient: React.FC<CartClientProps> = ({
     [removeCartItemMutation, showToast, user, anonymousCart]
   );
 
+  const handleClearCart = useCallback(
+    async () => {
+      try {
+        if (user) {
+          await clearCartMutation.mutateAsync();
+          setItems([]);
+          showToast("Cart cleared", "info");
+        } else {
+          anonymousCart.clearCart();
+          setItems([]);
+          showToast("Cart cleared", "info");
+        }
+      } catch (error) {
+        showToast("Failed to clear cart", "error");
+      }
+    },
+    [clearCartMutation, showToast, user, anonymousCart]
+  );
+
   const handleQuantityChange = useCallback(
     async (itemToUpdate: CartItem, increment: boolean) => {
       const newQuantity = increment ? itemToUpdate.quantity + 1 : itemToUpdate.quantity - 1;
@@ -291,6 +312,13 @@ const CartClient: React.FC<CartClientProps> = ({
                     <div className="pb-4 border-b border-slate-100 flex items-center justify-between">
                         <span className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-400">Order Contents</span>
                         <div className="flex items-center gap-3">
+                          <button 
+                            onClick={handleClearCart}
+                            className="text-[10px] font-black uppercase tracking-widest text-[#1B6013] hover:text-red-500 transition-colors flex items-center gap-1 bg-[#1B6013]/5 px-2 py-0.5 rounded-md"
+                          >
+                            <Trash2Icon size={11} />
+                            <span>Clear All</span>
+                          </button>
                           {user && <ShareCartButton />}
                           <span className="text-[10px] font-bold text-[#1B6013] bg-[#1B6013]/5 px-2 py-0.5 rounded-md">{totalQuantity} Items</span>
                         </div>
