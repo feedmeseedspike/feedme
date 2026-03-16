@@ -30,7 +30,7 @@ const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({
         onClick={handleToggleChat}
         className={
           className ??
-          `fixed bottom-[80px] md:bottom-4 right-4 z-50 bg-[#1B6013]/90 text-white shadow-lg hover:bg-[#1B6013] transition-all flex items-center justify-center gap-2 overflow-hidden ${
+          `fixed bottom-[calc(var(--sticky-cart-height,0px)+85px)] md:bottom-6 right-4 z-50 bg-[#1B6013]/90 text-white shadow-lg hover:bg-[#1B6013] transition-all flex items-center justify-center gap-2 overflow-hidden ${
             isChatWidgetOpen
               ? "px-12 py-3	 rounded-full"
               : "p-2 px-4 rounded-full"

@@ -177,7 +177,7 @@ export default function FloatingSpinWidget() {
               y: { duration: 3, repeat: Infinity, ease: "easeInOut" },
               rotate: { duration: 4, repeat: Infinity, ease: "easeInOut" }
             }}
-            className="fixed bottom-[150px] md:bottom-[80px] right-4 z-[90]"
+            className="fixed bottom-[calc(var(--sticky-cart-height,0px)+155px)] md:bottom-[100px] right-4 z-[90]"
           >
             <motion.button
               whileHover={{ scale: 1.1, rotate: 5 }}

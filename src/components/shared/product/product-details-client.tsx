@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import Image from "next/image";
 import ProductGalleryWrapper from "./gallery-wrapper";
 import RatingSummary from "./rating-summary";
@@ -30,14 +30,8 @@ import {
 } from "@components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
 import { Label } from "@components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@components/ui/dialog";
-import { formatNaira, toSlug } from "src/lib/utils";
+import { toSlug } from "src/lib/utils";
+import StickyAddToCart from "./StickyAddToCart";
 
 const datas = [
   {
@@ -102,6 +96,9 @@ export default function ProductDetailsClient({
   recipes?: any[];
 }) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [isStickyVisible, setIsStickyVisible] = useState(false);
+  const buySectionRef = useRef<HTMLDivElement>(null);
+  
   const [customizationSelections, setCustomizationSelections] = useState<
     Record<string, string>
   >(() => {
@@ -124,6 +121,22 @@ export default function ProductDetailsClient({
   const selectedOption = useSelector((state: RootState) =>
     product._id ? state.options.selectedOptions[product._id] : undefined
   );
+
+  // Scroll observer for sticky add to cart
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsStickyVisible(!entry.isIntersecting);
+      },
+      { threshold: 0 }
+    );
+
+    if (buySectionRef.current) {
+      observer.observe(buySectionRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
 
   const sanitizeImage = useCallback(
     (img: any): string => {
@@ -256,278 +269,273 @@ export default function ProductDetailsClient({
   );
 
   return (
-    <div className="py-4 grid grid-cols-1 md:grid-cols-6 lg:grid-cols-8 gap-8 bg-white my-6 p-3">
-      <div className="col-span-3">
-        <ProductGalleryWrapper
-          images={imagesToDisplay}
-          name={product.name}
-          selectedIndex={selectedImageIndex}
-        />
-      </div>
-
-      <div className="col-span-3">
-        <h1 className="text-2xl">{product.name}</h1>
-        {/* Product Price */}
-        {optionsArr.length > 1 ? (
-          <div className="mt-2 mb-1">
-            <p className="text-2xl font-bold text-[#1B6013] inline-block">
-              ₦
-              {Math.min(
-                ...optionsArr.map((opt: any) => opt.price)
-              ).toLocaleString()}{" "}
-              - ₦
-              {Math.max(
-                ...optionsArr.map((opt: any) => opt.price)
-              ).toLocaleString()}
-            </p>
-            {(() => {
-              const minList = Math.min(
-                ...optionsArr.map((opt: any) => opt.list_price ?? opt.price)
-              );
-              const maxList = Math.max(
-                ...optionsArr.map((opt: any) => opt.list_price ?? opt.price)
-              );
-              const minPrice = Math.min(
-                ...optionsArr.map((opt: any) => opt.price)
-              );
-              const maxPrice = Math.max(
-                ...optionsArr.map((opt: any) => opt.price)
-              );
-              if (minList > minPrice || maxList > maxPrice) {
-                return (
-                  <span className="ml-2 text-lg text-gray-400 line-through align-middle">
-                    ₦{minList.toLocaleString()} - ₦{maxList.toLocaleString()}
-                  </span>
-                );
-              }
-              return null;
-            })()}
-          </div>
-        ) : (
-          <div className="mt-2 mb-1">
-            <p className="text-2xl font-bold text-[#1B6013] inline-block">
-              ₦{(selectedOptionData?.price ?? product.price).toLocaleString()}
-            </p>
-            {(() => {
-              const listPrice =
-                selectedOptionData?.list_price ?? product.list_price;
-              const price = selectedOptionData?.price ?? product.price;
-              if (listPrice && listPrice > price) {
-                return (
-                  <span className="ml-2 text-lg text-gray-400 line-through align-middle">
-                    ₦{listPrice.toLocaleString()}
-                  </span>
-                );
-              }
-              return null;
-            })()}
-          </div>
-        )}
-        <RatingSummary
-          avgRating={product.avgRating}
-          numReviews={product.numReviews}
-          asPopover
-          ratingDistribution={product.ratingDistribution}
-          showTotalCount={true}
-        />
-        <p className="text-[#12B76A] text-[14px] border py-1 px-2 border-[#bfe0d0] w-fit flex gap-1 items-center">
-          Freshness Guarantee <Freshness className="size-4" />
-        </p>
-        <p className="text-[12px] pt-2">90k+ bought in past month</p>
-        <Separator className="mt-4 mb-2" />
-        <div className="flex flex-col gap-2">
-          <p className="h4-bold">Variation: Grade A</p>
-
-          {/* Thumbnail Gallery */}
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-            {imagesToDisplay.map((image, index) => (
-              <button
-                key={index}
-                onClick={() => handleImageSelect(index)}
-                className={`shrink-0 w-16 h-16 border-2 rounded-lg overflow-hidden transition-all duration-200 ${
-                  selectedImageIndex === index
-                    ? "border-[#F0800F] p-[1px]"
-                    : "border-transparent hover:border-gray-300"
-                }`}
-                aria-label={`View ${product.name} image ${index + 1}`}
-              >
-                <Image
-                  src={image}
-                  alt={`${product.name} thumbnail ${index + 1}`}
-                  width={64}
-                  height={64}
-                  className="w-full h-full object-cover rounded-md"
-                />
-              </button>
-            ))}
-          </div>
-        </div>
-        <Separator className="mt-4 mb-2" />
-        
-        {/* Recipes / Bundles Links */}
-        {recipes && recipes.length > 0 && (
-          <div className="mt-4 mb-2">
-             <h3 className="text-sm font-semibold text-gray-900 mb-2">
-               Recipes
-             </h3>
-             <div className="flex flex-wrap gap-x-4 gap-y-2">
-                {recipes.map((recipe: any) => (
-                  <Link
-                    key={recipe.id}
-                    href={`/bundles/${recipe.slug || (recipe.name ? toSlug(recipe.name) : recipe.id) || ""}`}
-                    className="text-sm text-[#1B6013] hover:underline flex items-center gap-1 w-fit group"
-                  >
-                    <span>{recipe.name}</span>
-                    <ArrowUpRight className="w-4 h-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                  </Link>
-                ))}
-            </div>
-          </div>
-        )}
-
-        {optionsArr.length > 0 && (
-          <Options
-            options={optionsArr}
-            selectedOption={selectedOptionData?.name}
-            onOptionChange={handleOptionChange}
+    <>
+      <div className="py-4 grid grid-cols-1 md:grid-cols-6 lg:grid-cols-8 gap-8 bg-white my-6 p-3">
+        <div className="col-span-3">
+          <ProductGalleryWrapper
+            images={imagesToDisplay}
+            name={product.name}
+            selectedIndex={selectedImageIndex}
           />
-        )}
+        </div>
 
-        {/* Product Customizations */}
-        {product.customizations && product.customizations.length > 0 && (
-          <div className="mt-4">
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">
-              Customize Your Order
-            </h3>
-            <div className="space-y-3">
-              {product.customizations.map((customization) => (
-                <div key={customization.id}>
-                  <label className="text-xs font-medium text-gray-700 mb-2 block">
-                    {customization.label}
-                  </label>
+        <div className="col-span-3">
+          <h1 className="text-2xl">{product.name}</h1>
+          {/* Product Price */}
+          {optionsArr.length > 1 ? (
+            <div className="mt-2 mb-1">
+              <p className="text-2xl font-bold text-[#1B6013] inline-block">
+                ₦
+                {Math.min(
+                  ...optionsArr.map((opt: any) => opt.price)
+                ).toLocaleString()}{" "}
+                - ₦
+                {Math.max(
+                  ...optionsArr.map((opt: any) => opt.price)
+                ).toLocaleString()}
+              </p>
+              {(() => {
+                const minList = Math.min(
+                  ...optionsArr.map((opt: any) => opt.list_price ?? opt.price)
+                );
+                const maxList = Math.max(
+                  ...optionsArr.map((opt: any) => opt.list_price ?? opt.price)
+                );
+                const minPrice = Math.min(
+                  ...optionsArr.map((opt: any) => opt.price)
+                );
+                const maxPrice = Math.max(
+                  ...optionsArr.map((opt: any) => opt.price)
+                );
+                if (minList > minPrice || maxList > maxPrice) {
+                  return (
+                    <span className="ml-2 text-lg text-gray-400 line-through align-middle">
+                      ₦{minList.toLocaleString()} - ₦{maxList.toLocaleString()}
+                    </span>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+          ) : (
+            <div className="mt-2 mb-1">
+              <p className="text-2xl font-bold text-[#1B6013] inline-block">
+                ₦{(selectedOptionData?.price ?? product.price).toLocaleString()}
+              </p>
+              {(() => {
+                const listPrice =
+                  selectedOptionData?.list_price ?? product.list_price;
+                const price = selectedOptionData?.price ?? product.price;
+                if (listPrice && listPrice > price) {
+                  return (
+                    <span className="ml-2 text-lg text-gray-400 line-through align-middle">
+                      ₦{listPrice.toLocaleString()}
+                    </span>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+          )}
+          <RatingSummary
+            avgRating={product.avgRating}
+            numReviews={product.numReviews}
+            asPopover
+            ratingDistribution={product.ratingDistribution}
+            showTotalCount={true}
+          />
+          <p className="text-[#12B76A] text-[14px] border py-1 px-2 border-[#bfe0d0] w-fit flex gap-1 items-center">
+            Freshness Guarantee <Freshness className="size-4" />
+          </p>
+          <p className="text-[12px] pt-2">90k+ bought in past month</p>
+          <Separator className="mt-4 mb-2" />
+          <div className="flex flex-col gap-2">
+            <p className="h4-bold">Variation: Grade A</p>
 
-                  {customization.type === "select" ? (
-                    <Select
-                      value={customizationSelections[customization.id] || ""}
-                      onValueChange={(value) =>
-                        setCustomizationSelections((prev) => ({
-                          ...prev,
-                          [customization.id]: value,
-                        }))
-                      }
-                    >
-                      <SelectTrigger className="w-full h-9 text-sm">
-                        <SelectValue placeholder="Select option" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {customization.options.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <RadioGroup
-                      value={customizationSelections[customization.id] || ""}
-                      onValueChange={(value) =>
-                        setCustomizationSelections((prev) => ({
-                          ...prev,
-                          [customization.id]: value,
-                        }))
-                      }
-                      className="flex flex-wrap gap-2"
-                    >
-                      {customization.options.map((option) => (
-                        <Label
-                          key={option.value}
-                          htmlFor={`${customization.id}-${option.value}`}
-                          className={`flex items-center px-3 py-1.5 rounded-md border text-xs cursor-pointer transition-colors ${
-                            customizationSelections[customization.id] ===
-                            option.value
-                              ? "border-[#F0800F] bg-orange-50 text-[#F0800F]"
-                              : "border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300"
-                          }`}
-                        >
-                          <RadioGroupItem
-                            value={option.value}
-                            id={`${customization.id}-${option.value}`}
-                            className="mr-2 w-3 h-3"
-                          />
-                          {option.label}
-                        </Label>
-                      ))}
-                    </RadioGroup>
-                  )}
-                </div>
+            {/* Thumbnail Gallery */}
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+              {imagesToDisplay.map((image, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleImageSelect(index)}
+                  className={`shrink-0 w-16 h-16 border-2 rounded-lg overflow-hidden transition-all duration-200 ${
+                    selectedImageIndex === index
+                      ? "border-[#F0800F] p-[1px]"
+                      : "border-transparent hover:border-gray-300"
+                  }`}
+                  aria-label={`View ${product.name} image ${index + 1}`}
+                >
+                  <Image
+                    src={image}
+                    alt={`${product.name} thumbnail ${index + 1}`}
+                    width={64}
+                    height={64}
+                    className="w-full h-full object-cover rounded-md"
+                  />
+                </button>
               ))}
             </div>
           </div>
-        )}
-      </div>
-
-      {/* Add to Cart Section */}
-      <div className="col-span-1 md:col-span-6 lg:col-span-2  border border-[#DDD5DD] p-4 w-full h-fit">
-        {/* <div className="flex gap-2 items-center">
-          <p className="text-sm text-gray-500">Sold by</p>
-          <Link
-            href={`/vendors/${product.vendor.id}`}
-            className="hover:underline"
-          >
-            <div>
-              <p className="text-xs text-gray-400">{product.vendor.shopId}</p>
-            </div>
-          </Link>
-        </div> */}
-        {/* <Separator className="my-4" /> */}
-        <div className="flex flex-col gap-[5px]">
-          {datas.map((data) => (
-            <div className="" key={data.id}>
-              <div className="flex gap-1 items-center">
-                <p className="size-4">{data.icon}</p>
-                <p className="h6-bold">{data.title}</p>
+          <Separator className="mt-4 mb-2" />
+          
+          {/* Recipes / Bundles Links */}
+          {recipes && recipes.length > 0 && (
+            <div className="mt-4 mb-2">
+               <h3 className="text-sm font-semibold text-gray-900 mb-2">
+                 Recipes
+               </h3>
+               <div className="flex flex-wrap gap-x-4 gap-y-2">
+                  {recipes.map((recipe: any) => (
+                    <Link
+                      key={recipe.id}
+                      href={`/bundles/${recipe.slug || (recipe.name ? toSlug(recipe.name) : recipe.id) || ""}`}
+                      className="text-sm text-[#1B6013] hover:underline flex items-center gap-1 w-fit group"
+                    >
+                      <span>{recipe.name}</span>
+                      <ArrowUpRight className="w-4 h-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                    </Link>
+                  ))}
               </div>
-              <p className="h6-light">{data.description}</p>
             </div>
-          ))}
+          )}
+
+          {optionsArr.length > 0 && (
+            <Options
+              options={optionsArr}
+              selectedOption={selectedOptionData?.name}
+              onOptionChange={handleOptionChange}
+            />
+          )}
+
+          {/* Product Customizations */}
+          {product.customizations && product.customizations.length > 0 && (
+            <div className="mt-4">
+              <h3 className="text-sm font-semibold text-gray-800 mb-3">
+                Customize Your Order
+              </h3>
+              <div className="space-y-3">
+                {product.customizations.map((customization) => (
+                  <div key={customization.id}>
+                    <label className="text-xs font-medium text-gray-700 mb-2 block">
+                      {customization.label}
+                    </label>
+
+                    {customization.type === "select" ? (
+                      <Select
+                        value={customizationSelections[customization.id] || ""}
+                        onValueChange={(value) =>
+                          setCustomizationSelections((prev) => ({
+                            ...prev,
+                            [customization.id]: value,
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="w-full h-9 text-sm">
+                          <SelectValue placeholder="Select option" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {customization.options.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <RadioGroup
+                        value={customizationSelections[customization.id] || ""}
+                        onValueChange={(value) =>
+                          setCustomizationSelections((prev) => ({
+                            ...prev,
+                            [customization.id]: value,
+                          }))
+                        }
+                        className="flex flex-wrap gap-2"
+                      >
+                        {customization.options.map((option) => (
+                          <Label
+                            key={option.value}
+                            htmlFor={`${customization.id}-${option.value}`}
+                            className={`flex items-center px-3 py-1.5 rounded-md border text-xs cursor-pointer transition-colors ${
+                              customizationSelections[customization.id] ===
+                              option.value
+                                ? "border-[#F0800F] bg-orange-50 text-[#F0800F]"
+                                : "border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300"
+                            }`}
+                          >
+                            <RadioGroupItem
+                              value={option.value}
+                              id={`${customization.id}-${option.value}`}
+                              className="mr-2 w-3 h-3"
+                            />
+                            {option.label}
+                          </Label>
+                        ))}
+                      </RadioGroup>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-        <Separator className="mt-4 mb-2" />
-        <AddToCart
-          item={{
-            id: (product as any).id || (product as any)._id || "",
-            name: product.name,
-            slug: product.slug,
-            category: product.category,
-            price: selectedOptionData?.price ?? product.price,
-            images: product.images,
-            countInStock: product.countInStock,
-            options: optionsArr,
-            option: selectedOptionData,
-            selectedOption: selectedOptionData?.name,
-            customizations: customizationSelections,
-            in_season: product.in_season,
-          }}
-          onAuthRequired={() => {
-            showToast("Please log in to add items to cart", "error");
-            router.push(
-              `/login?callbackUrl=${encodeURIComponent(
-                window.location.pathname
-              )}`
-            );
-          }}
-        />
-        {isInCart && user && (
-          <Link href="/cart" className="w-full">
-            <Button className="w-full mt-4 bg-[#DDD5DD] hover:bg-[#DDD5DD]/90 text-black flex items-center gap-2">
-              {/* <ShoppingCart className="size-4" /> */}
-              View Cart
-            </Button>
-          </Link>
-        )}
-        <div className="pt-[8px] w-full">
-          <ShareLike product={{ ...product, id: product._id }} />
+
+        {/* Add to Cart Section */}
+        <div ref={buySectionRef} className="col-span-1 md:col-span-6 lg:col-span-2  border border-[#DDD5DD] p-4 w-full h-fit">
+          <div className="flex flex-col gap-[5px]">
+            {datas.map((data) => (
+              <div className="" key={data.id}>
+                <div className="flex gap-1 items-center">
+                  <p className="size-4">{data.icon}</p>
+                  <p className="h6-bold">{data.title}</p>
+                </div>
+                <p className="h6-light">{data.description}</p>
+              </div>
+            ))}
+          </div>
+          <Separator className="mt-4 mb-2" />
+          <AddToCart
+            item={{
+              id: (product as any).id || (product as any)._id || "",
+              name: product.name,
+              slug: product.slug,
+              category: product.category,
+              price: selectedOptionData?.price ?? product.price,
+              images: product.images,
+              countInStock: product.countInStock,
+              options: optionsArr,
+              option: selectedOptionData,
+              selectedOption: selectedOptionData?.name,
+              customizations: customizationSelections,
+              in_season: product.in_season,
+            }}
+            onAuthRequired={() => {
+              showToast("Please log in to add items to cart", "error");
+              router.push(
+                `/login?callbackUrl=${encodeURIComponent(
+                  window.location.pathname
+                )}`
+              );
+            }}
+          />
+          {isInCart && user && (
+            <Link href="/cart" className="w-full">
+              <Button className="w-full mt-4 bg-[#DDD5DD] hover:bg-[#DDD5DD]/90 text-black flex items-center gap-2">
+                View Cart
+              </Button>
+            </Link>
+          )}
+          <div className="pt-[8px] w-full">
+            <ShareLike product={{ ...product, id: product._id }} />
+          </div>
         </div>
       </div>
-    </div>
+      
+      <StickyAddToCart 
+        product={product}
+        selectedOptionData={selectedOptionData}
+        isVisible={isStickyVisible}
+      />
+    </>
   );
 }

@@ -19,7 +19,8 @@ import { showToast } from "src/lib/utils";
 import { Json } from "src/utils/database.types";
 import { ProductOption, type CartItem } from "src/lib/actions/cart.actions";
 import { ItemToUpdateMutation } from "src/queries/cart";
-import { Trash2, Minus, Plus } from "lucide-react";
+import ShoppingCartIcon from "@components/icons/cart.svg";
+import { Trash2, Minus, Plus, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import {
@@ -62,6 +63,7 @@ interface AddToCartProps {
     quantityLimit?: number | null;
   };
   minimal?: boolean;
+  sticky?: boolean;
   className?: string;
   onAddToCart?: () => void;
   onError?: () => void;
@@ -73,6 +75,7 @@ const AddToCart = React.memo(
     item,
     blackFridayItem,
     minimal = false,
+    sticky = false,
     className,
     onAddToCart,
     onError,
@@ -312,7 +315,9 @@ const AddToCart = React.memo(
         const combinedForLookup = buildCombinedOption(option ?? null);
 
         if (user) {
-          const match = (cartItems || []).find((cartItem) =>
+          const cachedCartData = queryClient.getQueryData<CartItem[]>(cartQueryKey);
+          const sourceItems = cachedCartData || cartItems || [];
+          const match = sourceItems.find((cartItem) =>
             matchesCartEntry(cartItem, combinedForLookup)
           );
           return match?.quantity ?? 0;
@@ -329,6 +334,7 @@ const AddToCart = React.memo(
         cartItems,
         matchesCartEntry,
         user,
+        queryClient,
       ]
     );
 
@@ -1035,43 +1041,94 @@ const AddToCart = React.memo(
                     onClick={() => setOptionPickerOpen(false)}
                   />
                   <motion.div
-                    className="fixed inset-x-0 bottom-0 z-[75] rounded-t-[32px] bg-white px-5 pb-8 pt-5"
+                    className="fixed inset-x-0 bottom-0 z-[75] rounded-t-[24px] bg-white pb-8 pt-5"
                     initial={{ y: "100%" }}
                     animate={{ y: 0 }}
                     exit={{ y: "100%" }}
-                    transition={{ type: "spring", damping: 28, stiffness: 240 }}
-                    drag="y"
-                    dragConstraints={{ top: 0, bottom: 0 }}
-                    dragElastic={0.2}
-                    onDragEnd={(event, info) => {
-                      if (info.offset.y > 100) {
-                        setOptionPickerOpen(false);
-                      }
-                    }}
+                    transition={{ type: "spring", damping: 30, stiffness: 300 }}
                   >
-                    <div
-                      className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-gray-300 cursor-grab active:cursor-grabbing"
-                      onClick={() => setOptionPickerOpen(false)}
-                    />
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="relative h-12 w-12 rounded-2xl overflow-hidden bg-[#F4F4F5] flex-shrink-0">
-                        <Image
-                          src={productImageSrc}
-                          alt={item.name}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                      <div>
-                        <p className="text-[10px] uppercase tracking-[0.3em] text-[#9E9EA7]">
-                          Quick add
-                        </p>
-                        <p className="text-base font-semibold text-[#0F172A]">
-                          {item.name}
-                        </p>
-                      </div>
+                    {/* Header */}
+                    <div className="px-5 flex items-center justify-between mb-6">
+                      <h3 className="text-xl font-bold text-gray-900">Select Options</h3>
+                      <button 
+                        onClick={() => setOptionPickerOpen(false)}
+                        className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+                      >
+                        <X className="w-6 h-6 text-gray-500" />
+                      </button>
                     </div>
-                    {optionList}
+
+                    {/* Variations List */}
+                    <div className="px-5 max-h-[50vh] overflow-y-auto space-y-6 mb-8">
+                      {availableOptions.map((option) => {
+                        const qty = getQuantityForOption(option);
+                        const isOutOfStock = typeof option.countInStock === 'number' && option.countInStock <= 0;
+
+                        return (
+                          <div key={option.name} className="flex items-center justify-between gap-4">
+                            <div className="flex-1">
+                              <p className="font-bold text-gray-900">{option.name}</p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="font-bold text-gray-900 text-sm">
+                                  {Intl.NumberFormat("en-NG", {
+                                    style: "currency",
+                                    currency: "NGN",
+                                    minimumFractionDigits: 0,
+                                  }).format(option.price || 0)}
+                                </span>
+                                {option.list_price !== undefined && option.price !== undefined && option.list_price > option.price && (
+                                  <span className="text-xs text-gray-400 line-through">
+                                    {Intl.NumberFormat("en-NG", {
+                                      style: "currency",
+                                      currency: "NGN",
+                                      minimumFractionDigits: 0,
+                                    }).format(option.list_price || 0)}
+                                  </span>
+                                )}
+                              </div>
+                              <p className={`text-xs mt-1 ${isOutOfStock ? 'text-red-500' : 'text-gray-400'}`}>
+                                {isOutOfStock ? 'Out of stock' : 'In stock'}
+                              </p>
+                            </div>
+
+                            {/* Controls */}
+                            <div className="flex items-center gap-3">
+                              <button
+                                disabled={qty === 0 || updateCartMutation.isPending}
+                                onClick={() => handleQuantityChange(qty - 1, option)}
+                                className="w-10 h-10 rounded-lg bg-[#F5FFF1] flex items-center justify-center disabled:opacity-50"
+                              >
+                                <Minus className="w-5 h-5 text-[#1B6013]" />
+                              </button>
+                              <span className="w-6 text-center font-bold text-lg text-gray-900">{qty}</span>
+                              <button
+                                disabled={isOutOfStock || updateCartMutation.isPending}
+                                onClick={() => handleQuantityChange(qty + 1, option)}
+                                className="w-10 h-10 rounded-lg bg-[#1B6013] flex items-center justify-center disabled:opacity-50"
+                              >
+                                <Plus className="w-5 h-5 text-white" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Bottom Buttons */}
+                    <div className="px-5 grid grid-cols-2 gap-4">
+                      <button
+                        onClick={() => setOptionPickerOpen(false)}
+                        className="h-12 rounded-xl border-2 border-[#1B6013] text-[#1B6013] font-bold text-base hover:bg-green-50 transition-colors"
+                      >
+                        Continue Shopping
+                      </button>
+                      <Link
+                        href="/cart"
+                        className="h-12 rounded-xl bg-[#1B6013] text-white font-bold text-base flex items-center justify-center hover:bg-[#1B6013]/90 transition-colors"
+                      >
+                        View Cart
+                      </Link>
+                    </div>
                   </motion.div>
                 </>
               )}
@@ -1085,6 +1142,72 @@ const AddToCart = React.memo(
         ? mobileOptionPicker
         : desktopOptionPicker
       : null;
+
+    if (sticky) {
+      if (showQuantityControls && !updateCartMutation.isPending) {
+        return (
+          <>
+            {optionPicker}
+            <div 
+              className={clsx(
+                "w-full h-full flex items-center justify-between bg-[#F5FFF1] rounded-xl px-4 border border-[#1B6013]/10",
+                className?.includes("!bg-") ? className.split(" ").filter(c => !c.startsWith("!bg-")).join(" ") : className
+              )}
+            >
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleQuantityChange(quantity - 1, effectiveOption ?? null);
+                }}
+                className="w-10 h-10 rounded-lg bg-white border border-gray-100 flex items-center justify-center shadow-sm"
+              >
+                <Minus className="w-5 h-5 text-[#1B6013]" />
+              </button>
+              <span className="font-bold text-xl text-[#1B6013]">{quantity}</span>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleQuantityChange(quantity + 1, effectiveOption ?? null);
+                }}
+                className="w-10 h-10 rounded-lg bg-[#1B6013] flex items-center justify-center shadow-sm"
+              >
+                <Plus className="w-5 h-5 text-white" />
+              </button>
+            </div>
+          </>
+        );
+      }
+      return (
+        <>
+          {optionPicker}
+          <button
+            onClick={(e) => {
+              if (isOutOfSeason || isOutOfStock) return;
+              if (optionPickerEnabled) {
+                setOptionPickerOpen(true);
+              } else {
+                handleAddToCartClick();
+              }
+            }}
+            className={clsx(
+              "w-full h-full flex justify-center gap-2 font-bold transition-all",
+              (isOutOfSeason || isOutOfStock) ? "bg-gray-400" : "bg-[#1B6013] hover:bg-[#1B6013]/90",
+              className
+            )}
+            disabled={updateCartMutation.isPending}
+          >
+            {updateCartMutation.isPending ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <>
+                {/* <ShoppingCartIcon className="w-5 h-5 fill-white" /> */}
+                <span className="flex items-center justify-center">{isOutOfSeason ? "Out of Season" : isOutOfStock ? "Out of Stock" : "Add to Cart"}</span>
+              </>
+            )}
+          </button>
+        </>
+      );
+    }
 
     if (minimal) {
       const minimalButtonClasses = clsx(

@@ -3,8 +3,27 @@ import { sendMail } from "./mailer";
 interface OrderEmailParams {
   adminEmail: string;
   userEmail: string;
-  adminOrderProps: any;
+  adminOrderProps: AdminOrderProps;
   userOrderProps: any;
+}
+
+interface AdminOrderProps {
+  orderNumber: string;
+  customerName: string;
+  customerPhone: string;
+  deliveryAddress: string;
+  localGovernment: string;
+  orderNote?: string;
+  paymentMethod?: string;
+  isFirstOrder?: boolean;
+  voucherDiscount?: number;
+  dealsDiscount?: number;
+  staffDiscount?: number;
+  discount: number;
+  totalAmount: number;
+  deliveryFee?: number;
+  itemsOrdered: any[];
+  rewards?: any;
 }
 
 export async function sendOrderConfirmationEmails({
@@ -30,16 +49,18 @@ export async function sendOrderConfirmationEmails({
           ${adminOrderProps.orderNote ? `<p style="margin-top: 10px; padding: 10px; background-color: #fff9db; border-radius: 4px;"><strong>Note from Customer:</strong><br/>${adminOrderProps.orderNote}</p>` : ''}
         </div>
 
-        <h3 style="color: #1B6013; margin-bottom: 8px;">Payment & Rewards Information:</h3>
-        <div style="background: #e7f5e7; border-radius: 6px; padding: 14px 16px; margin-bottom: 18px; border: 1px solid #1B601320;">
+         <div style="background: #e7f5e7; border-radius: 6px; padding: 14px 16px; margin-bottom: 18px; border: 1px solid #1B601320;">
            <p style="margin: 4px 0;"><strong>Payment Method:</strong> ${adminOrderProps.paymentMethod?.toUpperCase() || 'PAYSTACK'}</p>
-           ${adminOrderProps.isFirstOrder ? `<p style="margin: 4px 0;"><span style="background: #1B6013; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">FIRST ORDER (10% OFF APPLIED)</span></p>` : ''}
            
+           ${adminOrderProps.isFirstOrder ? `<p style="margin: 4px 0;"><span style="background: #1B6013; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">NEW CUSTOMER (5% FIRST ORDER DISCOUNT)</span></p>` : ''}
+           ${adminOrderProps.staffDiscount && adminOrderProps.staffDiscount > 0 ? `<p style="margin: 4px 0;"><span style="background: #FF9900; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">STAFF DISCOUNT APPLIED</span></p>` : ''}
+           ${adminOrderProps.voucherDiscount && adminOrderProps.voucherDiscount > 0 ? `<p style="margin: 4px 0;"><span style="background: #2A2A2A; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">PROMO VOUCHER APPLIED</span></p>` : ''}
+
            ${adminOrderProps.rewards && (adminOrderProps.rewards.cashback > 0 || adminOrderProps.rewards.freeDeliveryBonus || adminOrderProps.rewards.pointsAwarded > 0) ? `
               <div style="margin-top: 10px; border-top: 1px solid #1B601310; padding-top: 8px;">
-                 <p style="margin: 4px 0; color: #1B6013;"><strong>Rewards Earned:</strong></p>
+                 <p style="margin: 4px 0; color: #1B6013;"><strong>Rewards Earned (For this order):</strong></p>
                  <ul style="margin: 4px 0; padding-left: 20px; font-size: 14px;">
-                    ${adminOrderProps.rewards.cashback > 0 ? `<li>Cashback: ₦${adminOrderProps.rewards.cashback}</li>` : ''}
+                    ${adminOrderProps.rewards.cashback > 0 ? `<li>Cashback: ₦${adminOrderProps.rewards.cashback.toLocaleString()}</li>` : ''}
                     ${adminOrderProps.rewards.freeDeliveryBonus ? `<li>Free Delivery for NEXT order: YES</li>` : ''}
                     ${adminOrderProps.rewards.pointsAwarded > 0 ? `<li>Loyalty Points: +${adminOrderProps.rewards.pointsAwarded}</li>` : ''}
                  </ul>
@@ -63,13 +84,25 @@ export async function sendOrderConfirmationEmails({
             </div>
           `).join('') || '<p>No items</p>'}
           
-          <hr style="border: none; border-top: 1px solid #ddd; margin: 12px 0;" />
-          
-           ${adminOrderProps.discount > 0 ? `
-              <p style="margin: 4px 0; color: #B42318;"><strong>Discount:</strong> -₦${adminOrderProps.discount?.toLocaleString()}</p>
-          ` : ''}
+           <hr style="border: none; border-top: 1px solid #ddd; margin: 12px 0;" />
+           
+           <p style="margin: 4px 0; display: flex; justify-content: space-between;"><span>Subtotal:</span> <strong>₦${(adminOrderProps.totalAmount - (adminOrderProps.deliveryFee || 0) + (adminOrderProps.discount || 0)).toLocaleString()}</strong></p>
+           
+           ${adminOrderProps.dealsDiscount && adminOrderProps.dealsDiscount > 0 ? `
+              <p style="margin: 4px 0; color: #B42318;"><strong>Deal Discount (5% First Order):</strong> -₦${adminOrderProps.dealsDiscount.toLocaleString()}</p>
+           ` : ''}
+           ${adminOrderProps.voucherDiscount && adminOrderProps.voucherDiscount > 0 ? `
+              <p style="margin: 4px 0; color: #B42318;"><strong>Voucher Discount:</strong> -₦${adminOrderProps.voucherDiscount.toLocaleString()}</p>
+           ` : ''}
+           ${adminOrderProps.staffDiscount && adminOrderProps.staffDiscount > 0 ? `
+              <p style="margin: 4px 0; color: #B42318;"><strong>Staff Discount:</strong> -₦${adminOrderProps.staffDiscount.toLocaleString()}</p>
+           ` : ''}
 
-          <p style="margin: 4px 0;"><strong>Total Paid:</strong> ₦${adminOrderProps.totalAmount?.toLocaleString()}</p>
+           <p style="margin: 4px 0;"><strong>Delivery Fee:</strong> ₦${(adminOrderProps.deliveryFee || 0).toLocaleString()}</p>
+           
+           <div style="margin-top: 12px; padding-top: 12px; border-top: 2px solid #1B6013; font-size: 18px;">
+             <p style="margin: 4px 0;"><strong>Total Paid:</strong> <span style="color: #1B6013;">₦${adminOrderProps.totalAmount?.toLocaleString()}</span></p>
+           </div>
         </div>
         
         <hr style="border: none; border-top: 1px solid #eaeaea; margin: 24px 0;" />

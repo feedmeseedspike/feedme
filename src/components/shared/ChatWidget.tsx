@@ -45,7 +45,7 @@ export default function ChatWidget({
     <AnimatePresence mode="wait">
       {isOpen && (
         <motion.div
-          className="fixed bottom-[140px] md:bottom-20 right-4 z-[85] w-[320px] sm:w-[360px] min-h-[280px] bg-[url('/images/whatsapp-background.jpg')] bg-cover bg-center rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.3)] overflow-hidden"
+          className="fixed bottom-[max(140px,calc(var(--sticky-cart-height,0px)+80px))] md:bottom-20 right-4 z-[85] w-[320px] sm:w-[360px] min-h-[280px] bg-[url('/images/whatsapp-background.jpg')] bg-cover bg-center rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.3)] overflow-hidden"
           initial={{ opacity: 0, y: 30, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 30, scale: 0.95 }}

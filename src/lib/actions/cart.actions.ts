@@ -7,8 +7,10 @@ import { Tables, Json } from "src/utils/database.types";
 export interface ProductOption {
   name?: string;
   price?: number;
+  list_price?: number;
   image?: string;
   stockStatus?: string;
+  countInStock?: number | null;
 }
 
 // Update CartItem type to include product, bundle, and offer relationships
