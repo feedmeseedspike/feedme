@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Button } from "@components/ui/button";
 import {
@@ -1085,7 +1085,7 @@ const CheckoutForm = ({
                       adminEmail: "orders.feedmeafrica@gmail.com",
                       userEmail: email,
                       adminOrderProps: {
-                        orderNumber: result.data.reference || result.data.orderId,
+                        orderNumber: result.data.orderNumber || result.data.reference || result.data.orderId,
                         customerName:
                           user.display_name ||
                           `${shippingAddressForm.getValues().firstName} ${shippingAddressForm.getValues().lastName}`,
@@ -1111,6 +1111,10 @@ const CheckoutForm = ({
                         localGovernment:
                           shippingAddressForm.getValues().location,
                         discount: voucherDiscount + dealsDiscount + staffDiscount,
+                        voucherDiscount: voucherDiscount,
+                        dealsDiscount: dealsDiscount,
+                        staffDiscount: staffDiscount,
+                        deliveryFee: cost,
                         totalAmount: totalAmountPaid,
                         orderNote: orderNote,
                         paymentMethod: selectedPaymentMethod,
@@ -1118,7 +1122,7 @@ const CheckoutForm = ({
                         rewards: result.data.rewards, // Pass the rewards from the action result
                       },
                       userOrderProps: {
-                        orderNumber: result.data.reference || result.data.orderId,
+                        orderNumber: result.data.orderNumber || result.data.reference || result.data.orderId,
                         customerName:
                           user.display_name ||
                           `${shippingAddressForm.getValues().firstName} ${shippingAddressForm.getValues().lastName}`,
@@ -1253,6 +1257,11 @@ const CheckoutForm = ({
               deliveryAddress: shippingAddressForm.getValues().street,
               localGovernment: shippingAddressForm.getValues().location,
               deliveryFee: cost,
+              voucherDiscount: voucherDiscount,
+              dealsDiscount: dealsDiscount,
+              staffDiscount: staffDiscount,
+              totalDiscount: voucherDiscount + dealsDiscount + staffDiscount,
+              isFirstOrder: isFirstOrder,
               serviceCharge: /*serviceCharge*/ 0, // Service charge commented out
               subtotal: subtotal,
               orderNote: orderNote,

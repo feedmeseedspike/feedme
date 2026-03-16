@@ -120,7 +120,7 @@ async function handleDirectPayment(
   // 1. Idempotency Check: Fetch current order status
   const { data: existingOrder, error: fetchError } = await supabaseAdmin
     .from("orders")
-    .select("payment_status")
+    .select("payment_status, order_id")
     .eq("id", metadata.orderId)
     .maybeSingle();
 
@@ -130,6 +130,8 @@ async function handleDirectPayment(
       console.log(`Order ${metadata.orderId} is already Paid. Skipping processing.`);
       return;
   }
+
+  const readableOrderId = existingOrder?.order_id || metadata.orderId;
 
   // Update order status to paid
   const { error: orderError } = await supabaseAdmin
@@ -172,7 +174,7 @@ async function handleDirectPayment(
             adminEmail: "orders.feedmeafrica@gmail.com",
             userEmail: metadata.email,
             adminOrderProps: {
-                orderNumber: metadata.orderId,
+                orderNumber: readableOrderId,
                 customerName: metadata.customerName,
                 customerPhone: metadata.customerPhone,
                 itemsOrdered: metadata.itemsOrdered,
@@ -181,18 +183,25 @@ async function handleDirectPayment(
                 orderNote: metadata.orderNote,
                 paymentMethod: 'PAYSTACK',
                 rewards: bonusInfo,
-                totalAmount: metadata.amount,
+                isFirstOrder: metadata.isFirstOrder,
+                voucherDiscount: metadata.voucherDiscount || 0,
+                dealsDiscount: metadata.dealsDiscount || 0,
+                staffDiscount: metadata.staffDiscount || 0,
+                discount: metadata.totalDiscount || 0,
+                deliveryFee: metadata.deliveryFee || 0,
+                totalAmount: metadata.amount / 100,
             },
             userOrderProps: {
-                orderNumber: metadata.orderId,
+                orderNumber: readableOrderId,
                 customerName: metadata.customerName,
                 customerPhone: metadata.customerPhone,
                 itemsOrdered: metadata.itemsOrdered,
                 deliveryAddress: metadata.deliveryAddress,
                 deliveryFee: metadata.deliveryFee,
                 serviceCharge: metadata.serviceCharge,
-                totalAmount: metadata.amount,
-                totalAmountPaid: metadata.amount,
+                discount: metadata.totalDiscount || 0,
+                totalAmount: metadata.subtotal,
+                totalAmountPaid: metadata.amount / 100,
                 userid: metadata.user_id,
             },
         });

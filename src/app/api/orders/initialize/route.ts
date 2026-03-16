@@ -139,6 +139,7 @@ export const POST = async (request: Request) => {
         success: true,
         data: {
           orderId: order.id,
+          orderNumber: order.order_id,
         },
       });
     } catch (error: any) {

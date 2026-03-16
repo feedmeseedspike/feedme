@@ -216,6 +216,7 @@ export async function processWalletPayment(orderData: OrderData) {
       success: true, 
       data: { 
         orderId: orderResult.id, 
+        orderNumber: orderResult.order_id,
         reference: reference,
         rewards: rewards 
       } 

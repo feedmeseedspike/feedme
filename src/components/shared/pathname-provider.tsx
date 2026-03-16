@@ -40,6 +40,7 @@ export function PathnameProvider({
     "/forgot-password",
     "/auth",
     "/admin",
+    "/product",
   ];
   const shouldHideNavAndBanner = hideOnPaths.some((path) =>
     pathname?.startsWith(path)

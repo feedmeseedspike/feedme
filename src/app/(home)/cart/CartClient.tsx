@@ -30,6 +30,7 @@ import { createClient as createSupabaseClient } from "src/utils/supabase/client"
 import { getCustomerOrdersAction } from "src/lib/actions/user.action";
 import { motion, AnimatePresence } from "framer-motion";
 import ShareCartButton from "@components/shared/cart/ShareCartButton";
+import StickyCartCheckout from "@components/shared/cart/StickyCartCheckout";
 
 interface GroupedCartItem {
   product?: CartItem["products"];
@@ -479,6 +480,13 @@ const CartClient: React.FC<CartClientProps> = ({
           </div>
         )}
       </Container>
+      
+      {/* Mobile Sticky Checkout */}
+      <StickyCartCheckout 
+        totalAmount={totalAmount}
+        onCheckout={() => router.push("/checkout")}
+        isVisible={totalQuantity > 0}
+      />
     </div>
   );
 };
