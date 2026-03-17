@@ -233,6 +233,14 @@ export async function createBlogPost(
         : postData.published_at ?? null,
   };
 
+  if (payload.category_id === "") payload.category_id = null;
+  if (payload.author_id === "") payload.author_id = null;
+  if ((payload.difficulty as any) === "") payload.difficulty = null;
+  if ((payload.prep_time as any) === "") payload.prep_time = null;
+  if ((payload.cook_time as any) === "") payload.cook_time = null;
+  if ((payload.servings as any) === "") payload.servings = null;
+  if ((payload.reading_time as any) === "") payload.reading_time = null;
+
   const { data, error } = await supabase
     .from("blog_posts")
     .insert(payload)
@@ -253,6 +261,14 @@ export async function updateBlogPost(
     ...postData,
     updated_at: new Date().toISOString(),
   };
+
+  if (payload.category_id === "") payload.category_id = null;
+  if (payload.author_id === "") payload.author_id = null;
+  if ((payload.difficulty as any) === "") payload.difficulty = null;
+  if ((payload.prep_time as any) === "") payload.prep_time = null;
+  if ((payload.cook_time as any) === "") payload.cook_time = null;
+  if ((payload.servings as any) === "") payload.servings = null;
+  if ((payload.reading_time as any) === "") payload.reading_time = null;
 
   // Set published_at when first publishing
   if (postData.status === "published" && !postData.published_at) {

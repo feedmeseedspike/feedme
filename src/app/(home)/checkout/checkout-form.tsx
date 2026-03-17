@@ -1111,6 +1111,7 @@ const CheckoutForm = ({
                         localGovernment:
                           shippingAddressForm.getValues().location,
                         discount: voucherDiscount + dealsDiscount + staffDiscount,
+                        subtotal: subtotal,
                         voucherDiscount: voucherDiscount,
                         dealsDiscount: dealsDiscount,
                         staffDiscount: staffDiscount,

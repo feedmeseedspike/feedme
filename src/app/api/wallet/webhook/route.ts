@@ -188,8 +188,9 @@ async function handleDirectPayment(
                 dealsDiscount: metadata.dealsDiscount || 0,
                 staffDiscount: metadata.staffDiscount || 0,
                 discount: metadata.totalDiscount || 0,
+                subtotal: metadata.subtotal,
                 deliveryFee: metadata.deliveryFee || 0,
-                totalAmount: metadata.amount / 100,
+                totalAmount: amount / 100,
             },
             userOrderProps: {
                 orderNumber: readableOrderId,
@@ -201,7 +202,7 @@ async function handleDirectPayment(
                 serviceCharge: metadata.serviceCharge,
                 discount: metadata.totalDiscount || 0,
                 totalAmount: metadata.subtotal,
-                totalAmountPaid: metadata.amount / 100,
+                totalAmountPaid: amount / 100, // Use the actual amount from Paystack
                 userid: metadata.user_id,
             },
         });
