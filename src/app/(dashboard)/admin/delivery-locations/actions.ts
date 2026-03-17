@@ -27,6 +27,29 @@ export async function updateDeliveryLocationAction(id: string, updates: Partial<
   return data;
 }
 
+// Bulk Update Delivery Price
+export async function bulkUpdateDeliveryPriceAction(ids: string[], price: number) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("delivery_locations")
+    .update({ price })
+    .in("id", ids)
+    .select();
+  if (error) throw error;
+  return data;
+}
+
+// Bulk Delete Delivery Locations
+export async function bulkDeleteDeliveryLocationsAction(ids: string[]) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("delivery_locations")
+    .delete()
+    .in("id", ids);
+  if (error) throw error;
+  return { success: true };
+}
+
 // Delete Delivery Location
 export async function deleteDeliveryLocationAction(id: string) {
   const supabase = await createClient();
@@ -36,4 +59,4 @@ export async function deleteDeliveryLocationAction(id: string) {
     .eq("id", id);
   if (error) throw error;
   return { success: true };
-} 
+}

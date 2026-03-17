@@ -25,7 +25,13 @@ export const POST = async (request: Request) => {
         localGovernment,
         deliveryFee,
         serviceCharge,
-        subtotal
+        subtotal,
+        voucherDiscount,
+        dealsDiscount,
+        staffDiscount,
+        totalDiscount,
+        orderNote,
+        isFirstOrder,
       } = await request.json();
 
       const emailFromAuth = user?.email;
@@ -112,6 +118,12 @@ export const POST = async (request: Request) => {
           deliveryFee: deliveryFee || 0,
           serviceCharge: serviceCharge || 0,
           subtotal: subtotal || amount,
+          voucherDiscount: voucherDiscount || 0,
+          dealsDiscount: dealsDiscount || 0,
+          staffDiscount: staffDiscount || 0,
+          totalDiscount: totalDiscount || 0,
+          orderNote: orderNote || "",
+          isFirstOrder: isFirstOrder || false,
         };
       } else {
         return NextResponse.json(

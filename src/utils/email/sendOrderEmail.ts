@@ -20,6 +20,7 @@ interface AdminOrderProps {
   dealsDiscount?: number;
   staffDiscount?: number;
   discount: number;
+  subtotal: number;
   totalAmount: number;
   deliveryFee?: number;
   itemsOrdered: any[];
@@ -86,7 +87,7 @@ export async function sendOrderConfirmationEmails({
           
            <hr style="border: none; border-top: 1px solid #ddd; margin: 12px 0;" />
            
-           <p style="margin: 4px 0; display: flex; justify-content: space-between;"><span>Subtotal:</span> <strong>₦${(adminOrderProps.totalAmount - (adminOrderProps.deliveryFee || 0) + (adminOrderProps.discount || 0)).toLocaleString()}</strong></p>
+           <p style="margin: 4px 0; display: flex; justify-content: space-between;"><span>Subtotal:</span> <strong>₦${(adminOrderProps.subtotal || 0).toLocaleString()}</strong></p>
            
            ${adminOrderProps.dealsDiscount && adminOrderProps.dealsDiscount > 0 ? `
               <p style="margin: 4px 0; color: #B42318;"><strong>Deal Discount (5% First Order):</strong> -₦${adminOrderProps.dealsDiscount.toLocaleString()}</p>
