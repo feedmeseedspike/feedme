@@ -1,19 +1,19 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createClient, createServiceRoleClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
 import { Database } from 'src/utils/database.types'; 
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const code = searchParams.get('code');
+  const code = searchParams.get('code')?.trim();
   const totalAmountParam = searchParams.get('totalAmount');
 
   // Get current user
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return NextResponse.json({ success: false, error: 'User not authenticated.' }, { status: 401 });
+    return NextResponse.json({ success: false, error: 'Please log in to use vouchers.' }, { status: 401 });
   }
 
   if (!code) {
@@ -30,15 +30,21 @@ export async function GET(request: Request) {
   }
 
   try {
-    const { data: voucher, error } = await supabase
+    const supabaseAdmin = createServiceRoleClient();
+    const { data: voucher, error } = await supabaseAdmin
       .from('vouchers')
       .select('id, code, discount_type, discount_value, is_active, max_uses, used_count, valid_from, valid_to, min_order_amount, user_id')
-      .eq('code', code)
+      .ilike('code', code as string)
       .eq('is_active', true) // Only get active vouchers
-      .single();
+      .maybeSingle();
 
-    if (error || !voucher) {
-      return NextResponse.json({ success: false, error: 'Invalid or expired voucher.' }, { status: 404 });
+    if (error) {
+      console.error('[VoucherAPI] Supabase error:', error);
+      return NextResponse.json({ success: false, error: 'Database error. Please try again.' }, { status: 500 });
+    }
+
+    if (!voucher) {
+      return NextResponse.json({ success: false, error: 'Voucher code not found.' }, { status: 404 });
     }
 
     // Check if voucher is user-specific and belongs to current user
@@ -96,14 +102,14 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const code = body.code;
+    const code = body.code?.trim();
     const totalAmount = body.totalAmount;
 
     // Get current user
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return NextResponse.json({ success: false, error: 'User not authenticated.' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'Please log in to use vouchers.' }, { status: 401 });
     }
 
     if (!code) {
@@ -113,15 +119,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Invalid total order amount.' }, { status: 400 });
     }
 
-    const { data: voucher, error } = await supabase
+    const supabaseAdmin = createServiceRoleClient();
+    const { data: voucher, error } = await supabaseAdmin
       .from('vouchers')
       .select('id, code, discount_type, discount_value, is_active, max_uses, used_count, valid_from, valid_to, min_order_amount, user_id')
-      .eq('code', code)
+      .ilike('code', code as string)
       .eq('is_active', true) // Only get active vouchers
-      .single();
+      .maybeSingle();
 
-    if (error || !voucher) {
-      return NextResponse.json({ success: false, error: 'Invalid or expired voucher.' }, { status: 404 });
+    if (error) {
+       console.error('[VoucherAPI-POST] Supabase error:', error);
+       return NextResponse.json({ success: false, error: 'Database error. Please try again.' }, { status: 500 });
+    }
+
+    if (!voucher) {
+      return NextResponse.json({ success: false, error: 'Voucher code not found.' }, { status: 404 });
     }
 
     // Check if voucher is user-specific and belongs to current user
@@ -168,4 +180,4 @@ export async function POST(request: Request) {
     console.error('Error in POST /api/voucher/get-voucher:', error);
     return NextResponse.json({ success: false, error: 'An internal server error occurred.' }, { status: 500 });
   }
-} 
+}

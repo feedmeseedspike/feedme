@@ -26,12 +26,14 @@ export const POST = async (request: Request) => {
         deliveryFee,
         serviceCharge,
         subtotal,
+        voucherId,
         voucherDiscount,
         dealsDiscount,
         staffDiscount,
         totalDiscount,
         orderNote,
         isFirstOrder,
+        isGift,
       } = await request.json();
 
       const emailFromAuth = user?.email;
@@ -101,7 +103,8 @@ export const POST = async (request: Request) => {
           customerName: customerName || finalEmail,
         };
       } else if (type === "direct_payment") {
-        callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL!}/order/order-confirmation?orderId=${orderId}`;
+        const redirectPage = isGift ? "gift-link" : "order-confirmation";
+        callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL!}/order/${redirectPage}?orderId=${orderId}`;
         metadata = {
           type: "direct_payment",
           user_id: user_id, // Can be null for anonymous
@@ -118,6 +121,7 @@ export const POST = async (request: Request) => {
           deliveryFee: deliveryFee || 0,
           serviceCharge: serviceCharge || 0,
           subtotal: subtotal || amount,
+          voucherId: voucherId || null,
           voucherDiscount: voucherDiscount || 0,
           dealsDiscount: dealsDiscount || 0,
           staffDiscount: staffDiscount || 0,

@@ -5,7 +5,8 @@ interface OrderEmailRequestBody {
   adminEmail: string;
   userEmail: string;
   adminOrderProps: any;
-  userOrderProps: any;
+  userOrderProps?: any;
+  isGiftClaimNotice?: boolean;
 }
 
 export async function POST(req: Request) {

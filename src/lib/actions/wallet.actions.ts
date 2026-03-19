@@ -157,6 +157,20 @@ export async function processWalletPayment(orderData: OrderData) {
     if(orderItemsError) {
         throw new Error("Failed to create order items.");
     }
+    
+    // Record Voucher Usage
+    if (orderData.voucherId && userId) {
+        await supabase.from("voucher_usages").insert({
+            user_id: userId,
+            voucher_id: orderData.voucherId,
+        });
+        
+        // Update voucher used_count
+        const { data: voucher } = await supabase.from('vouchers').select('used_count').eq('id', orderData.voucherId).single();
+        if (voucher) {
+            await supabase.from('vouchers').update({ used_count: (voucher.used_count || 0) + 1 }).eq('id', orderData.voucherId);
+        }
+    }
 
     // Insert transaction row for this order
     await supabase.from("transactions").insert({

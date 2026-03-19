@@ -7,11 +7,14 @@ export interface OrderData {
   userId: string;
   cartItems: Array<{ productId: string; quantity: number; price?: number | null; option?: any; bundleId?: string; offerId?: string }>;
   shippingAddress: {
-    fullName: string;
+    fullName?: string;
     street: string;
     location: string;
     phone: string;
-    // Add other relevant shipping address fields if necessary
+    isGiftLink?: boolean;
+    senderName?: string;
+    giftMessage?: string;
+    email?: string;
   };
   totalAmount: number;
   totalAmountPaid: number;

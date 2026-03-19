@@ -23,6 +23,7 @@ import {
   Filter,
   CheckCircle,
   XCircle,
+  Gift,
 } from "lucide-react";
 
 import {
@@ -87,6 +88,7 @@ type OrderRow = Omit<Order, "created_at" | "updated_at"> & {
   local_government?: string | null;
   total_amount_paid?: number | null;
   reference?: string | null;
+  note?: string | null;
 };
 
 const progressOptions: Database["public"]["Enums"]["order_status_enum"][] = [
@@ -783,6 +785,12 @@ export default function OrdersClient({
                           <span className="text-xs text-gray-500 truncate">
                             {order.profiles?.email || (order.shipping_address as any)?.email || ""}
                           </span>
+                          {/* Gift Flags */}
+                          {((order.shipping_address as any)?.isGiftLink || (order.shipping_address as any)?.giftMessage) && (
+                             <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded border border-yellow-200 w-fit">
+                                <Gift size={10} /> Gift Order
+                             </span>
+                          )}
                         </div>
                       </div>
                     </TableCell>
