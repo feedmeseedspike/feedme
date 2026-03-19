@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Button } from "@components/ui/button";
 import {
@@ -353,7 +353,7 @@ const CheckoutForm = ({
     }
   }, [user, anonymousCart.items]);
 
-  const [, startTransition] = useTransition();
+  const [isVoucherPending, startTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [voucherCode, setVoucherCode] = useState("");
   const [voucherDiscount, setVoucherDiscount] = useState(0);
@@ -368,6 +368,10 @@ const CheckoutForm = ({
   const [locationSearch, setLocationSearch] = useState("");
   const [isLocationPopoverOpen, setIsLocationPopoverOpen] = useState(false);
   const [isNewAddressLocationPopoverOpen, setIsNewAddressLocationPopoverOpen] = useState(false);
+  const [isGiftMode, setIsGiftMode] = [false, () => {}]; // Commented out for production: useState(false);
+  const [senderName, setSenderName] = useState("");
+  const [giftMessage, setGiftMessage] = useState("");
+  const [giftErrors, setGiftErrors] = useState<{ senderName?: string; email?: string }>({});
 
 
   const { mutateAsync: validateVoucherMutation } =
@@ -378,7 +382,7 @@ const CheckoutForm = ({
   const { showToast } = useToast();
 
 
-  const { isLoading: isLoadingReferralStatus } =
+  const { data: referralStatus, isLoading: isLoadingReferralStatus } =
     useQuery({
       queryKey: ["referralStatus", user?.user_id],
       queryFn: async () => {
@@ -390,6 +394,7 @@ const CheckoutForm = ({
         return response.json();
       },
       enabled: !!user?.user_id,
+      staleTime: 5 * 60 * 1000, // 5 minutes stability
     });
 
   const { data: userVouchers } = useUserVouchersQuery(user?.user_id);
@@ -580,6 +585,7 @@ const CheckoutForm = ({
   const qualifiesForFreeShipping = isFreeDeliveryVoucher;
   
   const cost = useMemo(() => {
+    if (isGiftMode) return 1500; // Flat gift delivery fee
     if (qualifiesForFreeShipping) return 0;
     if (!formLocation) return 2500;
 
@@ -643,13 +649,12 @@ const CheckoutForm = ({
 
 
   const staffDiscount = useMemo(() => {
-    if (user?.is_staff) {
-      // 10% off subtotal + service charge (not delivery fee or voucher discount)
-      // return 0.1 * (subtotal + serviceCharge);
-      return 0.1 * (subtotal - dealsDiscount); // Discount applies after deals? or before? Usually stackable or not. Let's assume on remaining.
+    // No stacking: Staff discount is 0 if a voucher or free gift is present
+    if (user?.is_staff && !isVoucherValid && !hasFreePrize) {
+      return 0.1 * (subtotal - dealsDiscount);
     }
     return 0;
-  }, [user, subtotal, dealsDiscount /*, serviceCharge*/]);
+  }, [user, subtotal, dealsDiscount, isVoucherValid, hasFreePrize]);
 
   const totalAmount = subtotal; // Keeps track of gross
   const totalAmountPaid =
@@ -677,13 +682,7 @@ const CheckoutForm = ({
       if (!user?.user_id || isVoucherValid || !subtotal || subtotal === 0 || hasFreePrize)
         return;
 
-      // 1. Check if referral exists for this user
-      const referralStatusRes = await fetch(
-        `/api/referral/status?userId=${user.user_id}`
-      );
-      const referralStatus = referralStatusRes.ok
-        ? await referralStatusRes.json()
-        : null;
+      // 1. Use the data from the query directly
       const isReferred =
         referralStatus?.data &&
         referralStatus.data.status === "applied" &&
@@ -692,10 +691,16 @@ const CheckoutForm = ({
       if (isReferred) {
         // 2. Check if voucher already exists for this user
         const voucherCodeGuess = `REF-${user.user_id.slice(0, 8).toUpperCase()}`;
-        const voucherRes = await fetch(`/api/voucher?code=${voucherCodeGuess}`);
-        const voucherData = voucherRes.ok ? await voucherRes.json() : null;
+        
+        // Use a faster check
+        const supabase = createClient();
+        const { data: voucherData } = await supabase
+          .from('vouchers')
+          .select('code, id, discount_type, discount_value')
+          .ilike('code', voucherCodeGuess)
+          .maybeSingle();
 
-        let codeToApply = voucherData?.data?.code;
+        let codeToApply = voucherData?.code;
 
         if (!codeToApply) {
           // 3. Create voucher if not found
@@ -710,7 +715,7 @@ const CheckoutForm = ({
           if (voucherResult.success && voucherResult.voucherCode) {
             codeToApply = voucherResult.voucherCode;
           } else {
-            showToast("Failed to create referral voucher.", "error");
+            console.error("Failed to create referral voucher.");
             return;
           }
         }
@@ -733,27 +738,15 @@ const CheckoutForm = ({
             setVoucherId(data.id ?? null);
             setAutoAppliedReferralVoucher(true);
             showToast("Referral discount applied!", "success");
-          } else {
-            showToast(
-              result.error || "Failed to apply referral voucher.",
-              "error"
-            );
           }
         }
       }
     };
 
-
-
-    if (user && !isLoadingReferralStatus && !autoAppliedReferralVoucher && !voucherFromUrl) { // Don't run referral logic if URL voucher is present
+    if (user && !isVoucherValid && !isLoadingReferralStatus && !autoAppliedReferralVoucher && !voucherFromUrl && !hasFreePrize && referralStatus) { 
       startTransition(() => {
         tryAutoApplyReferralVoucher().catch((error) => {
-
-          setVoucherCode("");
-          setVoucherDiscount(0);
-          setIsVoucherValid(false);
-          setVoucherId(null);
-          setAutoAppliedReferralVoucher(false);
+          console.error("Referral auto-apply catch:", error);
         });
       });
     }
@@ -763,11 +756,11 @@ const CheckoutForm = ({
     subtotal,
     autoAppliedReferralVoucher,
     isLoadingReferralStatus,
-    validateVoucherMutation,
-    showToast,
-    startTransition,
+    referralStatus,
     voucherFromUrl,
     hasFreePrize,
+    validateVoucherMutation,
+    showToast,
   ]);
 
   useEffect(() => {
@@ -910,11 +903,21 @@ const CheckoutForm = ({
   };
 
   const handleVoucherValidation = async (externalCode?: string) => {
+    if (!user) {
+      showToast("Please log in to use voucher codes.", "error");
+      return;
+    }
+
+    if (isGiftMode) {
+      showToast("Vouchers cannot be used when buying as a gift link.", "error");
+      return;
+    }
+
     if (hasFreePrize) {
       showToast("Vouchers cannot be used with a free gift in your cart.", "error");
       return;
     }
-    const codeToValidate = externalCode || voucherCode;
+    const codeToValidate = (externalCode || voucherCode)?.trim();
     
     if (!codeToValidate) {
       showToast("Please enter a voucher code.", "error");
@@ -980,23 +983,44 @@ const CheckoutForm = ({
     if (isSubmitting) return;
     try {
       setIsSubmitting(true);
-      const isFormValid = await shippingAddressForm.trigger();
+      
+      if (isGiftMode) {
+        const errors: any = {};
+        if (!senderName.trim()) {
+           errors.senderName = "Sender name is required.";
+        }
+        
+        const giftEmailVal = (document.getElementById('giftEmail') as HTMLInputElement)?.value;
+        if (!user && !giftEmailVal?.trim()) {
+           errors.email = "Email is required for creating a gift link.";
+        }
 
-      // Manual check for guest email
-      if (!user && !shippingAddressForm.getValues("email")) {
-        showToast("Email is required for guest checkout.", "error");
-        shippingAddressForm.setError("email", { 
-           type: "manual", 
-           message: "Email is required for guest checkout" 
-        });
-        setIsSubmitting(false);
-        return;
-      }
+        if (Object.keys(errors).length > 0) {
+           setGiftErrors(errors);
+           showToast("Please fill in the required gift details.", "error");
+           setIsSubmitting(false);
+           return;
+        }
+        setGiftErrors({});
+      } else {
+        const isFormValid = await shippingAddressForm.trigger();
 
-      if (!isFormValid) {
-        showToast("Please fill out all required fields correctly.", "error");
-        setIsSubmitting(false);
-        return;
+        // Manual check for guest email
+        if (!user && !shippingAddressForm.getValues("email")) {
+          showToast("Email is required for guest checkout.", "error");
+          shippingAddressForm.setError("email", { 
+             type: "manual", 
+             message: "Email is required for guest checkout" 
+          });
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (!isFormValid || !selectedAddressId) {
+          showToast("Please fill out all required shipping fields and select an address.", "error");
+          setIsSubmitting(false);
+          return;
+        }
       }
 
       if (!items || items.length === 0) {
@@ -1009,8 +1033,8 @@ const CheckoutForm = ({
         try {
           // Check for email
           const formValues = shippingAddressForm.getValues();
-          const email = user?.email || formValues.email;
-          const formLocation = formValues.location;
+          const email = user?.email || (isGiftMode ? (document.getElementById('giftEmail') as HTMLInputElement)?.value : formValues.email);
+          const formLocation = isGiftMode ? "Lagos" : formValues.location;
 
           // Email check removed to allow optional emails
           const orderData = {
@@ -1023,7 +1047,15 @@ const CheckoutForm = ({
               price: item.price,
               option: item.option,
             })),
-            shippingAddress: {
+            shippingAddress: isGiftMode ? {
+              isGiftLink: true,
+              senderName: senderName,
+              giftMessage: giftMessage,
+              street: "Pending Gift Claim",
+              location: "Pending Gift Claim",
+              phone: "Pending Gift Claim",
+              email: email
+            } : {
               fullName: `${shippingAddressForm.getValues().firstName} ${shippingAddressForm.getValues().lastName}`,
               street: shippingAddressForm.getValues().street,
               location: shippingAddressForm.getValues().location,
@@ -1036,7 +1068,7 @@ const CheckoutForm = ({
             voucherId: isVoucherValid ? voucherId : null,
             voucherDiscount: voucherDiscount,
             paymentMethod: selectedPaymentMethod,
-            note: orderNote,
+            note: isGiftMode && giftMessage ? `GIFT MESSAGE: ${giftMessage}` : orderNote,
           };
 
           let result: OrderProcessingResult = {
@@ -1188,9 +1220,15 @@ const CheckoutForm = ({
               // Trigger Spin & Win widget
               localStorage.setItem("triggerSpin", "true");
               
-              router.push(
-                `/order/order-confirmation?orderId=${result.data.orderId}`
-              );
+              if (isGiftMode) {
+                router.push(
+                  `/order/gift-link?orderId=${result.data.orderId}`
+                );
+              } else {
+                router.push(
+                  `/order/order-confirmation?orderId=${result.data.orderId}`
+                );
+              }
             } else {
               showToast(result.error || "Failed to process order.", "error");
             }
@@ -1258,6 +1296,7 @@ const CheckoutForm = ({
               deliveryAddress: shippingAddressForm.getValues().street,
               localGovernment: shippingAddressForm.getValues().location,
               deliveryFee: cost,
+              voucherId: isVoucherValid ? voucherId : null,
               voucherDiscount: voucherDiscount,
               dealsDiscount: dealsDiscount,
               staffDiscount: staffDiscount,
@@ -1266,6 +1305,7 @@ const CheckoutForm = ({
               serviceCharge: /*serviceCharge*/ 0, // Service charge commented out
               subtotal: subtotal,
               orderNote: orderNote,
+              isGift: isGiftMode,
             });
             if (response.data.authorization_url) {
               if (orderResult.data.orderId) {
@@ -1296,7 +1336,11 @@ const CheckoutForm = ({
                showToast("Order placed successfully!", "success");
                localStorage.setItem("triggerSpin", "true");
                localStorage.setItem("lastOrderId", orderResult.data.orderId);
-               router.push(`/order/order-confirmation?orderId=${orderResult.data.orderId}`);
+               if (isGiftMode) {
+                 router.push(`/order/gift-link?orderId=${orderResult.data.orderId}`);
+               } else {
+                 router.push(`/order/order-confirmation?orderId=${orderResult.data.orderId}`);
+               }
                setIsSubmitting(false);
                return;
             } else {
@@ -1344,9 +1388,135 @@ const CheckoutForm = ({
             <div className="lg:w-[60%] w-full">
               <div className="space-y-12">
                   <section className="space-y-6">
-                       <div className="pb-3">
-                          <h3 className="text-xl font-bold text-gray-900 tracking-tight">1. Delivery Destination</h3>
+                       <div className="pb-3 flex justify-between items-center border-b border-gray-100 mb-6">
+                           
+                           {/* <label className="relative inline-flex items-center cursor-pointer">
+                             <input 
+                               type="checkbox" 
+                               className="sr-only peer" 
+                               checked={isGiftMode} 
+                               onChange={(e) => {
+                                 const val = e.target.checked;
+                                 setIsGiftMode(val);
+                                 if (val && isVoucherValid) {
+                                   setIsVoucherValid(false);
+                                   setVoucherCode("");
+                                   setVoucherDiscount(0);
+                                   setVoucherId(null);
+                                   localStorage.removeItem("voucherCode");
+                                   localStorage.removeItem("voucherDiscount");
+                                   showToast("Voucher removed as it cannot be used with Gift Mode.", "info");
+                                 }
+                               }} 
+                             />
+                             <div className="w-14 h-7 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-[#1B6013]"></div>
+                           </label> */}
                        </div>
+
+                       {false && isGiftMode ? (
+                           <div className="bg-green-50/50 p-6 rounded-2xl border border-[#1B6013]/20 space-y-6">
+                               <div className="space-y-4">
+                                   <div className="space-y-1">
+                                       <Label className="text-xs font-semibold text-gray-700">Your Name (Sender)</Label>
+                                       <Input
+                                          placeholder="Enter your name"
+                                          value={senderName}
+                                          onChange={e => {
+                                            setSenderName(e.target.value);
+                                            if (giftErrors.senderName) setGiftErrors(prev => ({ ...prev, senderName: undefined }));
+                                          }}
+                                          className={`rounded-xl h-12 border-gray-200 bg-white ${giftErrors.senderName ? "border-red-500 ring-red-500" : ""}`}
+                                       />
+                                       {giftErrors.senderName && <p className="text-[10px] text-red-500 font-bold uppercase mt-1">{giftErrors.senderName}</p>}
+                                   </div>
+                                   {!user?.email && (
+                                     <div className="space-y-1">
+                                       <Label className="text-xs font-semibold text-gray-700">Your Email Address</Label>
+                                       <Input
+                                          id="giftEmail"
+                                          type="email"
+                                          placeholder="Enter email address"
+                                          className={`rounded-xl h-12 border-gray-200 bg-white ${giftErrors.email ? "border-red-500 ring-red-500" : ""}`}
+                                          onChange={() => {
+                                            if (giftErrors.email) setGiftErrors(prev => ({ ...prev, email: undefined }));
+                                          }}
+                                       />
+                                       {giftErrors.email && <p className="text-[10px] text-red-500 font-bold uppercase mt-1">{giftErrors.email}</p>}
+                                     </div>
+                                   )}
+                                   <div className="space-y-1">
+                                       <Label className="text-xs font-semibold text-gray-700">Gift Message (Optional)</Label>
+                                       <Textarea
+                                          placeholder="Write a nice message for them..."
+                                          value={giftMessage}
+                                          onChange={e => setGiftMessage(e.target.value)}
+                                          className="rounded-xl border-gray-200 bg-white resize-none"
+                                          rows={3}
+                                       />
+                                   </div>
+                               </div>                                <div className="bg-white p-4 rounded-xl border border-green-100 flex gap-3 text-sm text-gray-600 shadow-sm relative overflow-hidden">
+                                   <div className="absolute -right-2 -bottom-2 opacity-10 rotate-12">
+                                     <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 64 64">
+                                        <path fill="#076170" d="M31.9 30.3V62S45 52.8 54.2 50.1c0 0 .4-19.6 6.1-29.4z" />
+                                        <path fill="#b3690e" d="M40.1 57.2s.5-28.1 1.5-29.5c1-1.5 9.6-3 9.6-3s-3.5 26.3-2.7 28c.1-.1-3.5 1.4-8.4 4.5" />
+                                        <path fill="#3baacf" d="M31.9 62s-9.2-7.8-23.5-11.9c0 0 1.1-16.1-4.1-28.4l27.6 8.6z" />
+                                        <path fill="#e9c243" d="M14.2 52.7s8.4 3.4 9 4.5s.6-28.3.6-28.3s-11.5-3.2-12.5-3.2c0 0 3.5 11.9 2.9 27" />
+                                        <path d="M31.9 30.3v5.3l25.7-8.8c.7-2.2 1.6-4.3 2.6-6.1zM6.1 27.2c-.5-1.9-1.1-3.7-1.9-5.5l27.6 8.6v5.3z" opacity="0.3" />
+                                        <path fill="#4fc7e8" d="m2 18.9l28.5 6.3L62 17.6l-30.9-1.7z" />
+                                        <path fill="#3baacf" d="m2 18.9l2.3 6.3l26.2 7.4v-7.4z" />
+                                        <path fill="#076170" d="M30.5 32.6s23.8-8.8 29.7-9.2c0 0 .4-3.5 1.8-5.7l-31.5 7.5z" />
+                                        <g fill="#f0ae11">
+                                            <path d="m10.5 20.8l5.8 5.5l6.4-2.9l9.3-2.8L43.6 22l6.1 1.2l4.9-3.8z" />
+                                            <path d="m22.7 23.4l9.3-2.8L43.6 22l11-2.6l-23.2-2.2l-20.9 3.6z" />
+                                        </g>
+                                        <path fill="#f8d048" d="M10.5 20.8v7L22.2 31l.5-7.6z" />
+                                        <path fill="#c47116" d="m43.6 22l.2 6.7l10-3l.8-6.3z" />
+                                        <path fill="#ea9f07" d="M37.3 17.3s0-7 6.8-13.1c0 0-4.1 1.5-6.1 1.1c-2.4-.4-3.2-3.3-3.2-3.3S29 14.6 30.7 16.2c1.7 1.7 6.6 1.1 6.6 1.1" />
+                                        <path fill="#f8d048" d="M28.4 21.4s-3.9-8-12.2-12.2c0 0 6.5-.6 8-1.4c1.9-.9 3-3.4 3-3.4s7.2 12.6 6.6 14.5s-5.4 2.5-5.4 2.5" />
+                                        <path fill="#ea9f07" d="M32.6 20.5s-6.1 2.4-13.9 2.4C2.3 22.8 0 11 16.2 12.1c13.3 1 16.4 8.4 16.4 8.4" />
+                                        <path fill="#f0ae11" d="M31.5 20.4s7.2.6 13.9-1.1c14-3.6 8.8-14.2-4.4-9.7c-10.8 3.7-9.5 10.8-9.5 10.8" />
+                                        <g fill="#824000">
+                                            <path d="M32.6 20.5S28.8 22 23.9 22c-10.2 0-11.7-7.4-1.6-6.7c8.3.6 10.3 5.2 10.3 5.2" />
+                                            <path d="M32.6 20.5s5 .4 9.7-.8c9.8-2.5 6.1-9.9-3-6.8c-7.6 2.6-6.7 7.6-6.7 7.6" />
+                                        </g>
+                                     </svg>
+                                   </div>
+                                   <div className="z-10 flex gap-3">
+                                       <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 64 64">
+                                            <path fill="#076170" d="M31.9 30.3V62S45 52.8 54.2 50.1c0 0 .4-19.6 6.1-29.4z" />
+                                            <path fill="#b3690e" d="M40.1 57.2s.5-28.1 1.5-29.5c1-1.5 9.6-3 9.6-3s-3.5 26.3-2.7 28c.1-.1-3.5 1.4-8.4 4.5" />
+                                            <path fill="#3baacf" d="M31.9 62s-9.2-7.8-23.5-11.9c0 0 1.1-16.1-4.1-28.4l27.6 8.6z" />
+                                            <path fill="#e9c243" d="M14.2 52.7s8.4 3.4 9 4.5s.6-28.3.6-28.3s-11.5-3.2-12.5-3.2c0 0 3.5 11.9 2.9 27" />
+                                            <path d="M31.9 30.3v5.3l25.7-8.8c.7-2.2 1.6-4.3 2.6-6.1zM6.1 27.2c-.5-1.9-1.1-3.7-1.9-5.5l27.6 8.6v5.3z" opacity="0.3" />
+                                            <path fill="#4fc7e8" d="m2 18.9l28.5 6.3L62 17.6l-30.9-1.7z" />
+                                            <path fill="#3baacf" d="m2 18.9l2.3 6.3l26.2 7.4v-7.4z" />
+                                            <path fill="#076170" d="M30.5 32.6s23.8-8.8 29.7-9.2c0 0 .4-3.5 1.8-5.7l-31.5 7.5z" />
+                                            <g fill="#f0ae11">
+                                                <path d="m10.5 20.8l5.8 5.5l6.4-2.9l9.3-2.8L43.6 22l6.1 1.2l4.9-3.8z" />
+                                                <path d="m22.7 23.4l9.3-2.8L43.6 22l11-2.6l-23.2-2.2l-20.9 3.6z" />
+                                            </g>
+                                            <path fill="#f8d048" d="M10.5 20.8v7L22.2 31l.5-7.6z" />
+                                            <path fill="#c47116" d="m43.6 22l.2 6.7l10-3l.8-6.3z" />
+                                            <path fill="#ea9f07" d="M37.3 17.3s0-7 6.8-13.1c0 0-4.1 1.5-6.1 1.1c-2.4-.4-3.2-3.3-3.2-3.3S29 14.6 30.7 16.2c1.7 1.7 6.6 1.1 6.6 1.1" />
+                                            <path fill="#f8d048" d="M28.4 21.4s-3.9-8-12.2-12.2c0 0 6.5-.6 8-1.4c1.9-.9 3-3.4 3-3.4s7.2 12.6 6.6 14.5s-5.4 2.5-5.4 2.5" />
+                                            <path fill="#ea9f07" d="M32.6 20.5s-6.1 2.4-13.9 2.4C2.3 22.8 0 11 16.2 12.1c13.3 1 16.4 8.4 16.4 8.4" />
+                                            <path fill="#f0ae11" d="M31.5 20.4s7.2.6 13.9-1.1c14-3.6 8.8-14.2-4.4-9.7c-10.8 3.7-9.5 10.8-9.5 10.8" />
+                                            <g fill="#824000">
+                                                <path d="M32.6 20.5S28.8 22 23.9 22c-10.2 0-11.7-7.4-1.6-6.7c8.3.6 10.3 5.2 10.3 5.2" />
+                                                <path d="M32.6 20.5s5 .4 9.7-.8c9.8-2.5 6.1-9.9-3-6.8c-7.6 2.6-6.7 7.6-6.7 7.6" />
+                                            </g>
+                                          </svg>
+                                       </div>
+                                       <p>After payment, you will receive a unique link. Send it to your friend so they can claim this meal and enter their delivery details!</p>
+                                   </div>
+                                </div> 
+                           </div>
+                       ) : (
+                         <>
+                         <div className="pb-3">
+                            <h3 className="text-xl font-bold text-gray-900 tracking-tight">1. Delivery Destination</h3>
+                         </div>
 
                        {/* Address Summary Card */}
                        {selectedAddress ? (
@@ -2079,6 +2249,8 @@ const CheckoutForm = ({
                         </Form>
                       </div>
                     )}
+                    </>
+                    )}
                   </section>
 
                   <section className="space-y-6">
@@ -2272,20 +2444,7 @@ const CheckoutForm = ({
                       {/* PLACED ORDER BUTTON HERE */}
                       <div className="pt-6 mt-4 border-t border-gray-100">
                      <Button
-                         onClick={async () => {
-                             if (isSubmitting) return;
-                             const isFormValid = await shippingAddressForm.trigger();
-                             if (!user && !shippingAddressForm.getValues("email")) {
-                                 shippingAddressForm.setError("email", { type: "manual", message: "Email is required for guest checkout" });
-                                 showToast("Email is required for guest checkout", "error");
-                                 return;
-                             }
-                             if (!isFormValid || !selectedAddressId) {
-                                 showToast("Please fill out all required shipping fields and select an address.", "error");
-                                 return;
-                             }
-                             handleOrderSubmission();
-                         }}
+                         onClick={handleOrderSubmission}
                          disabled={isSubmitting || items.length === 0}
                          className="rounded-xl bg-[#1B6013] hover:bg-[#154d0f] text-white px-8 h-12 font-bold text-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 w-full active:scale-95"
                      >
@@ -2364,10 +2523,12 @@ const CheckoutForm = ({
                             />
                             <Button 
                                 onClick={() => handleVoucherValidation()}
-                                disabled={!voucherCode || isSubmitting}
-                                className="absolute right-1.5 top-1.5 bottom-1.5 h-auto px-5 rounded-lg font-bold text-xs uppercase tracking-wider bg-gray-900 text-white hover:bg-black transition-all shadow-[0_2px_10px_rgba(0,0,0,0.02)] z-10 active:scale-95"
+                                disabled={!voucherCode || isVoucherPending || isSubmitting}
+                                className="absolute right-1.5 top-1.5 bottom-1.5 h-auto px-5 rounded-lg font-bold text-xs uppercase tracking-wider bg-[#1B6013] text-white hover:bg-[#154d0f] transition-all shadow-[0_2px_10px_rgba(0,0,0,0.02)] z-10 active:scale-95 flex items-center justify-center gap-2"
                             >
-                                Apply
+                                {isVoucherPending ? (
+                                    <Loader2 className="animate-spin h-3.5 w-3.5" />
+                                ) : "Apply"}
                             </Button>
                          </div>
                       </div>

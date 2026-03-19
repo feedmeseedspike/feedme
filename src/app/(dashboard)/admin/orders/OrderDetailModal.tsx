@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { Button } from "@components/ui/button";
 import { Avatar, AvatarFallback } from "@components/ui/avatar";
-import { Package, User, MapPin, CreditCard, X } from "lucide-react";
+import { Package, User, MapPin, CreditCard, X, Gift } from "lucide-react";
 import { formatNaira } from "src/lib/utils";
 import { format } from "date-fns";
 import {
@@ -44,6 +44,7 @@ interface OrderDetailModalProps {
     subtotal?: number | null;
     voucher_discount?: number | null;
     reference?: string | null;
+    note?: string | null;
     profiles?: {
       id: string;
       display_name: string | null;
@@ -288,25 +289,45 @@ export default function OrderDetailModal({ isOpen, onClose, order }: OrderDetail
                   <div className="flex items-center gap-3 mb-3">
                     <Avatar className="w-8 h-8">
                       <AvatarFallback className="text-xs">
-                        {order.profiles?.display_name
-                          ? order.profiles.display_name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .substring(0, 2)
-                              .toUpperCase()
-                          : "?"}
+                        {((order.shipping_address as any)?.fullName || order.profiles?.display_name || "?")
+                                .split(" ")
+                                .map((n: string) => n[0])
+                                .join("")
+                                .substring(0, 2)
+                                .toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium text-sm">{order.profiles?.display_name || (order.shipping_address && (order.shipping_address as any).fullName) || "Unknown User"}</p>
-                      <p className="text-xs text-gray-600">{order.profiles?.email || (order.shipping_address && (order.shipping_address as any).email) || ""}</p>
+                      <p className="font-medium text-sm">
+                        {(order.shipping_address as any)?.isGiftLink 
+                           ? `Sender: ${order.profiles?.display_name || (order.shipping_address as any)?.senderName}`
+                           : (order.shipping_address as any)?.fullName || order.profiles?.display_name || "Unknown User"}
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        {((order.shipping_address as any)?.email) || order.profiles?.email || ""}
+                      </p>
                     </div>
                   </div>
-                  {(order.profiles?.phone || (order.shipping_address && (order.shipping_address as any).phone)) && (
+                  {((order.shipping_address as any)?.phone || order.profiles?.phone) && (
                     <div className="text-xs">
-                      <span className="font-medium">Phone:</span> {order.profiles?.phone || (order.shipping_address as any).phone}
+                      <span className="font-medium">Phone:</span> {(order.shipping_address as any)?.phone || order.profiles?.phone}
                     </div>
+                  )}
+
+                  {((order.shipping_address as any)?.giftMessage || (order.shipping_address as any)?.isGiftLink || (order.shipping_address as any)?.claimedAt) && (
+                     <div className="mt-4 bg-[#1B6013]/5 border-l-2 border-[#1B6013] p-3 rounded-md text-xs">
+                        <div className="font-bold flex items-center gap-2 mb-1 text-[#1B6013]">
+                          <Gift size={14} /> Gift Order {(order.shipping_address as any)?.claimedAt ? "(Claimed)" : "(Unclaimed)"}
+                        </div>
+                        <p className="text-gray-700">
+                          <strong>Sender:</strong> {(order.shipping_address as any)?.senderName || order.profiles?.display_name || "Special Someone"}
+                        </p>
+                        {(order.shipping_address as any)?.giftMessage && (
+                          <p className="text-gray-600 italic mt-1 border-t border-[#1B6013]/10 pt-1">
+                            &quot;{(order.shipping_address as any)?.giftMessage}&quot;
+                          </p>
+                        )}
+                     </div>
                   )}
                 </CardContent>
               </Card>

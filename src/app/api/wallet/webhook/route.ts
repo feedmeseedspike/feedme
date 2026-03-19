@@ -160,8 +160,22 @@ async function handleDirectPayment(
         if (rewardsResult.success) {
             bonusInfo = rewardsResult.rewards;
         }
+
+        // Record Voucher Usage for Paystack Payment
+        if (metadata.voucherId) {
+            await supabaseAdmin.from("voucher_usages").insert({
+                user_id: metadata.user_id,
+                voucher_id: metadata.voucherId,
+            });
+            
+            // Update voucher used_count
+            const { data: voucher } = await supabaseAdmin.from('vouchers').select('used_count').eq('id', metadata.voucherId).single();
+            if (voucher) {
+                await supabaseAdmin.from('vouchers').update({ used_count: (voucher.used_count || 0) + 1 }).eq('id', metadata.voucherId);
+            }
+        }
     } catch (e) {
-        console.error("Failed to process rewards in webhook:", e);
+        console.error("Failed to process rewards/vouchers in webhook:", e);
     }
   }
 

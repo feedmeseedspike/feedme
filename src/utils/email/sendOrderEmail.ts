@@ -4,7 +4,8 @@ interface OrderEmailParams {
   adminEmail: string;
   userEmail: string;
   adminOrderProps: AdminOrderProps;
-  userOrderProps: any;
+  userOrderProps?: any;
+  isGiftClaimNotice?: boolean;
 }
 
 interface AdminOrderProps {
@@ -32,6 +33,7 @@ export async function sendOrderConfirmationEmails({
   userEmail,
   adminOrderProps,
   userOrderProps,
+  isGiftClaimNotice = false,
 }: OrderEmailParams) {
   try {
     // Simple admin HTML (like the working contact form)
@@ -226,19 +228,42 @@ export async function sendOrderConfirmationEmails({
     // Send to admin
     await sendMail({
       to: adminEmail,
-      subject: `New Order Received - ${adminOrderProps.orderNumber}`,
+      subject: isGiftClaimNotice 
+        ? `🎁 Gift Claimed! - ${adminOrderProps.orderNumber}`
+        : `New Order Received - ${adminOrderProps.orderNumber}`,
       html: adminHtml,
     });
     console.log('✅ Admin email sent');
 
     // Send to user
     if (userEmail) {
+      let subject = `Order Confirmed! Your Fresh Produce is On Its Way`;
+      let html = userHtml;
+
+      if (isGiftClaimNotice) {
+         subject = `🎁 Your FeedMe Gift has been Claimed!`;
+         html = `
+            <div style="font-family: Arial, sans-serif; background: #fff; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaea; border-radius: 8px; padding: 24px;">
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <img src="https://res.cloudinary.com/ahisi/image/upload/v1731071676/logo_upovep.png" alt="FeedMe Logo" style="height: 37px; margin-bottom: 8px;" />
+                </div>
+                <h2 style="color: #1B6013; margin-bottom: 12px;">Good news! Your Gift has been Claimed</h2>
+                <p style="font-size: 15px; color: #222;">Hi,</p>
+                <p style="font-size: 15px; color: #222;">We wanted to let you know that <strong>${adminOrderProps.customerName}</strong> has just claimed the gift you sent (#${adminOrderProps.orderNumber}).</p>
+                <p style="font-size: 15px; color: #222;">The meal will be delivered to: <strong>${adminOrderProps.deliveryAddress}</strong>.</p>
+                <p style="font-size: 15px; color: #222;">Thank you for sharing the love with FeedMe!</p>
+                <hr style="border: none; border-top: 1px solid #eaeaea; margin: 24px 0;" />
+                <p style="font-size: 13px; color: #888; text-align: center;">FeedMe Gift System</p>
+            </div>
+         `;
+      }
+
       await sendMail({
         to: userEmail,
-        subject: `Order Confirmed! Your Fresh Produce is On Its Way`,
-        html: userHtml,
+        subject: subject,
+        html: html,
       });
-      console.log('✅ User email sent');
+      console.log(`✅ ${isGiftClaimNotice ? 'Gift Claim Notice' : 'User'} email sent`);
     } else {
       console.warn('⚠️ No user email provided, skipping confirmation email.');
     }

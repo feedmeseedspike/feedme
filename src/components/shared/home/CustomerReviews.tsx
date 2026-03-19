@@ -99,7 +99,7 @@ const defaultReviews: Review[] = [
         name: "Tomatoes",
         href: "/product/tomato-jos",
         type: "product",
-        image: "/images/tomatoes.jpeg", // Hypothetical
+        image: "/images/tomatoes.jpeg", 
       }
     ],
   },
@@ -154,7 +154,7 @@ const defaultReviews: Review[] = [
     rating: 5,
     description:
       "Fast delivery and excellent customer service. The tomatoes were so fresh, tasted like they were just picked!",
-    videoUrl: "https://youtube.com/shorts/-gGo7JhBMhg?si=G7p7jYa4hxP6Tm9e",
+    videoUrl: "https://www.youtube.com/shorts/2mgSFd4Uji0",
 
     verified: true,
     date: "2025-11-10",
@@ -240,28 +240,28 @@ const defaultReviews: Review[] = [
       },
     ],
   },
-  {
-    id: "4-dup",
-    customerName: "Blessing Okonkwo",
-    rating: 5,
-    description:
-      "Fast delivery and excellent customer service. The tomatoes were so fresh, tasted like they were just picked!",
-    videoUrl: "https://youtube.com/shorts/-gGo7JhBMhg?si=G7p7jYa4hxP6Tm9e",
+  // {
+  //   id: "4-dup",
+  //   customerName: "Blessing Okonkwo",
+  //   rating: 5,
+  //   description:
+  //     "Fast delivery and excellent customer service. The tomatoes were so fresh, tasted like they were just picked!",
+  //   videoUrl: "https://youtube.com/shorts/-gGo7JhBMhg?si=G7p7jYa4hxP6Tm9e",
 
-    verified: true,
-    date: "2025-11-10",
-    linkPreferences: [
-      { type: "bundle", slot: 0 }
-    ],
-    fallbackRelatedItems: [
-      {
-        name: "Seasonal Fruits Pack",
-        href: "/bundles/seasonal-fruits",
-        type: "bundle",
-        image: "/images/review-thumb-4.jpg",
-      },
-    ],
-  },
+  //   verified: true,
+  //   date: "2025-11-10",
+  //   linkPreferences: [
+  //     { type: "bundle", slot: 0 }
+  //   ],
+  //   fallbackRelatedItems: [
+  //     {
+  //       name: "Seasonal Fruits Pack",
+  //       href: "/bundles/seasonal-fruits",
+  //       type: "bundle",
+  //       image: "/images/review-thumb-4.jpg",
+  //     },
+  //   ],
+  // },
   // Second set of duplicates for extra buffer
   {
     id: "1-dup-2",
@@ -717,7 +717,7 @@ export default function CustomerReviews({
         </div>
 
         <div className="w-full relative z-10">
-          <Carousel opts={carouselOpts} isScale={true} className="w-full">
+          <Carousel opts={carouselOpts} isScale={true} className="w-full relative group">
             <SliderContainer className="py-10">
               {reviews.map((review, index) => {
                 const resolvedLinkedItems = resolveLinkedItems(review);
@@ -890,10 +890,17 @@ export default function CustomerReviews({
               })}
             </SliderContainer>
             
-            <div className="flex justify-center gap-4 mt-8">
-                <SliderPrevButton className="static transform-none bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-[#1B6013] w-12 h-12 rounded-full shadow-sm transition-all" />
-                <SliderNextButton className="static transform-none bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-[#1B6013] w-12 h-12 rounded-full shadow-sm transition-all" />
+            {/* Navigation Buttons - Positioned on the sides */}
+            <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 z-20 pointer-events-none flex justify-between px-2 md:px-6">
+                <SliderPrevButton 
+                    className="pointer-events-auto static transform-none bg-white border border-gray-100 text-gray-700 hover:bg-white hover:text-[#1B6013] w-12 h-12 md:w-14 md:h-14 rounded-full shadow-xl transition-all md:opacity-0 md:group-hover:opacity-100 -translate-x-2 md:-translate-x-4 md:group-hover:translate-x-0" 
+                />
+                <SliderNextButton 
+                    className="pointer-events-auto static transform-none bg-white border border-gray-100 text-gray-700 hover:bg-white hover:text-[#1B6013] w-12 h-12 md:w-14 md:h-14 rounded-full shadow-xl transition-all md:opacity-0 md:group-hover:opacity-100 translate-x-2 md:translate-x-4 md:group-hover:translate-x-0" 
+                />
             </div>
+
+
           </Carousel>
         </div>
       </section>
