@@ -132,16 +132,20 @@ const ProductDetails = async (props: {
   const params = await props.params;
   const { slug } = params;
 
-  const user = await getUser();
-  const product: ProductType = await getProductBySlug(slug);
+  const userPromise = getUser();
+  const productPromise = getProductBySlug(slug);
+  const supabase = await createServerComponentClient();
+  const categoriesPromise = getAllCategoriesQuery(supabase).select("id, title");
+
+  const [user, product, { data: categoriesData }] = await Promise.all([
+    userPromise,
+    productPromise,
+    categoriesPromise,
+  ]);
 
   if (!product || (product.slug && product.slug !== slug)) {
     return notFound();
   }
-
-  const supabase = await createServerComponentClient();
-  const { data: categoriesData } =
-    await getAllCategoriesQuery(supabase).select("id, title");
 
   const productCategory = categoriesData?.find(
     (cat: any) => cat.id === product.category_ids?.[0]
@@ -158,52 +162,34 @@ const ProductDetails = async (props: {
     0
   );
 
-  const relatedProducts = await getRelatedProductsByCategory({
-    category: product.category_ids?.[0] || "",
-    productId: product.id,
-    page: Number(page || "1"),
-    limit: 12,
-  });
+  // Fetch all secondary data in parallel
+  const [relatedProducts, rawAlsoViewedProducts, rawAlsoBoughtProducts, rawLinkedBundles] = await Promise.all([
+    getRelatedProductsByCategory({
+      category: product.category_ids?.[0] || "",
+      productId: product.id,
+      page: Number(page || "1"),
+      limit: 12,
+    }),
+    getAlsoViewedProducts(supabase, product.id).catch(() => []),
+    getAlsoBoughtProducts(supabase, product.id).catch(() => []),
+    getRelatedProducts(product.id).catch(() => []),
+  ]);
 
   let alsoViewedProducts: IProductInput[] = [];
-  try {
-    const rawAlsoViewedProducts = await getAlsoViewedProducts(
-      supabase,
-      product.id
+  if (rawAlsoViewedProducts) {
+    alsoViewedProducts = rawAlsoViewedProducts.map((p: ProductType) =>
+      mapSupabaseProductToIProductInput(p, categoriesData as CategoryData[])
     );
-    if (rawAlsoViewedProducts) {
-      alsoViewedProducts = rawAlsoViewedProducts.map((p: ProductType) =>
-        mapSupabaseProductToIProductInput(p, categoriesData as CategoryData[])
-      );
-    }
-  } catch (error) {
-    console.error("Error fetching also viewed products:", error);
   }
 
   let alsoBoughtProducts: IProductInput[] = [];
-  try {
-    const rawAlsoBoughtProducts = await getAlsoBoughtProducts(
-      supabase,
-      product.id
+  if (rawAlsoBoughtProducts) {
+    alsoBoughtProducts = rawAlsoBoughtProducts.map((p: ProductType) =>
+      mapSupabaseProductToIProductInput(p, categoriesData as CategoryData[])
     );
-    if (rawAlsoBoughtProducts) {
-      alsoBoughtProducts = rawAlsoBoughtProducts.map((p: ProductType) =>
-        mapSupabaseProductToIProductInput(p, categoriesData as CategoryData[])
-      );
-    }
-  } catch (error) {
-    console.error("Error fetching also bought products:", error);
   }
 
-  let linkedBundles: any[] = [];
-  try {
-    const rawLinkedBundles = await getRelatedProducts(product.id);
-    if (rawLinkedBundles) {
-      linkedBundles = rawLinkedBundles;
-    }
-  } catch (error) {
-    console.error("Error fetching related bundles:", error);
-  }
+  const linkedBundles = rawLinkedBundles || [];
 
   const ProductJsonLd = ({
     product,
@@ -330,8 +316,8 @@ const ProductDetails = async (props: {
   const safeImages = (() => {
     if (Array.isArray(product.images)) {
       const cleaned = product.images
-        .map((img) => normalizeImage(img))
-        .filter((u): u is string => typeof u === "string" && u.length > 0);
+        .map((img: any) => normalizeImage(img))
+        .filter((u: any): u is string => typeof u === "string" && u.length > 0);
       return cleaned.length > 0 ? cleaned : ["/product-placeholder.png"];
     }
     return ["/product-placeholder.png"];

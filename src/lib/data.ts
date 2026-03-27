@@ -2096,19 +2096,5 @@ export const categories = [
       "createdAt": "2024-12-23T18:18:33.603Z",
       "updatedAt": "2025-03-03T16:07:49.242Z",
       "__v": 0
-    },
-    {
-      "thumbnail": {
-        "url": "https://res.cloudinary.com/ahisi/image/upload/v1741007109/Seedspike_1_bs13fo.png",
-        "public_id": "ahisi/1734977907653_general"
-      },
-      "_id": "67c57837f10910b0c27eed7c",
-      "title": "Ramadan Special",
-      "description": "Ramadan Special",
-      "keynotes": ["General"],
-      "tags": ["general"],
-      "createdAt": "2024-12-23T18:18:33.603Z",
-      "updatedAt": "2025-03-05T13:53:54.840Z",
-      "__v": 0
     }
   ]

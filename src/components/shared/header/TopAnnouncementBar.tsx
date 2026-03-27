@@ -35,7 +35,7 @@ export default function TopAnnouncementBar() {
       setCurrentIndex((prev) => (prev + 1) % announcements.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [announcements.length]);
 
   return (
     <div className="bg-[#113f0c] text-white py-2 w-full overflow-hidden relative z-[60]">

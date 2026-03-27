@@ -755,6 +755,7 @@ const AddToCart = React.memo(
             actionOption ?? null,
             combinedForAction
           );
+          showToast(`${formatItemLabel(actionOption)} added to cart`, "success");
           return;
         } catch (error: any) {
           console.error("Failed to add to cart:", error);

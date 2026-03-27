@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@/hooks/useUser";
-import EidFestivalModal from "./EidFestivalModal";
 import { usePathname } from "next/navigation";
 
 interface NewVisitorProviderProps {
@@ -48,16 +47,7 @@ export function NewVisitorProvider({ children }: NewVisitorProviderProps) {
   };
 
   return (
-    <>
-      {children}
-      {shouldShowModal && (
-        <EidFestivalModal
-          isOpen={showModal}
-          onClose={handleClose}
-          isLoggedIn={!!user}
-        />
-      )}
-    </>
+    <>{children}</>
   );
 }
 
