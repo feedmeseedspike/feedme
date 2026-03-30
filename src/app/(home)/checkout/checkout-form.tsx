@@ -468,7 +468,7 @@ const CheckoutForm = ({
         }
       }
     }
-  }, [selectedAddressId, selectedAddress?.id, user?.email]); // Minimal dependencies to prevent loops
+  }, [selectedAddressId, selectedAddress?.id, user?.email, user?.display_name, currentLocationId, globalLocations, setCurrentLocation, shippingAddressForm]); // dependencies added while being mindful of potential loops
 
   // Removed aggressive location sync to prevent form overwrites
   // The location will be synced only when an address is explicitly selected below.
@@ -634,7 +634,7 @@ const CheckoutForm = ({
 
     // 3. Fallback to global or default
     return (formLocation === globalLocationName ? globalDeliveryPrice : 3500); // 3500 as standard fallback
-  }, [qualifiesForFreeShipping, locations, formLocation, globalLocationName, globalDeliveryPrice]);
+  }, [qualifiesForFreeShipping, locations, formLocation, globalLocationName, globalDeliveryPrice, isGiftMode]);
 
 
   // Service charge: 7.5% of subtotal (total orders), do not subtract delivery fee
@@ -1863,7 +1863,7 @@ const CheckoutForm = ({
                                               </FormControl>
                                              </PopoverTrigger>
                                         <PopoverContent 
-                                           className="w-[--radix-popover-trigger-width] min-w-[320px] md:min-w-[450px] p-0 z-[100] rounded-2xl shadow-2xl border-gray-100 animate-in fade-in zoom-in-95 duration-200" 
+                                           className="w-[--radix-popover-trigger-width] p-0 z-[100] rounded-2xl shadow-2xl border-gray-100 animate-in fade-in zoom-in-95 duration-200" 
                                            align="start" 
                                            sideOffset={8} 
                                            side="bottom"
@@ -2169,7 +2169,7 @@ const CheckoutForm = ({
                                          </Button>
                                        </FormControl>
                                      </PopoverTrigger>
-                                        <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[320px] md:min-w-[450px] p-0 z-[100] rounded-2xl overflow-hidden shadow-2xl border-gray-100 animate-in fade-in zoom-in-95 duration-200" align="start" sideOffset={8} side="bottom">
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[200px] p-0 z-[100] rounded-2xl overflow-hidden shadow-2xl border-gray-100 animate-in fade-in zoom-in-95 duration-200" align="start" sideOffset={8} side="bottom">
                                         <div className="flex flex-col max-h-[300px]">
                                           <div className="flex items-center px-3 py-2 border-b">
                                             <Input

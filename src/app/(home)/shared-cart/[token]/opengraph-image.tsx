@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import { ImageResponse } from "next/og";
 import { createClient } from "@supabase/supabase-js";
 
@@ -171,8 +172,8 @@ export default async function Image({ params }: Props) {
         }}
       >
         {buf ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
           <img
-            /* eslint-disable-next-line @next/next/no-img-element */
             src={buf as any}
             alt=""
             style={{

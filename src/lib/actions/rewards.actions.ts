@@ -76,29 +76,29 @@ export async function processOrderRewards(
     // 2. NEXT ORDER FREE DELIVERY (Threshold 50k)
     // Logic: If spent >= 50k, issue a voucher for free delivery on next order (valid 14 days)
     if (amountPaid >= BONUS_CONFIG.SUBSEQUENT_FREE_DELIVERY.min_spend) {
-       const code = `FREE-DELIV-NEXT-${Math.floor(1000 + Math.random() * 9000)}`;
-       // Create voucher
-       await createVoucher({
-          name: "Reward: Free Delivery (Next Order)",
-          code: code,
-          description: BONUS_CONFIG.SUBSEQUENT_FREE_DELIVERY.description,
-          discountType: 'percentage', // Or fixed? User said "Free Delivery". usually 100% off shipping or fixed amount.
-          // In wallet.actions.ts it was fixed 1500. Let's stick to fixed 1500 or 2500 (standard fee).
-          // Let's check checkout logic. Cost is 2500 usually.
-          // Let's safe bet: Fixed discount of 2500 (or sufficiently high to cover delivery)
-          discountValue: 2500, 
-          validTo: new Date(Date.now() + (BONUS_CONFIG.SUBSEQUENT_FREE_DELIVERY.expiry_days || 14) * 24 * 60 * 60 * 1000).toISOString(),
-          userId: userId,
-          maxUses: 1
-       });
-       rewardsSummary.freeDeliveryBonus = true;
-       await sendUnifiedNotification({
-         userId,
-         type: 'info',
-         title: 'Free Delivery Reward!',
-         body: `Congrats! You've unlocked Free Delivery for your next order.`,
-         link: '/account/notifications'
-       });
+        const code = `FREE-DELIV-NEXT-${Math.floor(1000 + Math.random() * 9000)}`;
+        // Create voucher
+        await createVoucher({
+           name: "Reward: Free Delivery (Next Order)",
+           code: code,
+           description: BONUS_CONFIG.SUBSEQUENT_FREE_DELIVERY.description,
+           discountType: 'percentage', // Or fixed? User said "Free Delivery". usually 100% off shipping or fixed amount.
+           // In wallet.actions.ts it was fixed 1500. Let's stick to fixed 1500 or 2500 (standard fee).
+           // Let's check checkout logic. Cost is 2500 usually.
+           // Let's safe bet: Fixed discount of 2500 (or sufficiently high to cover delivery)
+           discountValue: 2500, 
+           validTo: new Date(Date.now() + (BONUS_CONFIG.SUBSEQUENT_FREE_DELIVERY.expiry_days || 14) * 24 * 60 * 60 * 1000).toISOString(),
+           userId: userId,
+           maxUses: 1
+        });
+        rewardsSummary.freeDeliveryBonus = true;
+        await sendUnifiedNotification({
+          userId,
+          type: 'info',
+          title: 'Free Delivery Reward!',
+          body: `Congrats! You've unlocked Free Delivery for your next order (valid 14 days).`,
+          link: '/account/notifications'
+        });
     }
 
     // 3. LOYALTY POINTS (200k->1, 500k->2, 1M->3)

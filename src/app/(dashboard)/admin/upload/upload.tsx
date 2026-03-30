@@ -11,11 +11,16 @@ interface AnalysisResult {
   oldPrice?: number;
   newPrice?: number;
   newPriceMax?: number;
+  csvOptions?: { name: string; price: number; oldPrice?: number }[];
+  dbImages?: string[];
+  dbOptions?: { name: string; price: number; list_price?: number }[];
+  newImages?: string[];
   suggestion?: {
     id: string;
     name: string;
     similarity: number;
     oldPrice?: number;
+    dbImages?: string[];
   };
 }
 
@@ -184,32 +189,84 @@ export default function UploadExcel({ onSuccess }: Props) {
                 </div>
                 <div className="space-y-3">
                   {exacts.map(item => (
-                    <div key={item.csvItem} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-100 group">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-gray-900 uppercase">{item.csvItem}</span>
-                        <div className="flex items-center gap-4 mt-1">
-                          <div className="flex flex-col">
-                             <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">Current Price</span>
-                             <span className="text-xs font-bold text-gray-500">{formatNaira(item.oldPrice || 0)}</span>
+                    <div key={item.csvItem} className="flex flex-col p-4 bg-white rounded-2xl border border-gray-100 group">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-gray-50 rounded-xl overflow-hidden shrink-0 flex items-center justify-center border border-gray-100">
+                             {(item.dbImages?.[0] || item.newImages?.[0]) ? (
+                               <img src={item.dbImages?.[0] || item.newImages?.[0]} className="w-full h-full object-cover" alt="" />
+                             ) : <div className="text-[9px] text-gray-300 uppercase">NO IMG</div>}
                           </div>
-                          <ArrowRight className="w-3 h-3 text-gray-300" />
                           <div className="flex flex-col">
-                             <span className="text-[9px] text-[#10B981] font-bold uppercase tracking-tighter">New Price</span>
-                             <span className={cn(
-                               "text-xs font-black",
-                               (item.newPrice || 0) < (item.oldPrice || 0) ? "text-green-600" : (item.newPrice || 0) > (item.oldPrice || 0) ? "text-red-500" : "text-gray-900"
-                             )}>
-                               {formatNaira(item.newPrice || 0)}
-                               {item.newPriceMax && item.newPriceMax > item.newPrice! && ` - ${formatNaira(item.newPriceMax)}`}
-                               {(item.newPrice || 0) < (item.oldPrice || 0) && <span className="ml-1 text-[10px] bg-green-100 px-1 rounded">DROP</span>}
-                               {(item.newPrice || 0) > (item.oldPrice || 0) && <span className="ml-1 text-[10px] bg-red-100 px-1 rounded">HIKE</span>}
-                             </span>
+                            <span className="font-bold text-gray-900 uppercase">{item.csvItem}</span>
+                            <div className="flex items-center gap-4 mt-1">
+                              <div className="flex flex-col">
+                                 <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">Current Price</span>
+                                 <span className="text-xs font-bold text-gray-500">{formatNaira(item.oldPrice || 0)}</span>
+                              </div>
+                              <ArrowRight className="w-3 h-3 text-gray-300" />
+                              <div className="flex flex-col">
+                                 <span className="text-[9px] text-[#10B981] font-bold uppercase tracking-tighter">New Price</span>
+                                 <span className={cn(
+                                   "text-xs font-black",
+                                   (item.newPrice || 0) < (item.oldPrice || 0) ? "text-green-600" : (item.newPrice || 0) > (item.oldPrice || 0) ? "text-red-500" : "text-gray-900"
+                                 )}>
+                                   {formatNaira(item.newPrice || 0)}
+                                   {item.newPriceMax && item.newPriceMax > item.newPrice! && ` - ${formatNaira(item.newPriceMax)}`}
+                                 </span>
+                              </div>
+                            </div>
                           </div>
                         </div>
+                        <div className="flex items-center gap-2">
+                           <span className="text-[10px] font-black text-green-600 bg-green-50 px-3 py-1 rounded-full border border-green-100">MATCHED ✓</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                         <span className="text-[10px] font-black text-green-600 bg-green-50 px-3 py-1 rounded-full border border-green-100">MATCHED ✓</span>
-                      </div>
+
+                      {(() => {
+                        const merged = new Map<string, {name: string; dbP?: number; csvP?: number}>();
+                        item.dbOptions?.forEach(o => merged.set(o.name.toLowerCase().trim(), { name: o.name, dbP: o.price }));
+                        item.csvOptions?.forEach(o => {
+                          const k = o.name.toLowerCase().trim();
+                          if (merged.has(k)) merged.set(k, { ...merged.get(k)!, name: o.name, csvP: o.price });
+                          else merged.set(k, { name: o.name, csvP: o.price });
+                        });
+                        const opts = Array.from(merged.values());
+                        if (opts.length === 0) return null;
+
+                        return (
+                          <div className="mt-4 pt-3 border-t border-gray-50 flex flex-wrap gap-2">
+                            {opts.map((opt, idx) => {
+                              const isDrop = opt.dbP !== undefined && opt.csvP !== undefined && opt.csvP < opt.dbP;
+                              const isHike = opt.dbP !== undefined && opt.csvP !== undefined && opt.csvP > opt.dbP;
+                              const isNew = opt.dbP === undefined && opt.csvP !== undefined;
+                              const isOOS = opt.dbP !== undefined && opt.csvP === undefined;
+                              return (
+                                <div key={idx} className={cn("flex flex-col bg-gray-50/50 px-3 py-1.5 rounded-lg border", isOOS ? "border-red-100 bg-red-50/30" : "border-gray-200/60")}>
+                                  <span className={cn("text-[10px] font-bold uppercase truncate max-w-[120px]", isOOS ? "text-red-400 line-through" : "text-gray-500")}>{opt.name}</span>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    {opt.dbP !== undefined && (
+                                      <span className={cn("text-[10px] font-bold", opt.csvP !== undefined && opt.csvP !== opt.dbP ? "line-through text-gray-300" : "text-gray-600")}>
+                                        {formatNaira(opt.dbP)}
+                                      </span>
+                                    )}
+                                    {isOOS && <span className="text-[8px] text-red-500 uppercase font-black tracking-widest">OOS</span>}
+                                    {opt.csvP !== undefined && opt.dbP !== undefined && opt.csvP !== opt.dbP && <ArrowRight className="w-3 h-3 text-gray-300" />}
+                                    {opt.csvP !== undefined && (
+                                      <span className={cn("text-xs font-black", isDrop ? "text-green-600" : isHike ? "text-red-500" : "text-gray-800")}>
+                                        {formatNaira(opt.csvP)}
+                                      </span>
+                                    )}
+                                    {isNew && <span className="text-[8px] bg-blue-100 text-blue-600 px-1 py-0.5 rounded uppercase font-black">NEW</span>}
+                                    {isDrop && <span className="text-[8px] bg-green-100 text-green-600 px-1 py-0.5 rounded uppercase font-black">↓</span>}
+                                    {isHike && <span className="text-[8px] bg-red-100 text-red-600 px-1 py-0.5 rounded uppercase font-black">↑</span>}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
                   ))}
                 </div>
@@ -226,41 +283,95 @@ export default function UploadExcel({ onSuccess }: Props) {
                 </div>
                 <div className="space-y-3">
                   {renames.map(item => (
-                    <div key={item.csvItem} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-100 hover:border-amber-200 transition-colors group">
-                      <div className="flex items-center gap-4">
-                        <div className="flex flex-col">
-                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter mb-0.5">CSV Product Name</span>
-                          <span className="font-bold text-gray-900 group-hover:text-amber-600 transition-colors uppercase">{item.csvItem}</span>
-                          {item.newPrice && (
-                            <span className="text-xs font-black text-green-600">CSV: {formatNaira(item.newPrice)}</span>
-                          )}
+                    <div key={item.csvItem} className="flex flex-col p-4 bg-white rounded-2xl border border-gray-100 hover:border-amber-200 transition-colors group">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="flex flex-col">
+                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter mb-0.5">CSV Product Name</span>
+                            <span className="font-bold text-gray-900 group-hover:text-amber-600 transition-colors uppercase">{item.csvItem}</span>
+                            {item.newPrice && (
+                              <span className="text-xs font-black text-green-600">CSV: {formatNaira(item.newPrice)}</span>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-center px-4">
+                             <ArrowRight className="w-4 h-4 text-amber-400" />
+                             <span className="text-[9px] font-black text-amber-500">{Math.round((item.similarity || 0) * 100)}%</span>
+                          </div>
+                          <div className="flex gap-3 items-center">
+                            <div className="w-10 h-10 bg-gray-50 rounded-lg overflow-hidden shrink-0 flex items-center justify-center border border-gray-100">
+                               {item.dbImages?.[0] ? (
+                                 <img src={item.dbImages[0]} className="w-full h-full object-cover" alt="" />
+                               ) : <div className="text-[8px] text-gray-300 uppercase">NO IMG</div>}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter mb-0.5">Existing DB Product</span>
+                              <span className="font-bold text-gray-700 uppercase">{item.matchName}</span>
+                              {item.oldPrice !== undefined && (
+                                <span className="text-xs font-bold text-gray-400">DB: {formatNaira(item.oldPrice)}</span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex flex-col items-center px-4">
-                           <ArrowRight className="w-4 h-4 text-amber-400" />
-                           <span className="text-[9px] font-black text-amber-500">{Math.round((item.similarity || 0) * 100)}%</span>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter mb-0.5">Existing DB Product</span>
-                          <span className="font-bold text-gray-700 uppercase">{item.matchName}</span>
-                          {item.oldPrice !== undefined && (
-                            <span className="text-xs font-bold text-gray-400">DB: {formatNaira(item.oldPrice)}</span>
-                          )}
+
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => toggleRename(item.csvItem, item.matchId!, item.matchName!)}
+                            className={cn(
+                              "px-5 py-2.5 rounded-xl text-xs font-black transition-all transform active:scale-95",
+                              confirmations[item.csvItem]?.action === 'rename' 
+                                ? "bg-[#10B981] text-white shadow-xl shadow-green-100" 
+                                : "bg-white text-gray-600 border border-gray-200 hover:border-amber-400 hover:bg-amber-50"
+                            )}
+                          >
+                            {confirmations[item.csvItem]?.action === 'rename' ? 'LINKED ✓' : 'LINK AS SAME?'}
+                          </button>
                         </div>
                       </div>
 
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => toggleRename(item.csvItem, item.matchId!, item.matchName!)}
-                          className={cn(
-                            "px-5 py-2.5 rounded-xl text-xs font-black transition-all transform active:scale-95",
-                            confirmations[item.csvItem]?.action === 'rename' 
-                              ? "bg-[#10B981] text-white shadow-xl shadow-green-100" 
-                              : "bg-white text-gray-600 border border-gray-200 hover:border-amber-400 hover:bg-amber-50"
-                          )}
-                        >
-                          {confirmations[item.csvItem]?.action === 'rename' ? 'LINKED ✓' : 'LINK AS SAME?'}
-                        </button>
-                      </div>
+                      {(() => {
+                        const merged = new Map<string, {name: string; dbP?: number; csvP?: number}>();
+                        item.dbOptions?.forEach(o => merged.set(o.name.toLowerCase().trim(), { name: o.name, dbP: o.price }));
+                        item.csvOptions?.forEach(o => {
+                          const k = o.name.toLowerCase().trim();
+                          if (merged.has(k)) merged.set(k, { ...merged.get(k)!, name: o.name, csvP: o.price });
+                          else merged.set(k, { name: o.name, csvP: o.price });
+                        });
+                        const opts = Array.from(merged.values());
+                        if (opts.length === 0) return null;
+
+                        return (
+                          <div className="mt-4 pt-3 border-t border-amber-50 flex flex-wrap gap-2">
+                            {opts.map((opt, idx) => {
+                              const isDrop = opt.dbP !== undefined && opt.csvP !== undefined && opt.csvP < opt.dbP;
+                              const isHike = opt.dbP !== undefined && opt.csvP !== undefined && opt.csvP > opt.dbP;
+                              const isNew = opt.dbP === undefined && opt.csvP !== undefined;
+                              const isOOS = opt.dbP !== undefined && opt.csvP === undefined;
+                              return (
+                                <div key={idx} className={cn("flex flex-col bg-amber-50/30 px-3 py-1.5 rounded-lg border", isOOS ? "border-red-100 bg-red-50/50" : "border-amber-100/50")}>
+                                  <span className={cn("text-[10px] font-bold uppercase truncate max-w-[120px]", isOOS ? "text-red-400 line-through" : "text-amber-700")}>{opt.name}</span>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    {opt.dbP !== undefined && (
+                                      <span className={cn("text-[10px] font-bold", opt.csvP !== undefined && opt.csvP !== opt.dbP ? "line-through text-gray-300" : "text-amber-900/60")}>
+                                        {formatNaira(opt.dbP)}
+                                      </span>
+                                    )}
+                                    {isOOS && <span className="text-[8px] text-red-500 uppercase font-black tracking-widest">OOS</span>}
+                                    {opt.csvP !== undefined && opt.dbP !== undefined && opt.csvP !== opt.dbP && <ArrowRight className="w-3 h-3 text-amber-200" />}
+                                    {opt.csvP !== undefined && (
+                                      <span className={cn("text-xs font-black", isDrop ? "text-green-600" : isHike ? "text-red-500" : "text-amber-900")}>
+                                        {formatNaira(opt.csvP)}
+                                      </span>
+                                    )}
+                                    {isNew && <span className="text-[8px] bg-blue-100 text-blue-600 px-1 py-0.5 rounded uppercase font-black">NEW</span>}
+                                    {isDrop && <span className="text-[8px] bg-green-100 text-green-600 px-1 py-0.5 rounded uppercase font-black">↓</span>}
+                                    {isHike && <span className="text-[8px] bg-red-100 text-red-600 px-1 py-0.5 rounded uppercase font-black">↑</span>}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
                   ))}
                 </div>
@@ -282,13 +393,20 @@ export default function UploadExcel({ onSuccess }: Props) {
                       confirmations[item.csvItem]?.action === 'ignore' ? "bg-red-50/30 border-red-100" : "bg-white border-gray-100"
                     )}>
                       <div className="flex items-center justify-between">
-                        <div className="flex flex-col">
-                          <span className="font-black text-gray-900 text-lg uppercase leading-none">{item.csvItem}</span>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-blue-600 font-bold uppercase tracking-tight">Status: New Creation</span>
-                            {item.newPrice && (
-                               <span className="text-xs font-black text-green-600 bg-green-50 px-2 rounded">Price: {formatNaira(item.newPrice)}</span>
-                            )}
+                        <div className="flex gap-4 items-center">
+                          <div className="w-12 h-12 bg-gray-50 rounded-xl overflow-hidden shrink-0 flex items-center justify-center border border-gray-100">
+                             {item.newImages?.[0] ? (
+                               <img src={item.newImages[0]} className="w-full h-full object-cover" alt="" />
+                             ) : <div className="text-[9px] text-gray-300 uppercase">NO IMG</div>}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-black text-gray-900 text-lg uppercase leading-none">{item.csvItem}</span>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs text-blue-600 font-bold uppercase tracking-tight">Status: New Creation</span>
+                              {item.newPrice && (
+                                 <span className="text-xs font-black text-green-600 bg-green-50 px-2 rounded">Base: {formatNaira(item.newPrice)}</span>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <div className="flex gap-3">
@@ -309,7 +427,10 @@ export default function UploadExcel({ onSuccess }: Props) {
                       {item.suggestion && confirmations[item.csvItem]?.action !== 'ignore' && (
                         <div className="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between bg-gray-50/50 p-3 rounded-xl">
                           <div className="flex items-center gap-3">
-                            <HelpCircle className="w-4 h-4 text-gray-400" />
+                            <HelpCircle className="w-4 h-4 text-gray-400 shrink-0" />
+                            <div className="w-8 h-8 bg-gray-100 rounded overflow-hidden shrink-0 flex items-center justify-center">
+                               {item.suggestion.dbImages?.[0] ? <img src={item.suggestion.dbImages[0]} className="w-full h-full object-cover" /> : <span className="text-[6px]">NO IMG</span>}
+                            </div>
                             <p className="text-xs font-medium text-gray-500 italic">
                               Found similar existing item: <span className="font-bold text-gray-700 not-italic uppercase">{item.suggestion.name}</span>
                             </p>
@@ -323,6 +444,18 @@ export default function UploadExcel({ onSuccess }: Props) {
                           >
                             {confirmations[item.csvItem]?.action === 'rename' ? '✓ Linked' : 'Wait, link to this instead?'}
                           </button>
+                        </div>
+                      )}
+
+                      {/* Display options for new products */}
+                      {item.csvOptions && item.csvOptions.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-blue-50 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {item.csvOptions.map((opt, idx) => (
+                            <div key={idx} className="flex items-center justify-between bg-blue-50/30 px-3 py-1.5 rounded-lg border border-blue-100/50">
+                              <span className="text-[10px] text-blue-700 font-bold truncate max-w-[80px] uppercase">{opt.name}</span>
+                              <span className="font-black text-xs text-blue-900">{formatNaira(opt.price)}</span>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>

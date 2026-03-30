@@ -389,9 +389,10 @@ const HeaderClient = ({ categories, categoriesError, hasActiveJobs }: any) => {
                   <Link href="/login">
                     <Button
                       variant="secondary"
-                      className="bg-white text-[#1B6013] hover:!bg-none"
+                      className="group relative overflow-hidden bg-white text-[#1B6013] transition-colors duration-300 hover:text-white"
                     >
-                      Sign In
+                      <span className="relative z-10 font-semibold">Sign In</span>
+                      <div className="absolute inset-0 bg-[#F0800F] transform -translate-x-full transition-transform duration-400 ease-[cubic-bezier(0.4,0,0.2,1)] group-hover:translate-x-0" />
                     </Button>
                   </Link>
                 )}

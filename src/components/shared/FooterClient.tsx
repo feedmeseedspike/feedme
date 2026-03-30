@@ -53,7 +53,7 @@ const footerData = [
   // },
   {
     title: "Legal",
-    links: [{ name: "Privacy Policy", href: "/return-policy" }],
+    links: [{ name: "Privacy Policy", href: "/privacy-policy" }],
   },
 ];
 

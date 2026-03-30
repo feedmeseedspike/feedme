@@ -44,7 +44,7 @@ export function ItemSelector({ type, selectedIds, onChange, title }: ItemSelecto
       }
     };
     checkConnection();
-  }, []);
+  }, [supabase, type]);
 
   // Keep selectedItems names in sync with selectedIds
   useEffect(() => {
@@ -72,7 +72,7 @@ export function ItemSelector({ type, selectedIds, onChange, title }: ItemSelecto
     if (selectedItems.length > selectedIds.length) {
       setSelectedItems(prev => prev.filter(item => selectedIds.includes(item.id)));
     }
-  }, [selectedIds, type]);
+  }, [selectedIds, type, supabase, selectedItems]);
 
   const handleSearch = async (val: string) => {
     setSearch(val);

@@ -134,10 +134,13 @@ export async function POST(req: NextRequest) {
         
         const exact = allExistingProducts?.find(ep => ep.name === p.name);
         
+        const imgEntry = findImageEntry(p.name);
         const result: any = { 
           csvItem: p.name, 
           newPrice: lowestPrice,
-          newPriceMax: highestPrice
+          newPriceMax: highestPrice,
+          csvOptions: p.options,
+          newImages: [getProductImage(imgEntry)]
         };
 
         if (exact) {
@@ -145,6 +148,8 @@ export async function POST(req: NextRequest) {
           result.matchId = exact.id;
           result.matchName = exact.name;
           result.oldPrice = exact.price;
+          result.dbImages = exact.images;
+          result.dbOptions = exact.options;
         } else {
           // Fuzzy match
           let bestMatch: any = null;
@@ -163,10 +168,19 @@ export async function POST(req: NextRequest) {
             result.matchName = bestMatch.name;
             result.similarity = highestSim;
             result.oldPrice = bestMatch.price;
+            result.dbImages = bestMatch.images;
+            result.dbOptions = bestMatch.options;
           } else {
             result.status = "new";
             if (highestSim > 0.4) {
-              result.suggestion = { id: bestMatch.id, name: bestMatch.name, similarity: highestSim, oldPrice: bestMatch.price };
+              result.suggestion = { 
+                id: bestMatch.id, 
+                name: bestMatch.name, 
+                similarity: highestSim, 
+                oldPrice: bestMatch.price,
+                dbImages: bestMatch.images,
+                dbOptions: bestMatch.options
+              };
             }
           }
         }
