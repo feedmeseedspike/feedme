@@ -162,6 +162,9 @@ export function SupabaseAuthProvider({
     user?.is_staff,
     user?.role,
     user?.status,
+    user?.has_used_new_user_spin,
+    user?.last_spin_at,
+    user?.loyalty_points,
   ]);
 
   return (
