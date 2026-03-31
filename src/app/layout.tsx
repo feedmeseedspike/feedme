@@ -21,7 +21,7 @@ import { User } from "@supabase/supabase-js";
 import { PathnameProvider } from "@components/shared/pathname-provider";
 import { getReferralStatus } from "@/queries/referrals";
 import Script from "next/script";
-import RegisterSW from "../components/register-sw";
+// import RegisterSW from "../components/register-sw";
 import RegisterPush from "@components/shared/RegisterPush";
 import { NewVisitorProvider } from "@components/shared/ExitIntentProvider";
 import { getStoreSettings } from "@/lib/actions/settings.actions";
@@ -66,7 +66,7 @@ export const viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://shopfeedme.com/"),
-  manifest: "/manifest.json",
+  // manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     title: "FeedMe",
@@ -298,7 +298,7 @@ export default async function RootLayout({
         </Script>
       </head>
       <body className="font-custom">
-        <RegisterSW />
+        {/* <RegisterSW /> */}
         {/* Google Tag Manager (noscript) */}
         <noscript>
           <iframe

@@ -57,7 +57,11 @@ export default function CredentialsSignInForm() {
         password: data.password,
       });
       showToast("Successfully signed in!", "success");
-      window.location.href = callbackUrl;
+      
+      // Small delay to let the toast be seen before redirecting
+      setTimeout(() => {
+        router.push(callbackUrl);
+      }, 1500);
     } catch (error: any) {
       if (isRedirectError(error)) {
         throw error;

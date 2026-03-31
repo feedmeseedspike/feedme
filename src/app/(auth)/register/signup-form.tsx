@@ -105,8 +105,10 @@ export default function CredentialsSignUpForm() {
       
       showToast("Registration successful!", "success");
       
-      // Redirect to home page
-      window.location.href = "/";
+      // Small delay to let the toast be seen before redirecting
+      setTimeout(() => {
+        router.push(callbackUrl);
+      }, 1500);
       return;
     } catch (error: any) {
       let errorMsg = "An error occurred during registration";
