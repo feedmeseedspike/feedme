@@ -61,17 +61,18 @@ const proxima = localFont({
 });
 
 export const viewport = {
-  themeColor: "#ff6600",
+  // themeColor removed — was causing orange bars on iOS that blocked the Place Order Now button
 };
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://shopfeedme.com/"),
   // manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    title: "FeedMe",
-    statusBarStyle: "default",
-  },
+  // appleWebApp removed — was activating iOS PWA standalone mode which caused orange bars to appear
+  // appleWebApp: {
+  //   capable: true,
+  //   title: "FeedMe",
+  //   statusBarStyle: "default",
+  // },
   title: {
     template: "%s - FeedMe",
     default: "FeedMe - Real Food, Real Fast, Delivered in 3 Hours",
