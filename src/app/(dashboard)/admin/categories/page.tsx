@@ -28,8 +28,8 @@ export default async function CategoriesPage({
   
   // Get all unique tags for the filter sidebar
   const uniqueTags = Array.from(
-    new Set(allCategories.flatMap((cat: any) => cat.tags || []))
-  ).filter(Boolean).sort();
+    new Set(allCategories.flatMap((cat: any) => (cat.tags as string[]) || []))
+  ).filter(Boolean).sort() as string[];
 
   // Filter and paginate server-side
   let filtered = allCategories;

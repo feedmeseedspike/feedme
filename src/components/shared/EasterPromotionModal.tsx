@@ -38,11 +38,16 @@ export default function EasterPromotionModal() {
             onClick={handleClose}
             className="inline-block relative rounded-2xl transition-all duration-300 hover:brightness-95 active:scale-[0.98]"
           >
-            <img
-              src="/banners/easter_modal_visual.jpeg" 
-              alt="Easter Special Promotion - Click to shop"
-              className="max-w-[95vw] sm:max-w-[420px] max-h-[85vh] w-auto h-auto block rounded-2xl"
-            />
+            <div className="relative w-full h-[60vh] sm:h-[80vh] flex items-center justify-center">
+              <Image
+                src="/banners/easter_modal_visual.jpeg" 
+                alt="FeedMe Easter Promotion - Click to shop discounted items"
+                fill
+                priority
+                className="rounded-2xl object-contain"
+                sizes="(max-width: 768px) 95vw, 420px"
+              />
+            </div>
           </Link>
           
           {/* Close Button - Now perfectly pinned to the real flyer edge */}
