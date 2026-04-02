@@ -97,7 +97,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ toasts, showToast, dismissToast }}>
       {children}
-      <div className="fixed bottom-[calc(var(--sticky-cart-height,0px)+16px)] right-4 md:bottom-4 z-[9999] space-y-2 pointer-events-none transition-all duration-300">
+      <div className="fixed bottom-[calc(var(--sticky-cart-height,0px)_+_16px)] right-4 md:bottom-4 z-[9999] space-y-2 pointer-events-none transition-all duration-300">
         <AnimatePresence>
           {toasts.map((toast) => (
             <motion.div

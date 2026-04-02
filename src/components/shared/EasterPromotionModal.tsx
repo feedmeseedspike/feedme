@@ -38,14 +38,15 @@ export default function EasterPromotionModal() {
             onClick={handleClose}
             className="inline-block relative rounded-2xl transition-all duration-300 hover:brightness-95 active:scale-[0.98]"
           >
-            <div className="relative w-full h-[60vh] sm:h-[80vh] flex items-center justify-center">
+            <div className="relative w-full flex items-center justify-center">
               <Image
                 src="/banners/easter_modal_visual.jpeg" 
                 alt="FeedMe Easter Promotion - Click to shop discounted items"
-                fill
+                width={800}
+                height={1000}
                 priority
-                className="rounded-2xl object-contain"
-                sizes="(max-width: 768px) 95vw, 420px"
+                className="rounded-2xl w-full h-auto max-h-[85vh] object-contain"
+                sizes="(max-width: 768px) 92vw, 420px"
               />
             </div>
           </Link>
