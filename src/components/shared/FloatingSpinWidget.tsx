@@ -177,7 +177,7 @@ export default function FloatingSpinWidget() {
               y: { duration: 3, repeat: Infinity, ease: "easeInOut" },
               rotate: { duration: 4, repeat: Infinity, ease: "easeInOut" }
             }}
-            className="fixed bottom-[calc(var(--sticky-cart-height,0px)+155px)] md:bottom-[100px] right-4 z-[90]"
+            className="fixed bottom-[calc(var(--sticky-cart-height,0px)_+_155px)] md:bottom-[100px] right-4 z-[90]"
           >
             <motion.button
               whileHover={{ scale: 1.1, rotate: 5 }}
@@ -265,6 +265,14 @@ export default function FloatingSpinWidget() {
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-[2px] p-4"
             onClick={() => setIsOpen(false)}
           >
+            {/* Close button - Fixed to top right of viewport to avoid notch/overflow issues */}
+            <button
+              onClick={() => setIsOpen(false)}
+              className="absolute top-12 right-6 md:top-8 md:right-8 p-2 z-[110] bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full text-white transition-all active:scale-90"
+            >
+              <X className="w-8 h-8" />
+            </button>
+
             {/* Transparent Container */}
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
@@ -273,13 +281,7 @@ export default function FloatingSpinWidget() {
               onClick={(e) => e.stopPropagation()}
               className="relative w-full max-w-xl flex flex-col items-center justify-center"
             >
-                {/* Close button - Top Right of the screen area */}
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="absolute -top-16 right-0 md:-right-8 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all active:scale-90"
-                >
-                  <X className="w-8 h-8" />
-                </button>
+
 
                 {/* Content - Just the Wheel */}
                 <div className="relative flex flex-col items-center mt-12">

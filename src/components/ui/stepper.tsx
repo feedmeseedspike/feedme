@@ -476,7 +476,7 @@ const verticalStepVariants = cva(
           "[&:not(:last-child)]:after:bg-border [&:not(:last-child)]:after:w-[2px] [&:not(:last-child)]:after:content-['']",
           "[&:not(:last-child)]:after:inset-x-[calc(var(--step-icon-size)/2)]",
           "[&:not(:last-child)]:after:absolute",
-          "[&:not(:last-child)]:after:top-[calc(var(--step-icon-size)+var(--step-gap))]",
+          "[&:not(:last-child)]:after:top-[calc(var(--step-icon-size)_+_var(--step-gap))]",
           "[&:not(:last-child)]:after:bottom-[var(--step-gap)]",
           "[&:not(:last-child)]:after:transition-all [&:not(:last-child)]:after:duration-200"
         ),

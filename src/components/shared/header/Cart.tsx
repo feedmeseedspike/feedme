@@ -262,6 +262,9 @@ const CartRecommendations = () => {
   });
   const addToCartMutation = useAddToCartMutation();
   const { showToast } = useToast();
+  const { user } = useUser();
+  const anonymousCart = useAnonymousCart();
+  const queryClient = useQueryClient();
 
   if (!products?.data || products.data.length === 0) return null;
 
@@ -289,13 +292,26 @@ const CartRecommendations = () => {
               <Button 
                 size="sm" 
                 variant="outline" 
-                className="w-full h-7 text-[10px] mt-2 rounded-lg border-gray-200 hover:bg-primary hover:text-white hover:border-primary transition-colors"
+                className="w-full h-7 text-[10px] mt-2 rounded-lg border-[#1B6013]/30 text-[#1B6013] hover:bg-[#1B6013] hover:text-white hover:border-[#1B6013] transition-colors"
                 onClick={async () => {
                   try {
-                    await addToCartMutation.mutateAsync({
-                      product_id: product.id,
-                      quantity: 1,
-                    });
+                    if (user) {
+                      await addToCartMutation.mutateAsync({
+                        product_id: product.id,
+                        quantity: 1,
+                      });
+                      queryClient.invalidateQueries({ queryKey: cartQueryKey });
+                    } else {
+                      await anonymousCart.addItem(
+                        product.id,
+                        1,
+                        product.price,
+                        undefined,
+                        undefined,
+                        undefined,
+                        { name: product.name, slug: product.slug, image: product.images?.[0] }
+                      );
+                    }
                     showToast("Added to cart", "success");
                   } catch (e) {
                     showToast("Failed to add", "error");

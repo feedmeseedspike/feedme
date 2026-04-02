@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { Metadata } from "next";
 import { Suspense } from "react";
@@ -43,7 +44,11 @@ export async function generateMetadata({
   params: { slug: string };
 }): Promise<Metadata> {
   const categorySlug = params.slug;
-  const categoryName = categorySlug
+  
+  // Re-fetch to get accurate titles for metadata
+  const allCategories = await getAllCategories();
+  const cat = allCategories.find((c: Category) => toSlug(c.title).toLowerCase() === categorySlug.toLowerCase());
+  const categoryName = cat ? cat.title : categorySlug
     .split("-")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
@@ -152,12 +157,8 @@ export default async function CategoryPage({
 
   const allCategories = await getAllCategories();
   
-  // Debug: Log available categories and their slugs
-  console.log("Available categories:", allCategories.map((c: Category) => ({ 
-    title: c.title, 
-    slug: toSlug(c.title).toLowerCase() 
-  })));
-  console.log("Looking for slug:", categorySlug.toLowerCase());
+  // Debug logging
+  console.log(`[CategoryDebug] URL Slug: ${categorySlug}`);
   
   const categoryObj =
     allCategories.find((c: Category) => toSlug(c.title).toLowerCase() === categorySlug.toLowerCase()) ||
@@ -166,10 +167,15 @@ export default async function CategoryPage({
         .toLowerCase()
         .replace(/\s+/g, '-')
         .replace(/[^a-z0-9-]/g, '') === categorySlug.toLowerCase()
-    );
+    ) ||
+    allCategories.find((c: Category) => {
+        const normalizedTitle = c.title?.toLowerCase().replace(/[^a-z0-9]/g, '') || "";
+        const normalizedSlug = categorySlug.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return normalizedTitle === normalizedSlug && normalizedTitle !== "";
+    });
 
   if (!categoryObj) {
-    console.log("Category not found for slug:", categorySlug);
+    console.error(`[CategoryError] Category not found for slug: ${categorySlug}. Checked ${allCategories.length} categories.`);
     return notFound();
   }
 

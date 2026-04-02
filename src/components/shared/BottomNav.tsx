@@ -36,7 +36,7 @@ export default function BottomNav() {
         animate="animate"
         exit="exit"
         variants={BottomNavAnimations}
-        className="md:hidden fixed bottom-[calc(var(--sticky-cart-height,0px)+8px)] left-1/2 -translate-x-1/2 z-50 flex justify-center px-4 
+        className="md:hidden fixed bottom-[calc(var(--sticky-cart-height,0px)_+_8px)] left-1/2 -translate-x-1/2 z-50 flex justify-center px-4 
           py-1 rounded-2xl backdrop-blur-md shadow-lg shadow-[#2A0E61]/50"
       >
         <ul className="flex items-center text-xs sm:text-sm sm:gap-2">

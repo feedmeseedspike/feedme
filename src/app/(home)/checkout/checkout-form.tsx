@@ -1016,8 +1016,14 @@ const CheckoutForm = ({
           return;
         }
 
-        if (!isFormValid || !selectedAddressId) {
-          showToast("Please fill out all required shipping fields and select an address.", "error");
+        if (!isFormValid) {
+          showToast("Please fill out all required shipping fields.", "error");
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (!selectedAddressId && userAddresses.length > 0) {
+          showToast("Please select a delivery address.", "error");
           setIsSubmitting(false);
           return;
         }
@@ -1549,7 +1555,7 @@ const CheckoutForm = ({
                                  </button>
                              </div>
                          </div>
-                       ) : userAddresses && userAddresses.length > 0 ? (
+                       ) : (
                          <div 
                            className="text-center py-10 px-6 bg-white rounded-xl border border-dashed border-gray-300 hover:border-[#1B6013] hover:bg-green-50/50 transition-all group cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.02)]" 
                            onClick={() => setShowAddressModal(true)}
@@ -1560,7 +1566,7 @@ const CheckoutForm = ({
                               <p className="text-sm font-bold text-gray-600 group-hover:text-[#FF9900] transition-colors uppercase tracking-wider">Select Delivery Address</p>
                               <p className="text-xs text-gray-400 mt-2">Add or choose where we should deliver your food</p>
                          </div>
-                       ) : null}
+                       )}
 
                     {/* Modal for address selection/addition */}
                     <Dialog

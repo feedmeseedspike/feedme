@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableHeader,
@@ -54,6 +54,7 @@ export default function CategoriesClient({
   currentPage,
   initialSearch,
   initialTags,
+  allTags,
 }: {
   initialCategories: any[];
   totalCategories: number;
@@ -61,6 +62,7 @@ export default function CategoriesClient({
   currentPage: number;
   initialSearch: string;
   initialTags: string[];
+  allTags?: string[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -75,26 +77,49 @@ export default function CategoriesClient({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Sync state with props when data changes on server
+  useEffect(() => {
+    setCategories(initialCategories);
+  }, [initialCategories]);
+
+  useEffect(() => {
+    setSearch(initialSearch);
+  }, [initialSearch]);
+
+  useEffect(() => {
+    setSelectedTags(initialTags);
+  }, [initialTags]);
+
+  // Debounce search URL update
+  useEffect(() => {
+    // Only proceed if search has actually changed from initialSearch
+    if (search === initialSearch) return;
+
+    const timer = setTimeout(() => {
+      const newSearchParams = new URLSearchParams(searchParams?.toString() || "");
+      if (search) {
+        newSearchParams.set("search", search);
+      } else {
+        newSearchParams.delete("search");
+      }
+      newSearchParams.set("page", "1");
+      router.push(`?${newSearchParams.toString()}`);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [search, initialSearch, router, searchParams]);
+
   const page = currentPage;
   const ITEMS_PER_PAGE = itemsPerPage;
 
-  // Get unique tags from all categories (for filter UI)
-  const allTags = Array.from(
-    new Set(categories.flatMap((category) => category.tags || []))
+  // Use tags provided from server or fallback to current list tags
+  const filterTags = (allTags || []).length > 0 ? (allTags || []) : Array.from(
+    new Set((categories || []).flatMap((category) => category.tags || []))
   );
 
   // Handle search input change
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newSearch = e.target.value;
-    setSearch(newSearch);
-    const newSearchParams = new URLSearchParams(searchParams?.toString() || "");
-    if (newSearch) {
-      newSearchParams.set("search", newSearch);
-    } else {
-      newSearchParams.delete("search");
-    }
-    newSearchParams.set("page", "1");
-    router.push(`?${newSearchParams.toString()}`);
+    setSearch(e.target.value);
   };
 
   // Toggle filter for tags
@@ -209,7 +234,7 @@ export default function CategoriesClient({
                 <h3 className="text-sm text-[#344054] font-medium mb-2">
                   Tags
                 </h3>
-                {allTags.map((tag) => (
+                {filterTags.map((tag) => (
                   <div key={tag} className="flex items-center gap-2 mb-2 pl-2">
                     <Checkbox
                       id={tag}
