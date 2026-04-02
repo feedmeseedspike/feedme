@@ -305,7 +305,7 @@ const CartRecommendations = () => {
                       await anonymousCart.addItem(
                         product.id,
                         1,
-                        product.price,
+                        product.price ?? 0,
                         undefined,
                         undefined,
                         undefined,
