@@ -10,6 +10,12 @@ export default function TopAnnouncementBar() {
 
   const announcements = [
     {
+      icon: <Sparkles className="w-4 h-4 text-[#FFD700]" />,
+      text: "🐣 Easter Special: Get 10% OFF on selected feast items!",
+      link: "/discounted",
+      linkText: "Shop Sale",
+    },
+    {
       icon: <Gift className="w-4 h-4 text-[#F0800F]" />,
       text: "Refer a friend & get ₦2,000 off your next order!",
       link: "/account/referral",

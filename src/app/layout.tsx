@@ -6,7 +6,7 @@ import "../app/global.css";
 import { ReduxProvider } from "@providers/redux-providers";
 import { EB_Garamond } from "next/font/google";
 import { LocationProvider } from "@components/shared/header/Location";
-// import CustomScrollbar from "@components/shared/CustomScrollbar";
+import CustomScrollbar from "@components/shared/CustomScrollbar";
 import NextTopLoader from "nextjs-toploader";
 import { ToastProvider } from "src/hooks/useToast";
 import CartMergeProvider from "@providers/CartMergeProvider";
@@ -61,18 +61,17 @@ const proxima = localFont({
 });
 
 export const viewport = {
-  // themeColor removed — was causing orange bars on iOS that blocked the Place Order Now button
+  themeColor: "#ff6600",
 };
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://shopfeedme.com/"),
   // manifest: "/manifest.json",
-  // appleWebApp removed — was activating iOS PWA standalone mode which caused orange bars to appear
-  // appleWebApp: {
-  //   capable: true,
-  //   title: "FeedMe",
-  //   statusBarStyle: "default",
-  // },
+  appleWebApp: {
+    capable: true,
+    title: "FeedMe",
+    statusBarStyle: "default",
+  },
   title: {
     template: "%s - FeedMe",
     default: "FeedMe - Real Food, Real Fast, Delivered in 3 Hours",
@@ -328,6 +327,7 @@ export default async function RootLayout({
                   initialUser={user}
                 >
                   <CartMergeProvider>
+                    <CustomScrollbar>
                       <PathnameProvider hasReferralStatus={hasReferralStatus}>
                         <DealsPopup />
                         <NewVisitorProvider>
@@ -336,6 +336,7 @@ export default async function RootLayout({
                           </StoreStatusProvider>
                         </NewVisitorProvider>
                       </PathnameProvider>
+                    </CustomScrollbar>
                   </CartMergeProvider>
                 </SupabaseAuthProvider>
               </ToastProvider>

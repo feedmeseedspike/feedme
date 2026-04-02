@@ -15,7 +15,7 @@ export default async function CategoriesPage({
   searchParams: any;
 }) {
   const currentPage = Number(searchParams?.page) || 1;
-  const itemsPerPage = 10;
+  const itemsPerPage = 20;
   const initialSearch = searchParams?.search || "";
   const initialTags = Array.isArray(searchParams?.tags)
     ? searchParams.tags
@@ -23,13 +23,19 @@ export default async function CategoriesPage({
       ? [searchParams.tags]
       : [];
 
-  // Fetch all categories (add pagination, search, and tags filter as needed)
+  // Fetch all categories
   const allCategories = await getAllCategories();
-  // Filter and paginate server-side for now (can be optimized)
+  
+  // Get all unique tags for the filter sidebar
+  const uniqueTags = Array.from(
+    new Set(allCategories.flatMap((cat: any) => cat.tags || []))
+  ).filter(Boolean).sort();
+
+  // Filter and paginate server-side
   let filtered = allCategories;
   if (initialSearch) {
     filtered = filtered.filter((cat: any) =>
-      cat.title.toLowerCase().includes(initialSearch.toLowerCase())
+      cat.title?.toLowerCase().includes(initialSearch.toLowerCase())
     );
   }
   if (initialTags.length > 0) {
@@ -38,6 +44,7 @@ export default async function CategoriesPage({
         cat.tags && initialTags.every((tag: string) => cat.tags.includes(tag))
     );
   }
+
   const totalCategories = filtered.length;
   const paginated = filtered
     .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
@@ -54,6 +61,7 @@ export default async function CategoriesPage({
       currentPage={currentPage}
       initialSearch={initialSearch}
       initialTags={initialTags}
+      allTags={uniqueTags}
     />
   );
 }
