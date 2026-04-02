@@ -30,23 +30,20 @@ export default function EasterPromotionModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="w-fit h-fit max-w-[95vw] sm:max-w-[420px] max-h-[90vh] p-0 overflow-hidden border-none rounded-2xl bg-transparent shadow-none [&>button]:hidden flex items-center justify-center">
-        <div className="relative inline-block bg-transparent rounded-2xl shadow-2xl overflow-hidden leading-[0]">
-          {/* Clickable Flyer - Strict shrink-wrap on the image pixels */}
+      <DialogContent className="w-[92vw] sm:w-fit sm:max-w-[420px] max-h-[90vh] p-0 overflow-hidden border-none rounded-2xl bg-transparent shadow-none [&>button]:hidden flex items-center justify-center">
+        <div className="relative inline-block w-full sm:w-auto bg-transparent rounded-2xl shadow-2xl overflow-hidden leading-[0]">
+          {/* Clickable Flyer - Standard img tag for maximum reliability in production */}
           <Link 
             href="/discounted" 
             onClick={handleClose}
             className="inline-block relative rounded-2xl transition-all duration-300 hover:brightness-95 active:scale-[0.98]"
           >
-            <div className="relative w-full flex items-center justify-center">
-              <Image
+            <div className="relative w-full flex items-center justify-center bg-transparent">
+              <img
                 src="/banners/easter_modal_visual.jpeg" 
-                alt="FeedMe Easter Promotion - Click to shop discounted items"
-                width={800}
-                height={1000}
-                priority
-                className="rounded-2xl w-full h-auto max-h-[85vh] object-contain"
-                sizes="(max-width: 768px) 92vw, 420px"
+                alt="Easter Special 10% Discount - FeedMe"
+                className="rounded-2xl w-full h-auto max-h-[85vh] object-contain shadow-2xl shadow-black/20"
+                loading="eager"
               />
             </div>
           </Link>
