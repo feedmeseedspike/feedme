@@ -21,7 +21,7 @@ import { QueryClient, dehydrate } from "@tanstack/react-query";
 import { ReactQueryHydrate } from "@providers/ReactQueryHydrate";
 import StoreFeatures from "@components/shared/home/StoreFeatures";
 import DiscountSlider from "@components/shared/home/DiscountSlider";
-import EasterPromotionModal from "@components/shared/EasterPromotionModal";
+
 
 
 import { createServerComponentClient } from "src/utils/supabase/server";
@@ -318,7 +318,7 @@ export default async function Home() {
 
   return (
     <ReactQueryHydrate state={dehydratedState}>
-      <EasterPromotionModal />
+
       <main className="">
         <div className="bg-[#F9FAFB]">
           <Container>
