@@ -3,7 +3,8 @@ import { Button } from "@components/ui/button";
 import { Card, CardContent } from "@components/ui/card";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
   Trash2,
@@ -103,6 +104,7 @@ export default function PromoCardsManagerClient({
   promotions: Promotion[];
 }) {
   const supabase = createClient();
+  const router = useRouter();
   const {
     mutate: createPromotion,
     isPending: isCreating,
@@ -288,17 +290,20 @@ export default function PromoCardsManagerClient({
     const fileExt = file.name.split(".").pop();
     const fileName = `${uuidv4()}.${fileExt}`;
     const filePath = `promotions/${fileName}`;
-    const { data, error } = await supabase.storage
-      .from("promotions")
-      .upload(filePath, file);
-    setUploading(false);
-    if (error) {
-      throw error;
+    try {
+      const { data, error } = await supabase.storage
+        .from("promotions")
+        .upload(filePath, file);
+      if (error) {
+        throw error;
+      }
+      const { data: publicUrlData } = supabase.storage
+        .from("promotions")
+        .getPublicUrl(filePath);
+      return publicUrlData.publicUrl;
+    } finally {
+      setUploading(false);
     }
-    const { data: publicUrlData } = supabase.storage
-      .from("promotions")
-      .getPublicUrl(filePath);
-    return publicUrlData.publicUrl;
   };
 
   const handleSave = async () => {
@@ -337,6 +342,7 @@ export default function PromoCardsManagerClient({
       updatePromotion(dataToSave, {
         onSuccess: () => {
           showToast("Promotion updated successfully!", "success");
+          router.refresh();
           closeDialog();
         },
         onError: (err: any) => {
@@ -352,6 +358,7 @@ export default function PromoCardsManagerClient({
         {
           onSuccess: () => {
             showToast("Promotion added successfully!", "success");
+            router.refresh();
             closeDialog();
           },
           onError: (err: any) => {

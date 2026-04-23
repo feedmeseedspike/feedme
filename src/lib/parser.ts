@@ -38,12 +38,17 @@ export function parseFeedMeSheet(
     return idx;
   };
 
-  const catIdx = col("categories");
+  let catIdx = col("categories");
   const itemIdx = col("food item");
   const qtyIdx = col("quantity");
   const newPriceIdx = headers.findIndex(h => h?.toString().toLowerCase().trim() === "new price");
   const oldPriceIdx = headers.findIndex(h => h?.toString().toLowerCase().trim() === "old price");
   const discountIdx = col("discount");
+
+  // Fallback for Categories if not found but index 0 is available and itemIdx is not 0
+  if (catIdx === -1 && itemIdx > 0) {
+    catIdx = 0;
+  }
 
   if (catIdx === -1 || itemIdx === -1 || qtyIdx === -1 || newPriceIdx === -1) {
     throw new Error("Required columns not found (Expected: Categories, Food Item, Quantity, and NEW PRICE)");

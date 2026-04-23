@@ -1,6 +1,6 @@
 "use client";
 import React, { useMemo, useCallback, useState, useEffect } from "react";
-import { getDealMessages, calculateCartDiscount, getAppliedDiscountLabel } from "src/lib/deals";
+import { getDealMessages, calculateCartDiscount, getAppliedDiscountLabel, BONUS_CONFIG } from "src/lib/deals";
 import BonusProgressBar from "@components/shared/BonusProgressBar";
 import Container from "@components/shared/Container";
 import { Button } from "@components/ui/button";
@@ -31,6 +31,62 @@ import { getCustomerOrdersAction } from "src/lib/actions/user.action";
 import { motion, AnimatePresence } from "framer-motion";
 import ShareCartButton from "@components/shared/cart/ShareCartButton";
 import StickyCartCheckout from "@components/shared/cart/StickyCartCheckout";
+
+const CartCountdownDisplay = () => {
+  const [timeLeft, setTimeLeft] = useState<{ d: number; h: number; m: number; s: number; label: string } | null>(null);
+
+  useEffect(() => {
+    const calculateTimeLeft = () => {
+      const now = new Date();
+      const start = new Date(BONUS_CONFIG.PROMO_FREE_DELIVERY_2PM.start_date);
+      const end = new Date(BONUS_CONFIG.PROMO_FREE_DELIVERY_2PM.end_date);
+      if (now < start || now > end) return null;
+
+      const today2pm = new Date(now);
+      today2pm.setHours(14, 0, 0, 0);
+
+      if (now < today2pm) {
+        return { diff: today2pm.getTime() - now.getTime(), label: "2PM DELIVERY CUTOFF IN:" };
+      } else {
+        const tomorrow2pm = new Date(now);
+        tomorrow2pm.setDate(tomorrow2pm.getDate() + 1);
+        tomorrow2pm.setHours(14, 0, 0, 0);
+        if (tomorrow2pm > end) return null;
+        return { diff: tomorrow2pm.getTime() - now.getTime(), label: "TOMORROW'S CUTOFF IN:" };
+      }
+    };
+
+    const updateTimer = () => {
+      const data = calculateTimeLeft();
+      if (!data || data.diff <= 0) {
+        setTimeLeft(null);
+        return;
+      }
+      setTimeLeft({
+        d: Math.floor(data.diff / (1000 * 60 * 60 * 24)),
+        h: Math.floor((data.diff / (1000 * 60 * 60)) % 24),
+        m: Math.floor((data.diff / 1000 / 60) % 60),
+        s: Math.floor((data.diff / 1000) % 60),
+        label: data.label,
+      });
+    };
+
+    updateTimer();
+    const timer = setInterval(updateTimer, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  if (!timeLeft) return null;
+
+  return (
+    <div className="mt-2 mb-4 p-4 rounded-xl border border-[#FFD700]/30 bg-[#FFD700]/10 flex flex-col items-center justify-center text-[#B38D00] border-dashed shadow-sm">
+      <span className="text-[10px] font-black uppercase tracking-widest">{timeLeft.label}</span>
+      <span className="text-xl font-mono font-black tracking-widest mt-1">
+        {timeLeft.d > 0 && `${timeLeft.d}d `}{String(timeLeft.h).padStart(2, "0")}:{String(timeLeft.m).padStart(2, "0")}:{String(timeLeft.s).padStart(2, "0")}
+      </span>
+    </div>
+  );
+};
 
 interface GroupedCartItem {
   product?: CartItem["products"];
@@ -293,15 +349,21 @@ const CartClient: React.FC<CartClientProps> = ({
             </motion.div>
           ) : (
             <div className="space-y-12">
-              {dealMessages.length > 0 && !user && (
-                 <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-xl flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                       <Icon icon="solar:star-fall-minimalistic-bold" className="w-5 h-5 text-yellow-600" />
-                       <p className="text-sm font-bold text-yellow-800">{dealMessages[0]}</p>
-                    </div>
-                    <Button variant="outline" size="sm" className="h-8 rounded-lg border-yellow-200 text-yellow-800 hover:bg-yellow-100" onClick={() => router.push('/login')}>
-                       Login Now
-                    </Button>
+              {dealMessages.length > 0 && (
+                 <div className="space-y-3">
+                   {dealMessages.map((msg, idx) => (
+                     <div key={idx} className="bg-amber-50/50 border border-amber-200/50 p-4 rounded-xl flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                           <Icon icon="solar:star-fall-minimalistic-bold" className="w-5 h-5 text-amber-500" />
+                           <p className="text-sm font-bold text-amber-800">{msg}</p>
+                        </div>
+                        {msg.toLowerCase().includes("log in") && !user && (
+                          <Button variant="outline" size="sm" className="h-8 rounded-lg border-amber-300 bg-white text-amber-800 hover:bg-amber-100 shadow-sm" onClick={() => router.push('/login')}>
+                             Login Now
+                          </Button>
+                        )}
+                     </div>
+                   ))}
                  </div>
               )}
               <h1 className="text-3xl font-black tracking-tight">Your Basket</h1>
@@ -433,6 +495,7 @@ const CartClient: React.FC<CartClientProps> = ({
                     </div>
 
                     <div className="space-y-4">
+                        <CartCountdownDisplay />
                         <Button
                             className="w-full h-14 bg-[#1B6013] hover:bg-[#1B6013] opacity-90 hover:opacity-100 text-white rounded-lg font-bold text-base tracking-tight shadow-none border-0 transition-all active:scale-[0.99]"
                             onClick={() => router.push("/checkout")}

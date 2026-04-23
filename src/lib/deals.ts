@@ -27,6 +27,12 @@ export const BONUS_CONFIG = {
     description: "Free delivery on next order if you shop above ₦50,000",
     expiry_days: 14,
   },
+  PROMO_FREE_DELIVERY_2PM: {
+    min_spend: 25000,
+    start_date: "2026-04-25T00:00:00+01:00",
+    end_date: "2026-05-02T23:59:59+01:00",
+    description: "Free delivery for 2pm schedule from April 25th to May 2nd on orders above ₦25,000",
+  },
   CASHBACK_THRESHOLD: {
     spend: 100000,
     reward: 2000,
@@ -103,14 +109,62 @@ export function getDealMessages(subtotal: number, items: CartItem[] = [], isFirs
       messages.push(`First Order Discount Applied`);
   }
 
+  // Promo: Free Delivery for 2PM Schedule
+  const now = new Date();
+  const promo2pmStart = new Date(BONUS_CONFIG.PROMO_FREE_DELIVERY_2PM.start_date);
+  const promo2pmEnd = new Date(BONUS_CONFIG.PROMO_FREE_DELIVERY_2PM.end_date);
+  let hasCurrentOrderFreeDelivery = false;
+  
+  if (now >= promo2pmStart && now <= promo2pmEnd) {
+      if (subtotal >= BONUS_CONFIG.PROMO_FREE_DELIVERY_2PM.min_spend) {
+          messages.push("✨ Eligible for Free Delivery! (Schedule for 2PM)");
+          hasCurrentOrderFreeDelivery = true;
+      } else {
+          const diff = BONUS_CONFIG.PROMO_FREE_DELIVERY_2PM.min_spend - subtotal;
+          messages.push(`Add ₦${diff.toLocaleString()} to get Free 2PM Delivery`);
+      }
+  }
+
   // Free delivery threshold message (Next Order)
   // Subsequent buyers (not first order) get free delivery on NEXT order if shopping > 50k
   if (subtotal >= BONUS_CONFIG.SUBSEQUENT_FREE_DELIVERY.min_spend) {
-      if (!isAuthenticated) messages.push("Log in to unlock Free Delivery rewards!");
-      else if (!isFirstOrder) messages.push(`You've unlocked Next Order Free Delivery!`);
+      if (!isAuthenticated) {
+          messages.push("Log in to unlock Free Delivery rewards!");
+      } else if (!isFirstOrder) {
+          if (hasCurrentOrderFreeDelivery) {
+              messages.push(`You've ALSO unlocked Free Delivery for your NEXT order!`);
+          } else {
+              messages.push(`You've unlocked Next Order Free Delivery!`);
+          }
+      }
   }
 
   return messages;
+}
+
+/**
+ * Checks if the current order qualifies for the 2PM Free Delivery promotion.
+ * Rules: 
+ * 1. Current time is before 2:00 PM (Lagos time / local time).
+ * 2. Order subtotal meets the threshold (₦25,000).
+ * 3. Current date is within the promotion range.
+ */
+export function check2PMFreeDeliveryEligibility(subtotal: number): boolean {
+  const now = new Date();
+  
+  // 1. Date Range Check
+  const start = new Date(BONUS_CONFIG.PROMO_FREE_DELIVERY_2PM.start_date);
+  const end = new Date(BONUS_CONFIG.PROMO_FREE_DELIVERY_2PM.end_date);
+  if (now < start || now > end) return false;
+
+  // 2. Subtotal Check
+  if (subtotal < BONUS_CONFIG.PROMO_FREE_DELIVERY_2PM.min_spend) return false;
+
+  // 3. Time Check (Before 2:00 PM)
+  const hours = now.getHours();
+  if (hours >= 14) return false;
+
+  return true;
 }
 
 /**

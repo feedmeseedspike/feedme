@@ -140,7 +140,8 @@ export async function POST(req: NextRequest) {
           newPrice: lowestPrice,
           newPriceMax: highestPrice,
           csvOptions: p.options,
-          newImages: [getProductImage(imgEntry)]
+          newImages: [getProductImage(imgEntry)],
+          discount: (p as any).discount
         };
 
         if (exact) {

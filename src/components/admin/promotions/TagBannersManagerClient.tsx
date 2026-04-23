@@ -3,7 +3,8 @@ import { Button } from "@components/ui/button";
 import { Card, CardContent } from "@components/ui/card";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Trash2, Plus, Upload, Loader2 } from "lucide-react";
 import {
@@ -80,6 +81,7 @@ export default function TagBannersManagerClient({
   promotions: Promotion[];
 }) {
   const supabase = createClient();
+  const router = useRouter();
   const {
     mutate: createPromotion,
     isPending: isCreating,
@@ -169,6 +171,7 @@ export default function TagBannersManagerClient({
       updatePromotion(dataToSave, {
         onSuccess: () => {
           showToast("Banner updated successfully!", "success");
+          router.refresh();
           closeDialog();
         },
         onError: (err) => {
@@ -185,6 +188,7 @@ export default function TagBannersManagerClient({
         {
           onSuccess: () => {
             showToast("Banner added successfully!", "success");
+            router.refresh();
             closeDialog();
           },
           onError: (err) => {
@@ -201,17 +205,20 @@ export default function TagBannersManagerClient({
     const fileExt = file.name.split(".").pop();
     const fileName = `${uuidv4()}.${fileExt}`;
     const filePath = `promotions/${fileName}`;
-    const { data, error } = await supabase.storage
-      .from("promotions")
-      .upload(filePath, file);
-    setUploading(false);
-    if (error) {
-      throw error;
+    try {
+      const { data, error } = await supabase.storage
+        .from("promotions")
+        .upload(filePath, file);
+      if (error) {
+        throw error;
+      }
+      const { data: publicUrlData } = supabase.storage
+        .from("promotions")
+        .getPublicUrl(filePath);
+      return publicUrlData.publicUrl;
+    } finally {
+      setUploading(false);
     }
-    const { data: publicUrlData } = supabase.storage
-      .from("promotions")
-      .getPublicUrl(filePath);
-    return publicUrlData.publicUrl;
   };
 
   const openDialog = (banner: Partial<Promotion> | null = null) => {
