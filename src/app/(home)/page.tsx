@@ -21,9 +21,6 @@ import { QueryClient, dehydrate } from "@tanstack/react-query";
 import { ReactQueryHydrate } from "@providers/ReactQueryHydrate";
 import StoreFeatures from "@components/shared/home/StoreFeatures";
 import DiscountSlider from "@components/shared/home/DiscountSlider";
-
-
-
 import { createServerComponentClient } from "src/utils/supabase/server";
 
 import { getAllCategoriesQuery } from "src/queries/categories";

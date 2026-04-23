@@ -22,6 +22,7 @@ interface AnalysisResult {
     oldPrice?: number;
     dbImages?: string[];
   };
+  discount?: string;
 }
 
 interface Props {
@@ -214,6 +215,11 @@ export default function UploadExcel({ onSuccess }: Props) {
                                    {formatNaira(item.newPrice || 0)}
                                    {item.newPriceMax && item.newPriceMax > item.newPrice! && ` - ${formatNaira(item.newPriceMax)}`}
                                  </span>
+                                 {item.discount && (
+                                   <span className="text-[9px] font-black text-white bg-red-500 px-1.5 py-0.5 rounded ml-2 uppercase animate-pulse">
+                                     {item.discount}
+                                   </span>
+                                 )}
                               </div>
                             </div>
                           </div>

@@ -73,7 +73,7 @@ import axios from "axios";
 import { sendPushNotification } from "@/lib/actions/pushnotification.action";
 import { useAnonymousCart } from "src/hooks/useAnonymousCart";
 import { createClient as createSupabaseClient } from "src/utils/supabase/client";
-import { calculateCartDiscount, getDealMessages, getAppliedDiscountLabel, BONUS_CONFIG } from "src/lib/deals";
+import { calculateCartDiscount, getDealMessages, getAppliedDiscountLabel, BONUS_CONFIG, check2PMFreeDeliveryEligibility } from "src/lib/deals";
 import { getCustomerOrdersAction } from "src/lib/actions/user.action";
 import BonusProgressBar from "@components/shared/BonusProgressBar";
 import { Database } from "src/utils/database.types";
@@ -582,7 +582,8 @@ const CheckoutForm = ({
   // Free delivery logic: Per Doc V1.0, 50k+ spend awards free delivery on the NEXT order.
   // We only give 0 cost if a specific "Free Delivery" voucher is applied or if it's a special system override.
   const isFreeDeliveryVoucher = isVoucherValid && voucherCode.includes("FREE-DELIV");
-  const qualifiesForFreeShipping = isFreeDeliveryVoucher;
+  const is2PMFreeDelivery = useMemo(() => check2PMFreeDeliveryEligibility(subtotal), [subtotal]);
+  const qualifiesForFreeShipping = isFreeDeliveryVoucher || is2PMFreeDelivery;
   
   const cost = useMemo(() => {
     if (isGiftMode) return 1500; // Flat gift delivery fee

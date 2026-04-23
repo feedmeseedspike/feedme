@@ -3,7 +3,8 @@ import { Button } from "@components/ui/button";
 import { Card, CardContent } from "@components/ui/card";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
-import React, { useState, ChangeEvent } from "react";
+import React, { useState, ChangeEvent, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Trash2, Plus, Upload, Loader2 } from "lucide-react";
 import {
@@ -46,6 +47,7 @@ export default function HomeBannersManagerClient({
 }) {
   const queryClient = useQueryClient();
   const supabase = createClient();
+  const router = useRouter();
 
   // Unique tags from promotions
   const uniqueTags = React.useMemo(() => {
@@ -63,6 +65,11 @@ export default function HomeBannersManagerClient({
   }, [uniqueTags]);
 
   const [banners, setBanners] = useState<Banner[]>(initialBanners);
+
+  // Sync banners when initialBanners changes (e.g. after router.refresh())
+  useEffect(() => {
+    setBanners(initialBanners);
+  }, [initialBanners]);
   const [editingBanner, setEditingBanner] = useState<
     InsertBanner | UpdateBanner | null
   >(null);
@@ -95,6 +102,7 @@ export default function HomeBannersManagerClient({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["banners"] });
+      router.refresh();
       closeDialog();
     },
     onError: (error) => {
@@ -145,6 +153,7 @@ export default function HomeBannersManagerClient({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["banners"] });
+      router.refresh();
     },
     onError: (error) => {
       toast.error(`Error deleting banner: ${error.message}`);
@@ -158,22 +167,24 @@ export default function HomeBannersManagerClient({
     const fileName = `${uuidv4()}.${fileExt}`;
     const filePath = `${fileName}`; // Adjust if you want folders, e.g., `banner_images/${fileName}`
 
-    const { data, error } = await supabase.storage
-      .from("banners")
-      .upload(filePath, file);
+    try {
+      const { data, error } = await supabase.storage
+        .from("banners")
+        .upload(filePath, file);
 
-    setUploading(false);
+      if (error) {
+        throw error;
+      }
 
-    if (error) {
-      throw error;
+      // Get the public URL
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("banners").getPublicUrl(filePath);
+
+      return publicUrl;
+    } finally {
+      setUploading(false);
     }
-
-    // Get the public URL
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("banners").getPublicUrl(filePath);
-
-    return publicUrl;
   };
 
   const handleSave = async () => {

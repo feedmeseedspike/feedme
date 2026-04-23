@@ -40,27 +40,24 @@ const AIUsageDashboard: React.FC<AIUsageDashboardProps> = ({ className }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadStats = async () => {
+  const loadStats = React.useCallback(async () => {
     setLoading(true);
-    setError(null); // Clear previous errors
+    setError(null);
     console.log(`Loading stats for timeRange: ${timeRange}`);
     
     try {
-      // Check if aiUsageTracker is available
       if (!aiUsageTracker || typeof aiUsageTracker.getUsageStats !== 'function') {
         throw new Error('AI Usage Tracker not available');
       }
 
-      // Add timeout for each operation
       const statsPromise = aiUsageTracker.getUsageStats(timeRange);
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Stats loading timeout')), 3000) // Reduced timeout
+        setTimeout(() => reject(new Error('Stats loading timeout')), 3000)
       );
       
       const currentStats = await Promise.race([statsPromise, timeoutPromise]) as any;
       console.log(`Stats loaded for ${timeRange}:`, currentStats);
       
-      // Validate the stats response
       if (!currentStats || typeof currentStats !== 'object') {
         throw new Error('Invalid stats response');
       }
@@ -76,37 +73,31 @@ const AIUsageDashboard: React.FC<AIUsageDashboardProps> = ({ className }) => {
         unique_users: currentStats.unique_users || 0,
       });
       
-      // Get recent logs for detailed view
       const logs = JSON.parse(localStorage.getItem('ai_usage_logs') || '[]');
-      setRecentLogs(logs.slice(-20).reverse()); // Last 20 logs, most recent first
+      setRecentLogs(logs.slice(-20).reverse());
       
-      // Check for cost alerts (with shorter timeout)
       try {
         const alertsPromise = costAlertManager.checkAllThresholds();
         const alertTimeoutPromise = new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Alerts timeout')), 2000)
         );
         
-        const newAlerts = await Promise.race([alertsPromise, alertTimeoutPromise]) as any;
+        await Promise.race([alertsPromise, alertTimeoutPromise]);
         const allActiveAlerts = costAlertManager.getActiveAlerts();
         setActiveAlerts(allActiveAlerts);
       } catch (alertError) {
         console.warn('Alert loading failed:', alertError);
-        setActiveAlerts([]); // Set empty alerts on failure
+        setActiveAlerts([]);
       }
       
     } catch (error) {
       console.error(`Failed to load AI usage stats for ${timeRange}:`, error);
       setError(`Failed to load AI analytics: ${error instanceof Error ? error.message : 'Unknown error'}`);
       
-      // Try to get basic data from localStorage as fallback
       try {
         const logs = JSON.parse(localStorage.getItem('ai_usage_logs') || '[]');
-        console.log(`Fallback: Found ${logs.length} logs in localStorage`);
-        
         setRecentLogs(logs.slice(-20).reverse());
         
-        // Calculate basic stats from logs
         const successfulRequests = logs.filter((log: any) => log.success).length;
         const totalCost = logs.reduce((sum: number, log: any) => sum + (log.estimated_cost || 0), 0);
         const totalTokens = logs.reduce((sum: number, log: any) => sum + (log.total_tokens || 0), 0);
@@ -121,12 +112,7 @@ const AIUsageDashboard: React.FC<AIUsageDashboardProps> = ({ className }) => {
           most_used_feature: 'meal_planning',
           unique_users: new Set(logs.map((log: any) => log.user_id).filter(Boolean)).size,
         });
-        
-        console.log('Using fallback stats from localStorage');
       } catch (fallbackError) {
-        console.error('Fallback stats loading failed:', fallbackError);
-        
-        // Set completely empty stats
         setStats({
           total_requests: 0,
           successful_requests: 0,
@@ -139,27 +125,23 @@ const AIUsageDashboard: React.FC<AIUsageDashboardProps> = ({ className }) => {
         });
         setRecentLogs([]);
       }
-      
       setActiveAlerts([]);
     } finally {
       setLoading(false);
-      console.log(`Loading completed for ${timeRange}`);
     }
-  };
+  }, [timeRange]);
 
   useEffect(() => {
     loadStats();
     
-    // Safety timeout - if loading takes more than 10 seconds, stop loading
     const timeout = setTimeout(() => {
       if (loading) {
-        console.warn('AI dashboard loading timeout - stopping loading state');
         setLoading(false);
       }
     }, 10000);
     
     return () => clearTimeout(timeout);
-  }, [timeRange]);
+  }, [loadStats, loading]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
