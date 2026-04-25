@@ -46,7 +46,7 @@ export default function BonusProgressBar({ subtotal, isFirstOrder = false, isAut
                     <Icon icon="solar:lock-keyhole-bold" className="w-4 h-4 text-slate-400" />
                 </div>
                 <p className="text-xs font-bold text-slate-800 mb-1">Rewards Locked</p>
-                <p className="text-[10px] text-slate-500 mb-3 leading-tight">Log in to track progress & unlock 10% Off!</p>
+                <p className="text-[10px] text-slate-500 mb-3 leading-tight">Log in to track progress & unlock 5% Off!</p>
                 <a href="/login" className="bg-[#1B6013] text-white text-[10px] font-bold px-4 py-1.5 rounded-full hover:bg-[#154d0f] transition-colors">
                     Login to Unlock
                 </a>
@@ -85,7 +85,7 @@ export default function BonusProgressBar({ subtotal, isFirstOrder = false, isAut
                 </div>
                 <div>
                     <p className="text-[10px] font-black leading-tight uppercase text-[#1B6013]">Welcome Spin Unlocked! 🎡</p>
-                    <p className="text-[8px] font-medium text-slate-400">Spin the wheel to reveal your 10% Welcome Gift!</p>
+                    <p className="text-[8px] font-medium text-slate-400">Spin the wheel to reveal your 5% Welcome Gift!</p>
                 </div>
             </motion.div>
         ) : hasFreeDelivery ? (

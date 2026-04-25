@@ -659,7 +659,7 @@ const CheckoutForm = ({
 
   const totalAmount = subtotal; // Keeps track of gross
   const totalAmountPaid =
-    subtotal - dealsDiscount + cost /*+ serviceCharge*/ - (isFreeDeliveryVoucher ? 0 : voucherDiscount) - staffDiscount;
+    subtotal - dealsDiscount + cost /*+ serviceCharge*/ - (isVoucherValid && !isFreeDeliveryVoucher ? voucherDiscount : 0) - staffDiscount;
 
   const isReferralVoucher = isVoucherValid && voucherCode.startsWith("REF-");
 
@@ -948,6 +948,7 @@ const CheckoutForm = ({
           showToast("Voucher applied successfully!", "success");
         } else {
           setIsVoucherValid(false);
+          setVoucherDiscount(0);
           // Remove voucher from localStorage
           localStorage.removeItem("voucherCode");
           localStorage.removeItem("voucherDiscount");
@@ -955,6 +956,7 @@ const CheckoutForm = ({
         }
       } catch (error: any) {
         setIsVoucherValid(false);
+        setVoucherDiscount(0);
         // Remove voucher from localStorage
         localStorage.removeItem("voucherCode");
         localStorage.removeItem("voucherDiscount");

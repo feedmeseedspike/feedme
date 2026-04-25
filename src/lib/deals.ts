@@ -52,7 +52,7 @@ export function calculateCartDiscount(subtotal: number, items: CartItem[] = [], 
   if (!isAuthenticated) return 0;
   let discount = 0;
   
-  // First time visitor discount: 10% off orders above ₦25,000
+  // First time visitor discount: 5% off orders
   if (isFirstOrder && subtotal >= BONUS_CONFIG.FIRST_TIME.min_spend) {
     discount = subtotal * (BONUS_CONFIG.FIRST_TIME.discount_percent / 100);
   }
