@@ -8,6 +8,14 @@ import Link from "next/link";
 export default function EmailCampaignsPage() {
   const campaigns = [
     {
+      title: "Free Delivery Reminder",
+      description: "Send a reminder about the May 2nd free delivery offer to all registered users.",
+      icon: Mail,
+      href: "/admin/email-campaigns/free-delivery-reminder",
+      color: "text-red-600",
+      bgColor: "bg-red-50",
+    },
+    {
       title: "Price Update Automation",
       description: "Automatically send emails to customers when product prices change in your CSV uploads.",
       icon: Mail,
