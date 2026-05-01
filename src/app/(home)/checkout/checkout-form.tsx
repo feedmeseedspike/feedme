@@ -2476,7 +2476,7 @@ const CheckoutForm = ({
                             }
 
                             const values = shippingAddressForm.getValues();
-                            const phone = "2348144602273"; // Customer support number
+                            const phone = "2348088282487"; // Customer support number
                             
                             let message = `*NEW ORDER - FEEDME* 🛒\n\n`;
                             
