@@ -2,10 +2,10 @@ import nodemailer from "nodemailer";
 
 // Hardcoded SMTP Settings
 const smtpHost = "smtp.gmail.com";
-const smtpPort = 587; // Changed to 587 to avoid ETIMEDOUT on 465
+const smtpPort = 465; // Back to 465 for SSL
 const smtpUser = "orders.feedmeafrica@gmail.com";
 const smtpPass = "cyma apwl rnam vdip"; // App Password
-const smtpSecure = false; // Must be false for port 587 (STARTTLS)
+const smtpSecure = true; // true for port 465
 const defaultFrom = smtpUser;
 
 /*
@@ -14,7 +14,7 @@ const smtpPortEnv = process.env.SMTP_PORT || process.env.NODEMAILER_PORT;
 const smtpPort = smtpPortEnv ? Number(smtpPortEnv) : undefined;
 const smtpUser = process.env.SMTP_USER || process.env.NODEMAILER_USER;
 const smtpPass = process.env.SMTP_PASS || process.env.NODEMAILER_PASS;
-const smtpSecureEnv = process.env.SMTP_SECURE j|| process.env.NODEMAILER_SECURE;
+const smtpSecureEnv = process.env.SMTP_SECURE || process.env.NODEMAILER_SECURE;
 const smtpSecure = smtpSecureEnv
   ? smtpSecureEnv.toLowerCase() === "true"
   : smtpPort === 465;
@@ -28,14 +28,18 @@ if (!smtpHost || !smtpUser || !smtpPass) {
 }
 
 const transporter = nodemailer.createTransport({
-  host: smtpHost,
-  port: smtpPort,
-  secure: smtpSecure,
-  auth: { user: smtpUser, pass: smtpPass },
-  tls: {
-    rejectUnauthorized: false, // Ensure it works in dev even if certs are strict
-    ciphers: "SSLv3",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false, // false for 587
+  auth: { 
+    user: smtpUser, 
+    pass: smtpPass 
   },
+  logger: true, // Log to console
+  debug: true,  // Include debug info
+  tls: {
+    rejectUnauthorized: false
+  }
 });
 
 export async function sendMail({

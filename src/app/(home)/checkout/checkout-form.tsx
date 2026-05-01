@@ -2451,20 +2451,71 @@ const CheckoutForm = ({
                       </div>
 
                       {/* PLACED ORDER BUTTON HERE */}
-                      <div className="pt-6 mt-4 border-t border-gray-100">
-                     <Button
-                         onClick={handleOrderSubmission}
-                         disabled={isSubmitting || items.length === 0}
-                         className="rounded-xl bg-[#1B6013] hover:bg-[#154d0f] text-white px-8 h-12 font-bold text-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 w-full active:scale-95"
-                     >
-                         {isSubmitting ? (
-                             <Loader2 className="animate-spin h-5 w-5" />
-                         ) : (
-                             <Icon icon="solar:lock-password-bold" className="w-6 h-6" />
-                         )}
-                         {isSubmitting ? "Processing..." : "Place Order Now"}
-                     </Button>
-                 </div>
+                      <div className="pt-6 mt-4 border-t border-gray-100 flex flex-col gap-4">
+                      <Button
+                          onClick={handleOrderSubmission}
+                          disabled={isSubmitting || items.length === 0}
+                          className="rounded-xl bg-[#1B6013] hover:bg-[#154d0f] text-white px-8 h-12 font-bold text-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 w-full active:scale-95"
+                      >
+                          {isSubmitting ? (
+                              <Loader2 className="animate-spin h-5 w-5" />
+                          ) : (
+                              <Icon icon="solar:lock-password-bold" className="w-6 h-6" />
+                          )}
+                          {isSubmitting ? "Processing..." : "Place Order Now"}
+                      </Button>
+
+                      <Button
+                          type="button"
+                          onClick={async () => {
+                            // Validate form before opening WhatsApp
+                            const isFormValid = await shippingAddressForm.trigger();
+                            if (!isFormValid) {
+                              showToast("Please fill in your delivery details first.", "error");
+                              return;
+                            }
+
+                            const values = shippingAddressForm.getValues();
+                            const phone = "2348144602273"; // Customer support number
+                            
+                            let message = `*NEW ORDER - FEEDME* 🛒\n\n`;
+                            
+                            message += `👤 *Customer Details:*\n`;
+                            message += `• Name: ${values.firstName} ${values.lastName}\n`;
+                            message += `• Phone: ${values.phone}\n`;
+                            message += `• Address: ${values.street}, ${values.location}\n\n`;
+                            
+                            message += `📦 *Order Items:*\n`;
+                            items.forEach((item, index) => {
+                              const productOption = isProductOption(item.option) ? item.option : null;
+                              const itemName = item.products?.name || item.bundles?.name || item.offers?.title || item.meta?.name || productOption?.name;
+                              const itemPrice = ((productOption?.price !== undefined && productOption?.price !== null ? productOption.price : item.price) || 0);
+                              message += `${index + 1}. *${itemName}* x ${item.quantity} (₦${(itemPrice * item.quantity).toLocaleString()})\n`;
+                            });
+                            
+                            message += `\n💰 *Financial Summary:*\n`;
+                            message += `• Subtotal: ${formatNaira(subtotal)}\n`;
+                            if (cost > 0) message += `• Delivery: ${formatNaira(cost)}\n`;
+                            if (dealsDiscount > 0) message += `• Discount: -${formatNaira(dealsDiscount)}\n`;
+                            if (isVoucherValid && !isFreeDeliveryVoucher) message += `• Promo: -${formatNaira(voucherDiscount)}\n`;
+                            message += `\n*TOTAL TO PAY: ${formatNaira(totalAmountPaid)}*\n\n`;
+                            
+                            if (orderNote) {
+                              message += `📝 *Special Instructions:*\n${orderNote}\n\n`;
+                            }
+
+                            message += `_This order was generated via the website checkout._`;
+                            
+                            const encodedMessage = encodeURIComponent(message);
+                            window.open(`https://wa.me/${phone}?text=${encodedMessage}`, '_blank');
+                          }}
+                          disabled={items.length === 0}
+                          className="rounded-xl bg-[#25D366] hover:bg-[#128C7E] text-white px-8 h-12 font-bold text-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 w-full active:scale-95"
+                      >
+                          <Icon icon="solar:whatsapp-bold" className="w-6 h-6" />
+                          Checkout on WhatsApp
+                      </Button>
+                  </div>
                     </div>
 
                      {/* Available Vouchers Section */}
