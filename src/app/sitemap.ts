@@ -23,6 +23,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .select('name, updated_at')
     .eq('published_status', 'published')
 
+  // Fetch blog posts
+  const { data: posts } = await supabase
+    .from('blog_posts')
+    .select('slug, updated_at')
+    .eq('status', 'published')
+
+  const postEntries: MetadataRoute.Sitemap = (posts || []).map((post) => ({
+    url: `${baseUrl}/blog/${post.slug}`,
+    lastModified: post.updated_at ? new Date(post.updated_at) : new Date(),
+    changeFrequency: 'weekly',
+    priority: 0.6,
+  }))
+
   const productEntries: MetadataRoute.Sitemap = (products || []).map((p) => ({
     url: `${baseUrl}/product/${p.slug}`,
     lastModified: p.updated_at ? new Date(p.updated_at) : new Date(),
@@ -52,6 +65,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/privacy-policy',
     '/return-policy',
     '/delivery-policy',
+    '/delivery-locations',
     '/careers',
     '/blog',
     '/offers',
@@ -62,5 +76,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: route === '' ? 1 : 0.5,
   }))
 
-  return [...staticPages, ...productEntries, ...categoryEntries, ...bundleEntries]
+  return [...staticPages, ...productEntries, ...categoryEntries, ...bundleEntries, ...postEntries]
 }

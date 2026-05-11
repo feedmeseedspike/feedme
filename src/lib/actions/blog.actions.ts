@@ -123,10 +123,6 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> 
       blog_categories (id, name, slug),
       blog_post_tags (
         blog_tags (id, name)
-      ),
-      blog_recipe_products (
-        id,
-        product:products (*)
       )
     `)
     .eq("slug", slug)
@@ -137,7 +133,31 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> 
     if (error.code === "PGRST116") return null; // not found
     throw error;
   }
-  return data;
+
+  // Manually fetch blog_recipe_products and products because of missing DB foreign key relationship
+  const { data: recipeProducts } = await supabase
+    .from("blog_recipe_products")
+    .select("*")
+    .eq("post_id", data.id);
+
+  if (recipeProducts && recipeProducts.length > 0) {
+    const productIds = recipeProducts.map((rp: any) => rp.product_id).filter(Boolean);
+    if (productIds.length > 0) {
+      const { data: products } = await supabase
+        .from("products")
+        .select("*")
+        .in("id", productIds);
+      
+      data.blog_recipe_products = recipeProducts.map((rp: any) => ({
+        ...rp,
+        product: products?.find((p: any) => p.id === rp.product_id) || null
+      }));
+    } else {
+      data.blog_recipe_products = recipeProducts;
+    }
+  }
+
+  return data as BlogPost;
 }
 
 export async function getBlogPostBySlugAdmin(slug: string): Promise<BlogPost | null> {
@@ -149,10 +169,6 @@ export async function getBlogPostBySlugAdmin(slug: string): Promise<BlogPost | n
       blog_categories (id, name, slug),
       blog_post_tags (
         blog_tags (id, name)
-      ),
-      blog_recipe_products (
-        id,
-        product:products (*)
       )
     `)
     .eq("slug", slug)
@@ -162,7 +178,31 @@ export async function getBlogPostBySlugAdmin(slug: string): Promise<BlogPost | n
     if (error.code === "PGRST116") return null;
     throw error;
   }
-  return data;
+
+  // Manually fetch blog_recipe_products and products
+  const { data: recipeProducts } = await supabase
+    .from("blog_recipe_products")
+    .select("*")
+    .eq("post_id", data.id);
+
+  if (recipeProducts && recipeProducts.length > 0) {
+    const productIds = recipeProducts.map((rp: any) => rp.product_id).filter(Boolean);
+    if (productIds.length > 0) {
+      const { data: products } = await supabase
+        .from("products")
+        .select("*")
+        .in("id", productIds);
+      
+      data.blog_recipe_products = recipeProducts.map((rp: any) => ({
+        ...rp,
+        product: products?.find((p: any) => p.id === rp.product_id) || null
+      }));
+    } else {
+      data.blog_recipe_products = recipeProducts;
+    }
+  }
+
+  return data as BlogPost;
 }
 
 export async function getFeaturedBlogPosts(limit = 3): Promise<BlogPost[]> {
