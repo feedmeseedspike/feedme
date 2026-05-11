@@ -89,28 +89,7 @@ export default function CustomerSupportClient({ deliveryLocations }: CustomerSup
         .join(", ")
     : "Mainland delivery ₦2,500 - ₦3,000, Island delivery ₦3,500 - ₦4,000 depending on distance";
 
-  const faqs = [
-    {
-      question: "Do you deliver on Sundays?",
-      answer: "We don't deliver on Sundays. Our delivery operates Monday to Saturday only.",
-    },
-    {
-      question: "How fast can I get my items?",
-      answer: "You get your order 4-6 hours after order has been made.",
-    },
-    {
-      question: "Do you deliver outside Lagos?",
-      answer: "We don't deliver outside Lagos. Our delivery service is currently limited to Lagos State only.",
-    },
-    {
-      question: "What's the delivery fee to my location?",
-      answer: `Delivery fees within Lagos are: ${deliveryLocationText}.`,
-    },
-    {
-      question: "Can I get my order same day?",
-      answer: "Yes! All orders are delivered within 4-6 hours of being placed, so you'll always get your order the same day.",
-    },
-  ];
+
 
   const onSubmit = async (data: ContactFormValues) => {
     setLoading(true);
@@ -226,38 +205,7 @@ export default function CustomerSupportClient({ deliveryLocations }: CustomerSup
         </motion.div>
       </motion.div>
 
-      {/* FAQ Section */}
-      <motion.div variants={fadeInUp} className="mb-24 max-w-4xl mx-auto">
-        <div className="text-center mb-12">
-          <span className="text-[#1B6013] font-semibold tracking-wider text-sm uppercase mb-3 block">Common Questions</span>
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Frequently Asked Questions</h2>
-        </div>
-        
-        <div className="space-y-4">
-          <Accordion type="single" collapsible className="w-full">
-            {faqs.map((faq, index) => (
-              <AccordionItem
-                key={index}
-                value={`item-${index}`}
-                className="border-b border-gray-100 last:border-0 mb-4"
-              >
-                <AccordionTrigger className="px-6 py-5 hover:no-underline hover:bg-gray-50/50 rounded-2xl text-left group transition-all duration-200">
-                  <span className="font-semibold text-lg text-gray-800 group-hover:text-[#1B6013] transition-colors">{faq.question}</span>
-                </AccordionTrigger>
-                <AccordionContent className="px-6 pb-6 pt-2 text-gray-600 leading-relaxed text-base">
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.1 }}
-                  >
-                    {faq.answer}
-                  </motion.div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        </div>
-      </motion.div>
+
 
       {/* Contact Form */}
       <motion.div variants={fadeInUp} className="max-w-3xl mx-auto">

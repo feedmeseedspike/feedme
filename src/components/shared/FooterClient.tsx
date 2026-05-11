@@ -40,7 +40,9 @@ const footerData = [
     title: "Get Help",
     links: [
       { name: "Track Order", href: "/track-order" },
-      { name: "Chat With Us", href: "/" },
+      { name: "FAQs", href: "/faq" },
+      { name: "Delivery Locations", href: "/delivery-locations" },
+      // { name: "Chat With Us", href: "/" },
       { name: "Send An Email", isEmailModal: true },
     ],
   },

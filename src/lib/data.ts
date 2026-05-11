@@ -1290,7 +1290,7 @@ export const vendors = [
       email: "orcharddirect@example.com",
       phone: "+2348034567890",
       address: "7 Fruit Lane, Yaba, Nigeria",
-      workingHours: "Mon-Fri: 7am-6pm, Sat: 8am-5pm"
+      workingHours: "Mon-Sat: 8am-6pm"
     },
     location: {
       area: "Yaba",
@@ -1451,7 +1451,7 @@ export const vendors = [
       email: "potatoking@example.com",
       phone: "+2348078901234",
       address: "5 Tuber Road, Magodo, Nigeria",
-      workingHours: "Mon-Sat: 7am-7pm"
+      workingHours: "Mon-Sat: 8am-6pm"
     },
     location: {
       area: "Magodo",
@@ -1737,7 +1737,7 @@ export const vendors = [
         "email": "fruithaven@example.com",
         "phone": "+2348034567890",
         "address": "8 Juicy Road, Surulere, Lagos",
-        "workingHours": "Mon-Sun: 7am-8pm"
+        "workingHours": "Mon-Sat: 8am-6pm"
       },
       "location": {
         "area": "Surulere",
@@ -1908,7 +1908,7 @@ export const vendors = [
         "email": "fruitkingdom@example.com",
         "phone": "+2348078901234",
         "address": "22 Orchard Road, Ajah, Lagos",
-        "workingHours": "Mon-Sun: 7am-9pm"
+        "workingHours": "Mon-Sat: 8am-6pm"
       },
       "location": {
         "area": "Ajah",

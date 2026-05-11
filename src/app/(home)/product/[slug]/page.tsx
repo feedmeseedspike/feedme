@@ -376,21 +376,48 @@ const ProductDetails = async (props: {
 
   return (
     <>
-      <Head>
-        <ProductJsonLd
-          product={{
-            name: product.name || "",
-            images: product.images || [],
-            description: product.description || "",
-            brand: product.brand || undefined,
-            slug: product.slug || "",
-            price: product.price || 0,
-            countInStock: product.count_in_stock || 0,
-            numReviews: product.num_reviews || 0,
-            avgRating: product.avg_rating || 0,
-          }}
-        />
-      </Head>
+      <ProductJsonLd
+        product={{
+          name: product.name || "",
+          images: product.images || [],
+          description: product.description || "",
+          brand: product.brand || undefined,
+          slug: product.slug || "",
+          price: product.price || 0,
+          countInStock: product.count_in_stock || 0,
+          numReviews: product.num_reviews || 0,
+          avgRating: product.avg_rating || 0,
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "https://shopfeedme.com/"
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": productCategory?.title || "Products",
+                "item": productCategory ? `https://shopfeedme.com/category/${toSlug(productCategory.title)}` : "https://shopfeedme.com/products"
+              },
+              {
+                "@type": "ListItem",
+                "position": 3,
+                "name": product.name,
+                "item": `https://shopfeedme.com/product/${product.slug}`
+              }
+            ]
+          }),
+        }}
+      />
       <section>
         <Container>
           {/* {productCategory && (

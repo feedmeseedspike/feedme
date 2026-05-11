@@ -118,7 +118,17 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> 
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase
     .from("blog_posts")
-    .select("*")
+    .select(`
+      *,
+      blog_categories (id, name, slug),
+      blog_post_tags (
+        blog_tags (id, name)
+      ),
+      blog_recipe_products (
+        id,
+        product:products (*)
+      )
+    `)
     .eq("slug", slug)
     .eq("status", "published")
     .single();
@@ -134,7 +144,17 @@ export async function getBlogPostBySlugAdmin(slug: string): Promise<BlogPost | n
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase
     .from("blog_posts")
-    .select("*")
+    .select(`
+      *,
+      blog_categories (id, name, slug),
+      blog_post_tags (
+        blog_tags (id, name)
+      ),
+      blog_recipe_products (
+        id,
+        product:products (*)
+      )
+    `)
     .eq("slug", slug)
     .single();
 
@@ -302,12 +322,18 @@ export async function deleteBlogPost(id: string): Promise<void> {
 
 export async function incrementBlogPostViews(id: string): Promise<void> {
   const supabase = createServiceRoleClient();
-  const { error } = await supabase.rpc("increment_blog_views", { post_id: id });
-  if (error) {
-    // Fallback: manual increment
+  
+  // Fetch current count
+  const { data: post } = await supabase
+    .from("blog_posts")
+    .select("views_count")
+    .eq("id", id)
+    .single();
+
+  if (post) {
     await supabase
       .from("blog_posts")
-      .update({ views_count: supabase.rpc("increment_blog_views", { post_id: id }) as any })
+      .update({ views_count: (post.views_count || 0) + 1 })
       .eq("id", id);
   }
 }
@@ -335,7 +361,19 @@ export async function toggleBlogPostLike(
   if (existing) {
     // Unlike
     await supabase.from("blog_post_likes").delete().eq("id", existing.id);
-    await supabase.rpc("decrement_blog_likes", { post_id: postId });
+    
+    const { data: post } = await supabase
+      .from("blog_posts")
+      .select("likes_count")
+      .eq("id", postId)
+      .single();
+    
+    if (post) {
+      await supabase
+        .from("blog_posts")
+        .update({ likes_count: Math.max(0, (post.likes_count || 0) - 1) })
+        .eq("id", postId);
+    }
   } else {
     // Like
     await supabase.from("blog_post_likes").insert({
@@ -343,17 +381,29 @@ export async function toggleBlogPostLike(
       user_id: userId || null,
       guest_id: guestId || null,
     });
-    await supabase.rpc("increment_blog_likes", { post_id: postId });
+    
+    const { data: post } = await supabase
+      .from("blog_posts")
+      .select("likes_count")
+      .eq("id", postId)
+      .single();
+      
+    if (post) {
+      await supabase
+        .from("blog_posts")
+        .update({ likes_count: (post.likes_count || 0) + 1 })
+        .eq("id", postId);
+    }
   }
 
-  // Get updated count
-  const { data: post } = await supabase
+  // Get final updated count
+  const { data: finalPost } = await supabase
     .from("blog_posts")
     .select("likes_count")
     .eq("id", postId)
     .single();
 
-  return { liked: !existing, likes_count: post?.likes_count ?? 0 };
+  return { liked: !existing, likes_count: finalPost?.likes_count ?? 0 };
 }
 
 export async function checkBlogPostLike(

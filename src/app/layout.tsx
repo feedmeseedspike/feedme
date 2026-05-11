@@ -236,6 +236,43 @@ export default async function RootLayout({
     ],
   };
 
+  const groceryStoreJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "GroceryStore",
+    "name": "FeedMe Lagos",
+    "image": "https://shopfeedme.com/opengraph-image.jpg",
+    "@id": "https://shopfeedme.com",
+    "url": "https://shopfeedme.com",
+    "telephone": "+2348088282487",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Lagos, Nigeria",
+      "addressLocality": "Lagos",
+      "addressRegion": "Lagos State",
+      "addressCountry": "NG"
+    },
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": 6.5244,
+      "longitude": 3.3792
+    },
+    "openingHoursSpecification": {
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday"
+      ],
+      "opens": "08:00",
+      "closes": "18:00"
+    },
+    "priceRange": "₦₦",
+    "areaServed": "Lagos, Nigeria"
+  };
+
   return (
     <html lang="en" className={`${proxima.variable} ${ebGaramond.variable}`}>
       <head>
@@ -255,6 +292,12 @@ export default async function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(organizationJsonLd),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(groceryStoreJsonLd),
           }}
         />
 

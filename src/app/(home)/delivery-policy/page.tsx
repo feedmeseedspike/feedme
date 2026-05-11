@@ -78,7 +78,7 @@ export default function DeliveryPolicyPage() {
             <ul className="list-disc pl-5 space-y-2 text-gray-700">
               <li>
                 <span className="font-semibold">Operating hours:</span> Monday –
-                Saturday, 7:00 AM – 7:00 PM
+                Saturday, 8:00 AM – 6:00 PM
               </li>
               <li>
                 <span className="font-semibold">Delivery window:</span> Within 3

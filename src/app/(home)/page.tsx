@@ -317,6 +317,7 @@ export default async function Home() {
     <ReactQueryHydrate state={dehydratedState}>
 
       <main className="">
+        <h1 className="sr-only">FeedMe Lagos - Fresh Farm Produce & Grocery Delivery in 3 Hours</h1>
         <div className="bg-[#F9FAFB]">
           <Container>
             <Banner />

@@ -96,16 +96,16 @@ const BundleCard: React.FC<BundleCardProps> = ({
   );
 
   const BundleImage = () => (
-    <div className="relative h-[100px] w-[120px] md:h-[135px] md:w-[160px]">
+    <div className="relative aspect-square w-full">
       <Link href={`/bundles/${bundleSlug}`} className="block h-full w-full">
         <div className="relative w-full h-full bg-[#F2F4F7] overflow-hidden rounded-[8px]">
           <Image
             src={bundle.thumbnail_url || "/images/placeholder-banner.jpg"}
             alt={bundle.name || "Bundle"}
             fill
-            sizes="(max-width: 768px) 120px, 160px"
+            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
             loading="lazy"
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform duration-300 ease-in-out hover:scale-105"
             onError={(e) => {
               e.currentTarget.src = "/images/placeholder-banner.jpg";
             }}
@@ -173,10 +173,10 @@ const BundleCard: React.FC<BundleCardProps> = ({
   );
 
   const BundleDetails = () => (
-    <div className="flex flex-col space-y-1 w-[120px] md:w-[160px]">
+    <div className="flex flex-col space-y-1 w-full">
       <Link
         href={`/bundles/${bundleSlug}`}
-        className="overflow-hidden h4-bold text-ellipsis leading-5 max-w-[10rem]"
+        className="overflow-hidden h4-bold text-ellipsis leading-5"
       >
         {bundle.name}
       </Link>
@@ -187,10 +187,10 @@ const BundleCard: React.FC<BundleCardProps> = ({
   );
 
   return (
-    <div className="flex flex-col mb-4 md:pb-8 gap-2">
+    <div className="flex flex-col gap-2">
       <BundleImage />
       {!hideDetails && (
-        <div>
+        <div className="pt-2">
           <BundleDetails />
         </div>
       )}
