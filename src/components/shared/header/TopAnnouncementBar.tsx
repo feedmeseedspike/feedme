@@ -82,12 +82,12 @@ export default function TopAnnouncementBar() {
     //   text: "Free Delivery for orders above ₦25,000",
     //   countdownTo: BONUS_CONFIG.PROMO_FREE_DELIVERY_2PM.end_date,
     // },
-    {
-      icon: <Gift className="w-4 h-4 text-[#F0800F]" />,
-      text: "Refer a friend & get ₦2,000 off your next order!",
-      link: "/account/referral",
-      linkText: "Learn More",
-    },
+    // {
+    //   icon: <Gift className="w-4 h-4 text-[#F0800F]" />,
+    //   text: "Refer a friend & get ₦2,000 off your next order!",
+    //   link: "/account/referral",
+    //   linkText: "Learn More",
+    // },
     {
       icon: <Truck className="w-4 h-4 text-[#3BCCFF]" />,
       text: "Delivered to your doorstep in 3 hours within lagos.",
