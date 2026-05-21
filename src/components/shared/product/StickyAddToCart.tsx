@@ -79,6 +79,7 @@ export default function StickyAddToCart({
                   option: selectedOptionData,
                   selectedOption: selectedOptionData?.name,
                   in_season: product.in_season,
+                  stock_status: product.stock_status,
                 }}
              />
           </div>

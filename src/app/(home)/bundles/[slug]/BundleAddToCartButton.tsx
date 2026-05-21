@@ -19,7 +19,7 @@ export default function BundleAddToCartButton({
   const bundleImage =
     bundle.thumbnail_url || "/images/placeholder-banner.jpg";
   const isInStock =
-    !bundle.stock_status || bundle.stock_status === "in_stock";
+    !bundle.stock_status || bundle.stock_status.toLowerCase().replace(/_/g, " ") === "in stock";
 
   return (
     <AddToCart
@@ -35,6 +35,7 @@ export default function BundleAddToCartButton({
         countInStock: isInStock ? 9999 : 0,
         options: [],
         in_season: null,
+        stock_status: bundle.stock_status,
         iconOnly: false,
       }}
     />

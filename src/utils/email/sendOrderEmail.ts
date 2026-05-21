@@ -26,6 +26,9 @@ interface AdminOrderProps {
   deliveryFee?: number;
   itemsOrdered: any[];
   rewards?: any;
+  walletBalanceBefore?: number;
+  walletBalanceAfter?: number;
+  walletPaymentAmount?: number;
 }
 
 export async function sendOrderConfirmationEmails({
@@ -52,24 +55,35 @@ export async function sendOrderConfirmationEmails({
           ${adminOrderProps.orderNote ? `<p style="margin-top: 10px; padding: 10px; background-color: #fff9db; border-radius: 4px;"><strong>Note from Customer:</strong><br/>${adminOrderProps.orderNote}</p>` : ''}
         </div>
 
-         <div style="background: #e7f5e7; border-radius: 6px; padding: 14px 16px; margin-bottom: 18px; border: 1px solid #1B601320;">
-           <p style="margin: 4px 0;"><strong>Payment Method:</strong> ${adminOrderProps.paymentMethod?.toUpperCase() || 'PAYSTACK'}</p>
-           
-           ${adminOrderProps.isFirstOrder ? `<p style="margin: 4px 0;"><span style="background: #1B6013; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">NEW CUSTOMER (5% FIRST ORDER DISCOUNT)</span></p>` : ''}
-           ${adminOrderProps.staffDiscount && adminOrderProps.staffDiscount > 0 ? `<p style="margin: 4px 0;"><span style="background: #FF9900; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">STAFF DISCOUNT APPLIED</span></p>` : ''}
-           ${adminOrderProps.voucherDiscount && adminOrderProps.voucherDiscount > 0 ? `<p style="margin: 4px 0;"><span style="background: #2A2A2A; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">PROMO VOUCHER APPLIED</span></p>` : ''}
+          <div style="background: #e7f5e7; border-radius: 6px; padding: 14px 16px; margin-bottom: 18px; border: 1px solid #1B601320;">
+            <p style="margin: 4px 0;"><strong>Payment Method:</strong> ${adminOrderProps.paymentMethod?.toUpperCase() || 'PAYSTACK'}</p>
+            
+            ${adminOrderProps.isFirstOrder ? `<p style="margin: 4px 0;"><span style="background: #1B6013; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">NEW CUSTOMER (5% FIRST ORDER DISCOUNT)</span></p>` : ''}
+            ${adminOrderProps.staffDiscount && adminOrderProps.staffDiscount > 0 ? `<p style="margin: 4px 0;"><span style="background: #FF9900; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">STAFF DISCOUNT APPLIED</span></p>` : ''}
+            ${adminOrderProps.voucherDiscount && adminOrderProps.voucherDiscount > 0 ? `<p style="margin: 4px 0;"><span style="background: #2A2A2A; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">PROMO VOUCHER APPLIED</span></p>` : ''}
 
-           ${adminOrderProps.rewards && (adminOrderProps.rewards.cashback > 0 || adminOrderProps.rewards.freeDeliveryBonus || adminOrderProps.rewards.pointsAwarded > 0) ? `
-              <div style="margin-top: 10px; border-top: 1px solid #1B601310; padding-top: 8px;">
-                 <p style="margin: 4px 0; color: #1B6013;"><strong>Rewards Earned (For this order):</strong></p>
-                 <ul style="margin: 4px 0; padding-left: 20px; font-size: 14px;">
-                    ${adminOrderProps.rewards.cashback > 0 ? `<li>Cashback: ₦${adminOrderProps.rewards.cashback.toLocaleString()}</li>` : ''}
-                    ${adminOrderProps.rewards.freeDeliveryBonus ? `<li>Free Delivery for NEXT order: YES</li>` : ''}
-                    ${adminOrderProps.rewards.pointsAwarded > 0 ? `<li>Loyalty Points: +${adminOrderProps.rewards.pointsAwarded}</li>` : ''}
-                 </ul>
-              </div>
-           ` : ''}
-        </div>
+            ${adminOrderProps.rewards && (adminOrderProps.rewards.cashback > 0 || adminOrderProps.rewards.freeDeliveryBonus || adminOrderProps.rewards.pointsAwarded > 0) ? `
+               <div style="margin-top: 10px; border-top: 1px solid #1B601310; padding-top: 8px;">
+                  <p style="margin: 4px 0; color: #1B6013;"><strong>Rewards Earned (For this order):</strong></p>
+                  <ul style="margin: 4px 0; padding-left: 20px; font-size: 14px;">
+                     ${adminOrderProps.rewards.cashback > 0 ? `<li>Cashback: ₦${adminOrderProps.rewards.cashback.toLocaleString()}</li>` : ''}
+                     ${adminOrderProps.rewards.freeDeliveryBonus ? `<li>Free Delivery for NEXT order: YES</li>` : ''}
+                     ${adminOrderProps.rewards.pointsAwarded > 0 ? `<li>Loyalty Points: +${adminOrderProps.rewards.pointsAwarded}</li>` : ''}
+                  </ul>
+               </div>
+            ` : ''}
+         </div>
+
+         ${(adminOrderProps.paymentMethod?.toLowerCase() === 'wallet' || (adminOrderProps.walletPaymentAmount && adminOrderProps.walletPaymentAmount > 0)) ? `
+           <div style="background: #f0f7ff; border-radius: 6px; padding: 14px 16px; margin-bottom: 18px; border: 1px solid #0056b320; font-size: 14px; border-left: 4px solid #0056b3;">
+             <p style="margin: 4px 0; color: #0056b3;"><strong>Wallet Transaction Breakdown:</strong></p>
+             <ul style="margin: 4px 0; padding-left: 20px; color: #333; line-height: 1.5;">
+               ${adminOrderProps.walletBalanceBefore !== undefined ? `<li><strong>Wallet Balance Before Order:</strong> ₦${adminOrderProps.walletBalanceBefore.toLocaleString()}</li>` : ''}
+               <li><strong>Amount Deducted for Order:</strong> ₦${(adminOrderProps.walletPaymentAmount || adminOrderProps.totalAmount).toLocaleString()}</li>
+               ${adminOrderProps.walletBalanceAfter !== undefined ? `<li><strong>Wallet Balance After Order:</strong> ₦${adminOrderProps.walletBalanceAfter.toLocaleString()}</li>` : ''}
+             </ul>
+           </div>
+         ` : ''}
         
         <h3 style="color: #1B6013; margin-bottom: 8px;">Items Ordered:</h3>
         <div style="background: #f6f6f6; border-radius: 6px; padding: 14px 16px; margin-bottom: 18px;">

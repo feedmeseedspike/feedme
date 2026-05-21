@@ -191,6 +191,15 @@ export async function getRelatedProductsByCategory({
   limit?: number;
   page: number;
 }) {
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!category || !uuidRegex.test(category)) {
+    return {
+      data: [],
+      totalPages: 0,
+    };
+  }
+
   const supabase = await createClient(); // Initialize client inside the function
   const { data, error } = await supabase
     .from("products")
@@ -202,8 +211,8 @@ export async function getRelatedProductsByCategory({
     .range((page - 1) * limit, page * limit - 1);
   if (error) throw error;
   return {
-    data,
-    totalPages: Math.ceil(data.length / limit),
+    data: data || [],
+    totalPages: Math.ceil((data || []).length / limit),
   };
 }
 

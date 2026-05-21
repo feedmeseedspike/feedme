@@ -176,8 +176,8 @@ export async function processWalletPayment(orderData: OrderData) {
     await supabase.from("transactions").insert({
       user_id: userId,
       order_id: orderResult.id,
-      amount: amountToDeduct,
-      payment_status: "success",
+      amount: -amountToDeduct, // Deductions are negative!
+      payment_status: "paid",
       payment_gateway: "wallet",
       transaction_id: `WALLET-${orderResult.id}`,
       reference: `WALLET-${orderResult.id}`,
@@ -232,7 +232,9 @@ export async function processWalletPayment(orderData: OrderData) {
         orderId: orderResult.id, 
         orderNumber: orderResult.order_id,
         reference: reference,
-        rewards: rewards 
+        rewards: rewards,
+        walletBalanceBefore: currentBalance,
+        walletBalanceAfter: currentBalance - amountToDeduct
       } 
     };
 
@@ -303,7 +305,7 @@ export async function creditWallet(
   const { error: txError } = await supabase.from("transactions").insert({
       user_id: userId,
       amount: amount, // Positive for credit
-      payment_status: "success", // Confirmed credit
+      payment_status: "paid", // Confirmed credit (constraint requires 'paid')
       payment_gateway: "feedme_system", // Internal system credit
       transaction_id: reference,
       reference: reference, 

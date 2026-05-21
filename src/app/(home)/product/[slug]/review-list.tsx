@@ -29,12 +29,16 @@ export default async function ReviewList({ product }: ReviewListServerProps) {
 
   let hasPurchased = false;
   if (userId) {
-    const supabase = await createServerComponentClient();
-    const purchasedProductIds = await getUsersPurchasedProductIds(
-      supabase,
-      userId
-    );
-    hasPurchased = purchasedProductIds.includes(product.id);
+    try {
+      const supabase = await createServerComponentClient();
+      const purchasedProductIds = await getUsersPurchasedProductIds(
+        supabase,
+        userId
+      );
+      hasPurchased = purchasedProductIds.includes(product.id);
+    } catch (error) {
+      console.error("Failed to fetch user purchased product IDs:", error);
+    }
   }
 
   // console.log("reviewsData:", reviewsData);

@@ -255,5 +255,39 @@ export async function fetchOrderDetailsAction(orderId: string) {
     voucherData = v;
   }
   
-  return { ...orderWithParsedAddress, order_items: finalItems, vouchers: voucherData };
+  // 6. Fetch related transactions
+  let transactions: any[] = [];
+  try {
+    const { data } = await supabase
+      .from("transactions")
+      .select("*")
+      .or(`order_id.eq.${orderId},reference.ilike.%${orderId}%,description.ilike.%${order.reference}%,reference.ilike.%${order.reference}%`)
+      .order("created_at", { ascending: false });
+    transactions = data || [];
+  } catch (txErr) {
+    console.error("Error fetching transactions in fetchOrderDetailsAction:", txErr);
+  }
+
+  // 7. Fetch customer wallet
+  let wallet = null;
+  if (order.user_id) {
+    try {
+      const { data } = await supabase
+        .from("wallets")
+        .select("*")
+        .eq("user_id", order.user_id)
+        .maybeSingle();
+      wallet = data;
+    } catch (wErr) {
+      console.error("Error fetching wallet in fetchOrderDetailsAction:", wErr);
+    }
+  }
+
+  return { 
+    ...orderWithParsedAddress, 
+    order_items: finalItems, 
+    vouchers: voucherData,
+    transactions: transactions,
+    wallet: wallet
+  };
 }

@@ -169,6 +169,9 @@ const ProductDetails = async (props: {
       productId: product.id,
       page: Number(page || "1"),
       limit: 12,
+    }).catch((err) => {
+      console.error("Error fetching related products in slug page:", err);
+      return { data: [], totalPages: 0 };
     }),
     getAlsoViewedProducts(supabase, product.id).catch(() => []),
     getAlsoBoughtProducts(supabase, product.id).catch(() => []),
@@ -460,6 +463,7 @@ const ProductDetails = async (props: {
                 logo: (product as any).vendor_logo || "",
               },
               in_season: product.in_season,
+              stock_status: product.stock_status,
             }}
             cartItemId={cartItemId}
             recipes={safeRecipes}

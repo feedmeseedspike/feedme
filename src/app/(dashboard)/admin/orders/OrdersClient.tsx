@@ -795,7 +795,7 @@ export default function OrdersClient({
                       </div>
                     </TableCell>
                     <TableCell className="font-medium text-sm text-gray-900">
-                      {order.total_amount ? formatNaira(Number(order.total_amount)) : "₦0.00"}
+                      {formatNaira(Number(order.total_amount_paid || order.total_amount || 0))}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Select
@@ -1006,7 +1006,7 @@ export default function OrdersClient({
                         0
                       );
                       const delivery = Number(selectedOrder.delivery_fee || 0);
-                      const total = Number(selectedOrder.total_amount || 0);
+                      const total = Number(selectedOrder.total_amount_paid || selectedOrder.total_amount || 0);
                       const discount = (subtotal + delivery) - total;
 
                       if (discount > 1) { // Use > 1 to avoid floating point tiny diffs
@@ -1021,7 +1021,7 @@ export default function OrdersClient({
                   })()}
                   <p>
                     <strong>Total Amount:</strong>{" "}
-                    {formatNaira(Number(selectedOrder.total_amount || 0))}
+                    {formatNaira(Number(selectedOrder.total_amount_paid || selectedOrder.total_amount || 0))}
                   </p>
                   <p>
                     <strong>Created:</strong>{" "}
@@ -1037,6 +1037,51 @@ export default function OrdersClient({
                   </p>
                 </div>
               </div>
+
+              {/* Wallet & Cashback details */}
+              {selectedOrder.user_id && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                    <span className="p-1 rounded bg-blue-100 text-blue-800 text-xs">Wallet</span>
+                    Payment & Rewards Breakdown
+                  </h3>
+                  <div className="bg-gray-50 border rounded-lg p-4 space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Current Wallet Balance:</span>
+                      <strong className="text-gray-900">
+                        {selectedOrder.wallet ? formatNaira(selectedOrder.wallet.balance || 0) : "₦0.00"}
+                      </strong>
+                    </div>
+
+                    {selectedOrder.transactions && selectedOrder.transactions.length > 0 ? (
+                      <div className="space-y-2 pt-2 border-t">
+                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">
+                          Related Wallet/Rewards Ledger:
+                        </span>
+                        <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                          {selectedOrder.transactions.map((tx: any) => (
+                            <div key={tx.id} className="flex justify-between items-start text-xs border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+                              <div className="max-w-[70%]">
+                                <span className="font-medium text-gray-900 block leading-tight">{tx.description || tx.reference}</span>
+                                <span className="text-gray-400 text-[10px] block mt-0.5">
+                                  {tx.created_at ? new Date(tx.created_at).toLocaleString() : "N/A"}
+                                </span>
+                              </div>
+                              <span className={`font-semibold whitespace-nowrap ${tx.amount < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                {tx.amount < 0 ? "-" : "+"}{formatNaira(Math.abs(tx.amount))}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-500 italic pt-2 border-t">
+                        No transactions or reward records logged for this order.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Order Items */}
               <div>

@@ -295,10 +295,14 @@ export default async function Home() {
 
   let purchasedProductIds: string[] = [];
   if (user?.user_id) {
-    purchasedProductIds = await getUsersPurchasedProductIds(
-      supabase,
-      user.user_id
-    );
+    try {
+      purchasedProductIds = await getUsersPurchasedProductIds(
+        supabase,
+        user.user_id
+      );
+    } catch (error) {
+      console.error("Failed to fetch user purchased product IDs on homepage:", error);
+    }
   }
 
   let recommendedProducts: IProductInput[] = [];

@@ -91,6 +91,7 @@ export default function ProductDetailsClient({
     };
     countInStock?: number | null;
     in_season?: boolean | null;
+    stock_status?: string | null;
   };
   cartItemId: string;
   recipes?: any[];
@@ -508,6 +509,7 @@ export default function ProductDetailsClient({
               selectedOption: selectedOptionData?.name,
               customizations: customizationSelections,
               in_season: product.in_season,
+              stock_status: product.stock_status,
             }}
             onAuthRequired={() => {
               showToast("Please log in to add items to cart", "error");

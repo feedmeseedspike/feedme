@@ -128,8 +128,8 @@ const ProductCard = ({
                 countInStock: (product as any).countInStock ?? null,
                 options: optionsArr as any,
                 option: quickAddOption as any,
-                selectedOption: quickAddOption?.name,
                 in_season: (product as any).in_season ?? null,
+                stock_status: (product as any).stock_status ?? null,
                 iconOnly: true,
                 bundleId: (product as any).bundleId,
               }}

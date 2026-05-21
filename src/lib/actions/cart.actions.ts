@@ -406,15 +406,19 @@ export async function addToCart(
         if (insertError) throw insertError;
       }
     } else if (productId) {
-      // Fetch product details to get its base price and available options
+      // Fetch product details to get its base price, available options, and stock info
       const { data: productData, error: productFetchError } = await supabase
         .from("products")
-        .select("id, price, options")
+        .select("id, price, options, stock_status, count_in_stock")
         .eq("id", productId)
         .single();
 
       if (productFetchError) throw productFetchError;
       if (!productData) throw new Error("Product not found.");
+
+      if ((productData.stock_status && productData.stock_status.toLowerCase().replace(/_/g, " ") === "out of stock") || (typeof productData.count_in_stock === "number" && productData.count_in_stock <= 0)) {
+        throw new Error("This product is currently out of stock.");
+      }
 
       let blackFridayItem: Tables<"black_friday_items"> | null = null;
       if (blackFridayItemId) {

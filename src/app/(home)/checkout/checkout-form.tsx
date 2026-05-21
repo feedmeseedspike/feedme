@@ -1162,6 +1162,9 @@ const CheckoutForm = ({
                         paymentMethod: selectedPaymentMethod,
                         isFirstOrder: isFirstOrder,
                         rewards: result.data.rewards, // Pass the rewards from the action result
+                        walletBalanceBefore: result.data.walletBalanceBefore,
+                        walletBalanceAfter: result.data.walletBalanceAfter,
+                        walletPaymentAmount: totalAmountPaid,
                       },
                       userOrderProps: {
                         orderNumber: result.data.orderNumber || result.data.reference || result.data.orderId,

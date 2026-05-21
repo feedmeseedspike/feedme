@@ -53,6 +53,7 @@ interface AddToCartProps {
     iconOnly?: boolean;
     bundleId?: string;
     in_season?: boolean | null; // <-- add this
+    stock_status?: string | null;
   };
   blackFridayItem?: {
     id: string;
@@ -793,7 +794,9 @@ const AddToCart = React.memo(
     const isOutOfSeason = item.in_season === false;
 
     // Only consider out of stock if countInStock is explicitly set to a number <= 0
+    // OR if stock_status is explicitly "out_of_stock" or "Out of Stock"
     const isOutOfStock =
+      (item.stock_status && item.stock_status.toLowerCase().replace(/_/g, " ") === "out of stock") ||
       (typeof item.countInStock === "number" && item.countInStock <= 0) ||
       (blackFridayItem?.availableSlots !== undefined &&
         blackFridayItem.availableSlots !== null &&
@@ -1063,7 +1066,9 @@ const AddToCart = React.memo(
                     <div className="px-5 max-h-[50vh] overflow-y-auto space-y-6 mb-8">
                       {availableOptions.map((option) => {
                         const qty = getQuantityForOption(option);
-                        const isOutOfStock = typeof option.countInStock === 'number' && option.countInStock <= 0;
+                        const isOutOfStock = 
+                          (option.stockStatus && option.stockStatus.toLowerCase().replace(/_/g, " ") === "out of stock") ||
+                          (typeof option.countInStock === 'number' && option.countInStock <= 0);
 
                         return (
                           <div key={option.name} className="flex items-center justify-between gap-4">
