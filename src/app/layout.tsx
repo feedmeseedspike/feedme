@@ -65,7 +65,7 @@ export const viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://shopfeedme.com/"),
+  metadataBase: new URL("https://www.shopfeedme.com/"),
   // manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -74,7 +74,7 @@ export const metadata: Metadata = {
   },
   title: {
     template: "%s - FeedMe",
-    default: "FeedMe - Real Food, Real Fast, Delivered in 3 Hours",
+    default: "FeedMe - Fresh Farm Produce Delivered in 3 Hours",
   },
   keywords: [
     "fresh produce Lagos",
@@ -100,7 +100,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://shopfeedme.com/",
+    url: "https://www.shopfeedme.com/",
     title: "FeedMe - Fresh Farm Produce Delivered in 3 Hours",
     description:
       "Shop fresh, authentic farm produce delivered to your doorstep in 3 hours or less! Explore high-quality fruits, vegetables, oils, peppers, tubers, sauces, and spices. FeedMe ensures unbeatable freshness and convenience for a superior farm-to-table experience. Start shopping now!",
@@ -227,7 +227,7 @@ export default async function RootLayout({
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "FeedMe",
-    url: "https://shopfeedme.com/",
+    url: "https://www.shopfeedme.com/",
     logo: "https://res.cloudinary.com/ahisi/image/upload/v1731071676/logo_upovep.png",
     sameAs: [
       "https://www.facebook.com/shopfeedme",
@@ -240,9 +240,9 @@ export default async function RootLayout({
     "@context": "https://schema.org",
     "@type": "GroceryStore",
     "name": "FeedMe Lagos",
-    "image": "https://shopfeedme.com/opengraph-image.jpg",
-    "@id": "https://shopfeedme.com",
-    "url": "https://shopfeedme.com",
+    "image": "https://www.shopfeedme.com/opengraph-image.jpg",
+    "@id": "https://www.shopfeedme.com",
+    "url": "https://www.shopfeedme.com",
     "telephone": "+2348088282487",
     "address": {
       "@type": "PostalAddress",

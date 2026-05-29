@@ -2491,9 +2491,29 @@ const CheckoutForm = ({
                             message += `📦 *Order Items:*\n`;
                             items.forEach((item, index) => {
                               const productOption = isProductOption(item.option) ? item.option : null;
-                              const itemName = item.products?.name || item.bundles?.name || item.offers?.title || item.meta?.name || productOption?.name;
+                              const baseName = item.products?.name || item.bundles?.name || item.offers?.title || item.meta?.name || "";
+                              
+                              let itemName = baseName || productOption?.name || "Product";
+                              if (productOption?.name && productOption.name !== baseName) {
+                                itemName += ` (${productOption.name})`;
+                              }
+                              
                               const itemPrice = ((productOption?.price !== undefined && productOption?.price !== null ? productOption.price : item.price) || 0);
                               message += `${index + 1}. *${itemName}* x ${item.quantity} (₦${(itemPrice * item.quantity).toLocaleString()})\n`;
+                              
+                              // Add customizations if they exist in the option
+                              if (productOption && (productOption as any).customizations) {
+                                const customizations = (productOption as any).customizations;
+                                Object.entries(customizations).forEach(([key, value]) => {
+                                  const formattedKey = key
+                                    .replace(/_/g, " ")
+                                    .replace(/\b\w/g, (l) => l.toUpperCase());
+                                  const formattedValue = String(value)
+                                    .replace(/_/g, " ")
+                                    .replace(/\b\w/g, (l) => l.toUpperCase());
+                                  message += `   _• ${formattedKey}: ${formattedValue}_\n`;
+                                });
+                              }
                             });
                             
                             message += `\n💰 *Financial Summary:*\n`;

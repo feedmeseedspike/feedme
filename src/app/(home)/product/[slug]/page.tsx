@@ -91,13 +91,13 @@ export async function generateMetadata({
         title: product.name,
         description: description,
         alternates: {
-          canonical: `https://shopfeedme.com/product/${slug}`,
+          canonical: `https://www.shopfeedme.com/product/${slug}`,
         },
         openGraph: {
           title: product.name,
           description: description,
           images: metaImage,
-          url: `https://shopfeedme.com/product/${slug}`,
+          url: `https://www.shopfeedme.com/product/${slug}`,
         },
         twitter: {
           card: "summary_large_image",
@@ -237,22 +237,6 @@ const ProductDetails = async (props: {
                 "@type": "Organization",
                 name: "FeedMe Nigeria",
               },
-            },
-            twitter: {
-              card: "summary_large_image",
-              title: product.name,
-              description: product.description || "",
-              images: Array.isArray(product.images) && product.images.length > 0 ? [product.images[0]] : ["/logo.png"],
-            },
-            alternates: {
-              canonical: `${process.env.NEXT_PUBLIC_SITE_URL}/product/${product.slug}`,
-            },
-            openGraph: {
-              title: product.name,
-              description: product.description || "",
-              images: Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : "/logo.png",
-              url: `${process.env.NEXT_PUBLIC_SITE_URL}/product/${product.slug}`,
-              type: "product",
             },
             aggregateRating:
               product.numReviews > 0
@@ -403,19 +387,19 @@ const ProductDetails = async (props: {
                 "@type": "ListItem",
                 "position": 1,
                 "name": "Home",
-                "item": "https://shopfeedme.com/"
+                "item": "https://www.shopfeedme.com/"
               },
               {
                 "@type": "ListItem",
                 "position": 2,
                 "name": productCategory?.title || "Products",
-                "item": productCategory ? `https://shopfeedme.com/category/${toSlug(productCategory.title)}` : "https://shopfeedme.com/products"
+                "item": productCategory ? `https://www.shopfeedme.com/category/${toSlug(productCategory.title)}` : "https://www.shopfeedme.com/products"
               },
               {
                 "@type": "ListItem",
                 "position": 3,
                 "name": product.name,
-                "item": `https://shopfeedme.com/product/${product.slug}`
+                "item": `https://www.shopfeedme.com/product/${product.slug}`
               }
             ]
           }),
