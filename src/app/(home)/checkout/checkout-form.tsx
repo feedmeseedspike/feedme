@@ -925,47 +925,45 @@ const CheckoutForm = ({
       return;
     }
 
-    startTransition(async () => {
-      try {
-        const result = await validateVoucherMutation({
-          code: codeToValidate,
-          totalAmount: subtotal,
-        });
-        if (result.success && result.data) {
-          const { id, discountType, discountValue } = result.data;
-          setIsVoucherValid(true);
-          setVoucherId(id);
-          setVoucherCode(codeToValidate); // Sync state if it was external
-          const calculatedDiscount =
-            discountType === "percentage"
-              ? (discountValue / 100) * totalAmount
-              : discountValue;
-          const discount = Math.min(calculatedDiscount, subtotal);
-          setVoucherDiscount(discount);
-          // Persist voucher in localStorage
-          localStorage.setItem("voucherCode", codeToValidate);
-          localStorage.setItem("voucherDiscount", discount.toString());
-          showToast("Voucher applied successfully!", "success");
-        } else {
-          setIsVoucherValid(false);
-          setVoucherDiscount(0);
-          // Remove voucher from localStorage
-          localStorage.removeItem("voucherCode");
-          localStorage.removeItem("voucherDiscount");
-          showToast(result.error || "Voucher validation failed.", "error");
-        }
-      } catch (error: any) {
+    try {
+      const result = await validateVoucherMutation({
+        code: codeToValidate,
+        totalAmount: subtotal,
+      });
+      if (result.success && result.data) {
+        const { id, discountType, discountValue } = result.data;
+        setIsVoucherValid(true);
+        setVoucherId(id);
+        setVoucherCode(codeToValidate); // Sync state if it was external
+        const calculatedDiscount =
+          discountType === "percentage"
+            ? (discountValue / 100) * totalAmount
+            : discountValue;
+        const discount = Math.min(calculatedDiscount, subtotal);
+        setVoucherDiscount(discount);
+        // Persist voucher in localStorage
+        localStorage.setItem("voucherCode", codeToValidate);
+        localStorage.setItem("voucherDiscount", discount.toString());
+        showToast("Voucher applied successfully!", "success");
+      } else {
         setIsVoucherValid(false);
         setVoucherDiscount(0);
         // Remove voucher from localStorage
         localStorage.removeItem("voucherCode");
         localStorage.removeItem("voucherDiscount");
-        showToast(
-          error.message || "An error occurred while validating the voucher.",
-          "error"
-        );
+        showToast(result.error || "Voucher validation failed.", "error");
       }
-    });
+    } catch (error: any) {
+      setIsVoucherValid(false);
+      setVoucherDiscount(0);
+      // Remove voucher from localStorage
+      localStorage.removeItem("voucherCode");
+      localStorage.removeItem("voucherDiscount");
+      showToast(
+        error.message || "An error occurred while validating the voucher.",
+        "error"
+      );
+    }
   };
 
   const handleRemoveItem = async (itemId: string) => {

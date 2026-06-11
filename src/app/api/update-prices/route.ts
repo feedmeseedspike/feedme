@@ -245,12 +245,15 @@ export async function POST(req: NextRequest) {
         mergedTags.push(`Discount: ${(p as any).discount}`);
       }
 
+      const isProductOutOfStock = p.options.length > 0 && p.options.every((o: any) => o.stockStatus && o.stockStatus.toLowerCase().includes('out'));
+      const productStockStatus = isProductOutOfStock ? "out_of_stock" : "in_stock";
+
       const updateData: any = {
         name: p.name,
         price: lowestPrice,
         list_price: productListPrice,
         category_ids: [categoryId, GENERAL_CATEGORY_ID],
-        stock_status: "in_stock",
+        stock_status: productStockStatus,
         tags: mergedTags,
       };
 
@@ -260,7 +263,8 @@ export async function POST(req: NextRequest) {
           if (newOpt) {
             // Use oldPrice from CSV if it's a discount, otherwise use new price
             const optListPrice = (newOpt.oldPrice && newOpt.oldPrice > newOpt.price) ? newOpt.oldPrice : newOpt.price;
-            return { ...opt, price: newOpt.price, list_price: optListPrice, image: optionImg, stockStatus: "In Stock" };
+            const optStockStatus = newOpt.stockStatus && newOpt.stockStatus.toLowerCase().includes('out') ? "Out of Stock" : "In Stock";
+            return { ...opt, price: newOpt.price, list_price: optListPrice, image: optionImg, stockStatus: optStockStatus };
           }
           // If option is missing from CSV, mark as Out of Stock
           return { ...opt, stockStatus: "Out of Stock" };
@@ -270,7 +274,8 @@ export async function POST(req: NextRequest) {
         p.options.forEach((newOpt: any) => {
           if (!updatedOptions.some((o: any) => o.name === newOpt.name)) {
             const optListPrice = (newOpt.oldPrice && newOpt.oldPrice > newOpt.price) ? newOpt.oldPrice : newOpt.price;
-            updatedOptions.push({ name: newOpt.name, image: optionImg, price: newOpt.price, list_price: optListPrice, stockStatus: "In Stock" });
+            const optStockStatus = newOpt.stockStatus && newOpt.stockStatus.toLowerCase().includes('out') ? "Out of Stock" : "In Stock";
+            updatedOptions.push({ name: newOpt.name, image: optionImg, price: newOpt.price, list_price: optListPrice, stockStatus: optStockStatus });
           }
         });
 
@@ -297,7 +302,7 @@ export async function POST(req: NextRequest) {
           num_reviews: null,
           num_sales: 0,
           count_in_stock: null,
-          stock_status: "in_stock",
+          stock_status: productStockStatus,
           is_published: true,
           vendor_id: null,
           category_ids: [categoryId, GENERAL_CATEGORY_ID],
@@ -305,7 +310,8 @@ export async function POST(req: NextRequest) {
           images: [productMainImg],
           options: p.options.map((o: any) => {
              const optListPrice = (o.oldPrice && o.oldPrice > o.price) ? o.oldPrice : o.price;
-             return { name: o.name, image: optionImg, price: o.price, list_price: optListPrice, stockStatus: "In Stock" };
+             const optStockStatus = o.stockStatus && o.stockStatus.toLowerCase().includes('out') ? "Out of Stock" : "In Stock";
+             return { name: o.name, image: optionImg, price: o.price, list_price: optListPrice, stockStatus: optStockStatus };
           }),
           rating_distribution: {},
           in_season: null,

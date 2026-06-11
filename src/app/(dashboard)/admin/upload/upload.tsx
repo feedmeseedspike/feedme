@@ -230,12 +230,12 @@ export default function UploadExcel({ onSuccess }: Props) {
                       </div>
 
                       {(() => {
-                        const merged = new Map<string, {name: string; dbP?: number; csvP?: number}>();
+                        const merged = new Map<string, {name: string; dbP?: number; csvP?: number; csvStock?: string}>();
                         item.dbOptions?.forEach(o => merged.set(o.name.toLowerCase().trim(), { name: o.name, dbP: o.price }));
                         item.csvOptions?.forEach(o => {
                           const k = o.name.toLowerCase().trim();
-                          if (merged.has(k)) merged.set(k, { ...merged.get(k)!, name: o.name, csvP: o.price });
-                          else merged.set(k, { name: o.name, csvP: o.price });
+                          if (merged.has(k)) merged.set(k, { ...merged.get(k)!, name: o.name, csvP: o.price, csvStock: (o as any).stockStatus });
+                          else merged.set(k, { name: o.name, csvP: o.price, csvStock: (o as any).stockStatus });
                         });
                         const opts = Array.from(merged.values());
                         if (opts.length === 0) return null;
@@ -246,7 +246,7 @@ export default function UploadExcel({ onSuccess }: Props) {
                               const isDrop = opt.dbP !== undefined && opt.csvP !== undefined && opt.csvP < opt.dbP;
                               const isHike = opt.dbP !== undefined && opt.csvP !== undefined && opt.csvP > opt.dbP;
                               const isNew = opt.dbP === undefined && opt.csvP !== undefined;
-                              const isOOS = opt.dbP !== undefined && opt.csvP === undefined;
+                              const isOOS = (opt.dbP !== undefined && opt.csvP === undefined) || (opt.csvStock && opt.csvStock.toLowerCase().includes('out'));
                               return (
                                 <div key={idx} className={cn("flex flex-col bg-gray-50/50 px-3 py-1.5 rounded-lg border", isOOS ? "border-red-100 bg-red-50/30" : "border-gray-200/60")}>
                                   <span className={cn("text-[10px] font-bold uppercase truncate max-w-[120px]", isOOS ? "text-red-400 line-through" : "text-gray-500")}>{opt.name}</span>
@@ -335,12 +335,12 @@ export default function UploadExcel({ onSuccess }: Props) {
                       </div>
 
                       {(() => {
-                        const merged = new Map<string, {name: string; dbP?: number; csvP?: number}>();
+                        const merged = new Map<string, {name: string; dbP?: number; csvP?: number; csvStock?: string}>();
                         item.dbOptions?.forEach(o => merged.set(o.name.toLowerCase().trim(), { name: o.name, dbP: o.price }));
                         item.csvOptions?.forEach(o => {
                           const k = o.name.toLowerCase().trim();
-                          if (merged.has(k)) merged.set(k, { ...merged.get(k)!, name: o.name, csvP: o.price });
-                          else merged.set(k, { name: o.name, csvP: o.price });
+                          if (merged.has(k)) merged.set(k, { ...merged.get(k)!, name: o.name, csvP: o.price, csvStock: (o as any).stockStatus });
+                          else merged.set(k, { name: o.name, csvP: o.price, csvStock: (o as any).stockStatus });
                         });
                         const opts = Array.from(merged.values());
                         if (opts.length === 0) return null;
@@ -351,7 +351,7 @@ export default function UploadExcel({ onSuccess }: Props) {
                               const isDrop = opt.dbP !== undefined && opt.csvP !== undefined && opt.csvP < opt.dbP;
                               const isHike = opt.dbP !== undefined && opt.csvP !== undefined && opt.csvP > opt.dbP;
                               const isNew = opt.dbP === undefined && opt.csvP !== undefined;
-                              const isOOS = opt.dbP !== undefined && opt.csvP === undefined;
+                              const isOOS = (opt.dbP !== undefined && opt.csvP === undefined) || (opt.csvStock && opt.csvStock.toLowerCase().includes('out'));
                               return (
                                 <div key={idx} className={cn("flex flex-col bg-amber-50/30 px-3 py-1.5 rounded-lg border", isOOS ? "border-red-100 bg-red-50/50" : "border-amber-100/50")}>
                                   <span className={cn("text-[10px] font-bold uppercase truncate max-w-[120px]", isOOS ? "text-red-400 line-through" : "text-amber-700")}>{opt.name}</span>
@@ -456,12 +456,18 @@ export default function UploadExcel({ onSuccess }: Props) {
                       {/* Display options for new products */}
                       {item.csvOptions && item.csvOptions.length > 0 && (
                         <div className="mt-4 pt-3 border-t border-blue-50 grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {item.csvOptions.map((opt, idx) => (
-                            <div key={idx} className="flex items-center justify-between bg-blue-50/30 px-3 py-1.5 rounded-lg border border-blue-100/50">
-                              <span className="text-[10px] text-blue-700 font-bold truncate max-w-[80px] uppercase">{opt.name}</span>
-                              <span className="font-black text-xs text-blue-900">{formatNaira(opt.price)}</span>
+                          {item.csvOptions.map((opt: any, idx) => {
+                            const isOOS = opt.stockStatus && opt.stockStatus.toLowerCase().includes('out');
+                            return (
+                            <div key={idx} className={cn("flex items-center justify-between px-3 py-1.5 rounded-lg border", isOOS ? "bg-red-50/50 border-red-100" : "bg-blue-50/30 border-blue-100/50")}>
+                              <span className={cn("text-[10px] font-bold truncate max-w-[80px] uppercase", isOOS ? "text-red-400 line-through" : "text-blue-700")}>{opt.name}</span>
+                              <div className="flex items-center gap-2">
+                                {isOOS && <span className="text-[8px] text-red-500 uppercase font-black tracking-widest">OOS</span>}
+                                <span className={cn("font-black text-xs", isOOS ? "text-red-900/60" : "text-blue-900")}>{formatNaira(opt.price)}</span>
+                              </div>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>

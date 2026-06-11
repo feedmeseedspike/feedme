@@ -3,7 +3,7 @@ interface ParsedProduct {
   categoryTitle: string;
   name: string;
   discount?: string;
-  options: { name: string; price: number; oldPrice?: number }[];
+  options: { name: string; price: number; oldPrice?: number; stockStatus?: string }[];
 }
 
 export function parseFeedMeSheet(
@@ -44,6 +44,7 @@ export function parseFeedMeSheet(
   const newPriceIdx = headers.findIndex(h => h?.toString().toLowerCase().trim() === "new price");
   const oldPriceIdx = headers.findIndex(h => h?.toString().toLowerCase().trim() === "old price");
   const discountIdx = col("discount");
+  const stockIdx = col("stock");
 
   // Fallback for Categories if not found but index 0 is available and itemIdx is not 0
   if (catIdx === -1 && itemIdx > 0) {
@@ -68,6 +69,7 @@ export function parseFeedMeSheet(
     const newPriceStr = row[newPriceIdx]?.toString().trim();
     const oldPriceStr = oldPriceIdx !== -1 ? row[oldPriceIdx]?.toString().trim() : undefined;
     const discountStr = discountIdx !== -1 ? row[discountIdx]?.toString().trim() : undefined;
+    const stockStr = stockIdx !== -1 ? row[stockIdx]?.toString().trim() : undefined;
 
     // Update state only if we have data in the first few columns
     // This prevents deep side-table rows from hijacking the state.
@@ -117,7 +119,7 @@ export function parseFeedMeSheet(
     // Add unique options only
     const cleanQty = quantity.trim();
     if (!product.options.some(o => o.name === cleanQty)) {
-       product.options.push({ name: cleanQty, price, oldPrice: isNaN(oldPrice as number) ? undefined : oldPrice });
+       product.options.push({ name: cleanQty, price, oldPrice: isNaN(oldPrice as number) ? undefined : oldPrice, stockStatus: stockStr });
     }
   }
 
