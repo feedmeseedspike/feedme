@@ -62,6 +62,8 @@ export async function generateMetadata(props: {
     rating = "all",
   } = searchParams;
 
+  let title = "Search Products";
+
   if (
     (q !== "all" && q !== "") ||
     category !== "all" ||
@@ -69,18 +71,24 @@ export async function generateMetadata(props: {
     rating !== "all" ||
     price !== "all"
   ) {
-    return {
-      title: `${q !== "all" ? q : ""}${
-        category !== "all" ? ` : Category ${category}` : ""
-      }${tag !== "all" ? ` : Tag ${tag}` : ""}${
-        price !== "all" ? ` : Price ${price}` : ""
-      }${rating !== "all" ? ` : Rating ${rating}` : ""}`,
-    };
-  } else {
-    return {
-      title: "Search Products",
-    };
+    title = `${q !== "all" ? q : ""}${
+      category !== "all" ? ` : Category ${category}` : ""
+    }${tag !== "all" ? ` : Tag ${tag}` : ""}${
+      price !== "all" ? ` : Price ${price}` : ""
+    }${rating !== "all" ? ` : Rating ${rating}` : ""}`;
   }
+
+  return {
+    title,
+    // Google shouldn't index search result combinations to avoid crawl bloat and Soft 404s
+    robots: {
+      index: false,
+      follow: true,
+    },
+    alternates: {
+      canonical: "https://www.shopfeedme.com/search",
+    },
+  };
 }
 
 const SearchPage = async (props: {

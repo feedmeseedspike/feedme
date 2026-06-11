@@ -111,15 +111,8 @@ export async function generateMetadata({
     console.error("Error fetching product metadata:", error);
   }
 
-  return {
-    title: "Product Not Found",
-    description: "The product you are looking for does not exist.",
-    openGraph: {
-      title: "Product Not Found",
-      description: "The product you are looking for does not exist.",
-      images: "/logo.png",
-    },
-  };
+  // Trigger an actual HTTP 404 instead of returning "Product Not Found" with a 200 OK
+  notFound();
 }
 
 const ProductDetails = async (props: {

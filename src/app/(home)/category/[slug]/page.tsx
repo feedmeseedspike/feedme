@@ -48,10 +48,13 @@ export async function generateMetadata({
   // Re-fetch to get accurate titles for metadata
   const allCategories = await getAllCategories();
   const cat = allCategories.find((c: Category) => toSlug(c.title).toLowerCase() === categorySlug.toLowerCase());
-  const categoryName = cat ? cat.title : categorySlug
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+  
+  if (!cat) {
+    // Return a 404 directly from metadata generation to avoid Soft 404s in Google Search Console
+    notFound();
+  }
+  
+  const categoryName = cat.title;
 
   const categoryImage = process.env.NEXT_PUBLIC_SUPABASE_URL
     ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/category-images/${categorySlug}.jpg`
@@ -72,11 +75,14 @@ export async function generateMetadata({
       `${categoryName} Lekki`,
       `${categoryName} Victoria Island`,
     ],
+    alternates: {
+      canonical: `https://www.shopfeedme.com/category/${categorySlug}`,
+    },
     openGraph: {
       title: `${categoryName}`,
       description: `Discover our ${categoryName.toLowerCase()} collection. Shop now for the best prices and fast delivery in Lagos and beyond.`,
       type: "website",
-      url: `/category/${categorySlug}`,
+      url: `https://www.shopfeedme.com/category/${categorySlug}`,
       images: [categoryImage || "/opengraph-image.jpg"],
     },
     twitter: {
