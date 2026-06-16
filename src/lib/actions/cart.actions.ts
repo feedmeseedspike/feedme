@@ -508,6 +508,15 @@ export async function addToCart(
 
         if (updateError) throw updateError;
       } else {
+        // Prevent multiple free items: if we are adding a free item, delete any existing free items
+        if (itemPrice === 0) {
+          await supabase
+            .from("cart_items")
+            .delete()
+            .eq("cart_id", cartId)
+            .eq("price", 0);
+        }
+
         const { error: insertError } = await supabase
           .from("cart_items")
           .insert({

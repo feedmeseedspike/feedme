@@ -566,6 +566,7 @@ const CheckoutForm = ({
   );
 
   const hasFreePrize = useMemo(() => items.some(item => item.price === 0), [items]);
+  const hasMultipleFreePrizes = useMemo(() => items.filter(item => item.price === 0).length > 1, [items]);
 
   const dealsDiscount = useMemo(() => {
     if (isVoucherValid || hasFreePrize) return 0;
@@ -2453,10 +2454,16 @@ const CheckoutForm = ({
 
                       {/* PLACED ORDER BUTTON HERE */}
                       <div className="pt-6 mt-4 border-t border-gray-100 flex flex-col gap-4">
+                      {hasMultipleFreePrizes && (
+                        <div className="bg-red-50 text-red-600 text-xs font-bold p-3 rounded-lg border border-red-100 flex items-center gap-2 mb-2">
+                          <Icon icon="solar:danger-triangle-bold" className="w-5 h-5 flex-shrink-0" />
+                          You have multiple free gifts in your cart. You can only claim one free gift per order. Please remove the others to proceed.
+                        </div>
+                      )}
                       <Button
                           onClick={handleOrderSubmission}
-                          disabled={isSubmitting || items.length === 0}
-                          className="rounded-xl bg-[#1B6013] hover:bg-[#154d0f] text-white px-8 h-12 font-bold text-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 w-full active:scale-95"
+                          disabled={isSubmitting || items.length === 0 || hasMultipleFreePrizes}
+                          className="rounded-xl bg-[#1B6013] hover:bg-[#154d0f] text-white px-8 h-12 font-bold text-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 w-full active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                           {isSubmitting ? (
                               <Loader2 className="animate-spin h-5 w-5" />
@@ -2530,8 +2537,8 @@ const CheckoutForm = ({
                             const encodedMessage = encodeURIComponent(message);
                             window.open(`https://wa.me/${phone}?text=${encodedMessage}`, '_blank');
                           }}
-                          disabled={items.length === 0}
-                          className="rounded-xl bg-[#25D366] hover:bg-[#128C7E] text-white px-8 h-12 font-bold text-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 w-full active:scale-95"
+                          disabled={items.length === 0 || hasMultipleFreePrizes}
+                          className="rounded-xl bg-[#25D366] hover:bg-[#128C7E] text-white px-8 h-12 font-bold text-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 w-full active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                           <Icon icon="solar:whatsapp-bold" className="w-6 h-6" />
                           Checkout on WhatsApp

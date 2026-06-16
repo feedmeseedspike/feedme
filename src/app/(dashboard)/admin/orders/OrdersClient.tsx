@@ -484,8 +484,23 @@ export default function OrdersClient({
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "orders" },
         (payload: any) => {
-          showToast(`New Order Received!`, "success"); // Simplified message as reference usually triggers later via trigger or stays raw
+          if (payload.new && payload.new.payment_status === "Pending") {
+            // Silently refresh for pending, don't alert admin yet
+            queryClient.invalidateQueries({ queryKey: ["orders"] });
+            return;
+          }
+          showToast(`New Order Received!`, "success"); 
           queryClient.invalidateQueries({ queryKey: ["orders"] }); // Refresh list
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "orders" },
+        (payload: any) => {
+          if (payload.old && payload.new && payload.old.payment_status !== "Paid" && payload.new.payment_status === "Paid") {
+            showToast(`Order Paid Successfully!`, "success");
+          }
+          queryClient.invalidateQueries({ queryKey: ["orders"] });
         }
       )
       .subscribe();

@@ -25,7 +25,9 @@ export async function getCustomerCartPrizesAction(customerId: string) {
       .from("cart_items")
       .select(`
         *,
-        product:products(name, image)
+        product:products(name),
+        bundle:bundles(name),
+        offer:offers(title)
       `)
       .eq("cart_id", cart.id);
 
@@ -164,8 +166,8 @@ export async function getCustomerHistoricalPrizesAction(userId: string) {
         id,
         price,
         quantity,
-        product:products(name),
-        order:orders(created_at, status)
+        option,
+        order:orders!inner(created_at, status)
       `)
       .eq("price", 0)
       .in("order_id", orderIds)
@@ -176,9 +178,97 @@ export async function getCustomerHistoricalPrizesAction(userId: string) {
         return [];
     }
 
-    return historicalPrizes || [];
+    // Map the product name from the option field, fallback to name, title, or _title
+    const mappedPrizes = historicalPrizes?.map((item: any) => {
+      let itemName = "Unknown Item";
+      if (item.option) {
+         itemName = item.option._title || item.option.name || item.option.title || "Unknown Item";
+      }
+      return {
+        ...item,
+        product: { name: itemName }
+      };
+    }) || [];
+
+    return mappedPrizes;
   } catch (error) {
     console.error("Exception fetching historical prizes:", error);
     return [];
+  }
+}
+
+import { sendUnifiedNotification } from "@/lib/actions/notifications.actions";
+
+export async function adjustCustomerWalletAction(userId: string, amountChange: number, description: string, alertUser: boolean = false) {
+  try {
+    const supabase = supabaseAdmin;
+    
+    // Get current balance
+    const { data: wallet, error: walletError } = await supabase
+      .from("wallets")
+      .select("balance")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (walletError) {
+      throw new Error("Failed to fetch wallet");
+    }
+
+    const currentBalance = wallet?.balance || 0;
+    const newBalance = currentBalance + amountChange;
+
+    if (newBalance < 0) {
+      return { success: false, error: "Cannot deduct more than the current balance." };
+    }
+
+    if (!wallet) {
+      // Create wallet if not exists
+      const { error: createError } = await supabase
+        .from("wallets")
+        .insert({ user_id: userId, balance: newBalance });
+      if (createError) throw new Error("Failed to create wallet");
+    } else {
+      // Update wallet
+      const { error: updateError } = await supabase
+        .from("wallets")
+        .update({ balance: newBalance })
+        .eq("user_id", userId);
+      if (updateError) throw new Error("Failed to update wallet balance");
+    }
+
+    // Insert transaction
+    const reference = `MANUAL-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    const { error: txError } = await supabase
+      .from("transactions")
+      .insert({
+        user_id: userId,
+        amount: amountChange,
+        payment_status: "successful",
+        payment_gateway: "feedme_system",
+        transaction_id: reference,
+        reference: reference,
+        description: description || (amountChange >= 0 ? "Admin Wallet Credit" : "Admin Wallet Deduction"),
+        created_at: new Date().toISOString()
+      });
+
+    if (txError) {
+      console.error("Transaction logging failed, but wallet was updated:", txError);
+    }
+
+    if (alertUser) {
+      const typeStr = amountChange >= 0 ? "Credited" : "Debited";
+      await sendUnifiedNotification({
+        userId,
+        title: `Wallet Balance ${typeStr}`,
+        body: `Your wallet has been ${typeStr.toLowerCase()} by ₦${Math.abs(amountChange)}. Reason: ${description || "Admin Adjustment"}`,
+        type: "info",
+        link: "/account/wallet"
+      });
+    }
+
+    return { success: true, balance: newBalance };
+  } catch (error: any) {
+    console.error("Error adjusting wallet:", error);
+    return { success: false, error: error.message };
   }
 }

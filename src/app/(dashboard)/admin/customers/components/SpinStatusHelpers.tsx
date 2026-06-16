@@ -30,7 +30,7 @@ export function CartItemsList({ customerId }: { customerId: string }) {
             {cartItems.filter((item: any) => item.price === 0).map((item: any) => (
               <li key={item.id} className="flex items-center gap-2 text-sm bg-green-50 p-2 rounded border border-green-100">
                 <Gift className="w-4 h-4 text-green-600" />
-                <span className="font-semibold text-gray-800">{item.product?.name || "Unknown Item"}</span>
+                <span className="font-semibold text-gray-800">{item.product?.name || item.bundle?.name || item.offer?.title || "Unknown Item"}</span>
                 <span className="text-xs text-green-600 font-bold ml-auto">FREE</span>
               </li>
             ))}
@@ -44,7 +44,7 @@ export function CartItemsList({ customerId }: { customerId: string }) {
         <ul className="space-y-2">
           {cartItems.filter((item: any) => item.price !== 0).map((item: any) => (
             <li key={item.id} className="flex items-center gap-2 text-sm bg-white p-2 rounded shadow-sm border border-gray-100">
-              <span className="font-medium text-gray-800">{item.product?.name || "Unknown Item"}</span>
+              <span className="font-medium text-gray-800">{item.product?.name || item.bundle?.name || item.offer?.title || "Unknown Item"}</span>
               <span className="text-xs text-gray-400 ml-1">x{item.quantity}</span>
               <span className="text-xs font-bold text-gray-900 ml-auto">{formatNaira(item.price * item.quantity)}</span>
             </li>
@@ -79,7 +79,7 @@ export function CartPrizesList({ customerId }: { customerId: string }) {
       {prizeItems.map((item: any) => (
         <li key={item.id} className="flex items-center gap-2 text-sm bg-white p-2 rounded shadow-sm border border-indigo-100">
           <Gift className="w-4 h-4 text-green-600" />
-          <span className="font-semibold text-gray-800">{item.product?.name || "Unknown Item"}</span>
+          <span className="font-semibold text-gray-800">{item.product?.name || item.bundle?.name || item.offer?.title || "Unknown Item"}</span>
           <span className="text-xs text-green-600 font-bold ml-auto">FREE</span>
         </li>
       ))}

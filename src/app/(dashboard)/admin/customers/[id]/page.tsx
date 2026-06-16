@@ -1,6 +1,7 @@
 "use client";
 export const dynamic = "force-dynamic";
 
+import * as React from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -29,8 +30,19 @@ import { formatNaira } from "../../../../../lib/utils";
 import {
   getCustomerWalletBalanceAction,
   getCustomerTransactionsAction,
-  getCustomerVouchersAction
+  getCustomerVouchersAction,
+  adjustCustomerWalletAction
 } from "@/lib/actions/admin-dashboard.actions";
+import AnimatedLogo from "@/app/loading";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@components/ui/dialog";
 
 import {
   Table,
@@ -182,6 +194,46 @@ export default function CustomerDetailsPage() {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
 
+  // --- ALL TRANSACTIONS STATE ---
+  const [isAllTransactionsModalOpen, setIsAllTransactionsModalOpen] = React.useState(false);
+  const { data: allTransactionsData, isLoading: isAllTransactionsLoading } = useQuery({
+    queryKey: ["admin", "customer", customerId, "all-transactions"],
+    queryFn: () => getCustomerTransactionsAction(customerId, 1, 100),
+    enabled: isAllTransactionsModalOpen
+  });
+  const allTransactions = allTransactionsData?.data || [];
+
+  // --- WALLET ADJUSTMENT STATE ---
+  const [isWalletDialogOpen, setIsWalletDialogOpen] = React.useState(false);
+  const [walletAdjustAmount, setWalletAdjustAmount] = React.useState<number | "">("");
+  const [walletAdjustType, setWalletAdjustType] = React.useState<"credit" | "debit">("credit");
+  const [walletAdjustDesc, setWalletAdjustDesc] = React.useState("");
+  const [walletAlertUser, setWalletAlertUser] = React.useState(false);
+
+  const adjustWalletMutation = useMutation({
+    mutationFn: async () => {
+      const amount = Number(walletAdjustAmount);
+      if (isNaN(amount) || amount <= 0) throw new Error("Invalid amount");
+      
+      const finalAmount = walletAdjustType === "credit" ? amount : -amount;
+      const res = await adjustCustomerWalletAction(customerId, finalAmount, walletAdjustDesc, walletAlertUser);
+      if (!res.success) throw new Error(res.error);
+      return res;
+    },
+    onSuccess: () => {
+      showToast("Wallet adjusted successfully.", "success");
+      setIsWalletDialogOpen(false);
+      setWalletAdjustAmount("");
+      setWalletAdjustDesc("");
+      setWalletAlertUser(false);
+      queryClient.invalidateQueries({ queryKey: ["admin", "customer", customerId, "wallet-balance"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "customer", customerId, "transactions"] });
+    },
+    onError: (error: any) => {
+      showToast(`Failed to adjust wallet: ${error.message}`, "error");
+    }
+  });
+
   // Function to update order status in Supabase
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     const supabase = createClient();
@@ -204,6 +256,14 @@ export default function CustomerDetailsPage() {
 
   if (customerError) return <div>Error loading customer details.</div>;
   if (!customer && !isCustomerLoading) return <div>Customer not found.</div>;
+  
+  if (isCustomerLoading) {
+    return (
+      <div className="flex justify-center items-center h-[80vh]">
+        <AnimatedLogo className="size-[150px] md:size-[200px]" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-4">
@@ -405,12 +465,108 @@ export default function CustomerDetailsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {isWalletLoading ? (
-              <div className="h-10 w-32 bg-white/20 animate-pulse rounded"></div>
-            ) : (
-              <div className="text-3xl font-black">{formatNaira(walletBalance || 0)}</div>
-            )}
-            <p className="text-xs mt-2 opacity-70 italic">Available for making purchases</p>
+            <div className="flex justify-between items-end">
+              <div>
+                {isWalletLoading ? (
+                  <div className="h-10 w-32 bg-white/20 animate-pulse rounded"></div>
+                ) : (
+                  <div className="text-3xl font-black">{formatNaira(walletBalance || 0)}</div>
+                )}
+                <p className="text-xs mt-2 opacity-70 italic">Available for making purchases</p>
+              </div>
+              
+              {/* Adjust Balance Dialog */}
+              <Dialog open={isWalletDialogOpen} onOpenChange={setIsWalletDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="secondary" className="text-[#1B6013] font-semibold bg-white hover:bg-white/90">
+                    Adjust Balance
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Adjust Wallet Balance</DialogTitle>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button 
+                        variant={walletAdjustType === "credit" ? "default" : "outline"}
+                        className={walletAdjustType === "credit" ? "bg-green-600 hover:bg-green-700" : ""}
+                        onClick={() => setWalletAdjustType("credit")}
+                      >
+                        Credit (+)
+                      </Button>
+                      <Button 
+                        variant={walletAdjustType === "debit" ? "default" : "outline"}
+                        className={walletAdjustType === "debit" ? "bg-red-600 hover:bg-red-700" : ""}
+                        onClick={() => setWalletAdjustType("debit")}
+                      >
+                        Debit (-)
+                      </Button>
+                    </div>
+
+                    <div className="bg-gray-50 p-3 rounded-md text-sm border">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-gray-500">Current Balance:</span>
+                        <span className="font-semibold">{formatNaira(walletBalance || 0)}</span>
+                      </div>
+                      <div className="flex justify-between border-t pt-1 mt-1">
+                        <span className="text-gray-500">Projected Balance:</span>
+                        <span className={cn(
+                          "font-bold",
+                          walletAdjustType === "credit" ? "text-green-600" : "text-red-600"
+                        )}>
+                          {formatNaira(
+                            Math.max(0, (walletBalance || 0) + (walletAdjustType === "credit" ? (Number(walletAdjustAmount) || 0) : -(Number(walletAdjustAmount) || 0)))
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium">Amount (NGN)</label>
+                      <Input
+                        type="number"
+                        value={walletAdjustAmount}
+                        onChange={(e) => setWalletAdjustAmount(Number(e.target.value))}
+                        placeholder="e.g. 5000"
+                        min="1"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium">Description / Reason</label>
+                      <Input
+                        type="text"
+                        value={walletAdjustDesc}
+                        onChange={(e) => setWalletAdjustDesc(e.target.value)}
+                        placeholder="e.g. Refund for order #123"
+                      />
+                    </div>
+                    <div className="flex items-center space-x-2 mt-2">
+                      <input 
+                        type="checkbox" 
+                        id="alertUser" 
+                        checked={walletAlertUser}
+                        onChange={(e) => setWalletAlertUser(e.target.checked)}
+                        className="w-4 h-4 text-[#1B6013] rounded border-gray-300 focus:ring-[#1B6013]"
+                      />
+                      <label htmlFor="alertUser" className="text-sm text-gray-700 font-medium cursor-pointer">
+                        Notify customer of this adjustment
+                      </label>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsWalletDialogOpen(false)}>Cancel</Button>
+                    <Button 
+                      className={walletAdjustType === "credit" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
+                      disabled={!walletAdjustAmount || Number(walletAdjustAmount) <= 0 || adjustWalletMutation.isPending}
+                      onClick={() => adjustWalletMutation.mutate()}
+                    >
+                      {adjustWalletMutation.isPending ? "Processing..." : `Confirm ${walletAdjustType === "credit" ? "Credit" : "Debit"}`}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
           </CardContent>
         </Card>
 
@@ -542,9 +698,66 @@ export default function CustomerDetailsPage() {
                    )}
                 </div>
                 {transactions.length > 0 && (
-                   <Button variant="ghost" size="sm" className="w-full mt-4 text-[#1B6013] font-bold" disabled>
-                      View All Transactions
-                   </Button>
+                   <>
+                     <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full mt-4 text-[#1B6013] font-bold" 
+                        onClick={() => setIsAllTransactionsModalOpen(true)}
+                     >
+                        View All Transactions
+                     </Button>
+                     <Dialog open={isAllTransactionsModalOpen} onOpenChange={setIsAllTransactionsModalOpen}>
+                        <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
+                           <DialogHeader>
+                              <DialogTitle>All Transactions</DialogTitle>
+                           </DialogHeader>
+                           <div className="space-y-4 mt-4">
+                              {isAllTransactionsLoading ? (
+                                <div className="flex justify-center p-4">
+                                   <div className="w-6 h-6 border-2 border-[#1B6013] border-t-transparent rounded-full animate-spin"></div>
+                                </div>
+                              ) : allTransactions.length > 0 ? (
+                                allTransactions.map((tx: any) => (
+                                   <div key={tx.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border">
+                                      <div className="flex items-center gap-3">
+                                         <div className={cn(
+                                            "p-2 rounded-lg",
+                                            tx.type === 'wallet_funding' || tx.description?.includes('Credit') || tx.amount > 0 
+                                            ? "bg-green-100 text-green-600" 
+                                            : "bg-red-100 text-red-600"
+                                         )}>
+                                            {tx.type === 'wallet_funding' || tx.description?.includes('Credit') || tx.amount > 0 
+                                            ? <ArrowUpRight className="w-4 h-4" /> 
+                                            : <ArrowDownLeft className="w-4 h-4" />
+                                            }
+                                         </div>
+                                         <div>
+                                            <p className="text-sm font-bold text-gray-800 line-clamp-1">{tx.description || tx.type?.replace('_', ' ') || 'Transaction'}</p>
+                                            <p className="text-[10px] text-gray-500">{format(new Date(tx.created_at), "MMM d, yyyy h:mma")}</p>
+                                         </div>
+                                      </div>
+                                      <div className={cn(
+                                         "text-sm font-black text-right",
+                                         tx.type === 'wallet_funding' || tx.description?.includes('Credit') || tx.amount > 0 
+                                         ? "text-green-600" 
+                                         : "text-red-600"
+                                      )}>
+                                         {tx.type === 'wallet_funding' || tx.description?.includes('Credit') || tx.amount > 0 ? "+" : "-"}
+                                         {formatNaira(Math.abs(tx.amount))}
+                                      </div>
+                                   </div>
+                                ))
+                              ) : (
+                                <p className="text-center text-gray-500 text-sm">No transactions found.</p>
+                              )}
+                           </div>
+                           <DialogFooter>
+                              <Button variant="outline" onClick={() => setIsAllTransactionsModalOpen(false)}>Close</Button>
+                           </DialogFooter>
+                        </DialogContent>
+                     </Dialog>
+                   </>
                 )}
              </CardContent>
            </Card>

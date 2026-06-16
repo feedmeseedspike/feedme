@@ -171,8 +171,8 @@ export function check2PMFreeDeliveryEligibility(subtotal: number): boolean {
  * Checks if an order (by subtotal and first-order status) qualifies for the Spin Wheel.
  */
 export function isEligibleForSpin(subtotal: number, isFirstOrder: boolean): boolean {
-  // New Rule: Every completed purchase order qualifies for a spin.
-  return true;
+  // Strict Rule: Require a minimum spend to qualify for a spin to prevent abuse
+  return subtotal >= 15000;
 }
 
 // --- SPIN WHEEL CONFIGURATION ---

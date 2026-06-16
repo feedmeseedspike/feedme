@@ -70,10 +70,13 @@ export async function spinTheWheel() {
     }
   }
 
-  // Returning user with 0 orders fallback logic
+  // Strict Mode: Force high chance of losing for returning users and purchasers
   let forceTryAgain = false;
   if (isNewUser && profile?.has_used_new_user_spin) {
       console.log("Returning user with 0 orders: Forcing 'Try Again' result.");
+      forceTryAgain = true;
+  } else if (!isNewUser) {
+      console.log("Returning purchaser: Forcing 'Try Again' result to prevent losses.");
       forceTryAgain = true;
   }
 
@@ -122,8 +125,8 @@ export async function spinTheWheel() {
   const nonePrize = prizes.find(p => p.type === 'none') || workingPrizes[0];
 
   if (forceTryAgain) {
-    // Returning user with 0 orders: 98% chance to lose, regardless of DB weights
-    selectedPrize = Math.random() < 0.98 ? nonePrize : null;
+    // Strict mode: 99% chance to lose, regardless of DB weights
+    selectedPrize = Math.random() < 0.99 ? nonePrize : null;
     
     if (!selectedPrize) {
       // Small 2% chance to use DB weights even if returning 0-order, 
