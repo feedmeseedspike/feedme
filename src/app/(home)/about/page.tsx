@@ -29,13 +29,13 @@ export default function AboutPage() {
             <section className="grid md:grid-cols-2 gap-12 items-center">
               <div className="space-y-6 text-lg">
                 <p>
-                  <span className="font-semibold text-[#1B6013]">FeedMe</span> (RC 7883744) is Nigeria's fresh produce delivery platform, built by Seedspike Technologies in 2024 to close the gap between farmers and consumers.
+                  <span className="font-semibold text-[#1B6013]">FeedMe</span> (RC 7883744) is Nigeria&apos;s fresh produce delivery platform, built by Seedspike Technologies in 2024 to close the gap between farmers and consumers.
                 </p>
                 <p>
-                  Based in Lagos, we connect local farmers directly with households and businesses, cutting out the middlemen who drive up prices and squeeze farmers' profits. The result: fresher produce for you, fairer earnings for the farmers who grow it.
+                  Based in Lagos, we connect local farmers directly with households and businesses, cutting out the middlemen who drive up prices and squeeze farmers&apos; profits. The result: fresher produce for you, fairer earnings for the farmers who grow it.
                 </p>
                 <p>
-                  Today, FeedMe serves over 2,000 customers across Lagos, with most orders delivered in under 3 hours — making us one of the fastest fresh-food delivery services in Nigeria's agribusiness space.
+                  Today, FeedMe serves over 2,000 customers across Lagos, with most orders delivered in under 3 hours — making us one of the fastest fresh-food delivery services in Nigeria&apos;s agribusiness space.
                 </p>
                 <p>
                   With FeedMe, you can shop fresh farm produce at honest prices and have it delivered the same day, straight to your door. Easy, convenient, and hassle-free.
@@ -60,7 +60,7 @@ export default function AboutPage() {
               <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-[#1B6013]/10 rounded-full blur-3xl group-hover:bg-[#1B6013]/20 transition-all duration-500"></div>
 
               <h2 className="text-2xl font-bold text-gray-900 mb-4 relative z-10">Contact Us</h2>
-              <p className="text-gray-600 mb-8 relative z-10">Have a question, order issue, or partnership idea? We'd love to hear from you.</p>
+              <p className="text-gray-600 mb-8 relative z-10">Have a question, order issue, or partnership idea? We&apos;d love to hear from you.</p>
               
               <ul className="list-none space-y-4 relative z-10">
                 <li className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
