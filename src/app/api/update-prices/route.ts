@@ -258,8 +258,12 @@ export async function POST(req: NextRequest) {
       };
 
       if (existing) {
-        const updatedOptions = (existing.options || []).map((opt: any) => {
-          const newOpt = p.options.find((o: any) => o.name === opt.name);
+        let existingOptions = existing.options;
+        let isObjectFormat = existingOptions && !Array.isArray(existingOptions) && existingOptions.variations;
+        let optionsToMap = isObjectFormat ? existingOptions.variations : (existingOptions || []);
+
+        const updatedOptions = optionsToMap.map((opt: any) => {
+          const newOpt = p.options.find((o: any) => String(o.name) === String(opt.name));
           if (newOpt) {
             // Use oldPrice from CSV if it's a discount, otherwise use new price
             const optListPrice = (newOpt.oldPrice && newOpt.oldPrice > newOpt.price) ? newOpt.oldPrice : newOpt.price;
@@ -272,14 +276,18 @@ export async function POST(req: NextRequest) {
 
         // Add brand new options found in CSV
         p.options.forEach((newOpt: any) => {
-          if (!updatedOptions.some((o: any) => o.name === newOpt.name)) {
+          if (!updatedOptions.some((o: any) => String(o.name) === String(newOpt.name))) {
             const optListPrice = (newOpt.oldPrice && newOpt.oldPrice > newOpt.price) ? newOpt.oldPrice : newOpt.price;
             const optStockStatus = newOpt.stockStatus && newOpt.stockStatus.toLowerCase().includes('out') ? "Out of Stock" : "In Stock";
-            updatedOptions.push({ name: newOpt.name, image: optionImg, price: newOpt.price, list_price: optListPrice, stockStatus: optStockStatus });
+            updatedOptions.push({ name: String(newOpt.name), image: optionImg, price: newOpt.price, list_price: optListPrice, stockStatus: optStockStatus });
           }
         });
 
-        updateData.options = updatedOptions;
+        if (isObjectFormat) {
+          updateData.options = { ...existingOptions, variations: updatedOptions };
+        } else {
+          updateData.options = updatedOptions;
+        }
         const currentImgs = existing.images ?? [];
         if (currentImgs.length === 1 && currentImgs[0] === DEFAULT_IMAGE) {
           updateData.images = [productMainImg];

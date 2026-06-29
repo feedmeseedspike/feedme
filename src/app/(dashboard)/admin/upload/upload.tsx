@@ -231,11 +231,12 @@ export default function UploadExcel({ onSuccess }: Props) {
 
                       {(() => {
                         const merged = new Map<string, {name: string; dbP?: number; csvP?: number; csvStock?: string}>();
-                        item.dbOptions?.forEach(o => merged.set(o.name.toLowerCase().trim(), { name: o.name, dbP: o.price }));
+                        const dbOptsArray = Array.isArray(item.dbOptions) ? item.dbOptions : ((item.dbOptions as any)?.variations || []);
+                        dbOptsArray.forEach((o: any) => merged.set(String(o.name || '').toLowerCase().trim(), { name: String(o.name || ''), dbP: o.price }));
                         item.csvOptions?.forEach(o => {
-                          const k = o.name.toLowerCase().trim();
-                          if (merged.has(k)) merged.set(k, { ...merged.get(k)!, name: o.name, csvP: o.price, csvStock: (o as any).stockStatus });
-                          else merged.set(k, { name: o.name, csvP: o.price, csvStock: (o as any).stockStatus });
+                          const k = String(o.name || '').toLowerCase().trim();
+                          if (merged.has(k)) merged.set(k, { ...merged.get(k)!, name: String(o.name || ''), csvP: o.price, csvStock: (o as any).stockStatus });
+                          else merged.set(k, { name: String(o.name || ''), csvP: o.price, csvStock: (o as any).stockStatus });
                         });
                         const opts = Array.from(merged.values());
                         if (opts.length === 0) return null;
@@ -336,11 +337,12 @@ export default function UploadExcel({ onSuccess }: Props) {
 
                       {(() => {
                         const merged = new Map<string, {name: string; dbP?: number; csvP?: number; csvStock?: string}>();
-                        item.dbOptions?.forEach(o => merged.set(o.name.toLowerCase().trim(), { name: o.name, dbP: o.price }));
+                        const dbOptsArray = Array.isArray(item.dbOptions) ? item.dbOptions : ((item.dbOptions as any)?.variations || []);
+                        dbOptsArray.forEach((o: any) => merged.set(String(o.name || '').toLowerCase().trim(), { name: String(o.name || ''), dbP: o.price }));
                         item.csvOptions?.forEach(o => {
-                          const k = o.name.toLowerCase().trim();
-                          if (merged.has(k)) merged.set(k, { ...merged.get(k)!, name: o.name, csvP: o.price, csvStock: (o as any).stockStatus });
-                          else merged.set(k, { name: o.name, csvP: o.price, csvStock: (o as any).stockStatus });
+                          const k = String(o.name || '').toLowerCase().trim();
+                          if (merged.has(k)) merged.set(k, { ...merged.get(k)!, name: String(o.name || ''), csvP: o.price, csvStock: (o as any).stockStatus });
+                          else merged.set(k, { name: String(o.name || ''), csvP: o.price, csvStock: (o as any).stockStatus });
                         });
                         const opts = Array.from(merged.values());
                         if (opts.length === 0) return null;
