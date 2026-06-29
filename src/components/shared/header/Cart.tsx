@@ -187,6 +187,13 @@ const CartItemDisplay = React.memo(
                     {optionDescriptor}
                   </p>
                 )}
+                {Object.entries((item as any)?.selectedCustomizations || {}).length > 0 && (
+                  <p className="text-xs text-gray-500 truncate">
+                    {Object.entries((item as any).selectedCustomizations)
+                      .map(([_, v]) => `${v}`)
+                      .join(", ")}
+                  </p>
+                )}
               </div>
               <Trash2Icon
                 className="size-4 cursor-pointer flex-shrink-0 ml-2"
@@ -478,7 +485,8 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
               bundles: bundleData,
               offers: offerData,
               black_friday_items: null,
-              meta: anonItem.meta
+              meta: anonItem.meta,
+              selectedCustomizations: anonItem.selectedCustomizations || null,
             } as CartItem;
           })
         );
@@ -752,6 +760,7 @@ const Cart = React.memo(({ asLink = false }: { asLink?: boolean }) => {
                       ? null
                       : (cartItem as any).black_friday_item_id || null,
                   option: isBundle || isOffer ? null : cartItem.option, // Set option to null for bundles and offers
+                  selectedCustomizations: isBundle || isOffer ? null : (cartItem as any).selectedCustomizations || null,
                   quantity:
                     cartItem.id === itemToUpdate.id
                       ? newQuantity

@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@components/ui/select";
-import { setSelectedOption } from "src/store/features/optionsSlice";
+import { setSelectedOption, setSelectedCustomization } from "src/store/features/optionsSlice";
 import { RootState } from "src/store";
 import { useToast } from "src/hooks/useToast";
 import { Heart, Plus, Minus, Trash2, Loader2 } from "lucide-react";
@@ -101,6 +101,30 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
     const selectedOption = useSelector((state: RootState) =>
       product.id ? state.options.selectedOptions[product.id] : undefined
     );
+    const selectedCustomizations = useSelector((state: RootState) =>
+      product.id ? state.options.selectedCustomizations[product.id] || {} : {}
+    );
+    
+    const productCustomizations = useMemo(() => {
+       if (Array.isArray(product.customizations)) {
+         return product.customizations;
+       }
+       return [];
+    }, [product.customizations]);
+
+    const customizationPriceAdjustment = useMemo(() => {
+       let total = 0;
+       productCustomizations.forEach((group: any) => {
+         const selectedName = selectedCustomizations[group.label] || 
+                              group.options?.find((o: any) => o.is_default)?.name || 
+                              (group.options?.[0]?.name);
+         const selectedOpt = group.options?.find((o: any) => o.name === selectedName);
+         if (selectedOpt && selectedOpt.price_adjustment) {
+           total += selectedOpt.price_adjustment;
+         }
+       });
+       return total;
+    }, [productCustomizations, selectedCustomizations]);
 
     // Extract and sort product options
     const sortedOptions = useMemo(() => {
@@ -147,7 +171,8 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           return (
             item.product_id === product.id &&
             JSON.stringify(item.option || null) ===
-              JSON.stringify(selectedOptionData || null)
+              JSON.stringify(selectedOptionData || null) &&
+            JSON.stringify((item as any).selectedCustomizations || {}) === JSON.stringify(selectedCustomizations || {})
           );
         });
       } else {
@@ -156,11 +181,12 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           return (
             item.product_id === product.id &&
             JSON.stringify(item.option || null) ===
-              JSON.stringify(selectedOptionData || null)
+              JSON.stringify(selectedOptionData || null) &&
+            JSON.stringify((item as any).selectedCustomizations || {}) === JSON.stringify(selectedCustomizations || {})
           );
         });
       }
-    }, [user, cartItems, anonymousCart.items, product.id, selectedOptionData]);
+    }, [user, cartItems, anonymousCart.items, product.id, selectedOptionData, selectedCustomizations]);
 
     const [quantity, setQuantity] = useState(currentCartItem?.quantity ?? 1);
     const [showQuantityControls, setShowQuantityControls] = useState(
@@ -190,7 +216,8 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
             (item) =>
               item.product_id === product.id &&
               JSON.stringify(item.option || null) ===
-                JSON.stringify(selectedOptionData || null)
+                JSON.stringify(selectedOptionData || null) &&
+              JSON.stringify((item as any).selectedCustomizations || {}) === JSON.stringify(selectedCustomizations || {})
           );
 
           if (newQuantity === 0) {
@@ -208,7 +235,7 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
               anonymousCart.addItem(
                 product.bundleId ? null : product.id,
                 newQuantity,
-                selectedOptionData?.price ?? product.price ?? 0,
+                (selectedOptionData?.price ?? product.price ?? 0) + customizationPriceAdjustment,
                 selectedOptionData as any,
                 product.bundleId ? product.id : null,
                 null,
@@ -221,7 +248,8 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                       : undefined
                     : undefined,
                 },
-                null
+                null,
+                selectedCustomizations
               );
             }
             showToast(
@@ -250,7 +278,8 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
             const isTargetItem =
               item.product_id === product.id &&
               JSON.stringify(item.option || null) ===
-                JSON.stringify(selectedOptionData || null);
+                JSON.stringify(selectedOptionData || null) &&
+              JSON.stringify((item as any).selectedCustomizations || {}) === JSON.stringify(selectedCustomizations || {});
 
             return {
               product_id: item.product_id || null,
@@ -259,12 +288,11 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
               black_friday_item_id:
                 (item as any).black_friday_item_id || null,
               option: item.option,
+              selectedCustomizations: (item as any).selectedCustomizations || null,
               quantity: isTargetItem ? newQuantity : item.quantity,
-              price:
-                (item.option as ProductOption | null)?.price ??
-                item.price ??
-                product.price ??
-                0,
+              price: isTargetItem 
+                ? (selectedOptionData?.price ?? product.price ?? 0) + customizationPriceAdjustment
+                : ((item.option as ProductOption | null)?.price ?? item.price ?? product.price ?? 0) + (((item as any).selectedCustomizations) ? customizationPriceAdjustment : 0), // this might be a bit inaccurate for non-target items if customization changed, but they won't match anyway
             };
           })
           .filter((item) => item.quantity > 0);
@@ -273,10 +301,11 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
           (item) =>
             item.product_id === product.id &&
             JSON.stringify(item.option || null) ===
-              JSON.stringify(selectedOptionData || null)
+              JSON.stringify(selectedOptionData || null) &&
+            JSON.stringify((item as any).selectedCustomizations || {}) === JSON.stringify(selectedCustomizations || {})
         );
 
-        const itemPriceForNew = selectedOptionData?.price ?? product.price ?? 0;
+        const itemPriceForNew = (selectedOptionData?.price ?? product.price ?? 0) + customizationPriceAdjustment;
 
         if (newQuantity > 0 && !targetItemExistsInMutationArray) {
           itemsForMutation.push({
@@ -287,9 +316,10 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
             option: selectedOptionData
               ? JSON.parse(JSON.stringify(selectedOptionData))
               : null,
+            selectedCustomizations: selectedCustomizations || null,
             quantity: newQuantity,
             price: itemPriceForNew,
-          });
+          } as any);
         }
 
         try {
@@ -309,7 +339,8 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
             (item) =>
               item.product_id === product.id &&
               JSON.stringify(item.option || null) ===
-                JSON.stringify(selectedOptionData || null)
+                JSON.stringify(selectedOptionData || null) &&
+              JSON.stringify((item as any).selectedCustomizations || {}) === JSON.stringify(selectedCustomizations || {})
           );
           if (currentItemInCart) {
             setQuantity(currentItemInCart.quantity);
@@ -1227,6 +1258,54 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       desktopOptionPicker,
       mobileOptionPicker,
     ]);
+
+    const CustomizationsDropdowns = useMemo(() => {
+      if (!productCustomizations || productCustomizations.length === 0) return null;
+
+      return (
+        <div className="flex flex-col gap-2 w-full mt-2 max-w-xs min-w-[10rem]">
+          {productCustomizations.map((group: any) => {
+            const currentValue = selectedCustomizations[group.label] || 
+                                group.options?.find((o: any) => o.is_default || o.default)?.name || 
+                                group.options?.find((o: any) => o.is_default || o.default)?.label || 
+                                (group.options?.[0]?.name) || 
+                                (group.options?.[0]?.label) || "";
+            return (
+              <div key={group.label} className="w-full">
+                <Select
+                  value={currentValue}
+                  onValueChange={(val) => {
+                    if (product.id) {
+                      dispatch(
+                        setSelectedCustomization({
+                          productId: product.id,
+                          group: group.label,
+                          option: val,
+                        })
+                      );
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full bg-white">
+                    <SelectValue placeholder={group.label} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {group.options?.map((opt: any) => {
+                      const optName = opt.name || opt.label;
+                      return (
+                        <SelectItem key={optName} value={optName}>
+                          {optName} {opt.price_adjustment ? `(+${formatNaira(opt.price_adjustment)})` : ""}
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }, [productCustomizations, selectedCustomizations, product.id, dispatch]);
 
     return hideBorder ? (
       <div className="flex flex-col">

@@ -124,6 +124,7 @@ export const OrderItemSchema = z.object({
   color: z.string().optional(),
   options: z.array(OptionSchema).optional().default([]),
   selectedOption: z.string().optional(),
+  selectedCustomizations: z.record(z.string(), z.string()).optional(),
   vendor: VendorReferenceSchema, // Standardized vendor reference
 });
 
@@ -195,6 +196,7 @@ export const ProductInputSchema = z.object({
   description: z.string().min(1, "Description is required"),
   colors: z.array(z.string()).default([]),
   options: z.array(OptionSchema).default([]),
+  customizations: z.any().optional(),
   reviews: z.array(z.any()).default([]),
   in_season: z.boolean().nullable().default(null),
 });

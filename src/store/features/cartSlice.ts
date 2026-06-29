@@ -31,12 +31,14 @@ interface AddItemPayload {
   quantity: number;
   requiresOption?: boolean;
   selectedOption?: string | null;
+  selectedCustomizations?: Record<string, string>;
 }
 
 interface UpdateCartItemPayload {
   productId: string;
   selectedOption?: string | null;
   newOption?: string;
+  selectedCustomizations?: Record<string, string>;
   quantity?: number;
   option?: {
     name: string;
@@ -53,6 +55,7 @@ interface UpdateItemPayload {
 interface RemoveItemPayload {
   productId: string;
   selectedOption?: string | null;
+  selectedCustomizations?: Record<string, string>;
 }
 
 const cartSlice = createSlice({
@@ -66,10 +69,12 @@ const cartSlice = createSlice({
     },
 
     addItem: (state, action: PayloadAction<AddItemPayload>) => {
-      const { item, quantity, selectedOption } = action.payload;
+      const { item, quantity, selectedOption, selectedCustomizations } = action.payload;
       
       const existingIndex = state.items.findIndex(
-        x => x.product === item.product && (x.selectedOption ?? '') === (selectedOption ?? '')
+        x => x.product === item.product && 
+             (x.selectedOption ?? '') === (selectedOption ?? '') &&
+             JSON.stringify(x.selectedCustomizations ?? {}) === JSON.stringify(selectedCustomizations ?? {})
       );
 
       if (existingIndex >= 0) {
@@ -79,6 +84,7 @@ const cartSlice = createSlice({
           ...item,
           quantity,
           selectedOption: selectedOption ?? undefined,
+          selectedCustomizations: selectedCustomizations ?? undefined,
           options: Array.isArray(item.options) ? item.options : [],
         });
       }
@@ -90,17 +96,19 @@ const cartSlice = createSlice({
 
 
     updateCartItem: (state, action: PayloadAction<UpdateCartItemPayload>) => {
-      const { productId, selectedOption, quantity } = action.payload;
+      const { productId, selectedOption, selectedCustomizations, quantity } = action.payload;
     
       console.debug('[CartSlice] Updating item', {
         productId,
         selectedOption,
+        selectedCustomizations,
         quantity
       });
     
       const itemIndex = state.items.findIndex(
         item => item.product === productId && 
-               (item.selectedOption ?? '') === (selectedOption ?? '')
+               (item.selectedOption ?? '') === (selectedOption ?? '') &&
+               JSON.stringify(item.selectedCustomizations ?? {}) === JSON.stringify(selectedCustomizations ?? {})
       );
     
       if (itemIndex === -1) {
@@ -119,10 +127,12 @@ const cartSlice = createSlice({
     },
 
     removeItem: (state, action: PayloadAction<RemoveItemPayload>) => {
-      const { productId, selectedOption } = action.payload;
+      const { productId, selectedOption, selectedCustomizations } = action.payload;
       state.items = state.items.filter(
         (x) =>
-          !(x.product === productId && (x.selectedOption ?? '') === (selectedOption ?? ''))
+          !(x.product === productId && 
+            (x.selectedOption ?? '') === (selectedOption ?? '') &&
+            JSON.stringify(x.selectedCustomizations ?? {}) === JSON.stringify(selectedCustomizations ?? {}))
       );
       state.itemsPrice = calculateItemsPrice(state.items);
       localStorage.setItem("cart", JSON.stringify(state));

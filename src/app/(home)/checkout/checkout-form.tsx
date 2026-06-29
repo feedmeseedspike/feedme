@@ -174,6 +174,13 @@ const CartItemDisplay = React.memo(({ item, onRemove }: CartItemDisplayProps) =>
             ) : (
                 null
             )}
+            {Object.entries((item as any)?.selectedCustomizations || {}).length > 0 && (
+              <p className="text-[9px] text-[#475467] font-medium tracking-wider">
+                {Object.entries((item as any).selectedCustomizations)
+                  .map(([_, v]) => `${v}`)
+                  .join(", ")}
+              </p>
+            )}
           </div>
           <p className="text-sm font-bold text-[#2A2A2A] tabular-nums">
             {formatNaira(
@@ -334,6 +341,7 @@ const CheckoutForm = ({
               quantity: anonItem.quantity,
               price: anonItem.price,
               option: anonItem.option,
+              selectedCustomizations: anonItem.selectedCustomizations || null,
               created_at: anonItem.created_at,
               cart_id: null,
               products: productData,
@@ -1054,6 +1062,7 @@ const CheckoutForm = ({
               quantity: item.quantity,
               price: item.price,
               option: item.option,
+              selectedCustomizations: (item as any).selectedCustomizations || null,
             })),
             shippingAddress: isGiftMode ? {
               isGiftLink: true,
@@ -1143,9 +1152,7 @@ const CheckoutForm = ({
                           optionName: isProductOption(item.option)
                             ? item.option.name
                             : undefined,
-                          customizations: isProductOption(item.option)
-                            ? (item.option as any).customizations
-                            : undefined,
+                          customizations: (item as any).selectedCustomizations || null,
                         })),
                         deliveryAddress: shippingAddressForm.getValues().street,
                         localGovernment:
@@ -1184,9 +1191,7 @@ const CheckoutForm = ({
                           optionName: isProductOption(item.option)
                             ? item.option.name
                             : undefined,
-                          customizations: isProductOption(item.option)
-                            ? (item.option as any).customizations
-                            : undefined,
+                          customizations: (item as any).selectedCustomizations || null,
                         })),
                         deliveryAddress: shippingAddressForm.getValues().street,
                         deliveryFee: cost,
@@ -1300,9 +1305,7 @@ const CheckoutForm = ({
                 optionName: isProductOption(item.option)
                   ? item.option.name
                   : undefined,
-                customizations: isProductOption(item.option)
-                  ? (item.option as any).customizations
-                  : undefined,
+                customizations: (item as any).selectedCustomizations || null,
               })),
               deliveryAddress: shippingAddressForm.getValues().street,
               localGovernment: shippingAddressForm.getValues().location,

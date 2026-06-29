@@ -68,7 +68,8 @@ export function useAnonymousCart() {
       bundleId?: string | null,
       offerId?: string | null,
       meta?: { name?: string; slug?: string; image?: string } | null,
-      blackFridayItemId?: string | null
+      blackFridayItemId?: string | null,
+      selectedCustomizations?: Record<string, string> | null
     ) => {
       if (user) {
         // User is authenticated, this shouldn't be called
@@ -84,7 +85,8 @@ export function useAnonymousCart() {
           bundleId,
           offerId,
           meta,
-          blackFridayItemId
+          blackFridayItemId,
+          selectedCustomizations
         );
         const updatedItems = anonymousCart.getItems();
         setItems(updatedItems);
@@ -192,7 +194,8 @@ export function useAnonymousCart() {
           authItem.product_id === anonymousItem.product_id &&
           authItem.bundle_id === anonymousItem.bundle_id &&
           (authItem as any).black_friday_item_id === anonymousItem.black_friday_item_id &&
-          JSON.stringify(authItem.option || null) === JSON.stringify(anonymousItem.option || null)
+          JSON.stringify(authItem.option || null) === JSON.stringify(anonymousItem.option || null) &&
+          JSON.stringify((authItem as any).selectedCustomizations || {}) === JSON.stringify(anonymousItem.selectedCustomizations || {})
         );
         
         if (existingItemIndex > -1) {
@@ -207,6 +210,7 @@ export function useAnonymousCart() {
             product_id: anonymousItem.product_id,
             bundle_id: anonymousItem.bundle_id,
             option: anonymousItem.option,
+            selectedCustomizations: anonymousItem.selectedCustomizations,
             quantity: anonymousItem.quantity,
             price: anonymousItem.price,
             black_friday_item_id: anonymousItem.black_friday_item_id,

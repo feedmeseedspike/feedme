@@ -1257,7 +1257,7 @@ export default function EditProductClient({
                 const newOptions = [
                   ...(newCustomizations[custIndex].options || []),
                 ];
-                newOptions.push({ value: "", label: "", default: false });
+                newOptions.push({ value: "", label: "", price_adjustment: 0, default: false });
                 newCustomizations[custIndex] = {
                   ...newCustomizations[custIndex],
                   options: newOptions,
@@ -1285,8 +1285,8 @@ export default function EditProductClient({
                 newCustomizations.push({
                   id: `custom_${Date.now()}`,
                   label: "",
-                  type: "select",
-                  options: [{ value: "", label: "", default: true }],
+                  type: "dropdown",
+                  options: [{ value: "", label: "", price_adjustment: 0, default: true }],
                 });
                 field.onChange(newCustomizations);
               };
@@ -1394,6 +1394,19 @@ export default function EditProductClient({
                                           }
                                           placeholder="chopped"
                                           className="flex-1"
+                                        />
+                                        <Input
+                                          type="number"
+                                          value={option.price_adjustment || ""}
+                                          onChange={(e) =>
+                                            updateCustomizationOption(
+                                              custIndex,
+                                              optIndex,
+                                              { price_adjustment: parseFloat(e.target.value) || 0 }
+                                            )
+                                          }
+                                          placeholder="+₦200"
+                                          className="w-24"
                                         />
                                         <div className="flex items-center">
                                           <input

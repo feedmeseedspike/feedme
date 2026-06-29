@@ -48,7 +48,7 @@ const browsingHistoryPersistConfig = {
 const optionsPersistConfig = {
   key: "options",
   storage,
-  whitelist: ['selectedOptions'],
+  whitelist: ['selectedOptions', 'selectedCustomizations'],
 };
 
 const walletPersistConfig = {

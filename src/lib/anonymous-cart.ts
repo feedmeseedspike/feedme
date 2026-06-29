@@ -9,6 +9,7 @@ export interface AnonymousCartItem {
   quantity: number;
   price: number;
   option?: any | null;
+  selectedCustomizations?: Record<string, string> | null;
   created_at: string;
   meta?: { name?: string; slug?: string; image?: string } | null;
 }
@@ -52,7 +53,8 @@ export class AnonymousCart {
     bundleId?: string | null,
     offerId?: string | null,
     meta?: { name?: string; slug?: string; image?: string } | null,
-    blackFridayItemId?: string | null
+    blackFridayItemId?: string | null,
+    selectedCustomizations?: Record<string, string> | null
   ): Promise<void> {
     const items = this.getCartItems();
     
@@ -63,7 +65,8 @@ export class AnonymousCart {
         item.bundle_id === bundleId &&
         item.offer_id === offerId &&
         (item.black_friday_item_id ?? null) === (blackFridayItemId ?? null) &&
-        JSON.stringify(item.option || null) === JSON.stringify(option || null)
+        JSON.stringify(item.option || null) === JSON.stringify(option || null) &&
+        JSON.stringify(item.selectedCustomizations || {}) === JSON.stringify(selectedCustomizations || {})
     );
 
     // If this is an offer, validate availability
@@ -148,6 +151,7 @@ export class AnonymousCart {
         quantity,
         price,
         option: option || null,
+        selectedCustomizations: selectedCustomizations || null,
         created_at: new Date().toISOString(),
         meta: meta || null,
       };

@@ -130,7 +130,7 @@ const OverviewClient: React.FC<OverviewClientProps> = ({
     from: new Date(2022, 0, 20),
     to: addDays(new Date(2022, 0, 20), 20),
   });
-  const [selected, setSelected] = useState("Today");
+  const [selected, setSelected] = useState("AllTime");
   const [compareTo, setCompareTo] = useState<
     "Previous period" | "Previous year" | null
   >(null);
@@ -191,6 +191,11 @@ const OverviewClient: React.FC<OverviewClientProps> = ({
     let fromDate: Date | undefined;
 
     switch (selected) {
+      case "AllTime":
+        // For All Time, we can leave date as undefined to show everything, 
+        // or set it to cover all possible dates. We'll set it to undefined.
+        setDate(undefined);
+        return;
       case "Today":
         fromDate = startOfToday();
         break;
@@ -217,9 +222,9 @@ const OverviewClient: React.FC<OverviewClientProps> = ({
   }, [selected]);
 
   useEffect(() => {
-    setOrders(initialOrders);
-    setFilteredOrders(initialOrders);
-
+    // We only process the existing 'orders' state to build chart data.
+    // Syncing initialOrders should happen elsewhere or only on mount.
+    
     // --- PENDING ORDERS TABLE ---
     const transformedPendingOrders: PendingOrderData[] = orders.map(
       (order) => ({
@@ -284,13 +289,15 @@ const OverviewClient: React.FC<OverviewClientProps> = ({
 
     // --- LOCATION CHARTS (Generalized: all states/cities) ---
     const allOrdersWithLocation = orders.filter(
-      (order) => order.shipping_address && order.shipping_address.city
+      (order) => 
+        order.shipping_address && 
+        (order.shipping_address.city || order.shipping_address.location || order.shipping_address.state)
     );
 
     const topCitiesSales = allOrdersWithLocation.reduce<{
       [key: string]: LocationMetric;
     }>((acc, order) => {
-      const city = order.shipping_address?.city;
+      const city = order.shipping_address?.city || order.shipping_address?.location;
       const state = order.shipping_address?.state;
       let location = "Unknown";
       if (city && state) {
@@ -314,7 +321,7 @@ const OverviewClient: React.FC<OverviewClientProps> = ({
     const topCitiesOrders = allOrdersWithLocation.reduce<{
       [key: string]: LocationMetric;
     }>((acc, order) => {
-      const city = order.shipping_address?.city;
+      const city = order.shipping_address?.city || order.shipping_address?.location;
       const state = order.shipping_address?.state;
       let location = "Unknown";
       if (city && state) {
@@ -344,10 +351,10 @@ const OverviewClient: React.FC<OverviewClientProps> = ({
 
     // Calculate current period metrics
     setTotalOrdersMetrics({
-      total: calculateMetrics(totalOrdersChartDataProcessed, "sales").total,
+      total: calculateMetrics(totalOrdersChartDataProcessed, "orders").total,
       percentageChange:
         prevTotalOrdersMetrics.total > 0
-          ? ((calculateMetrics(totalOrdersChartDataProcessed, "sales").total -
+          ? ((calculateMetrics(totalOrdersChartDataProcessed, "orders").total -
               prevTotalOrdersMetrics.total) /
               prevTotalOrdersMetrics.total) *
             100
@@ -454,7 +461,7 @@ const OverviewClient: React.FC<OverviewClientProps> = ({
     // Set previous period metrics
     setPrevTotalOrdersMetrics({
       total: Object.values(prevTotalOrdersData).reduce(
-        (sum, item) => sum + item.sales,
+        (sum, item) => sum + item.orders,
         0
       ),
     });
@@ -491,7 +498,7 @@ const OverviewClient: React.FC<OverviewClientProps> = ({
 
   const handleCancel = () => {
     setCompareTo(null);
-    setSelected("Today"); // Resets the radio button and triggers useEffect
+    setSelected("AllTime"); // Resets the radio button and triggers useEffect
     setOrders(initialOrders); // Reset to all orders
   };
 
@@ -525,6 +532,10 @@ const OverviewClient: React.FC<OverviewClientProps> = ({
                       onValueChange={setSelected}
                       className="flex flex-col gap-2 "
                     >
+                      <div className="flex items-center gap-2 p-2">
+                        <RadioGroupItem value="AllTime" id="all-time-radio" />
+                        <label htmlFor="all-time-radio">All Time</label>
+                      </div>
                       <div className="flex items-center gap-2 p-2">
                         <RadioGroupItem value="Today" id="today-radio" />
                         <label htmlFor="today-radio">Today</label>
@@ -722,7 +733,7 @@ const OverviewClient: React.FC<OverviewClientProps> = ({
           percentage={totalOrdersMetrics.percentageChange}
           data={totalOrdersChartData}
           xAxisKey="date"
-          yAxisKey="sales"
+          yAxisKey="orders"
         />
         <Chart
           title="Orders Fulfilled"

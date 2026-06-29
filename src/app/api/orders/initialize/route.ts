@@ -114,6 +114,7 @@ export const POST = async (request: Request) => {
           quantity: item.quantity,
           price: item.price,
           option: item.option ? { ...item.option, _title: itemName } : { _title: itemName },
+          selectedCustomizations: item.selectedCustomizations || null,
         };
       });
       if (orderItemsToInsert.length > 0) {
