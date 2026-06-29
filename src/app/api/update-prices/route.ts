@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
 
     // FETCH ALL RELEVANT DATA FROM DB
     const [{ data: allExistingProducts }, { data: allCats }] = await Promise.all([
-      supabase.from("products").select("id, name, options, price, list_price, images, tags, stock_status, in_season"),
+      supabase.from("products").select("id, name, slug, options, price, list_price, images, tags, stock_status, in_season"),
       supabase.from("categories").select("id, title")
     ]);
 
@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
         const lowestPrice = Math.min(...p.options.map((o: any) => o.price));
         const highestPrice = Math.max(...p.options.map((o: any) => o.price));
         
-        const exact = allExistingProducts?.find(ep => ep.name === p.name);
+        const exact = allExistingProducts?.find(ep => ep.name.toLowerCase().trim() === p.name.toLowerCase().trim());
         
         const imgEntry = findImageEntry(p.name);
         const result: any = { 
@@ -225,7 +225,7 @@ export async function POST(req: NextRequest) {
       const optionImg = getOptionImage(imgEntry);
       const tags = getFreshCategoryTag(p.categoryTitle);
 
-      let existing = allExistingProducts?.find(ep => ep.name === p.name);
+      let existing = allExistingProducts?.find(ep => ep.name.toLowerCase().trim() === p.name.toLowerCase().trim());
       
       const conf = confirmations[p.name];
       if (conf?.action === 'ignore') continue;
@@ -291,9 +291,16 @@ export async function POST(req: NextRequest) {
           finalProductsInCSVNames.add(p.name);
         }
       } else {
+        let baseSlug = slugify(p.name);
+        let uniqueSlug = baseSlug;
+        let counter = 1;
+        while (allExistingProducts?.some(ep => ep.slug === uniqueSlug)) {
+           uniqueSlug = `${baseSlug}-${counter++}`;
+        }
+
         const newProduct: ProductInsert = {
           name: p.name,
-          slug: slugify(p.name),
+          slug: uniqueSlug,
           description: generateDescription(p, lowestPrice, productListPrice, categoryTitle),
           price: lowestPrice,
           list_price: productListPrice,
