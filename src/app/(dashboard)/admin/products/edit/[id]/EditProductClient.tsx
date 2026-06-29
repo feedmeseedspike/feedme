@@ -129,6 +129,7 @@ const formSchema = z
               z.object({
                 value: z.string().min(1, "Value is required"),
                 label: z.string().min(1, "Label is required"),
+                price_adjustment: z.number().optional().default(0),
                 default: z.boolean().default(false),
               })
             )
@@ -1285,7 +1286,7 @@ export default function EditProductClient({
                 newCustomizations.push({
                   id: `custom_${Date.now()}`,
                   label: "",
-                  type: "dropdown",
+                  type: "select",
                   options: [{ value: "", label: "", price_adjustment: 0, default: true }],
                 });
                 field.onChange(newCustomizations);

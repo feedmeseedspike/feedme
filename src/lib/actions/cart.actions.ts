@@ -21,6 +21,7 @@ export type CartItem = Tables<"cart_items"> & {
   offers: Tables<"offers"> | null; // Add offers relationship
   black_friday_items: Tables<"black_friday_items"> | null;
   meta?: { name?: string; slug?: string; image?: string } | null;
+  selectedCustomizations?: Record<string, string> | null;
 };
 
 export type GetCartSuccess = { success: true; data: CartItem[]; error: null };

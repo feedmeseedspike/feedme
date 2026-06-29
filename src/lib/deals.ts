@@ -17,21 +17,16 @@ export const BONUS_CONFIG = {
     discount_percent: 5,
     description: "5% off your first order",
   },
-  REPEAT_ORDER_CASHBACK: {
-    min_spend: 25000,
-    cashback_percent: 5,
-    description: "5% cashback on orders above ₦25,000 for returning members",
-  },
   SUBSEQUENT_FREE_DELIVERY: {
     min_spend: 50000,
     description: "Free delivery on next order if you shop above ₦50,000",
     expiry_days: 14,
   },
   PROMO_FREE_DELIVERY_2PM: {
-    min_spend: 25000,
+    min_spend: 50000,
     start_date: "2026-04-25T00:00:00+01:00",
     end_date: "2026-05-02T23:59:59+01:00",
-    description: "Free delivery for 2pm schedule from April 25th to May 2nd on orders above ₦25,000",
+    description: "Free delivery for 2pm schedule from April 25th to May 2nd on orders above ₦50,000",
   },
   CASHBACK_THRESHOLD: {
     spend: 100000,

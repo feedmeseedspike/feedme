@@ -8,7 +8,7 @@ import { Icon } from "@iconify/react";
 
 
 const MILESTONES = [
-  { threshold: 25000, label: "Welcome Spin", type: "spin", isNewUserOnly: true },
+  { threshold: 50000, label: "Welcome Spin", type: "spin", isNewUserOnly: true },
   { threshold: 50000, label: "Free Delivery", type: "gift" },
   { threshold: 100000, label: "₦2,000 Cashback", type: "cashback" },
   { threshold: 200000, label: "1 Loyalty Point", type: "point" },
@@ -35,7 +35,7 @@ export default function BonusProgressBar({ subtotal, isFirstOrder = false, isAut
   const reachedMilestones = activeMilestones.filter(m => subtotal >= m.threshold);
   const hasFreeDelivery = subtotal >= 50000;
   // Spin unlock logic: Authenticated users unlock it. Unauthenticated users see it locked.
-  const hasUnlockedSpin = isAuthenticated && isFirstOrder && subtotal >= 25000;
+  const hasUnlockedSpin = isAuthenticated && isFirstOrder && subtotal >= 50000;
 
   return (
     <div className={`w-full space-y-4 py-1 relative ${!isAuthenticated ? 'opacity-70 select-none' : ''}`}>

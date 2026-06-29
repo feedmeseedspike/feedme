@@ -184,6 +184,7 @@ export function useAnonymousCart() {
         quantity: item.quantity,
         price: item.price,
         black_friday_item_id: item.black_friday_item_id,
+        selectedCustomizations: item.selectedCustomizations,
       }));
       
       // Merge with existing authenticated items
