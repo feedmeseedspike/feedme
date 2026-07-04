@@ -106,6 +106,11 @@ export const POST = async (request: Request) => {
         const matchingOffer = offers?.find((o) => o.id === item.offerId);
         const itemName = matchingProduct?.name || matchingBundle?.name || matchingOffer?.title || "";
 
+        const optionObj = item.option ? { ...item.option, _title: itemName } : { _title: itemName };
+        if (item.selectedCustomizations) {
+          (optionObj as any).customizations = item.selectedCustomizations;
+        }
+
         return {
           order_id: order.id,
           product_id: item.productId || null,
@@ -113,8 +118,7 @@ export const POST = async (request: Request) => {
           offer_id: item.offerId || null,
           quantity: item.quantity,
           price: item.price,
-          option: item.option ? { ...item.option, _title: itemName } : { _title: itemName },
-          selectedCustomizations: item.selectedCustomizations || null,
+          option: optionObj,
         };
       });
       if (orderItemsToInsert.length > 0) {

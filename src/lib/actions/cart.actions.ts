@@ -132,6 +132,7 @@ export async function getCart(): Promise<GetCartSuccess | GetCartFailure> {
           bundles: null,
           offers: null,
           black_friday_items: null,
+          selectedCustomizations: item.selectedCustomizations || (item.option && typeof item.option === 'object' ? (item.option as any).customizations || (item.option as any).selectedCustomizations || null : null),
         }));
 
         return { success: true, data: typedData, error: null };
@@ -148,6 +149,7 @@ export async function getCart(): Promise<GetCartSuccess | GetCartFailure> {
       bundles: item.bundles || null,
       offers: item.offers || null,
       black_friday_items: item.black_friday_items || null,
+      selectedCustomizations: item.selectedCustomizations || (item.option && typeof item.option === 'object' ? (item.option as any).customizations || (item.option as any).selectedCustomizations || null : null),
     }));
 
     return { success: true, data: typedData, error: null };
@@ -171,6 +173,7 @@ export interface ItemToUpdate {
   offer_id?: string | null;
   black_friday_item_id?: string | null;
   option?: Json | null;
+  selectedCustomizations?: Record<string, string> | null;
   quantity: number;
   price?: number | null;
 }
@@ -231,15 +234,21 @@ export async function updateCartItems(
 
     // Ensure all products have the correct structure for the RPC function
     // The RPC expects JSONB, so we need to ensure proper serialization
-    const serializedItems = items.map((item) => ({
-      product_id: item.product_id || null,
-      bundle_id: item.bundle_id || null,
-      offer_id: item.offer_id || null,
-      black_friday_item_id: item.black_friday_item_id || null,
-      option: item.option || null,
-      quantity: item.quantity,
-      price: item.price || null,
-    }));
+    const serializedItems = items.map((item) => {
+      let optionObj = item.option && typeof item.option === "object" ? { ...item.option } : {};
+      if (item.selectedCustomizations) {
+        (optionObj as any).customizations = item.selectedCustomizations;
+      }
+      return {
+        product_id: item.product_id || null,
+        bundle_id: item.bundle_id || null,
+        offer_id: item.offer_id || null,
+        black_friday_item_id: item.black_friday_item_id || null,
+        option: Object.keys(optionObj).length > 0 ? optionObj : (item.option || null),
+        quantity: item.quantity,
+        price: item.price || null,
+      };
+    });
 
     // Call the RPC function to update cart items
     const { error } = await supabase.rpc("update_cart_items", {

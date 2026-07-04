@@ -133,11 +133,16 @@ export async function processWalletPayment(orderData: OrderData) {
     ]);
 
     // Insert order items
-    const orderItems = orderData.cartItems.map((item: { productId: string; quantity: number; price?: number | null; option?: any; bundleId?: string; offerId?: string }) => {
+    const orderItems = orderData.cartItems.map((item: { productId: string; quantity: number; price?: number | null; option?: any; bundleId?: string; offerId?: string; selectedCustomizations?: any }) => {
         const matchingProduct = products_info?.find((p) => p.id === item.productId);
         const matchingBundle = bundles_info?.find((b) => b.id === item.bundleId);
         const matchingOffer = offers_info?.find((o) => o.id === item.offerId);
         const itemName = matchingProduct?.name || matchingBundle?.name || matchingOffer?.title || "";
+
+        const optionObj = item.option ? { ...item.option, _title: itemName } : { _title: itemName };
+        if (item.selectedCustomizations) {
+          (optionObj as any).customizations = item.selectedCustomizations;
+        }
 
         return {
           order_id: orderResult.id,
@@ -146,7 +151,7 @@ export async function processWalletPayment(orderData: OrderData) {
           offer_id: item.offerId || null,
           quantity: item.quantity,
           price: item.price,
-          option: item.option ? { ...item.option, _title: itemName } : { _title: itemName },
+          option: optionObj,
         };
     });
 

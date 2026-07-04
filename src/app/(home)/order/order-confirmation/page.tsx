@@ -28,8 +28,10 @@ import {
   Leaf,
   Settings2,
   X,
-  ShoppingBasket
+  ShoppingBasket,
+  Heart
 } from "lucide-react";
+import { submitOrderSatisfaction } from "src/lib/actions/satisfaction.actions";
 import Image from "next/image";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@components/ui/table";
 import FloatingSpinWidget from "@components/shared/FloatingSpinWidget";
@@ -66,27 +68,88 @@ export default function OrderConfirmationPage() {
   const [rewardSummary, setRewardSummary] = useState<any>(null);
   const [spinNotifVisible, setSpinNotifVisible] = useState(false);
   
+  const [rating, setRating] = useState<number | null>(null);
+  const [hoverRating, setHoverRating] = useState<number | null>(null);
+  const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const EMOJIS = [
+    { rating: 1, char: "😠", label: "Terrible" },
+    { rating: 2, char: "🙁", label: "Poor" },
+    { rating: 3, char: "😐", label: "Okay" },
+    { rating: 4, char: "🙂", label: "Good" },
+    { rating: 5, char: "😍", label: "Excellent" },
+  ];
+
+  useEffect(() => {
+    if (orderId && typeof window !== "undefined") {
+      const hasSubmitted = localStorage.getItem(`satisfaction_submitted_${orderId}`);
+      if (hasSubmitted) {
+        setSubmitted(true);
+      }
+    }
+  }, [orderId]);
+
+  const handleSatisfactionSubmit = async () => {
+    if (!rating || !orderId) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const res = await submitOrderSatisfaction({
+        orderId,
+        rating,
+        comment,
+      });
+      if (res.success) {
+        setSubmitted(true);
+        if (typeof window !== "undefined") {
+          localStorage.setItem(`satisfaction_submitted_${orderId}`, "true");
+        }
+        showToast("Thank you for your feedback!", "success");
+      } else {
+        setSubmitError(res.message || "Failed to submit review");
+        showToast(res.message || "Failed to submit review", "error");
+      }
+    } catch (err: any) {
+      setSubmitError(err.message || "An unexpected error occurred");
+      showToast(err.message || "An unexpected error occurred", "error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  
   const dispatch = useDispatch();
   const clearCartMutation = useClearCartMutation();
 
-  // --- Logic from original file ---
-  const clearData = useCallback(async () => {
-    try {
-      await clearCartMutation.mutateAsync();
-    } catch (e) {
-      console.error("Failed to clear server cart", e);
-    }
-  }, [clearCartMutation]);
+  // --- Logic from original file (Memoized ref to prevent infinite loops) ---
+  const mutateAsyncRef = React.useRef(clearCartMutation.mutateAsync);
+  mutateAsyncRef.current = clearCartMutation.mutateAsync;
 
   useEffect(() => {
-    // Initial cleanup
+    // Initial cleanup: clear server cart once on mount
+    const clearData = async () => {
+      try {
+        await mutateAsyncRef.current();
+      } catch (e) {
+        console.error("Failed to clear server cart", e);
+      }
+    };
     clearData();
-  }, [clearData]);
+  }, []);
 
-  // Fetch order function moved outside useEffect to follow Rules of Hooks
   const fetchOrder = useCallback(async (idToFetch: string) => {
     try {
-      const res = await fetch(`/api/orders/${idToFetch}`);
+      let url = `/api/orders/${idToFetch}?caller=purchaser`;
+      if (typeof window !== "undefined") {
+        const searchParams = new URLSearchParams(window.location.search);
+        const reference = searchParams.get("reference");
+        if (reference) {
+          url += `&reference=${reference}`;
+        }
+      }
+      const res = await fetch(url);
       const data = await res.json();
       
       if (data.error) {
@@ -113,6 +176,8 @@ export default function OrderConfirmationPage() {
       setRewardSummary(rewards);
 
       if (data.payment_status === "Paid" || data.payment_status === "paid") {
+         // Auto-triggering of the spin wheel disabled on order confirmation
+         /*
          setSpinNotifVisible(true);
          
          // Automatically trigger the wheel
@@ -122,6 +187,7 @@ export default function OrderConfirmationPage() {
                localStorage.setItem(`spin_triggered_${idToFetch}`, "true");
             }, 2500); 
          }
+         */
       }
 
       setLoading(false);
@@ -393,6 +459,115 @@ export default function OrderConfirmationPage() {
           </div>
         </motion.div>
 
+        {/* Satisfaction Review Box */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55 }}
+          className="bg-white border border-slate-100 p-8 rounded-xl mb-12 shadow-sm relative overflow-hidden"
+        >
+          {!submitted ? (
+            <div>
+              <h3 className={`${playfair.className} text-xl md:text-2xl font-bold text-[#111827] mb-2 text-center`}>
+                How was your ordering experience?
+              </h3>
+              <p className="text-gray-500 text-sm text-center mb-6">
+                Your feedback helps us make FeedMe even better!
+              </p>
+
+              <div className="flex justify-center items-center gap-4 md:gap-6 mb-6">
+                {EMOJIS.map((emoji) => {
+                  const isSelected = rating === emoji.rating;
+                  return (
+                    <button
+                      key={emoji.rating}
+                      type="button"
+                      onClick={() => setRating(emoji.rating)}
+                      onMouseEnter={() => setHoverRating(emoji.rating)}
+                      onMouseLeave={() => setHoverRating(null)}
+                      className="flex flex-col items-center gap-1 group focus:outline-none"
+                    >
+                      <span 
+                        className={`text-3xl md:text-4xl transition-all duration-200 transform ${
+                          isSelected 
+                            ? "scale-125 filter-none" 
+                            : rating === null 
+                              ? "hover:scale-120 grayscale-0" 
+                              : "grayscale opacity-50 hover:grayscale-0 hover:opacity-100"
+                        }`}
+                      >
+                        {emoji.char}
+                      </span>
+                      <span className={`text-[10px] md:text-xs font-medium transition-colors ${
+                        isSelected ? "text-[#1B6013] font-bold" : "text-gray-400 group-hover:text-gray-600"
+                      }`}>
+                        {emoji.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <AnimatePresence>
+                {rating !== null && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="space-y-4 overflow-hidden"
+                  >
+                    <div className="flex flex-col gap-1">
+                      <label htmlFor="satisfaction-comment" className="text-xs font-semibold text-gray-600">
+                        Tell us more (optional):
+                      </label>
+                      <textarea
+                        id="satisfaction-comment"
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                        placeholder="What did you like? What can we improve?"
+                        className="w-full p-4 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#1B6013] resize-none h-24 bg-slate-50/50"
+                      />
+                    </div>
+
+                    {submitError && (
+                      <p className="text-red-600 text-xs font-semibold bg-red-50 p-2 rounded-lg">
+                        {submitError}
+                      </p>
+                    )}
+
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        disabled={submitting}
+                        onClick={handleSatisfactionSubmit}
+                        className="px-6 py-3 bg-[#1B6013] text-white rounded-full font-bold text-xs uppercase tracking-wider transition-all hover:bg-[#155e10] hover:shadow-lg disabled:opacity-50 active:scale-95 flex items-center gap-2"
+                      >
+                        {submitting ? "Submitting..." : "Submit Feedback"}
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="text-center py-4 flex flex-col items-center justify-center"
+            >
+              <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center text-[#1B6013] mb-4">
+                <Heart className="w-6 h-6 fill-current" />
+              </div>
+              <h3 className={`${playfair.className} text-xl font-bold text-[#111827] mb-1`}>
+                Feedback Submitted!
+              </h3>
+              <p className="text-gray-500 text-sm">
+                Thank you for making FeedMe better. We appreciate your feedback! ❤️
+              </p>
+            </motion.div>
+          )}
+        </motion.div>
+
         {/* Rewards Section (Clean & Premium) */}
         {rewardSummary && (rewardSummary.freeDelivery || rewardSummary.cashback > 0 || rewardSummary.tierPoints > 0) && (
           <motion.div 
@@ -432,7 +607,8 @@ export default function OrderConfirmationPage() {
                      )}
                   </div>
 
-                  {spinNotifVisible && (
+                  {/* Spin button removed as requested */}
+                  {/* spinNotifVisible && (
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
@@ -442,7 +618,7 @@ export default function OrderConfirmationPage() {
                       <span>Claim Your Free Spin</span>
                       <ArrowRight className="w-4 h-4" strokeWidth={3} />
                     </motion.button>
-                  )}
+                  ) */}
                </div>
             </div>
           </motion.div>
@@ -563,7 +739,7 @@ export default function OrderConfirmationPage() {
           </Link>
         </motion.div>
       </main>
-      <FloatingSpinWidget />
+      {/* FloatingSpinWidget removed from order confirmation page to prevent auto-popup/double rendering */}
     </div>
   );
 }

@@ -204,6 +204,26 @@ const OrderItemDisplay = React.memo(
     const productOption = item.option as ProductOption | null;
     // Defensive: fallback for product type
     const product = isFullProduct(item.products) ? item.products : undefined;
+
+    const renderCustomizations = (option: any) => {
+      if (!option || !option.customizations) return null;
+
+      return (
+        <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+          {Object.entries(option.customizations).map(([key, value]) => (
+            <div key={key} className="flex gap-1">
+              <span className="font-medium text-gray-600">
+                {key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}:
+              </span>
+              <span>
+                {String(value).replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+              </span>
+            </div>
+          ))}
+        </div>
+      );
+    };
+
     return (
       <React.Fragment>
         <div className="flex items-center gap-3 sm:gap-4 overflow-y-visible">
@@ -224,6 +244,7 @@ const OrderItemDisplay = React.memo(
                 <p className="h6-light !text-[14px]">{productOption.name}</p>
               )}
             </div>
+            {renderCustomizations(item.option)}
             <div className="flex justify-between items-center">
               <p className="text-[#101828] font-bold">
                 {formatCurrency(

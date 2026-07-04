@@ -58,6 +58,7 @@ export interface ItemToUpdateMutation {
   offer_id?: string | null; // Add optional offer_id
   black_friday_item_id?: string | null;
   option?: Json | null; // Changed to Json | null (removed undefined possibility)
+  selectedCustomizations?: Record<string, string> | null;
   quantity: number;
   price?: number | null; // Make optional
 }

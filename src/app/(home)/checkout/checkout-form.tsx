@@ -1233,8 +1233,8 @@ const CheckoutForm = ({
               await clearCartMutation.mutateAsync();
               showToast("Order created successfully!", "success");
               
-              // Trigger Spin & Win widget
-              localStorage.setItem("triggerSpin", "true");
+              // Trigger Spin & Win widget (disabled when user orders)
+              // localStorage.setItem("triggerSpin", "true");
               
               if (isGiftMode) {
                 router.push(
@@ -1337,8 +1337,8 @@ const CheckoutForm = ({
                 }
               }
               
-              // Trigger Spin & Win widget after payment success
-              localStorage.setItem("triggerSpin", "true");
+              // Trigger Spin & Win widget after payment success (disabled when user orders)
+              // localStorage.setItem("triggerSpin", "true");
               
               // Redirect immediately
               window.location.href = paymentUrl;
@@ -1348,7 +1348,7 @@ const CheckoutForm = ({
             } else if (response.data.is_free || response.data.success) {
                // Order is free or already succeeded
                showToast("Order placed successfully!", "success");
-               localStorage.setItem("triggerSpin", "true");
+               // localStorage.setItem("triggerSpin", "true");
                localStorage.setItem("lastOrderId", orderResult.data.orderId);
                if (isGiftMode) {
                  router.push(`/order/gift-link?orderId=${orderResult.data.orderId}`);
