@@ -81,11 +81,12 @@ export async function generateMetadata({
         (Array.isArray(product.images) && normalizeImage(product.images[0])) ||
         "/opengraph-image.jpg";
 
+      const priceStr = product.price ? ` starting from ₦${product.price.toLocaleString()}` : "";
       const description =
         product.meta_description ||
-        `${product.description || ""} Buy fresh and premium-quality ${
-          product.name
-        } online in Lagos with FeedMe. Enjoy competitive prices in Naira, swift delivery in Lagos, and the convenience of cash on delivery. Shop now and bring nature's goodness to your kitchen in Lagos, Ikeja, Lekki, Victoria Island, and more!`;
+        `Buy fresh and premium-quality ${product.name}${priceStr} online in Lagos with FeedMe. ${
+          product.description ? product.description.substring(0, 150) + "..." : ""
+        } Enjoy fast 3-hour delivery in Lagos, Ikeja, Lekki, Victoria Island, and more!`;
 
       return {
         title: product.name,

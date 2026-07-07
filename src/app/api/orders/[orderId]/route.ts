@@ -36,16 +36,29 @@ export async function GET(req: Request, { params }: { params: { orderId: string 
               order.reference = reference;
 
               // Process rewards and points
+              let rewardsInfo = null;
               try {
                 const { processOrderRewards } = await import("src/lib/actions/rewards.actions");
-                await processOrderRewards(
+                const rewardsResult = await processOrderRewards(
                   order.user_id,
                   order.id,
                   paystackVerify.data.amount ? (paystackVerify.data.amount / 100) : 0,
                   order.order_items || []
                 );
+                if (rewardsResult && rewardsResult.success) {
+                  rewardsInfo = rewardsResult.rewards;
+                }
               } catch (rewardsErr) {
                 console.error("Failed to process rewards during fallback verification:", rewardsErr);
+              }
+
+              // Send order confirmation emails to admin and user (fallback verification trigger)
+              try {
+                const { sendOrderConfirmationFromOrderObject } = await import("@/utils/email/sendOrderEmail");
+                await sendOrderConfirmationFromOrderObject(order, rewardsInfo);
+                console.log("Fallback verification: Order confirmation email sent successfully");
+              } catch (emailErr) {
+                console.error("Fallback verification: Failed to send order confirmation email:", emailErr);
               }
             }
           }

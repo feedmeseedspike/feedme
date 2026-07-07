@@ -334,3 +334,61 @@ export async function sendWalletFundingEmail({
     return { success: false, error };
   }
 }
+
+export async function sendOrderConfirmationFromOrderObject(order: any, rewardsInfo?: any) {
+  const shippingAddress = order.shipping_address as any;
+  const userEmail = shippingAddress?.email || "";
+  
+  const calculatedSubtotal = order.order_items?.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0) || 0;
+  const deliveryFee = order.delivery_fee || 0;
+  const totalAmountPaid = order.total_amount_paid || order.total_amount || 0;
+  const discount = order.voucher_discount ?? Math.max(0, (calculatedSubtotal + deliveryFee) - totalAmountPaid);
+  const orderNumber = order.reference || order.id;
+
+  const itemsOrdered = (order.order_items || []).map((item: any) => ({
+    title: item.products?.name || item.bundles?.name || item.offers?.title || (item.option as any)?._title || "",
+    image: item.products?.images?.[0] || item.bundles?.thumbnail_url || item.offers?.image_url || "",
+    price: item.price,
+    quantity: item.quantity,
+    optionName: (item.option as any)?.name || undefined,
+    customizations: item.selectedCustomizations || null,
+  }));
+
+  return sendOrderConfirmationEmails({
+    adminEmail: "orders.feedmeafrica@gmail.com",
+    userEmail: userEmail,
+    adminOrderProps: {
+      orderNumber: orderNumber,
+      customerName: shippingAddress?.fullName || order.profiles?.display_name || "Customer",
+      customerPhone: shippingAddress?.phone || "N/A",
+      itemsOrdered: itemsOrdered,
+      deliveryAddress: shippingAddress?.street || "N/A",
+      localGovernment: shippingAddress?.location || order.local_government || "N/A",
+      orderNote: order.note || "N/A",
+      paymentMethod: order.payment_method || "PAYSTACK",
+      rewards: rewardsInfo,
+      isFirstOrder: false,
+      voucherDiscount: order.voucher_discount || 0,
+      dealsDiscount: 0,
+      staffDiscount: 0,
+      discount: discount,
+      subtotal: calculatedSubtotal,
+      deliveryFee: deliveryFee,
+      totalAmount: totalAmountPaid,
+    },
+    userOrderProps: {
+      orderNumber: orderNumber,
+      customerName: shippingAddress?.fullName || order.profiles?.display_name || "Customer",
+      customerPhone: shippingAddress?.phone || "N/A",
+      itemsOrdered: itemsOrdered,
+      deliveryAddress: shippingAddress?.street || "N/A",
+      deliveryFee: deliveryFee,
+      serviceCharge: 0,
+      discount: discount,
+      totalAmount: calculatedSubtotal,
+      totalAmountPaid: totalAmountPaid,
+      userid: order.user_id,
+    },
+  });
+}
+

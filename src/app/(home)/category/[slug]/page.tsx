@@ -38,16 +38,47 @@ const sortOrders = [
   { value: "best-selling", name: "Best selling" },
 ];
 
+const CATEGORY_META_MAP: Record<string, { description: string; keywords: string[] }> = {
+  fruits: {
+    description: "buy all types of farm fresh fruits at the greatest price and get it delivered to your doorstep under 3hours!",
+    keywords: ["pears", "mango", "orange", "lemon", "strawberry", "apple", "kiwi", "pomegranates", "pawpaw", "pineapple", "plum", "coconut", "watermelon", "grape", "agbalumo"]
+  },
+  tubers: {
+    description: "select the finest yams, including abuja yam, all types of potatos; irish, sweet, cocoya, and get it delivered to your doorstep under 3hours!",
+    keywords: ["yam", "tuber of yam", "potatos", "irish potatos", "cocoyam", "sweet potato"]
+  },
+  oils: {
+    description: "the best cooking oil for your everyday consumption from Laziz to Kings oil and get it delivered under 3hours!",
+    keywords: ["groundnut oil", "banga oil", "palm oil", "oyster oil", "sesame oil"]
+  },
+  "pantry-canned-goods": {
+    description: "choose from our selection of canned meat and fish like hot dogs, corned beef, sardines and geisha alike, tin tomatoes and cooking butter, all great company of meals. Food that requires no cooking from top brands like Titus, Simas, Gino, Sunripe, Exeter, Honeywell, available in lagos",
+    keywords: ["geisha", "semovita", "sardine", "canned fish", "caanned peas", "sweet corn", "canned corn"]
+  },
+  "soup-ingredients": {
+    description: "choose from our array of local soup ingredients, like ogbono, banga, egusi, efo-riro, edikang ikong, and all native Nigeria soup you want to prepare. Available in lagos",
+    keywords: ["oha soup", "gbegiri", "ogbono", "egusi", "banga", "periwinkles"]
+  },
+  "meat-poultry-seafood": {
+    description: "protein cuts like chicken, pomo, crayfish, stockfish, all seafood including crabs and periwinkles, gizzard and other types for your meal are available in lagos",
+    keywords: ["gizzard", "live-chicken", "orobo chicken", "frozen food", "crayfish", "stockfish", "sausage", "roundabout", "cow", "goat", "pomo", "catfish", "snail", "panla fish"]
+  },
+  vegetables: {
+    description: "extensive selection of vegetables and soup tickners like ugu, scentleaf, water leaf, okazi and much more are available in lagos",
+    keywords: ["broccoli", "beetroot", "kale", "lemon grass", "ugu", "okazi leaf", "moimoi leaf", "ewedu", "okro", "radish", "scent leaf", "waterleaf", "cabbage", "uziza", "bitterleaf"]
+  }
+};
+
 export async function generateMetadata({
   params,
 }: {
   params: { slug: string };
 }): Promise<Metadata> {
-  const categorySlug = params.slug;
+  const categorySlug = params.slug.toLowerCase();
   
   // Re-fetch to get accurate titles for metadata
   const allCategories = await getAllCategories();
-  const cat = allCategories.find((c: Category) => toSlug(c.title).toLowerCase() === categorySlug.toLowerCase());
+  const cat = allCategories.find((c: Category) => toSlug(c.title).toLowerCase() === categorySlug);
   
   if (!cat) {
     // Return a 404 directly from metadata generation to avoid Soft 404s in Google Search Console
@@ -60,10 +91,14 @@ export async function generateMetadata({
     ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/category-images/${categorySlug}.jpg`
     : "/opengraph-image.jpg";
 
-  return {
-    title: `${categoryName}`,
-    description: `Browse our selection of ${categoryName.toLowerCase()} products in Lagos, Nigeria. Find the best deals on ${categoryName} at FeedMe. Fast delivery in Lagos, Ikeja, Lekki, Victoria Island, and more!`,
-    keywords: [
+  const customMeta = CATEGORY_META_MAP[categorySlug];
+  const description = customMeta 
+    ? customMeta.description 
+    : `Browse our selection of ${categoryName.toLowerCase()} products in Lagos, Nigeria. Find the best deals on ${categoryName} at FeedMe. Fast delivery in Lagos, Ikeja, Lekki, Victoria Island, and more!`;
+    
+  const keywords = customMeta
+    ? customMeta.keywords
+    : [
       `${categoryName}`,
       "food",
       "grocery",
@@ -74,13 +109,18 @@ export async function generateMetadata({
       `${categoryName} Ikeja`,
       `${categoryName} Lekki`,
       `${categoryName} Victoria Island`,
-    ],
+    ];
+
+  return {
+    title: `${categoryName}`,
+    description,
+    keywords,
     alternates: {
       canonical: `https://www.shopfeedme.com/category/${categorySlug}`,
     },
     openGraph: {
       title: `${categoryName}`,
-      description: `Discover our ${categoryName.toLowerCase()} collection. Shop now for the best prices and fast delivery in Lagos and beyond.`,
+      description,
       type: "website",
       url: `https://www.shopfeedme.com/category/${categorySlug}`,
       images: [categoryImage || "/opengraph-image.jpg"],
@@ -88,7 +128,7 @@ export async function generateMetadata({
     twitter: {
       card: "summary_large_image",
       title: `${categoryName} | FeedMe`,
-      description: `Explore our ${categoryName.toLowerCase()} selection in Lagos. Quality products at great prices, delivered fast in Lagos, Ikeja, Lekki, Victoria Island, and more.`,
+      description,
       images: [categoryImage || "/opengraph-image.jpg"],
     },
   };
