@@ -1,29 +1,19 @@
 import nodemailer from "nodemailer";
 
-// Hardcoded SMTP Settings
-const smtpHost = "smtp.gmail.com";
-const smtpPort = 465; // Back to 465 for SSL
-const smtpUser = "orders.feedmeafrica@gmail.com";
-const smtpPass = "cyma apwl rnam vdip"; // App Password
-const smtpSecure = true; // true for port 465
-const defaultFrom = smtpUser;
-
-/*
-const smtpHost = process.env.SMTP_HOST || process.env.NODEMAILER_HOST;
+const smtpHost = process.env.SMTP_HOST || process.env.NODEMAILER_HOST || "smtp.gmail.com";
 const smtpPortEnv = process.env.SMTP_PORT || process.env.NODEMAILER_PORT;
-const smtpPort = smtpPortEnv ? Number(smtpPortEnv) : undefined;
-const smtpUser = process.env.SMTP_USER || process.env.NODEMAILER_USER;
-const smtpPass = process.env.SMTP_PASS || process.env.NODEMAILER_PASS;
+const smtpPort = smtpPortEnv ? Number(smtpPortEnv) : 465;
+const smtpUser = process.env.SMTP_USER || process.env.NODEMAILER_USER || "orders.feedmeafrica@gmail.com";
+const smtpPass = process.env.SMTP_PASS || process.env.NODEMAILER_PASS || "cyma apwl rnam vdip";
 const smtpSecureEnv = process.env.SMTP_SECURE || process.env.NODEMAILER_SECURE;
 const smtpSecure = smtpSecureEnv
   ? smtpSecureEnv.toLowerCase() === "true"
   : smtpPort === 465;
 const defaultFrom = process.env.SMTP_FROM || process.env.NODEMAILER_FROM || smtpUser;
-*/
 
 if (!smtpHost || !smtpUser || !smtpPass) {
   console.warn(
-    "SMTP credentials are not fully configured. Email sending will fail until SMTP_HOST (or NODEMAILER_HOST), SMTP_USER (or NODEMAILER_USER), and SMTP_PASS (or NODEMAILER_PASS) are set."
+    "SMTP credentials are not fully configured. Email sending will fail."
   );
 }
 

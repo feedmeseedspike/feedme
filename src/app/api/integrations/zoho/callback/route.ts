@@ -1,37 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { zohoTokenManager } from '@/lib/zoho/token-manager';
+import { ZOHO_TOKEN_URL } from '@/lib/zoho/constants';
+import type { ZohoTokenResponse } from '@/lib/zoho/types';
 
+/**
+ * GET /api/integrations/zoho/callback
+ * Receives the authorization code from Zoho, exchanges it for tokens,
+ * and persists them in Supabase.
+ */
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
-  const location = requestUrl.searchParams.get('location') || 'us'; // result of accounts.zoho.com implies region often
-  const accountsUrl = location === 'eu' ? 'https://accounts.zoho.eu' : 'https://accounts.zoho.com';
+  const location = requestUrl.searchParams.get('location') || 'us';
+  const accountsUrl =
+    location === 'eu'
+      ? 'https://accounts.zoho.eu'
+      : location === 'in'
+      ? 'https://accounts.zoho.in'
+      : 'https://accounts.zoho.com';
 
   if (!code) {
     const error = requestUrl.searchParams.get('error');
-    return NextResponse.json({ error: error || 'No code provided' }, { status: 400 });
+    return NextResponse.json(
+      { error: error || 'No authorization code provided' },
+      { status: 400 }
+    );
   }
 
   try {
-    // 1. You need these environment variables set
     const clientId = process.env.ZOHO_CLIENT_ID;
     const clientSecret = process.env.ZOHO_CLIENT_SECRET;
-    const redirectUri = `${requestUrl.origin}/api/integrations/zoho/callback`;
+    const redirectUri = process.env.ZOHO_REDIRECT_URI;
 
-    if (!clientId || !clientSecret) {
-      return NextResponse.json({ 
-        error: 'Missing configuration', 
-        message: 'ZOHO_CLIENT_ID and ZOHO_CLIENT_SECRET must be set in .env' 
-      }, { status: 500 });
+    if (!clientId || !clientSecret || !redirectUri) {
+      return NextResponse.json(
+        {
+          error: 'Missing configuration',
+          message:
+            'ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, and ZOHO_REDIRECT_URI must be set in .env',
+        },
+        { status: 500 }
+      );
     }
 
-    // 2. Exchange code for tokens
-    const tokenResponse = await fetch(`${accountsUrl}/oauth/v2/token`, {
+    // Exchange authorization code for tokens
+    const tokenUrl = `${accountsUrl}/oauth/v2/token`;
+    const tokenResponse = await fetch(tokenUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        code: code,
+        code,
         client_id: clientId,
         client_secret: clientSecret,
         redirect_uri: redirectUri,
@@ -39,24 +57,41 @@ export async function GET(request: NextRequest) {
       }),
     });
 
-    const data = await tokenResponse.json();
+    const data: ZohoTokenResponse = await tokenResponse.json();
 
     if (data.error) {
-      return NextResponse.json({ error: 'Token exchange failed', details: data }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Token exchange failed', details: data },
+        { status: 400 }
+      );
     }
 
-    // 3. Store tokens (access_token, refresh_token, etc.)
-    // TODO: Save data.access_token and data.refresh_token to your database (e.g., in an 'integrations' table)
-    
-    // For now, returning them JSON so you can see it works
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Zoho tokens received', 
-      tokens: data 
-    });
+    if (!data.refresh_token) {
+      return NextResponse.json(
+        {
+          error: 'No refresh token received',
+          message:
+            'Make sure access_type=offline is set and you have not already authorized. Try revoking access at accounts.zoho.com and retry.',
+          details: data,
+        },
+        { status: 400 }
+      );
+    }
 
+    // Persist tokens to Supabase
+    await zohoTokenManager.saveTokens(data, accountsUrl);
+
+    // Redirect to admin dashboard with success indicator
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL || requestUrl.origin;
+    return NextResponse.redirect(
+      `${siteUrl}/admin?zoho_connected=true`
+    );
   } catch (error) {
     console.error('Zoho Auth Error:', error);
-    return NextResponse.json({ error: 'Internal Server Error', details: String(error) }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal Server Error', details: String(error) },
+      { status: 500 }
+    );
   }
 }

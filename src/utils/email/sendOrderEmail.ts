@@ -282,6 +282,41 @@ export async function sendOrderConfirmationEmails({
       console.warn('⚠️ No user email provided, skipping confirmation email.');
     }
 
+    // Sync with Zoho Campaigns if connected
+    try {
+      if (userEmail) {
+        const { zohoTokenManager } = await import("@/lib/zoho/token-manager");
+        const { zohoService } = await import("@/lib/zoho/zoho-service");
+        const isConnected = await zohoTokenManager.isConnected();
+        const listKey = process.env.ZOHO_MAILING_LIST_KEY;
+
+        if (isConnected && listKey) {
+          await zohoService.logOrderConfirmation(
+            listKey,
+            userEmail,
+            adminOrderProps.orderNumber,
+            adminOrderProps.totalAmount
+          );
+          console.log(`✅ Synced order ${adminOrderProps.orderNumber} for ${userEmail} to Zoho`);
+        }
+
+        const purchasedListKey = process.env.ZOHO_PURCHASED_LIST_KEY;
+        if (isConnected && purchasedListKey) {
+          const names = adminOrderProps.customerName.split(" ");
+          const firstName = names[0] || "";
+          const lastName = names.slice(1).join(" ") || "";
+          await zohoService.subscribeContact(purchasedListKey, {
+            "Contact Email": userEmail,
+            "First Name": firstName,
+            "Last Name": lastName,
+          });
+          console.log(`✅ Subscribed ${userEmail} to Purchased Customers list`);
+        }
+      }
+    } catch (zohoError) {
+      console.warn("⚠️ Failed to sync order confirmation to Zoho:", zohoError);
+    }
+
     return { success: true };
   } catch (error: any) {
     console.error('❌ Order email failed:', error);
@@ -343,7 +378,7 @@ export async function sendOrderConfirmationFromOrderObject(order: any, rewardsIn
   const deliveryFee = order.delivery_fee || 0;
   const totalAmountPaid = order.total_amount_paid || order.total_amount || 0;
   const discount = order.voucher_discount ?? Math.max(0, (calculatedSubtotal + deliveryFee) - totalAmountPaid);
-  const orderNumber = order.reference || order.id;
+  const orderNumber = order.reference || order.order_id || order.id;
 
   const itemsOrdered = (order.order_items || []).map((item: any) => ({
     title: item.products?.name || item.bundles?.name || item.offers?.title || (item.option as any)?._title || "",

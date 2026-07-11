@@ -90,6 +90,20 @@ async function runCartReminderJob(supabaseAdmin: any) {
         }));
         await sendMail({ to: email, subject: subjects[nextStage] || "Cart Reminder", html });
         await supabaseAdmin.from("cart_reminder_history").insert({ cart_id: cart.id, reminder_number: nextStage, sent_at: new Date().toISOString() });
+        
+        // Log cart reminder to Zoho if connected
+        try {
+          const { zohoTokenManager } = await import("@/lib/zoho/token-manager");
+          const { zohoService } = await import("@/lib/zoho/zoho-service");
+          const isConnected = await zohoTokenManager.isConnected();
+          if (isConnected) {
+            await zohoService.logCartReminder(email, items.length);
+            console.log(`✅ Loged cart reminder for ${email} to Zoho`);
+          }
+        } catch (zohoError) {
+          console.warn("⚠️ Failed to log cart reminder to Zoho:", zohoError);
+        }
+
         sentCount++;
     } catch (err) { console.error(err); }
   }

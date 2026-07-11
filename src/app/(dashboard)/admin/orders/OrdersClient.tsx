@@ -762,7 +762,7 @@ export default function OrdersClient({
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
-                            copyToClipboard(order.reference || order.id);
+                            copyToClipboard(order.reference || order.order_id || order.id);
                           }}
                           className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 transition-opacity"
                         >

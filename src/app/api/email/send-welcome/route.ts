@@ -39,6 +39,29 @@ export async function POST(request: Request) {
       html: emailHtml,
     });
 
+    // Sync with Zoho Campaigns if connected
+    try {
+      const { zohoTokenManager } = await import("@/lib/zoho/token-manager");
+      const { zohoService } = await import("@/lib/zoho/zoho-service");
+      const isConnected = await zohoTokenManager.isConnected();
+      const listKey = process.env.ZOHO_MAILING_LIST_KEY;
+
+      if (isConnected && listKey) {
+        const names = customerName.split(" ");
+        const firstName = names[0] || "";
+        const lastName = names.slice(1).join(" ") || "";
+        
+        await zohoService.subscribeContact(listKey, {
+          "Contact Email": customerEmail,
+          "First Name": firstName,
+          "Last Name": lastName,
+        });
+        console.log(`✅ Subscribed ${customerEmail} to Zoho mailing list`);
+      }
+    } catch (zohoError) {
+      console.warn("⚠️ Failed to sync subscriber to Zoho:", zohoError);
+    }
+
     return NextResponse.json({
       success: true,
       message: "Welcome email sent successfully",
