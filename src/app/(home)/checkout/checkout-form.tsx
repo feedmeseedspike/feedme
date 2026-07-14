@@ -2485,17 +2485,30 @@ const CheckoutForm = ({
                               showToast("Please fill in your delivery details first.", "error");
                               return;
                             }
-
                             const values = shippingAddressForm.getValues();
                             const phone = "2348088282487"; // Customer support number
                             
+                            const orderDate = new Date().toLocaleDateString('en-NG', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            });
+                            const orderTime = new Date().toLocaleTimeString('en-NG', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true,
+                            });
+
                             let message = `*NEW ORDER - FEEDME* 🛒\n\n`;
+                            
+                            message += `📅 *Order Date:* ${orderDate} | ${orderTime}\n\n`;
                             
                             message += `👤 *Customer Details:*\n`;
                             message += `• Name: ${values.firstName} ${values.lastName}\n`;
                             message += `• Phone: ${values.phone}\n`;
                             message += `• Address: ${values.street}, ${values.location}\n\n`;
-                            
+
                             message += `📦 *Order Items:*\n`;
                             items.forEach((item, index) => {
                               const productOption = isProductOption(item.option) ? item.option : null;

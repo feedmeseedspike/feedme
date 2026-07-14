@@ -10,6 +10,7 @@ export interface ProductOption {
   list_price?: number;
   image?: string;
   stockStatus?: string;
+  stock_status?: string | null;
   countInStock?: number | null;
 }
 

@@ -965,18 +965,27 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
       <div className="space-y-3">
         {sortedOptions.map((option, idx) => {
           const isSelected = selectedOption === option.name;
+          const isOptionOutOfStock = 
+            (option.stockStatus && option.stockStatus.toLowerCase().replace(/_/g, " ") === "out of stock") ||
+            (option.stock_status && option.stock_status.toLowerCase().replace(/_/g, " ") === "out of stock") ||
+            (typeof option.countInStock === "number" && option.countInStock <= 0);
+
           return (
             <div key={option.name} className="space-y-3">
               <motion.button
                 onClick={() => {
+                  if (isOptionOutOfStock) return;
                   handleOptionChange(option.name);
                 }}
+                disabled={isOptionOutOfStock}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.04 }}
                 className={cn(
                   "w-full flex items-center justify-between rounded-2xl border px-4 py-3 text-left transition-all duration-200",
-                  isSelected
+                  isOptionOutOfStock
+                    ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed opacity-60"
+                    : isSelected
                     ? "border-[#1B6013] bg-[#F5FFF1] shadow-[0_10px_30px_rgba(27,96,19,0.08)]"
                     : "border-[#E4E7EC] bg-white hover:border-[#1B6013] hover:bg-[#F5FFF1]"
                 )}
@@ -985,14 +994,20 @@ const ProductDetailsCard: React.FC<ProductDetailsCardProps> = React.memo(
                   {option.name}
                 </span>
                 <div className="flex flex-col items-end">
-                  <span className="text-sm text-[#475467]">
-                    {formatNaira(option.price)}
-                  </span>
-                  {option.list_price && option.list_price > option.price ? (
-                    <span className="text-[10px] text-gray-400 font-semibold line-through">
-                      {formatNaira(option.list_price)}
-                    </span>
-                  ) : null}
+                  {isOptionOutOfStock ? (
+                    <span className="text-xs font-bold text-red-500">Out of Stock</span>
+                  ) : (
+                    <>
+                      <span className="text-sm text-[#475467]">
+                        {formatNaira(option.price)}
+                      </span>
+                      {option.list_price && option.list_price > option.price ? (
+                        <span className="text-[10px] text-gray-400 font-semibold line-through">
+                          {formatNaira(option.list_price)}
+                        </span>
+                      ) : null}
+                    </>
+                  )}
                 </div>
               </motion.button>
               {isSelected && (
