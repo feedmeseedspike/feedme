@@ -66,6 +66,30 @@ const CATEGORY_META_MAP: Record<string, { description: string; keywords: string[
   vegetables: {
     description: "extensive selection of vegetables and soup tickners like ugu, scentleaf, water leaf, okazi and much more are available in lagos",
     keywords: ["broccoli", "beetroot", "kale", "lemon grass", "ugu", "okazi leaf", "moimoi leaf", "ewedu", "okro", "radish", "scent leaf", "waterleaf", "cabbage", "uziza", "bitterleaf"]
+  },
+  "grains-and-legumes": {
+    description: "buy all types of grains and legumes including rice, beans, maize and more, and get it delivered to your doorstep under 3hours!",
+    keywords: ["rice", "beans", "ofada", "maize", "millet", "guinea corn", "legumes", "grains"]
+  },
+  "spices-and-condiment": {
+    description: "the best spices and condiments for your everyday cooking to add rich flavor to your meals, available in lagos and delivered under 3hours!",
+    keywords: ["salt", "maggi", "curry", "thyme", "garlic", "ginger", "seasoning", "spices"]
+  },
+  general: {
+    description: "shop for all your general grocery and household items at the best prices and get them delivered to your doorstep under 3hours in lagos!",
+    keywords: ["grocery", "food", "supermarket", "household", "general items"]
+  },
+  "pepper-mix": {
+    description: "buy freshly blended pepper mix perfect for your stews and soups, hygienically packaged and delivered to your doorstep under 3hours!",
+    keywords: ["pepper mix", "blended pepper", "tatashe", "rodo", "shombo", "tomato mix", "stew mix"]
+  },
+  "seeds-and-nuts": {
+    description: "choose from our selection of premium seeds and nuts, great for snacking and cooking, all available in lagos with delivery under 3hours!",
+    keywords: ["groundnut", "cashew nuts", "walnut", "sesame seeds", "melon seeds", "nuts", "seeds"]
+  },
+  "herbal-teas": {
+    description: "discover our range of soothing herbal teas for your wellness and refreshment, available in lagos and delivered to you under 3hours!",
+    keywords: ["green tea", "hibiscus", "zobo", "ginger tea", "herbal tea", "slimming tea", "wellness"]
   }
 };
 

@@ -26,7 +26,7 @@ export default function AboutPage() {
           </div>
 
           <div className="space-y-16 text-gray-700 leading-relaxed">
-            <section className="grid md:grid-cols-2 gap-12 items-center">
+            <section className="max-w-3xl mx-auto">
               <div className="space-y-6 text-lg">
                 <p>
                   <span className="font-semibold text-[#1B6013]">FeedMe</span> (RC 7883744) is Nigeria&apos;s fresh produce delivery platform, built by Seedspike Technologies in 2024 to close the gap between farmers and consumers.
@@ -41,18 +41,6 @@ export default function AboutPage() {
                   With FeedMe, you can shop fresh farm produce at honest prices and have it delivered the same day, straight to your door. Easy, convenient, and hassle-free.
                 </p>
               </div>
-              
-              <div className="relative max-w-sm mx-auto w-full group">
-                <div className="absolute -inset-2 bg-gradient-to-tr from-[#1B6013]/20 to-transparent rounded-[3rem] blur-xl group-hover:blur-2xl transition-all duration-500 opacity-70"></div>
-                <div className="relative rounded-[2.5rem] overflow-hidden bg-white aspect-[4/5]">
-                  <Image 
-                    src="/images/CEO.png" 
-                    alt="Seedspike Technologies CEO" 
-                    fill 
-                    className="object-cover" 
-                  />
-                </div>
-              </div>
             </section>
 
             <section className="mt-16 p-10 bg-[#1B6013]/5 rounded-[2.5rem] border border-[#1B6013]/10 relative overflow-hidden group">
@@ -65,8 +53,8 @@ export default function AboutPage() {
               <ul className="list-none space-y-4 relative z-10">
                 <li className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                   <strong className="text-gray-900 min-w-[140px]">Email:</strong>
-                  <Link href="mailto:seedspikeafrica@gmail.com" className="text-[#1B6013] font-semibold hover:underline">
-                    seedspikeafrica@gmail.com
+                  <Link href="mailto:seedspiketeam@gmail.com" className="text-[#1B6013] font-semibold hover:underline">
+                    seedspiketeam@gmail.com
                   </Link>
                 </li>
                 <li className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">

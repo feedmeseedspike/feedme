@@ -23,21 +23,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Render the welcome email template
-    const emailHtml = await render(
-      React.createElement(WelcomeEmail, {
-        customerName,
-        discountCode,
-        discountPercentage,
-      })
-    );
-
-    // Send the welcome email
-    await sendMail({
-      to: customerEmail,
-      subject: `Welcome to FeedMe - Get ${discountPercentage}% off your first order!`,
-      html: emailHtml,
-    });
+    // Custom local welcome email has been removed.
+    // We now rely entirely on Zoho Campaigns automation to send the welcome email.
 
     // Sync with Zoho Campaigns if connected
     try {

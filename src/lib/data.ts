@@ -85,7 +85,7 @@ export const products = [
     numSales: 9,
     countInStock: 11,
     stockStatus: 'In Stock',
-    description: 'Onions are versatile root vegetables known for their sharp flavor, aroma, and health benefits. Available in red, and white varieties.',
+    description: "Spring onions are young immature onions harvested and mostly used in special delicacy.",
     colors: ['White', 'Brown'],
     options: [
       {
@@ -422,7 +422,7 @@ export const products = [
     numSales: 12,
     countInStock: 30,
     stockStatus: 'Out of Stock',
-    description: 'Garlic is a flavorful, aromatic bulb used in cooking and known for its health benefits, such as boosting immunity and supporting heart health.',
+    description: "Garlic is a bulbous plant from the onion family that is rich in therapeutic properties and has a strong pungent flavour. The Local garlic, naturally grown is know for boosting immunity.",
     nutritionalInfo: {
       servingsPerContainer: '1.0',
       servingSize: 'Tatasha (medium)',
@@ -476,7 +476,7 @@ export const products = [
     numSales: 15,
     countInStock: 40,
     stockStatus: 'In Stock',
-    description: 'Ginger is known for its spicy flavor and health benefits, including aiding digestion and reducing inflammation. It is used in cooking, baking and beverages.',
+    description: "Ginger is a type of root plant that is widely regarded as beneficial for health conditions. It is used for dishes in some parts of Nigeria, Asia, and beyond.",
     colors: ['Beige'],
     options: [
       {
@@ -521,7 +521,7 @@ export const products = [
     numSales: 18,
     countInStock: 35,
     stockStatus: 'In Stock',
-    description: 'Turmeric is a yellow spice known for its earthy flavor and active compound, curcumin. It offers potential anti-inflammatory and antioxidant benefits and is used in cooking, natural remedies, and beauty products.',
+    description: "Turmeric is another root plant from the Ginger family that is used for seasoning and cooking, and widely regarded as beneficial for health.",
     colors: ['Yellow'],
     options: [
       {
@@ -591,7 +591,7 @@ export const products = [
       { rating: 5, count: 7 },
     ],
     numSales: 20,
-    description: 'Hibiscus (Zobo leaf) is a nutrient-rich plant known for its antioxidant, vitamin C, and mineral content. It is used to make a tangy herbal drink, offering health benefits like immune support, improved digestion, and reduced blood pressure.',
+    description: "The Hibiscus flower is a type of flower that is grown for cculinary and beverage purposes. It's uses include Zobo, herbal tea, Bissap, etc.",
     colors: ['Red'],
     options: [
       {
