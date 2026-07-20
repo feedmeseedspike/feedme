@@ -3,7 +3,7 @@
 // ============================================
 
 import { zohoTokenManager } from './token-manager';
-import { ZOHO_CAMPAIGNS_BASE_URL, ZOHO_RESPONSE_FORMAT, DEFAULT_FROM_EMAIL } from './constants';
+import { ZOHO_MA_BASE_URL, ZOHO_RESPONSE_FORMAT, DEFAULT_FROM_EMAIL } from './constants';
 import type {
   ZohoMailingList,
   ZohoSubscribeResponse,
@@ -21,7 +21,7 @@ const supabaseAdmin = createClient(
 );
 
 class ZohoService {
-  private baseUrl = ZOHO_CAMPAIGNS_BASE_URL;
+  private baseUrl = ZOHO_MA_BASE_URL;
 
   // ── Private Helpers ──
 
@@ -90,8 +90,8 @@ class ZohoService {
   ): Promise<ZohoSubscribeResponse> {
     const email = contactInfo['Contact Email'];
 
-    // Use bulk add — adds contact directly without confirmation email
-    const data = await this.apiPost('addlistsubscribersinbulk', {
+    // Use bulk add for Zoho Marketing Automation
+    const data = await this.apiPost('addleadsinbulk', {
       listkey: listKey,
       emailids: email,
     });

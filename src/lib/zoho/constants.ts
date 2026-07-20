@@ -6,8 +6,8 @@
 export const ZOHO_ACCOUNTS_URL =
   process.env.ZOHO_ACCOUNTS_URL || 'https://accounts.zoho.com';
 
-// ── Zoho Campaigns API base ──
-export const ZOHO_CAMPAIGNS_BASE_URL = 'https://campaigns.zoho.com/api/v1.1';
+// ── Zoho Marketing Automation API base ──
+export const ZOHO_MA_BASE_URL = 'https://marketingautomation.zoho.com/api/v1';
 
 // ── OAuth Endpoints ──
 export const ZOHO_AUTH_URL = `${ZOHO_ACCOUNTS_URL}/oauth/v2/auth`;
@@ -16,12 +16,12 @@ export const ZOHO_REVOKE_URL = `${ZOHO_ACCOUNTS_URL}/oauth/v2/token/revoke`;
 
 // ── Required OAuth Scopes ──
 export const ZOHO_SCOPES = [
-  'ZohoCampaigns.contact.CREATE',
-  'ZohoCampaigns.contact.READ',
-  'ZohoCampaigns.contact.UPDATE',
-  'ZohoCampaigns.campaign.CREATE',
-  'ZohoCampaigns.campaign.READ',
-  'ZohoCampaigns.campaign.UPDATE',
+  'ZohoMarketingAutomation.lead.CREATE',
+  'ZohoMarketingAutomation.lead.READ',
+  'ZohoMarketingAutomation.lead.UPDATE',
+  'ZohoMarketingAutomation.campaign.CREATE',
+  'ZohoMarketingAutomation.campaign.READ',
+  'ZohoMarketingAutomation.campaign.UPDATE',
 ].join(',');
 
 // ── API Rate Limits ──

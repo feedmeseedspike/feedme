@@ -30,6 +30,7 @@ const footerData = [
     title: "Company",
     links: [
       { name: "About Us", href: "/about" },
+      { name: "Blog", href: "/blog" },
       { name: "Seedspike", href: "https://seedspikeafrica.com/" },
       { name: "Community", isCommunityModal: true },
       { name: "Press Releases", href: "/" },
