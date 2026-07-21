@@ -1,9 +1,62 @@
-// lib/parser.ts
+interface CustomizationOption {
+  label: string;
+  value: string;
+  price_adjustment: number;
+  default: boolean;
+}
+
+interface Customization {
+  id: string;
+  label: string;
+  type: string;
+  options: CustomizationOption[];
+}
+
 interface ParsedProduct {
   categoryTitle: string;
   name: string;
   discount?: string;
   options: { name: string; price: number; oldPrice?: number; stockStatus?: string }[];
+  customizations?: Customization[];
+}
+
+function parseCustomizationCell(customStr: string): Customization | null {
+  if (!customStr || !customStr.trim()) return null;
+  const str = customStr.trim();
+  let label = str;
+  let rawOptions: string[] = [];
+
+  if (str.includes(":")) {
+    const parts = str.split(":");
+    label = parts[0].trim();
+    rawOptions = parts[1].split(/[,/|\n]/).map((s) => s.trim()).filter(Boolean);
+  } else if (str.includes(",") || str.includes("/") || str.includes("|")) {
+    const splitted = str.split(/[,/|\n]/).map((s) => s.trim()).filter(Boolean);
+    label = splitted[0] || str;
+    rawOptions = splitted;
+  } else {
+    label = str;
+    rawOptions = [str];
+  }
+
+  if (rawOptions.length === 0) rawOptions = [label];
+
+  const options: CustomizationOption[] = rawOptions.map((opt, idx) => ({
+    label: opt,
+    value: opt.toLowerCase().trim(),
+    price_adjustment: 0,
+    default: idx === 0,
+  }));
+
+  const cleanLabel = label.toLowerCase().replace(/[^a-z0-9]/g, "_");
+  const safeId = `custom_${cleanLabel || "option"}`;
+
+  return {
+    id: safeId,
+    label: label,
+    type: "select",
+    options,
+  };
 }
 
 export function parseFeedMeSheet(
@@ -45,6 +98,11 @@ export function parseFeedMeSheet(
   const oldPriceIdx = headers.findIndex(h => h?.toString().toLowerCase().trim() === "old price");
   const discountIdx = col("discount");
   const stockIdx = col("stock");
+  let customIdx = col("customization");
+  if (customIdx === -1) customIdx = col("customisations");
+  if (customIdx === -1) customIdx = col("customisation");
+  if (customIdx === -1) customIdx = col("customization options");
+  if (customIdx === -1) customIdx = headers.findIndex(h => h?.toString().toLowerCase().includes("custom"));
 
   // Fallback for Categories if not found but index 0 is available and itemIdx is not 0
   if (catIdx === -1 && itemIdx > 0) {
@@ -70,6 +128,7 @@ export function parseFeedMeSheet(
     const oldPriceStr = oldPriceIdx !== -1 ? row[oldPriceIdx]?.toString().trim() : undefined;
     const discountStr = discountIdx !== -1 ? row[discountIdx]?.toString().trim() : undefined;
     const stockStr = stockIdx !== -1 ? row[stockIdx]?.toString().trim() : undefined;
+    const customStr = customIdx !== -1 ? row[customIdx]?.toString().trim() : undefined;
 
     // Update state only if we have data in the first few columns
     // This prevents deep side-table rows from hijacking the state.
@@ -121,7 +180,31 @@ export function parseFeedMeSheet(
     if (!product.options.some(o => o.name === cleanQty)) {
        product.options.push({ name: cleanQty, price, oldPrice: isNaN(oldPrice as number) ? undefined : oldPrice, stockStatus: stockStr });
     }
+
+    // Add customization if present in row
+    if (customStr) {
+      const parsedCust = parseCustomizationCell(customStr);
+      if (parsedCust) {
+        if (!product.customizations) {
+          product.customizations = [parsedCust];
+        } else {
+          const existingCust = product.customizations.find(
+            (c) => c.label.toLowerCase().trim() === parsedCust.label.toLowerCase().trim()
+          );
+          if (!existingCust) {
+            product.customizations.push(parsedCust);
+          } else {
+            parsedCust.options.forEach((newOpt) => {
+              if (!existingCust.options.some((o) => o.value === newOpt.value)) {
+                existingCust.options.push({ ...newOpt, default: false });
+              }
+            });
+          }
+        }
+      }
+    }
   }
 
   return products;
 }
+

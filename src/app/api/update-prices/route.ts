@@ -20,14 +20,6 @@ const supabase = createClient(
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
-interface Option {
-  name: string;
-  image: string;
-  price: number;
-  list_price: number;
-  stockStatus: string;
-}
-
 interface ProductInsert {
   name: string;
   slug: string;
@@ -45,7 +37,7 @@ interface ProductInsert {
   category_ids: string[];
   tags: string[] | null;
   images: string[];
-  options: Option[];
+  options: any;
   rating_distribution: Record<string, number>;
   in_season: boolean | null;
 }
@@ -62,8 +54,8 @@ function generateDescription(
       ? `₦${lowestPrice.toLocaleString()}`
       : `₦${lowestPrice.toLocaleString()} – ₦${highestPrice.toLocaleString()}`;
 
-  const isGeneral = categoryTitle.toLowerCase() === "general";
-  const categoryHint = isGeneral ? "" : ` in our ${categoryTitle} collection`;
+  const hasCategory = categoryTitle && categoryTitle.toLowerCase() !== "general" && categoryTitle.toLowerCase() !== "uncategorized";
+  const categoryHint = hasCategory ? ` in our ${categoryTitle} collection` : "";
 
   let tagline = "High-quality, affordable, and ready to enjoy.";
   const nameLower = p.name.toLowerCase();
@@ -118,14 +110,56 @@ export async function POST(req: NextRequest) {
 
     // FETCH ALL RELEVANT DATA FROM DB
     const [{ data: allExistingProducts }, { data: allCats }] = await Promise.all([
-      supabase.from("products").select("id, name, slug, options, price, list_price, images, tags, stock_status, in_season"),
+      supabase.from("products").select("id, name, slug, options, price, list_price, images, tags, stock_status, in_season, category_ids"),
       supabase.from("categories").select("id, title")
     ]);
 
-    const catMap = new Map(allCats?.map((c) => [c.title.toLowerCase(), c.id]) || []);
-    const generalCat = allCats?.find(c => c.title === "General");
-    if (!generalCat) return NextResponse.json({ error: "General category missing" }, { status: 500 });
-    const GENERAL_CATEGORY_ID = generalCat.id;
+    const catMap = new Map<string, string>();
+    allCats?.forEach((c) => catMap.set(c.title.toLowerCase().trim(), c.id));
+
+    const getOrResolveCategoryId = async (title: string): Promise<{ categoryId: string; categoryTitle: string }> => {
+      const cleanTitle = (title || "").trim();
+      if (!cleanTitle || cleanTitle.toLowerCase() === "general" || cleanTitle.toLowerCase() === "uncategorized") {
+        const defaultCat = allCats?.[0];
+        return { categoryId: defaultCat?.id || "", categoryTitle: defaultCat?.title || cleanTitle || "Uncategorized" };
+      }
+      const lower = cleanTitle.toLowerCase();
+      if (catMap.has(lower)) {
+        return { categoryId: catMap.get(lower)!, categoryTitle: cleanTitle };
+      }
+
+      // Fuzzy match
+      let bestMatch: any = null;
+      let highestSim = 0;
+      allCats?.forEach((c) => {
+        const sim = similarity(cleanTitle, c.title);
+        if (sim > highestSim) {
+          highestSim = sim;
+          bestMatch = c;
+        }
+      });
+
+      if (highestSim > 0.75 && bestMatch) {
+        catMap.set(lower, bestMatch.id);
+        return { categoryId: bestMatch.id, categoryTitle: bestMatch.title };
+      }
+
+      // Auto-create category in DB if missing
+      const { data: newCat, error: catErr } = await supabase
+        .from("categories")
+        .insert({ title: cleanTitle, description: cleanTitle })
+        .select("id, title")
+        .single();
+
+      if (newCat && !catErr) {
+        catMap.set(lower, newCat.id);
+        allCats?.push(newCat);
+        return { categoryId: newCat.id, categoryTitle: newCat.title };
+      }
+
+      const fallbackCat = allCats?.[0];
+      return { categoryId: fallbackCat?.id || "", categoryTitle: cleanTitle };
+    };
 
     if (isDryRun) {
       const analysis = parsedProducts.map(p => {
@@ -141,7 +175,8 @@ export async function POST(req: NextRequest) {
           newPriceMax: highestPrice,
           csvOptions: p.options,
           newImages: [getProductImage(imgEntry)],
-          discount: (p as any).discount
+          discount: (p as any).discount,
+          customizations: p.customizations,
         };
 
         if (exact) {
@@ -210,15 +245,11 @@ export async function POST(req: NextRequest) {
       const lowestPrice = lowestPriceOption.price;
       
       // Calculate a sensible product-level list_price:
-      // If the lowest price option has an oldPrice > currentPrice, use it as list_price.
-      // Otherwise fallback to highest price (existing behavior for price range) or same as price if no range.
       let productListPrice = (lowestPriceOption.oldPrice && lowestPriceOption.oldPrice > lowestPrice) 
         ? lowestPriceOption.oldPrice 
         : Math.max(...p.options.map((o: any) => o.price));
 
-      const sheetCatLower = (p.categoryTitle || "").toLowerCase();
-      const categoryId = catMap.get(sheetCatLower) || GENERAL_CATEGORY_ID;
-      const categoryTitle = sheetCatLower && catMap.has(sheetCatLower) ? p.categoryTitle : "General";
+      const { categoryId, categoryTitle } = await getOrResolveCategoryId(p.categoryTitle);
 
       const imgEntry = findImageEntry(p.name);
       const productMainImg = getProductImage(imgEntry);
@@ -248,19 +279,23 @@ export async function POST(req: NextRequest) {
       const isProductOutOfStock = p.options.length > 0 && p.options.every((o: any) => o.stockStatus && o.stockStatus.toLowerCase().includes('out'));
       const productStockStatus = isProductOutOfStock ? "out_of_stock" : "in_stock";
 
+      const categoryIds = categoryId ? [categoryId] : (existing?.category_ids || []);
+
       const updateData: any = {
         name: p.name,
         price: lowestPrice,
         list_price: productListPrice,
-        category_ids: [categoryId, GENERAL_CATEGORY_ID],
+        category_ids: categoryIds,
         stock_status: productStockStatus,
         tags: mergedTags,
       };
 
       if (existing) {
         let existingOptions = existing.options;
-        let isObjectFormat = existingOptions && !Array.isArray(existingOptions) && existingOptions.variations;
-        let optionsToMap = isObjectFormat ? existingOptions.variations : (existingOptions || []);
+        let isObjectFormat = existingOptions && !Array.isArray(existingOptions) && (existingOptions.variations || existingOptions.customizations);
+        let optionsToMap = Array.isArray(existingOptions)
+          ? existingOptions
+          : (existingOptions?.variations || []);
 
         const updatedOptions = optionsToMap.map((opt: any) => {
           const newOpt = p.options.find((o: any) => String(o.name) === String(opt.name));
@@ -283,11 +318,24 @@ export async function POST(req: NextRequest) {
           }
         });
 
-        if (isObjectFormat) {
-          updateData.options = { ...existingOptions, variations: updatedOptions };
+        const activeCustomizations = p.customizations && p.customizations.length > 0
+          ? p.customizations
+          : (isObjectFormat ? existingOptions.customizations : undefined);
+
+        if (activeCustomizations && activeCustomizations.length > 0) {
+          updateData.options = {
+            variations: updatedOptions,
+            customizations: activeCustomizations,
+          };
+        } else if (isObjectFormat) {
+          updateData.options = {
+            ...existingOptions,
+            variations: updatedOptions,
+          };
         } else {
           updateData.options = updatedOptions;
         }
+
         const currentImgs = existing.images ?? [];
         if (currentImgs.length === 1 && currentImgs[0] === DEFAULT_IMAGE) {
           updateData.images = [productMainImg];
@@ -306,6 +354,19 @@ export async function POST(req: NextRequest) {
            uniqueSlug = `${baseSlug}-${counter++}`;
         }
 
+        const variationsArr = p.options.map((o: any) => {
+           const optListPrice = (o.oldPrice && o.oldPrice > o.price) ? o.oldPrice : o.price;
+           const optStockStatus = o.stockStatus && o.stockStatus.toLowerCase().includes('out') ? "Out of Stock" : "In Stock";
+           return { name: o.name, image: optionImg, price: o.price, list_price: optListPrice, stockStatus: optStockStatus };
+        });
+
+        const finalOptionsData = (p.customizations && p.customizations.length > 0)
+          ? {
+              variations: variationsArr,
+              customizations: p.customizations,
+            }
+          : variationsArr;
+
         const newProduct: ProductInsert = {
           name: p.name,
           slug: uniqueSlug,
@@ -320,14 +381,10 @@ export async function POST(req: NextRequest) {
           stock_status: productStockStatus,
           is_published: true,
           vendor_id: null,
-          category_ids: [categoryId, GENERAL_CATEGORY_ID],
+          category_ids: categoryIds,
           tags: mergedTags,
           images: [productMainImg],
-          options: p.options.map((o: any) => {
-             const optListPrice = (o.oldPrice && o.oldPrice > o.price) ? o.oldPrice : o.price;
-             const optStockStatus = o.stockStatus && o.stockStatus.toLowerCase().includes('out') ? "Out of Stock" : "In Stock";
-             return { name: o.name, image: optionImg, price: o.price, list_price: optListPrice, stockStatus: optStockStatus };
-          }),
+          options: finalOptionsData,
           rating_distribution: {},
           in_season: null,
         };
@@ -338,7 +395,6 @@ export async function POST(req: NextRequest) {
         }
       }
     }
-
 
     // Mark missing products as out of stock
     let totalMarkedOutOfStock = 0;
@@ -366,3 +422,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
