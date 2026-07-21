@@ -17,7 +17,6 @@ export async function GET(request: NextRequest) {
 
     // Handle different auth flow types
     if (type === 'recovery') {
-      // This is a password reset flow
       if (!code) {
         console.error('No code provided for password recovery');
         const errorUrl = new URL('/auth/forgot-password', requestUrl.origin);
@@ -25,7 +24,6 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(errorUrl);
       }
 
-      // Redirect to reset password page with the code
       const resetUrl = new URL('/auth/reset-password', requestUrl.origin);
       resetUrl.searchParams.set('code', code);
       resetUrl.searchParams.set('type', 'recovery');
@@ -52,7 +50,6 @@ export async function GET(request: NextRequest) {
           return NextResponse.redirect(errorUrl);
         }
 
-        // Email confirmed successfully, redirect to success page or dashboard
         const successUrl = new URL('/auth/email-confirmed', requestUrl.origin);
         if (callbackUrl !== '/') {
           successUrl.searchParams.set('callbackUrl', callbackUrl);
@@ -68,18 +65,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Standard OAuth/sign-in flow
-    // Check if user is already authenticated
     const { data: { user: existingUser }, error: existingUserError } = await supabase.auth.getUser();
 
     if (existingUserError) {
       console.error('Error checking existing user in callback:', existingUserError);
-      // Continue, as this might be a fresh sign-in attempt
     }
 
     if (existingUser && !code) {
-      // User is already logged in and no new code to process
-      
-      // Attempt to apply referral for existing user if present in URL
       if (referralCode && existingUser.id) {
         try {
           const response = await fetch(`${requestUrl.origin}/api/referral`, {
@@ -93,19 +85,15 @@ export async function GET(request: NextRequest) {
           
           if (!response.ok) {
             console.error("Failed to apply referral for existing user after OAuth callback:", await response.json());
-          } else {
-            console.log("Referral applied successfully for existing user after OAuth callback.");
           }
         } catch (error) {
           console.error("Error applying referral for existing user:", error);
         }
       }
       
-      // Redirect existing users back to where they came from
       return NextResponse.redirect(new URL(callbackUrl, requestUrl.origin));
     }
 
-    // If no existing user or we have a code, proceed with code exchange (for new sign-ins or re-authentication)
     if (!code) {
       console.error('No code provided in callback for new sign-in.');
       const errorUrl = new URL('/auth/auth-error', requestUrl.origin);
@@ -113,13 +101,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(errorUrl);
     }
 
-    // Exchange the code for a session
     const { data: exchangeCodeData, error: exchangeCodeError } = await supabase.auth.exchangeCodeForSession(code);
 
     if (exchangeCodeError) {
       console.error('Auth error during code exchange:', exchangeCodeError);
       
-      // Handle specific error types
       if (exchangeCodeError.message?.includes('expired')) {
         const errorUrl = new URL('/auth/auth-error', requestUrl.origin);
         errorUrl.searchParams.set('error', 'Authorization code expired. Please try signing in again.');
@@ -132,13 +118,11 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(errorUrl);
       }
       
-      // Generic error
       const errorUrl = new URL('/auth/auth-error', requestUrl.origin);
       errorUrl.searchParams.set('error', 'Authentication failed. Please try again.');
       return NextResponse.redirect(errorUrl);
     }
 
-    // Fetch authenticated user after session exchange for security
     const { data: { user: authenticatedUser }, error: getUserError } = await supabase.auth.getUser();
 
     if (getUserError) {
@@ -157,9 +141,40 @@ export async function GET(request: NextRequest) {
 
     // Capture user details after successful OAuth and authentication
     try {
+      const existingProfile = await users.getUser(authenticatedUser.id).catch(() => null);
+      const isNewUserSignup = !existingProfile;
+
       await users.captureUserDetails(authenticatedUser);
+
+      // Sync new Google signups to Zoho with their Google first name
+      if (isNewUserSignup && authenticatedUser.email) {
+        const fullGoogleName = 
+          authenticatedUser.user_metadata?.full_name || 
+          authenticatedUser.user_metadata?.name || 
+          authenticatedUser.user_metadata?.given_name || 
+          authenticatedUser.email.split("@")[0] || 
+          "";
+
+        try {
+          const { zohoService } = await import('@/lib/zoho/zoho-service');
+          const listKey = process.env.ZOHO_MAILING_LIST_KEY;
+          if (listKey) {
+            const names = fullGoogleName.trim().split(" ");
+            const firstName = names[0] || fullGoogleName.trim();
+            const lastName = names.slice(1).join(" ") || "";
+
+            await zohoService.subscribeContact(listKey, {
+              "Contact Email": authenticatedUser.email,
+              "First Name": firstName,
+              "Last Name": lastName,
+            });
+            console.log(`✅ Synced new Google OAuth user ${authenticatedUser.email} (${firstName}) to Zoho`);
+          }
+        } catch (zohoErr) {
+          console.warn('⚠️ Could not sync Google OAuth user to Zoho:', zohoErr);
+        }
+      }
       
-      // If there's a referral code from the original signup URL, apply it
       if (referralCode && authenticatedUser.id) {
         try {
           const response = await fetch(`${requestUrl.origin}/api/referral`, {
@@ -173,18 +188,13 @@ export async function GET(request: NextRequest) {
           
           if (!response.ok) {
             console.error("Failed to apply referral after OAuth callback:", await response.json());
-          } else {
-            console.log("Referral applied successfully after OAuth callback.");
           }
         } catch (error) {
           console.error("Error applying referral:", error);
-          // Don't throw here - we still want to complete the auth flow
         }
       }
     } catch (error) {
       console.error('Error capturing user details:', error);
-      // Don't throw here - we still want to complete the auth flow
-      // But maybe log this for monitoring
     }
 
     // Determine final redirect URL
