@@ -34,16 +34,17 @@ export async function POST(request: Request) {
       const listKey = process.env.ZOHO_MAILING_LIST_KEY;
 
       if (isConnected && listKey) {
-        const names = customerName.split(" ");
-        const firstName = names[0] || "";
+        const trimmedName = customerName.trim();
+        const names = trimmedName.split(" ");
+        const firstName = names[0] || trimmedName;
         const lastName = names.slice(1).join(" ") || "";
         
         await zohoService.subscribeContact(listKey, {
           "Contact Email": customerEmail,
-          "First Name": firstName,
+          "First Name": trimmedName || firstName,
           "Last Name": lastName,
         });
-        console.log(`✅ Subscribed ${customerEmail} to Zoho mailing list`);
+        console.log(`✅ Subscribed ${customerEmail} (${trimmedName}) to Zoho mailing list`);
       }
     } catch (zohoError) {
       console.warn("⚠️ Failed to sync subscriber to Zoho:", zohoError);

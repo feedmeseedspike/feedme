@@ -90,11 +90,22 @@ class ZohoService {
   ): Promise<ZohoSubscribeResponse> {
     const email = contactInfo['Contact Email'];
 
-    // Use bulk add for Zoho Marketing Automation
-    const data = await this.apiPost('addleadsinbulk', {
+    // Send full contact attributes (including First Name) via json/listsubscribe
+    let data = await this.apiPost('json/listsubscribe', {
       listkey: listKey,
-      emailids: email,
+      contactinfo: JSON.stringify(contactInfo),
     });
+
+    // Fallback if needed
+    if (data?.status !== 'success') {
+      const fallbackData = await this.apiPost('addleadsinbulk', {
+        listkey: listKey,
+        emailids: email,
+      });
+      if (fallbackData?.status === 'success') {
+        data = fallbackData;
+      }
+    }
 
     await this.logEmail({
       event_type: 'welcome',
