@@ -90,21 +90,20 @@ class ZohoService {
   ): Promise<ZohoSubscribeResponse> {
     const email = contactInfo['Contact Email'];
 
-    // Send full contact attributes (including First Name) via json/listsubscribe
-    let data = await this.apiPost('json/listsubscribe', {
+    // 1. Add lead immediately to mailing list (Single Opt-In / Active contact)
+    let data = await this.apiPost('addleadsinbulk', {
       listkey: listKey,
-      contactinfo: JSON.stringify(contactInfo),
+      emailids: email,
     });
 
-    // Fallback if needed
-    if (data?.status !== 'success') {
-      const fallbackData = await this.apiPost('addleadsinbulk', {
+    // 2. Populate lead attributes (First Name, Last Name, etc.) on the existing active lead
+    try {
+      await this.apiPost('json/listsubscribe', {
         listkey: listKey,
-        emailids: email,
+        contactinfo: JSON.stringify(contactInfo),
       });
-      if (fallbackData?.status === 'success') {
-        data = fallbackData;
-      }
+    } catch (updateErr) {
+      console.warn('⚠️ Could not update contact attributes on Zoho:', updateErr);
     }
 
     await this.logEmail({
