@@ -340,6 +340,12 @@ export default async function RootLayout({
             fbq('track', 'PageView');
           `}
         </Script>
+        {/* Zoho Marketing Automation / PageSense Tracking */}
+        <Script
+          id="zoho-pagesense"
+          strategy="afterInteractive"
+          src="https://cdn.pagesense.io/js/930372144/a3b8158856fd42ceaf8f5344a1ba24ad.js"
+        />
       </head>
       <body className="font-custom">
         {/* <RegisterSW /> */}
