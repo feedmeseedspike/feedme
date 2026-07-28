@@ -6,7 +6,6 @@ import "../app/global.css";
 import { ReduxProvider } from "@providers/redux-providers";
 import { EB_Garamond } from "next/font/google";
 import { LocationProvider } from "@components/shared/header/Location";
-import CustomScrollbar from "@components/shared/CustomScrollbar";
 import NextTopLoader from "nextjs-toploader";
 import { ToastProvider } from "src/hooks/useToast";
 import CartMergeProvider from "@providers/CartMergeProvider";
@@ -343,7 +342,7 @@ export default async function RootLayout({
         {/* Zoho Marketing Automation / PageSense Tracking */}
         <Script
           id="zoho-pagesense"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
           src="https://cdn.pagesense.io/js/930372144/a3b8158856fd42ceaf8f5344a1ba24ad.js"
         />
       </head>
@@ -377,7 +376,6 @@ export default async function RootLayout({
                   initialUser={user}
                 >
                   <CartMergeProvider>
-                    <CustomScrollbar>
                       <PathnameProvider hasReferralStatus={hasReferralStatus}>
                         <DealsPopup />
                         <NewVisitorProvider>
@@ -386,7 +384,6 @@ export default async function RootLayout({
                           </StoreStatusProvider>
                         </NewVisitorProvider>
                       </PathnameProvider>
-                    </CustomScrollbar>
                   </CartMergeProvider>
                 </SupabaseAuthProvider>
               </ToastProvider>
